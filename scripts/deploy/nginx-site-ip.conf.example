@@ -7,6 +7,11 @@
 # Вариант B — отдельный порт, «как Streamlit» (например http://94.242.58.24:8080/)
 #   Раскомментируйте второй блок server ниже, закомментируйте первый,
 #   или держите оба: 80 для основного, 8080 для второго сервиса.
+#
+# Важно: если открываете приложение на 8080 и на 8081, у обоих server {}
+# должен быть ОДИН И ТОТ ЖЕ root (одна копия dist после rsync).
+# Иначе один порт покажет свежую сборку со ссылкой на панель приёмки,
+# а второй — старую без VITE_AMEDA_INSPECTION_DASHBOARD_URL (карточка не <a>).
 
 # --- Вариант A: порт 80 ---
 server {
@@ -34,6 +39,30 @@ server {
 # server {
 #     listen 8080 default_server;
 #     listen [::]:8080 default_server;
+#     server_name _;
+#
+#     root /var/www/delores-object;
+#     index index.html;
+#
+#     location / {
+#         try_files $uri $uri/ /index.html;
+#     }
+#
+#     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|webmanifest)$ {
+#         expires 30d;
+#         add_header Cache-Control "public, immutable";
+#         try_files $uri =404;
+#     }
+#
+#     add_header X-Content-Type-Options nosniff always;
+# }
+
+# --- Вариант C: два порта — одна статика (8080 + 8081 → один каталог) ---
+# server {
+#     listen 8080;
+#     listen [::]:8080;
+#     listen 8081;
+#     listen [::]:8081;
 #     server_name _;
 #
 #     root /var/www/delores-object;
