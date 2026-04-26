@@ -1,6 +1,7 @@
 import type { BrigadierStoredReport } from '../domain/brigadierReport'
 import type { ProcurementRequest } from '../domain/procurementRequest'
 import { parseBrigadierReportsJson } from './brigadierReportsRepository'
+import type { StoredSiteMedia } from './mediaRepository'
 import { parseProcurementRequestsJson } from './procurementRequestsRepository'
 
 function apiBase(): string {
@@ -27,25 +28,122 @@ function siteUrl(siteId: string, tail: string): string {
   return `${b}/api/sites/${encodeURIComponent(siteId)}${tail}`
 }
 
-/** Оба GET успешны — считаем, что API доступен для объекта. */
+function isObjectMediaRecord(x: unknown): x is StoredSiteMedia {
+  if (!x || typeof x !== 'object') return false
+  const r = x as Record<string, unknown>
+  return (
+    typeof r.id === 'string' &&
+    typeof r.siteId === 'string' &&
+    (r.kind === 'photo' || r.kind === 'video') &&
+    typeof r.name === 'string' &&
+    typeof r.mime === 'string' &&
+    typeof r.sizeBytes === 'number' &&
+    typeof r.capturedAtIso === 'string' &&
+    typeof r.uploadedAtIso === 'string' &&
+    typeof r.authorCaption === 'string'
+  )
+}
+
+function parseObjectMediaManifestJson(data: unknown): StoredSiteMedia[] {
+  if (!Array.isArray(data)) return []
+  return data.filter(isObjectMediaRecord)
+}
+
+async function readBlobAsBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onload = () => {
+      const s = String(r.result)
+      const i = s.indexOf(',')
+      resolve(i >= 0 ? s.slice(i + 1) : '')
+    }
+    r.onerror = () => reject(r.error ?? new Error('read'))
+    r.readAsDataURL(blob)
+  })
+}
+
+/** GET заявок и отчётов успешен — API доступно; манифест медиа подгружается отдельным GET (старые серверы без маршрута просто отключают синхронизацию медиа). */
 export async function fetchSiteFormsFromServer(siteId: string): Promise<{
   procurement: ProcurementRequest[]
   brigadier: BrigadierStoredReport[]
+  objectMediaRemoteAvailable: boolean
+  objectMediaManifest: StoredSiteMedia[]
 } | null> {
   try {
-    const [procRes, brigRes] = await Promise.all([
+    const [procRes, brigRes, mediaRes] = await Promise.all([
       fetch(siteUrl(siteId, '/procurement-requests')),
       fetch(siteUrl(siteId, '/brigadier-reports')),
+      fetch(siteUrl(siteId, '/object-media')),
     ])
     if (!procRes.ok || !brigRes.ok) return null
     const procJson: unknown = await procRes.json()
     const brigJson: unknown = await brigRes.json()
+    const objectMediaRemoteAvailable = mediaRes.ok
+    let objectMediaManifest: StoredSiteMedia[] = []
+    if (mediaRes.ok) {
+      try {
+        const mediaJson: unknown = await mediaRes.json()
+        objectMediaManifest = parseObjectMediaManifestJson(mediaJson)
+      } catch {
+        objectMediaManifest = []
+      }
+    }
     return {
       procurement: parseProcurementRequestsJson(procJson),
       brigadier: parseBrigadierReportsJson(brigJson),
+      objectMediaRemoteAvailable,
+      objectMediaManifest,
     }
   } catch {
     return null
+  }
+}
+
+export async function fetchObjectMediaBlob(
+  siteId: string,
+  mediaId: string,
+): Promise<Blob | null> {
+  try {
+    const res = await fetch(
+      siteUrl(siteId, `/object-media/${encodeURIComponent(mediaId)}/blob`),
+    )
+    if (!res.ok) return null
+    return await res.blob()
+  } catch {
+    return null
+  }
+}
+
+export async function createObjectMediaRemote(
+  siteId: string,
+  record: StoredSiteMedia,
+  file: Blob,
+): Promise<boolean> {
+  try {
+    const dataBase64 = await readBlobAsBase64(file)
+    const res = await fetch(siteUrl(siteId, '/object-media'), {
+      method: 'POST',
+      headers: writeHeaders(true),
+      body: JSON.stringify({ record, dataBase64 }),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+export async function deleteObjectMediaRemote(siteId: string, mediaId: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      siteUrl(siteId, `/object-media/${encodeURIComponent(mediaId)}`),
+      {
+        method: 'DELETE',
+        headers: writeHeaders(false),
+      },
+    )
+    return res.ok
+  } catch {
+    return false
   }
 }
 

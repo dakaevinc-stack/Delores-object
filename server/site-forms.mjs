@@ -1,5 +1,5 @@
 /**
- * HTTP API для заявок снабженцу и отчётов бригадира: JSON на диске по объектам.
+ * HTTP API для заявок снабженцу, отчётов бригадира и оперативного обмена (фото/видео): JSON и файлы на диске по объектам.
  *
  * Запуск: node server/site-forms.mjs
  * Переменные:
@@ -23,6 +23,12 @@ const MAX_BODY_BYTES = 100 * 1024 * 1024
 
 /** @param {string | undefined} id */
 function safeSiteId(id) {
+  if (!id || id.includes('..') || !/^[a-zA-Z0-9._-]+$/.test(id)) return null
+  return id
+}
+
+/** @param {string | undefined} id */
+function safeMediaId(id) {
   if (!id || id.includes('..') || !/^[a-zA-Z0-9._-]+$/.test(id)) return null
   return id
 }
@@ -108,6 +114,23 @@ function isBrigadierReportRow(x) {
     Array.isArray(r.problems) &&
     typeof r.responsible === 'string' &&
     Array.isArray(r.attachments)
+  )
+}
+
+/** @param {unknown} x */
+function isObjectMediaRecord(x) {
+  if (!x || typeof x !== 'object') return false
+  const r = /** @type {Record<string, unknown>} */ (x)
+  return (
+    typeof r.id === 'string' &&
+    typeof r.siteId === 'string' &&
+    (r.kind === 'photo' || r.kind === 'video') &&
+    typeof r.name === 'string' &&
+    typeof r.mime === 'string' &&
+    typeof r.sizeBytes === 'number' &&
+    typeof r.capturedAtIso === 'string' &&
+    typeof r.uploadedAtIso === 'string' &&
+    typeof r.authorCaption === 'string'
   )
 }
 
@@ -275,6 +298,117 @@ const server = http.createServer(async (req, res) => {
         const list = await readJsonArray(file)
         const next = list.filter((x) => !isBrigadierReportRow(x) || /** @type {{id:string}} */ (x).id !== id)
         await writeJsonArray(file, next)
+        sendJson(res, 200, { ok: true })
+        return
+      }
+    }
+
+    if (
+      parts[0] === 'api' &&
+      parts[1] === 'sites' &&
+      parts[2] &&
+      parts[3] === 'object-media'
+    ) {
+      const siteId = safeSiteId(parts[2])
+      if (!siteId) {
+        sendJson(res, 400, { error: 'bad_site_id' })
+        return
+      }
+      const baseDir = path.join(DATA_ROOT, 'sites', siteId, 'object-media')
+      const manifestPath = path.join(baseDir, 'manifest.json')
+
+      if (parts.length === 4 && req.method === 'GET') {
+        const list = await readJsonArray(manifestPath)
+        const valid = list.filter(isObjectMediaRecord)
+        sendJson(res, 200, valid)
+        return
+      }
+
+      if (parts.length === 6 && parts[5] === 'blob' && req.method === 'GET') {
+        const mediaId = safeMediaId(parts[4])
+        if (!mediaId) {
+          sendJson(res, 400, { error: 'bad_id' })
+          return
+        }
+        const list = await readJsonArray(manifestPath)
+        const meta = list.find((x) => isObjectMediaRecord(x) && /** @type {{id:string}} */ (x).id === mediaId)
+        if (!meta) {
+          sendJson(res, 404, { error: 'not_found' })
+          return
+        }
+        const blobPath = path.join(baseDir, 'blobs', mediaId)
+        try {
+          const buf = await fs.readFile(blobPath)
+          setCors(res)
+          res.statusCode = 200
+          res.setHeader('Content-Type', /** @type {{mime:string}} */ (meta).mime || 'application/octet-stream')
+          res.end(buf)
+        } catch (e) {
+          if (/** @type {NodeJS.ErrnoException} */ (e).code === 'ENOENT') {
+            sendJson(res, 404, { error: 'blob_missing' })
+          } else {
+            throw e
+          }
+        }
+        return
+      }
+
+      if (parts.length === 4 && req.method === 'POST') {
+        if (!checkWrite(req, res)) return
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        if (!body || typeof body !== 'object') {
+          sendJson(res, 400, { error: 'invalid_object_media' })
+          return
+        }
+        const b = /** @type {Record<string, unknown>} */ (body)
+        if (!isObjectMediaRecord(b.record) || typeof b.dataBase64 !== 'string') {
+          sendJson(res, 400, { error: 'invalid_object_media' })
+          return
+        }
+        const record = /** @type {{ id: string, siteId: string, kind: string, name: string, mime: string, sizeBytes: number, capturedAtIso: string, uploadedAtIso: string, authorCaption: string }} */ (
+          b.record
+        )
+        if (record.siteId !== siteId) {
+          sendJson(res, 400, { error: 'site_mismatch' })
+          return
+        }
+        const buf = Buffer.from(b.dataBase64, 'base64')
+        if (!buf.length && record.sizeBytes > 0) {
+          sendJson(res, 400, { error: 'empty_payload' })
+          return
+        }
+        const list = await readJsonArray(manifestPath)
+        if (list.some((x) => isObjectMediaRecord(x) && /** @type {{id:string}} */ (x).id === record.id)) {
+          sendJson(res, 200, { ok: true, duplicate: true })
+          return
+        }
+        await fs.mkdir(path.join(baseDir, 'blobs'), { recursive: true })
+        await fs.writeFile(path.join(baseDir, 'blobs', record.id), buf)
+        list.unshift(record)
+        await writeJsonArray(manifestPath, list)
+        sendJson(res, 201, { ok: true })
+        return
+      }
+
+      if (parts.length === 5 && req.method === 'DELETE') {
+        if (!checkWrite(req, res)) return
+        const mediaId = safeMediaId(parts[4])
+        if (!mediaId) {
+          sendJson(res, 400, { error: 'bad_id' })
+          return
+        }
+        const list = await readJsonArray(manifestPath)
+        const next = list.filter(
+          (x) => !isObjectMediaRecord(x) || /** @type {{id:string}} */ (x).id !== mediaId,
+        )
+        await writeJsonArray(manifestPath, next)
+        const blobPath = path.join(baseDir, 'blobs', mediaId)
+        try {
+          await fs.unlink(blobPath)
+        } catch (e) {
+          if (/** @type {NodeJS.ErrnoException} */ (e).code !== 'ENOENT') throw e
+        }
         sendJson(res, 200, { ok: true })
         return
       }

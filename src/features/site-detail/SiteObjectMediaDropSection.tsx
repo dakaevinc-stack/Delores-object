@@ -5,6 +5,11 @@ import {
   type SiteObjectMediaItem,
 } from '../../domain/siteObjectMedia'
 import {
+  createObjectMediaRemote,
+  deleteObjectMediaRemote,
+  fetchObjectMediaBlob,
+} from '../../lib/siteFormsApi'
+import {
   deleteMedia,
   listMediaBySite,
   getMediaBlob,
@@ -15,6 +20,11 @@ import styles from './SiteObjectMediaDropSection.module.css'
 
 type Props = {
   siteId: string
+  /** Сервер поддерживает POST/GET object-media (тот же API, что заявки и отчёты). */
+  serverBacked?: boolean
+  /** Манифест с сервера (из fetchSiteFormsFromServer); подтягиваем отсутствующие в IndexedDB. */
+  serverManifest?: StoredSiteMedia[]
+  onRemoteSyncError?: (message: string) => void
 }
 
 type TypeFilter = 'all' | 'photo' | 'video'
@@ -162,7 +172,12 @@ function storedToItem(stored: StoredSiteMedia, previewUrl: string): SiteObjectMe
   }
 }
 
-export function SiteObjectMediaDropSection({ siteId }: Props) {
+export function SiteObjectMediaDropSection({
+  siteId,
+  serverBacked = false,
+  serverManifest = [],
+  onRemoteSyncError,
+}: Props) {
   const uid = useId()
   const photoRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLInputElement>(null)
@@ -208,12 +223,36 @@ export function SiteObjectMediaDropSection({ siteId }: Props) {
     itemsRef.current = items
   }, [items])
 
+  const serverManifestKey = useMemo(() => {
+    const head = `${siteId}:`
+    if (!serverBacked) return `${head}off`
+    if (!serverManifest.length) return `${head}on:empty`
+    return `${head}on:${serverManifest
+      .map((m) => m.id)
+      .sort()
+      .join('\0')}`
+  }, [siteId, serverBacked, serverManifest])
+
   useEffect(() => {
     let cancelled = false
     const urls: string[] = []
 
     void (async () => {
       try {
+        if (serverBacked && serverManifest.length > 0) {
+          const localRows = await listMediaBySite(siteId)
+          const localIds = new Set(localRows.map((r) => r.id))
+          for (const meta of serverManifest) {
+            if (cancelled) return
+            if (meta.siteId !== siteId) continue
+            if (localIds.has(meta.id)) continue
+            const blob = await fetchObjectMediaBlob(siteId, meta.id)
+            if (!blob) continue
+            await putMedia(meta, blob)
+            localIds.add(meta.id)
+          }
+        }
+
         const rows = await listMediaBySite(siteId)
         const resolved: SiteObjectMediaItem[] = []
         for (const row of rows) {
@@ -245,7 +284,9 @@ export function SiteObjectMediaDropSection({ siteId }: Props) {
         URL.revokeObjectURL(m.previewUrl)
       }
     }
-  }, [siteId])
+    /* serverManifestKey уже включает siteId, serverBacked и id из serverManifest. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteId, serverManifestKey])
 
   const quickSelectValue =
     knownAuthors.length === 0
@@ -273,6 +314,7 @@ export function SiteObjectMediaDropSection({ siteId }: Props) {
     if (!caption) return
     const nowIso = new Date().toISOString()
     const added: SiteObjectMediaItem[] = []
+    let remoteSaveFailed = false
 
     for (let i = 0; i < files.length; i += 1) {
       const file = files.item(i)
@@ -295,9 +337,19 @@ export function SiteObjectMediaDropSection({ siteId }: Props) {
         await putMedia(record, file)
         const url = URL.createObjectURL(file)
         added.push(storedToItem(record, url))
+        if (serverBacked) {
+          const ok = await createObjectMediaRemote(siteId, record, file)
+          if (!ok) remoteSaveFailed = true
+        }
       } catch (err) {
         console.error('[media] save failed', err)
       }
+    }
+
+    if (remoteSaveFailed) {
+      onRemoteSyncError?.(
+        'Файлы сохранены на устройстве, но не удалось отправить на сервер. Проверьте сеть или ключ записи.',
+      )
     }
 
     if (added.length) {
@@ -314,6 +366,13 @@ export function SiteObjectMediaDropSection({ siteId }: Props) {
 
   const handleRemove = async (id: string) => {
     const row = itemsRef.current.find((x) => x.id === id)
+    if (serverBacked) {
+      const ok = await deleteObjectMediaRemote(siteId, id)
+      if (!ok) {
+        onRemoteSyncError?.('Не удалось удалить файл на сервере. Проверьте сеть или права.')
+        return
+      }
+    }
     try {
       await deleteMedia(id)
     } catch (err) {

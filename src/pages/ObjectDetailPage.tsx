@@ -13,6 +13,7 @@ import {
   loadProcurementRequests,
   saveProcurementRequests,
 } from '../lib/procurementRequestsRepository'
+import type { StoredSiteMedia } from '../lib/mediaRepository'
 import {
   createBrigadierReportRemote,
   createProcurementRequestRemote,
@@ -50,8 +51,10 @@ export function ObjectDetailPage() {
   const brigadierReportsRef = useRef<BrigadierStoredReport[]>([])
   const procurementRequestsRef = useRef<ProcurementRequest[]>([])
   const [remoteFormsActive, setRemoteFormsActive] = useState(false)
+  const [remoteObjectMediaActive, setRemoteObjectMediaActive] = useState(false)
   const remoteFormsRef = useRef(false)
   const [formsApiMessage, setFormsApiMessage] = useState<string | null>(null)
+  const [objectMediaManifest, setObjectMediaManifest] = useState<StoredSiteMedia[]>([])
 
   useEffect(() => {
     remoteFormsRef.current = remoteFormsActive
@@ -71,6 +74,8 @@ export function ObjectDetailPage() {
     if (bundle) {
       setProcurementRequests(bundle.procurement)
       setBrigadierReports(bundle.brigadier)
+      setRemoteObjectMediaActive(bundle.objectMediaRemoteAvailable)
+      setObjectMediaManifest(bundle.objectMediaManifest)
       saveProcurementRequests(site.id, bundle.procurement)
       saveBrigadierReports(site.id, bundle.brigadier)
     }
@@ -81,6 +86,8 @@ export function ObjectDetailPage() {
     let cancelled = false
     setFormsApiMessage(null)
     setRemoteFormsActive(false)
+    setRemoteObjectMediaActive(false)
+    setObjectMediaManifest([])
     setProcurementRequests(loadProcurementRequests(site.id))
     setBrigadierReports(loadBrigadierReports(site.id))
 
@@ -89,9 +96,13 @@ export function ObjectDetailPage() {
       if (cancelled) return
       if (!bundle) {
         setRemoteFormsActive(false)
+        setRemoteObjectMediaActive(false)
+        setObjectMediaManifest([])
         return
       }
       setRemoteFormsActive(true)
+      setRemoteObjectMediaActive(bundle.objectMediaRemoteAvailable)
+      setObjectMediaManifest(bundle.objectMediaManifest)
       setProcurementRequests(bundle.procurement)
       setBrigadierReports(bundle.brigadier)
       saveProcurementRequests(site.id, bundle.procurement)
@@ -194,7 +205,13 @@ export function ObjectDetailPage() {
         </button>
       </div>
 
-      <SiteObjectMediaDropSection key={site.id} siteId={site.id} />
+      <SiteObjectMediaDropSection
+        key={site.id}
+        siteId={site.id}
+        serverBacked={remoteObjectMediaActive}
+        serverManifest={objectMediaManifest}
+        onRemoteSyncError={(msg) => setFormsApiMessage(msg)}
+      />
 
       <SiteDetailKpiGrid kpis={dashboard.kpis} />
       <SiteWorkCriteriaSection criteria={dashboard.criteria} />
