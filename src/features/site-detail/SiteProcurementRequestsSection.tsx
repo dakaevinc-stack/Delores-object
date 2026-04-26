@@ -14,9 +14,11 @@ import styles from './SiteProcurementRequestsSection.module.css'
 
 type Props = {
   requests: readonly ProcurementRequest[]
+  /** Если true — данные синхронизируются с сервером (текст подсказки). */
+  serverBacked?: boolean
   onCreate: () => void
-  onRemove: (id: string) => void
-  onUpdateRequest: (id: string, patch: Partial<ProcurementRequest>) => void
+  onRemove: (id: string) => void | Promise<void>
+  onUpdateRequest: (id: string, patch: Partial<ProcurementRequest>) => void | Promise<void>
 }
 
 function formatDateTime(iso: string): string {
@@ -60,6 +62,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
 
 export function SiteProcurementRequestsSection({
   requests,
+  serverBacked = false,
   onCreate,
   onRemove,
   onUpdateRequest,
@@ -125,8 +128,11 @@ export function SiteProcurementRequestsSection({
             Заявки снабженцу
           </h2>
           <p className={styles.lead}>
-            Заявки сохраняются на этом устройстве. Статус (в обработке / принято / отказано)
-            отмечает снабжение. Готовый текст — в TXT, CSV или «Поделиться».
+            {serverBacked
+              ? 'Заявки сохраняются на сервере (копия дублируется в этом браузере). '
+              : 'Заявки сохраняются на этом устройстве. '}
+            Статус (в обработке / принято / отказано) отмечает снабжение. Готовый текст — в TXT, CSV
+            или «Поделиться».
           </p>
         </div>
         <button type="button" className={styles.createBtn} onClick={onCreate}>

@@ -5,12 +5,14 @@ import styles from './SiteBrigadierSubmittedSection.module.css'
 type Props = {
   siteName: string
   reports: readonly BrigadierStoredReport[]
-  onRemoveReport: (id: string) => void
+  serverBacked?: boolean
+  onRemoveReport: (id: string) => void | Promise<void>
 }
 
 export function SiteBrigadierSubmittedReportsSection({
   siteName,
   reports,
+  serverBacked = false,
   onRemoveReport,
 }: Props) {
   return (
@@ -20,8 +22,17 @@ export function SiteBrigadierSubmittedReportsSection({
           Отчёты бригадира
         </h2>
         <p className={styles.lead}>
-          Фото, видео, комментарии и проблемы сохраняются на этом устройстве (браузер). После
-          появления сервера записи можно будет синхронизировать между сотрудниками.
+          {serverBacked ? (
+            <>
+              Фото, видео, комментарии и проблемы сохраняются на сервере; в браузере остаётся копия
+              для просмотра без сети.
+            </>
+          ) : (
+            <>
+              Фото, видео, комментарии и проблемы сохраняются на этом устройстве (браузер). После
+              подключения API записи синхронизируются между сотрудниками.
+            </>
+          )}
         </p>
       </div>
 

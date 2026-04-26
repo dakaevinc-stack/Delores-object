@@ -20,7 +20,7 @@ function safeStorage(): Storage | null {
   }
 }
 
-function isLegacyProcurementRow(x: unknown): boolean {
+export function isLegacyProcurementRow(x: unknown): boolean {
   if (!x || typeof x !== 'object') return false
   const r = x as Record<string, unknown>
   return (
@@ -35,7 +35,7 @@ function isLegacyProcurementRow(x: unknown): boolean {
   )
 }
 
-function normalizeProcurementRequest(row: unknown): ProcurementRequest {
+export function normalizeProcurementRequest(row: unknown): ProcurementRequest {
   const r = row as ProcurementRequest & {
     status?: ProcurementRequestStatus
     urgent?: boolean
@@ -58,6 +58,12 @@ function normalizeProcurementRequest(row: unknown): ProcurementRequest {
   }
 }
 
+/** Разбор массива заявок из JSON (localStorage или ответ API). */
+export function parseProcurementRequestsJson(parsed: unknown): ProcurementRequest[] {
+  if (!Array.isArray(parsed)) return []
+  return parsed.filter(isLegacyProcurementRow).map(normalizeProcurementRequest)
+}
+
 export function loadProcurementRequests(siteId: string): ProcurementRequest[] {
   const ls = safeStorage()
   if (!ls) return []
@@ -65,8 +71,7 @@ export function loadProcurementRequests(siteId: string): ProcurementRequest[] {
     const raw = ls.getItem(KEY(siteId))
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter(isLegacyProcurementRow).map(normalizeProcurementRequest)
+    return parseProcurementRequestsJson(parsed)
   } catch {
     return []
   }

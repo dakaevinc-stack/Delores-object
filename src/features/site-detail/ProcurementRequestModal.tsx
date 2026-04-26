@@ -20,7 +20,7 @@ type Props = {
   onClose: () => void
   siteId: string
   siteName: string
-  onSubmit: (req: ProcurementRequest) => void
+  onSubmit: (req: ProcurementRequest) => void | Promise<void>
 }
 
 function newId() {
@@ -124,7 +124,7 @@ export function ProcurementRequestModal({ onClose, siteId, siteName, onSubmit }:
     setItems((rows) => rows.filter((r) => r.id !== id))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
 
@@ -174,7 +174,14 @@ export function ProcurementRequestModal({ onClose, siteId, siteName, onSubmit }:
       neededByIso,
     }
 
-    onSubmit(req)
+    try {
+      await Promise.resolve(onSubmit(req))
+    } catch {
+      setError(
+        'Не удалось сохранить заявку на сервер. Проверьте сеть, секрет записи (если задан) и повторите.',
+      )
+      return
+    }
     onClose()
   }
 

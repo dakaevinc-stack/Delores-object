@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { BrigadierStoredReport } from '../domain/brigadierReport'
 import type { ProcurementRequest } from '../domain/procurementRequest'
 import { getTelegramDailyReportsForSite } from '../data/dailyTelegramReports.mock'
 import { getSiteDetailDashboard } from '../data/siteDetail.mock'
-import { useAllSites } from '../lib/useAllSites'
 import {
   loadBrigadierReports,
   materializeBrigadierReportForLocalStorage,
@@ -14,6 +13,15 @@ import {
   loadProcurementRequests,
   saveProcurementRequests,
 } from '../lib/procurementRequestsRepository'
+import {
+  createBrigadierReportRemote,
+  createProcurementRequestRemote,
+  deleteBrigadierReportRemote,
+  deleteProcurementRequestRemote,
+  fetchSiteFormsFromServer,
+  patchProcurementRequestRemote,
+} from '../lib/siteFormsApi'
+import { useAllSites } from '../lib/useAllSites'
 import { BrigadierReportModal } from '../features/site-detail/BrigadierReportModal'
 import { ProcurementRequestModal } from '../features/site-detail/ProcurementRequestModal'
 import { SiteBrigadierSubmittedReportsSection } from '../features/site-detail/SiteBrigadierSubmittedSection'
@@ -40,15 +48,59 @@ export function ObjectDetailPage() {
   const [brigadierReports, setBrigadierReports] = useState<BrigadierStoredReport[]>([])
   const [procurementRequests, setProcurementRequests] = useState<ProcurementRequest[]>([])
   const brigadierReportsRef = useRef<BrigadierStoredReport[]>([])
+  const procurementRequestsRef = useRef<ProcurementRequest[]>([])
+  const [remoteFormsActive, setRemoteFormsActive] = useState(false)
+  const remoteFormsRef = useRef(false)
+  const [formsApiMessage, setFormsApiMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    remoteFormsRef.current = remoteFormsActive
+  }, [remoteFormsActive])
 
   useEffect(() => {
     brigadierReportsRef.current = brigadierReports
   }, [brigadierReports])
 
   useEffect(() => {
+    procurementRequestsRef.current = procurementRequests
+  }, [procurementRequests])
+
+  const resyncFormsFromServer = useCallback(async () => {
+    if (!site || !remoteFormsRef.current) return
+    const bundle = await fetchSiteFormsFromServer(site.id)
+    if (bundle) {
+      setProcurementRequests(bundle.procurement)
+      setBrigadierReports(bundle.brigadier)
+      saveProcurementRequests(site.id, bundle.procurement)
+      saveBrigadierReports(site.id, bundle.brigadier)
+    }
+  }, [site])
+
+  useEffect(() => {
     if (!site) return
+    let cancelled = false
+    setFormsApiMessage(null)
+    setRemoteFormsActive(false)
     setProcurementRequests(loadProcurementRequests(site.id))
     setBrigadierReports(loadBrigadierReports(site.id))
+
+    void (async () => {
+      const bundle = await fetchSiteFormsFromServer(site.id)
+      if (cancelled) return
+      if (!bundle) {
+        setRemoteFormsActive(false)
+        return
+      }
+      setRemoteFormsActive(true)
+      setProcurementRequests(bundle.procurement)
+      setBrigadierReports(bundle.brigadier)
+      saveProcurementRequests(site.id, bundle.procurement)
+      saveBrigadierReports(site.id, bundle.brigadier)
+    })()
+
+    return () => {
+      cancelled = true
+    }
   }, [site])
 
   useEffect(() => {
@@ -65,7 +117,7 @@ export function ObjectDetailPage() {
     return () => {
       for (const r of brigadierReportsRef.current) {
         for (const a of r.attachments) {
-          URL.revokeObjectURL(a.previewUrl)
+          if (a.previewUrl.startsWith('blob:')) URL.revokeObjectURL(a.previewUrl)
         }
       }
     }
@@ -93,6 +145,19 @@ export function ObjectDetailPage() {
   return (
     <div className={styles.page}>
       <SiteDetailHeader site={site} dashboard={dashboard} />
+
+      {formsApiMessage ? (
+        <div className={styles.syncBanner} role="alert">
+          <p className={styles.syncBannerText}>{formsApiMessage}</p>
+          <button
+            type="button"
+            className={styles.syncBannerClose}
+            onClick={() => setFormsApiMessage(null)}
+          >
+            Закрыть
+          </button>
+        </div>
+      ) : null}
 
       <div className={styles.toolbar}>
         <button
@@ -141,26 +206,59 @@ export function ObjectDetailPage() {
 
       <SiteProcurementRequestsSection
         requests={procurementRequests}
+        serverBacked={remoteFormsActive}
         onCreate={() => {
           setProcurementKey((k) => k + 1)
           setProcurementOpen(true)
         }}
-        onRemove={(id) =>
+        onRemove={async (id) => {
+          if (remoteFormsRef.current) {
+            const ok = await deleteProcurementRequestRemote(site.id, id)
+            if (!ok) {
+              setFormsApiMessage('Не удалось удалить заявку на сервере. Проверьте сеть или права.')
+              void resyncFormsFromServer()
+              return
+            }
+          }
           setProcurementRequests((prev) => prev.filter((r) => r.id !== id))
-        }
-        onUpdateRequest={(id, patch) =>
-          setProcurementRequests((prev) =>
-            prev.map((r) => (r.id === id ? { ...r, ...patch } : r)),
-          )
-        }
+        }}
+        onUpdateRequest={async (id, patch) => {
+          const previous = procurementRequestsRef.current
+          const next = previous.map((r) => (r.id === id ? { ...r, ...patch } : r))
+          setProcurementRequests(next)
+          if (!remoteFormsRef.current) return
+          const ok = await patchProcurementRequestRemote(site.id, id, patch)
+          if (!ok) {
+            setFormsApiMessage('Не удалось сохранить изменения заявки на сервере.')
+            setProcurementRequests(previous)
+            void resyncFormsFromServer()
+          }
+        }}
       />
 
       <SiteBrigadierSubmittedReportsSection
         siteName={site.name}
         reports={brigadierReports}
-        onRemoveReport={(id) =>
-          setBrigadierReports((prev) => prev.filter((r) => r.id !== id))
-        }
+        serverBacked={remoteFormsActive}
+        onRemoveReport={async (id) => {
+          if (remoteFormsRef.current) {
+            const ok = await deleteBrigadierReportRemote(site.id, id)
+            if (!ok) {
+              setFormsApiMessage('Не удалось удалить отчёт на сервере.')
+              void resyncFormsFromServer()
+              return
+            }
+          }
+          setBrigadierReports((prev) => {
+            const row = prev.find((r) => r.id === id)
+            if (row) {
+              for (const a of row.attachments) {
+                if (a.previewUrl.startsWith('blob:')) URL.revokeObjectURL(a.previewUrl)
+              }
+            }
+            return prev.filter((r) => r.id !== id)
+          })
+        }}
       />
       <SiteDailyTelegramReportsSection siteName={site.name} reports={telegramReports} />
 
@@ -181,6 +279,12 @@ export function ObjectDetailPage() {
           siteName={site.name}
           onSubmit={async (report) => {
             const persisted = await materializeBrigadierReportForLocalStorage(report)
+            if (remoteFormsRef.current) {
+              const ok = await createBrigadierReportRemote(site.id, persisted)
+              if (!ok) {
+                throw new Error('brigadier_remote_save')
+              }
+            }
             setBrigadierReports((prev) => [persisted, ...prev])
           }}
         />
@@ -192,7 +296,15 @@ export function ObjectDetailPage() {
           onClose={() => setProcurementOpen(false)}
           siteId={site.id}
           siteName={site.name}
-          onSubmit={(req) => setProcurementRequests((prev) => [req, ...prev])}
+          onSubmit={async (req) => {
+            if (remoteFormsRef.current) {
+              const ok = await createProcurementRequestRemote(site.id, req)
+              if (!ok) {
+                throw new Error('procurement_remote_save')
+              }
+            }
+            setProcurementRequests((prev) => [req, ...prev])
+          }}
         />
       ) : null}
     </div>

@@ -9,6 +9,9 @@ lerna-debug.log*
 
 node_modules
 .env
+
+# JSON заявок и отчётов (server/site-forms.mjs)
+data/site-forms/
 dist
 dist-ssr
 *.local

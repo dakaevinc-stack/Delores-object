@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173 --strictPort",
+    "dev:site-forms-api": "node server/site-forms.mjs",
     "dev:mobile": "bash scripts/mobile-dev.sh",
     "prebuild": "node scripts/generate-pwa-icons.mjs",
     "build": "tsc -b && vite build",

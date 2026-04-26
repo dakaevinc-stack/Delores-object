@@ -33,6 +33,44 @@
   margin: -8px 0 28px;
 }
 
+.syncBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin: -4px 0 20px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(180, 90, 40, 0.45);
+  background: rgba(255, 240, 220, 0.92);
+  color: #3d2410;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.syncBannerText {
+  margin: 0;
+  flex: 1 1 220px;
+}
+
+.syncBannerClose {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 24, 40, 0.25);
+  background: rgba(255, 255, 255, 0.85);
+  color: #1a2433;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.syncBannerClose:hover {
+  background: #fff;
+}
+
 .toolbarCta {
   min-height: 48px;
   padding: 0 22px 1px;

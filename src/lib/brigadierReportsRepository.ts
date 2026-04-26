@@ -61,7 +61,7 @@ function isAttachmentLike(x: unknown): x is BrigadierStoredAttachment {
   )
 }
 
-function isReportRow(x: unknown): boolean {
+export function isReportRow(x: unknown): boolean {
   if (!x || typeof x !== 'object') return false
   const r = x as Record<string, unknown>
   return (
@@ -75,7 +75,7 @@ function isReportRow(x: unknown): boolean {
   )
 }
 
-function coerceReport(x: unknown): BrigadierStoredReport {
+export function coerceReport(x: unknown): BrigadierStoredReport {
   const r = x as BrigadierStoredReport & { comment?: string }
   const attachments = (r.attachments ?? []).filter(isAttachmentLike)
   return {
@@ -135,6 +135,11 @@ export async function materializeBrigadierReportForLocalStorage(
   return { ...report, attachments }
 }
 
+export function parseBrigadierReportsJson(parsed: unknown): BrigadierStoredReport[] {
+  if (!Array.isArray(parsed)) return []
+  return parsed.filter(isReportRow).map(coerceReport)
+}
+
 export function loadBrigadierReports(siteId: string): BrigadierStoredReport[] {
   const ls = safeStorage()
   if (!ls) return []
@@ -142,8 +147,7 @@ export function loadBrigadierReports(siteId: string): BrigadierStoredReport[] {
     const raw = ls.getItem(KEY(siteId))
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter(isReportRow).map(coerceReport)
+    return parseBrigadierReportsJson(parsed)
   } catch {
     return []
   }
