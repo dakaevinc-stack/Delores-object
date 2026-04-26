@@ -1,6 +1,6 @@
 /* Deloresh Objects — minimal offline shell for PWA install + SPA refresh */
-const SHELL = 'deloresh-shell-v1'
-const ASSETS = 'deloresh-assets-v1'
+const SHELL = 'deloresh-shell-v2'
+const ASSETS = 'deloresh-assets-v2'
 
 const ASSET_RE = /\.(?:js|mjs|css|svg|png|ico|json|webmanifest|woff2?)$/i
 
@@ -63,18 +63,17 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (ASSET_RE.test(url.pathname)) {
+    // Сеть в приоритете: после деплоя не отдаём устаревший JS/CSS из cache-first.
     event.respondWith(
-      caches.match(request).then(
-        (cached) =>
-          cached ||
-          fetch(request).then((res) => {
-            if (res.ok) {
-              const copy = res.clone()
-              caches.open(ASSETS).then((c) => c.put(request, copy))
-            }
-            return res
-          }),
-      ),
+      fetch(request)
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone()
+            caches.open(ASSETS).then((c) => c.put(request, copy))
+          }
+          return res
+        })
+        .catch(() => caches.match(request)),
     )
   }
 })
