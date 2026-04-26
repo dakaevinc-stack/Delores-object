@@ -44,6 +44,7 @@ function InspectionAdminCardBody({ interactive }: { interactive: boolean }) {
     <>
       <span className={styles.inspectionAdminGlow} aria-hidden />
       <span className={styles.inspectionAdminIcon} aria-hidden>
+        <span className={styles.inspectionAdminIconHalo} aria-hidden />
         <svg viewBox="0 0 32 32" width="26" height="26" fill="none">
           <path
             d="M10 6h12v22H10V6z"
@@ -58,36 +59,38 @@ function InspectionAdminCardBody({ interactive }: { interactive: boolean }) {
           <path d="M13 17h2M13 21h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
         </svg>
       </span>
-      <span className={styles.inspectionAdminKicker}>
-        <span className={styles.inspectionAdminKickerBar} aria-hidden />
-        Веб-панель
+      <span className={styles.inspectionAdminText}>
+        <span className={styles.inspectionAdminKicker}>
+          <span className={styles.inspectionAdminKickerBar} aria-hidden />
+          Веб-панель
+        </span>
+        <span className={styles.inspectionAdminTitle}>Приём и учёт спецтехники</span>
+        <span className={styles.inspectionAdminLead}>
+          Поиск и просмотр актов приёмки: фото, чек-листы, история и решения механиков. Отдельная панель
+          Streamlit (репозиторий приёмки через Telegram).
+        </span>
+        <ul className={styles.inspectionAdminTags} aria-label="Разделы панели">
+          <li>
+            <span className={styles.inspectionAdminTagDot} aria-hidden />
+            Отчёты
+          </li>
+          <li>
+            <span className={styles.inspectionAdminTagDot} aria-hidden />
+            Фото
+          </li>
+          <li>
+            <span className={styles.inspectionAdminTagDot} aria-hidden />
+            Аналитика
+          </li>
+        </ul>
       </span>
-      <p className={styles.inspectionAdminTitle}>Приём и учёт спецтехники</p>
-      <p className={styles.inspectionAdminLead}>
-        Поиск и просмотр актов приёмки: фото, чек-листы, история и решения механиков. Отдельная панель
-        Streamlit (репозиторий приёмки через Telegram).
-      </p>
-      <ul className={styles.inspectionAdminTags} aria-label="Разделы панели">
-        <li>
-          <span className={styles.inspectionAdminTagDot} aria-hidden />
-          Отчёты
-        </li>
-        <li>
-          <span className={styles.inspectionAdminTagDot} aria-hidden />
-          Фото
-        </li>
-        <li>
-          <span className={styles.inspectionAdminTagDot} aria-hidden />
-          Аналитика
-        </li>
-      </ul>
       {interactive ? (
-        <span className={styles.inspectionAdminCta}>
-          <span>Открыть панель</span>
-          <span className={styles.inspectionAdminCtaArrow} aria-hidden>
-            <svg viewBox="0 0 20 20" width="12" height="12" fill="none">
+        <span className={styles.inspectionAdminCta} aria-hidden>
+          <span className={styles.inspectionAdminCtaLabel}>Открыть панель</span>
+          <span className={styles.inspectionAdminCtaArrow}>
+            <svg viewBox="0 0 20 20" width="14" height="14" fill="none">
               <path
-                d="M5 5h10v10M15 5l-8 8"
+                d="M4 10h11M10 5l5 5-5 5"
                 stroke="currentColor"
                 strokeWidth="2"
                 strokeLinecap="round"
