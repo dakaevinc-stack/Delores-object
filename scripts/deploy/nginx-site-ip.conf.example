@@ -1,0 +1,53 @@
+# Развёртывание без домена — только по IP.
+#
+# Вариант A — основной сайт на порту 80 (адрес http://94.242.58.24/)
+#   Скопируйте в /etc/nginx/sites-available/delores-object-ip
+#   default_server отдаёт этот сайт для любого Host (в т.ч. по IP).
+#
+# Вариант B — отдельный порт, «как Streamlit» (например http://94.242.58.24:8080/)
+#   Раскомментируйте второй блок server ниже, закомментируйте первый,
+#   или держите оба: 80 для основного, 8080 для второго сервиса.
+
+# --- Вариант A: порт 80 ---
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+
+    root /var/www/delores-object;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|webmanifest)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    add_header X-Content-Type-Options nosniff always;
+}
+
+# --- Вариант B: отдельный порт (раскомментируйте при необходимости) ---
+# server {
+#     listen 8080 default_server;
+#     listen [::]:8080 default_server;
+#     server_name _;
+#
+#     root /var/www/delores-object;
+#     index index.html;
+#
+#     location / {
+#         try_files $uri $uri/ /index.html;
+#     }
+#
+#     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|webmanifest)$ {
+#         expires 30d;
+#         add_header Cache-Control "public, immutable";
+#         try_files $uri =404;
+#     }
+#
+#     add_header X-Content-Type-Options nosniff always;
+# }

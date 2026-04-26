@@ -1,0 +1,25 @@
+# Скопируйте в /etc/nginx/sites-available/ и подставьте домен + путь к dist.
+# SPA (React Router): все пути отдаются через index.html.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name YOUR_DOMAIN.ru www.YOUR_DOMAIN.ru;
+
+    root /var/www/delores-object;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Кэш статики Vite (имена файлов с хэшем)
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|webmanifest)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+}
