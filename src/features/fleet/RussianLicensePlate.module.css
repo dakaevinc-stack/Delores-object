@@ -1,0 +1,117 @@
+.plate {
+  display: inline-flex;
+  align-items: stretch;
+  background: #ffffff;
+  border: 1.5px solid #0b0f18;
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: 'SF Mono', 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+  color: #0b0f18;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 4px 12px rgba(11, 15, 24, 0.18),
+    0 1px 2px rgba(11, 15, 24, 0.08);
+  line-height: 1;
+  user-select: text;
+  white-space: nowrap;
+  position: relative;
+}
+
+/* «Блик» — тонкая белая подсветка сверху, делает знак объёмным */
+.plate::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+  border-radius: 6px 6px 0 0;
+}
+
+.main {
+  padding: 0.28em 0.48em 0.26em;
+  font-size: 1em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Правая часть — синяя полоса с регионом, триколором и «RUS» */
+.region {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12em;
+  padding: 0.18em 0.32em 0.2em;
+  background: linear-gradient(180deg, #f6f7fa 0%, #eef0f4 100%);
+  border-left: 1px solid #0b0f18;
+  min-width: 1.85em;
+}
+
+.regionNumber {
+  font-size: 0.84em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.regionFooter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18em;
+  font-size: 0.44em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.regionFlag {
+  display: inline-flex;
+  flex-direction: column;
+  border: 0.5px solid rgba(11, 15, 24, 0.35);
+  overflow: hidden;
+  line-height: 0;
+}
+
+.flagW,
+.flagB,
+.flagR {
+  display: block;
+  width: 0.9em;
+  height: 0.22em;
+}
+
+.flagW { background: #ffffff; }
+.flagB { background: #0033a0; }
+.flagR { background: #d52b1e; }
+
+.regionLabel {
+  color: #0b0f18;
+  text-transform: uppercase;
+}
+
+/* ============================================================
+   Размеры — через переменную font-size контейнера
+   ============================================================ */
+
+.size-sm {
+  font-size: 16px;
+  border-radius: 6px;
+}
+
+.size-md {
+  font-size: 22px;
+  border-radius: 8px;
+}
+
+.size-lg {
+  font-size: 30px;
+  border-radius: 10px;
+  border-width: 2px;
+}

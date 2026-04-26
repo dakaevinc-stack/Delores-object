@@ -1,0 +1,309 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.topBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+.addBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(28, 75, 130, 0.22);
+  background: linear-gradient(180deg, #ffffff 0%, #f3f6fb 100%);
+  color: var(--text-strong);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 4px 12px rgba(15, 23, 42, 0.06);
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.addBtn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(28, 75, 130, 0.4);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 1) inset,
+    0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.addIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #0f2850 0%, #152c58 100%);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.14) inset;
+}
+
+.totals {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.totalsLabel {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.totalsValue {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+
+.totalsOpen {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8a1520;
+}
+
+/* ============================================================
+   Список карточек ремонтов
+   ============================================================ */
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.empty {
+  padding: 28px 20px;
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--border-strong);
+  border-radius: 14px;
+  margin: 0;
+}
+
+.card {
+  position: relative;
+  padding: 16px 16px 16px 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.09);
+  background:
+    radial-gradient(80% 60% at 100% 0%, rgba(186, 33, 38, 0.03) 0%, rgba(186, 33, 38, 0) 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(247, 249, 253, 0.96) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 6px 18px rgba(15, 23, 42, 0.05);
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(220px, 1fr);
+  grid-template-areas:
+    'head    head'
+    'title   title'
+    'details details'
+    'parts   cost';
+  gap: 14px 18px;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.card:hover {
+  border-color: rgba(15, 23, 42, 0.14);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 10px 26px rgba(15, 23, 42, 0.07);
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--brand-navy, #0f2850) 0%, var(--brand-red, #ee2d3a) 100%);
+  opacity: 0.5;
+}
+
+.cardHead {
+  grid-area: head;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed rgba(15, 23, 42, 0.08);
+}
+
+.cardHeadLeft {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  align-items: flex-end;
+}
+
+.cardHeadRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cardField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cardLabel {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-left: 2px;
+}
+
+/* Явные grid-area через классы — заменяет хрупкие :nth-of-type селекторы,
+   которые считают по тегу и приводили к накладке title+parts и details+cost. */
+.fieldTitle   { grid-area: title; }
+.fieldDetails { grid-area: details; }
+.fieldParts   { grid-area: parts; min-width: 0; }
+.fieldCost    { grid-area: cost; min-width: 0; }
+
+@media (max-width: 720px) {
+  .card {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'head'
+      'title'
+      'details'
+      'parts'
+      'cost';
+    padding: 14px 14px 14px 18px;
+    gap: 12px;
+  }
+}
+
+/* ============================================================
+   Панель стоимости — иконка-префикс + money-input.
+   Без двойной рамки: у .money уже есть собственный «фантомный» фрейм.
+   ============================================================ */
+
+.costBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.costIcon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fff0f1 0%, #ffe1e3 100%);
+  color: #8a1520;
+  border: 1px solid rgba(186, 33, 38, 0.22);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+}
+
+/* Money-инпут растягивается на всю доступную ширину карточки стоимости. */
+.costBox > :not(.costIcon) {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+}
+
+.deleteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(198, 40, 40, 0.25);
+  background: linear-gradient(180deg, #fff0f1 0%, #ffe4e6 100%);
+  color: #8a1520;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.deleteBtn:hover {
+  background: linear-gradient(180deg, #ffe4e6 0%, #ffd0d5 100%);
+  border-color: rgba(198, 40, 40, 0.4);
+  transform: translateY(-1px);
+}
+
+/* ============================================================
+   Чипы-узлы
+   ============================================================ */
+
+.parts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.part {
+  font: inherit;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  color: var(--text);
+  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.part:hover {
+  border-color: rgba(15, 23, 42, 0.24);
+}
+
+.partActive {
+  background: linear-gradient(180deg, #fff0f1 0%, #ffe4e6 100%);
+  border-color: rgba(198, 40, 40, 0.35);
+  color: #8a1520;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 2px 6px rgba(198, 40, 40, 0.1);
+}

@@ -1,0 +1,185 @@
+:root {
+  color-scheme: light;
+
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #f0f1f4;
+  --surface-hover: #e8eaef;
+
+  --text-strong: #0f1114;
+  --text: #3c424b;
+  --muted: #6b7280;
+
+  --border: #e1e4ea;
+  --border-strong: #cfd4dd;
+
+  --accent: #1c4b82;
+  --accent-ring: rgba(28, 75, 130, 0.22);
+
+  /* Брендовые цвета «Деловые Решения» */
+  --brand-navy: #172a4d;
+  --brand-navy-2: #0f1c36;
+  --brand-red: #ee2d3a;
+
+  --shadow-sm: 0 1px 2px rgba(15, 17, 20, 0.06);
+  --shadow-md: 0 10px 28px rgba(15, 17, 20, 0.1);
+
+  --status-ok: #1f8f4a;
+  --status-warn: #d4a017;
+  --status-bad: #c62828;
+
+  --sans:
+    'Inter',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow-x: clip;
+}
+
+#root {
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
+a {
+  color: inherit;
+}
+
+/* ============================================================
+   Мобильный / тач-устройства — глобальные гарантии UX
+   ============================================================ */
+
+/* Горизонтальный оверфлоу резать на уровне html: Safari иногда
+   игнорирует overflow-x: clip на body при modal-backdrop-ах. */
+html {
+  overflow-x: clip;
+}
+
+/* Картинки/медиа никогда не вылезают за свой контейнер.
+   Поможет и на планшетах, и при узких экранах <=360px. */
+img,
+video,
+svg,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+/* На iOS Safari любой input/textarea/select с font-size < 16px
+   триггерит авто-зум при фокусе — отключаем, принудительно
+   поднимая минимум до 16px на телефонах. Ничего не ломает
+   визуально, потому что применяется только на <= 640px. */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1rem);
+  }
+
+  /* Меньше задержка на тап по ссылкам и кнопкам (удалённый доступ с телефона). */
+  a[href],
+  button,
+  [role='button'] {
+    touch-action: manipulation;
+  }
+
+  /* Минимальная тач-цель по HIG/Material = 44px. Любая наша кнопка,
+     даже маленький chip — не меньше. Не меняем padding, не ломаем
+     вёрстку — только гарантируем нижний предел. */
+  button,
+  [role='button'],
+  a[href],
+  label,
+  input[type='checkbox'],
+  input[type='radio'] {
+    -webkit-tap-highlight-color: rgba(28, 75, 130, 0.14);
+  }
+
+  button,
+  [role='button'] {
+    min-height: 40px;
+  }
+}
+
+/* Отключаем «резиновый» горизонтальный scroll-chaining на корне,
+   чтобы жест свайпом влево не открывал «назад в истории» при
+   горизонтальной прокрутке внутренних списков/чипов. */
+html,
+body {
+  overscroll-behavior-x: none;
+}
+
+/* Любой горизонтально скроллящийся контейнер (chips, таблицы,
+   ленты фото) получает инерционную прокрутку на iOS. */
+[data-scroll-x],
+.scroll-x {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+/* Ленивые маршруты — короткий индикатор загрузки чанка */
+.route-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 40vh;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  box-sizing: border-box;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.route-loading__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.85;
+  animation: route-loading-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes route-loading-pulse {
+  0%,
+  100% {
+    transform: scale(0.86);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

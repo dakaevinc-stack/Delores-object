@@ -1,0 +1,640 @@
+.card {
+  position: relative;
+  border-radius: 20px;
+  border: 1px solid rgba(15, 17, 20, 0.07);
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(23, 42, 77, 0.045) 0%, rgba(23, 42, 77, 0) 55%),
+    linear-gradient(180deg, #ffffff 0%, #fafbfd 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 1px 2px rgba(15, 17, 20, 0.04),
+    0 22px 48px rgba(15, 23, 42, 0.07);
+  padding: 22px 22px 18px 30px;
+  overflow: hidden;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 30%);
+  opacity: 0.6;
+}
+
+.rail {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 10px;
+  width: 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--brand-navy, #172a4d) 0%, var(--brand-red, #ee2d3a) 100%);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 8px 16px rgba(23, 42, 77, 0.18);
+}
+
+/* Telegram-сводки: компактная премиум-плитка — меньше высоты, плотная сетка, «дорогой» штрих */
+.accentTelegram.card {
+  padding: 11px 12px 9px 21px;
+  border-radius: 14px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 1px 2px rgba(15, 17, 20, 0.04),
+    0 6px 20px rgba(15, 23, 42, 0.055);
+}
+
+.accentTelegram.card::after {
+  opacity: 0.32;
+}
+
+.accentTelegram .rail {
+  top: 9px;
+  bottom: 9px;
+  left: 7px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #2da7ec 0%, var(--brand-navy, #172a4d) 100%);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.88);
+}
+
+.accentTelegram .head {
+  margin-bottom: 8px;
+  gap: 6px 10px;
+}
+
+.accentTelegram .badge {
+  padding: 4px 9px 4px 7px;
+  gap: 6px;
+  border-radius: 9px;
+}
+
+.accentTelegram .badgeKicker {
+  font-size: 7.5px;
+  letter-spacing: 0.14em;
+  margin-bottom: 0;
+}
+
+.accentTelegram .badgeTitle {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+}
+
+.accentTelegram .date {
+  font-size: 11px;
+  padding: 3px 7px;
+  gap: 5px;
+  border-radius: 7px;
+}
+
+.accentTelegram .dateMuted {
+  font-size: 11px;
+}
+
+.accentTelegram .lines {
+  gap: 5px;
+}
+
+/* От 6 пунктов: первая половина слева, вторая (6–10…) справа — ниже по высоте, аккуратный штрих */
+.accentTelegram .lines:has(> .line:nth-child(6)) {
+  display: block;
+  column-count: 2;
+  column-gap: 16px;
+  column-fill: balance;
+  padding: 7px 10px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
+  background:
+    linear-gradient(
+        to bottom,
+        rgba(45, 167, 236, 0) 0%,
+        rgba(45, 167, 236, 0.22) 16%,
+        rgba(23, 42, 77, 0.12) 50%,
+        rgba(45, 167, 236, 0.22) 84%,
+        rgba(45, 167, 236, 0) 100%
+      )
+      center / 1px 100% no-repeat,
+    linear-gradient(165deg, rgba(45, 167, 236, 0.06) 0%, rgba(255, 255, 255, 0.4) 45%, rgba(15, 23, 42, 0.025) 100%);
+}
+
+.accentTelegram .lines:has(> .line:nth-child(6)) .line {
+  -webkit-column-break-inside: avoid;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  margin-bottom: 4px;
+}
+
+.accentTelegram .lines:has(> .line:nth-child(6)) .line:last-child {
+  margin-bottom: 0;
+}
+
+.accentTelegram .line {
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 7px;
+  font-size: 12.5px;
+  line-height: 1.38;
+}
+
+.accentTelegram .idx {
+  width: 20px;
+  height: 20px;
+  font-size: 9.5px;
+  border-radius: 6px;
+  margin-top: 0;
+}
+
+.accentTelegram .txt {
+  padding-top: 0;
+}
+
+.accentTelegram .metricStrip {
+  margin-top: 9px;
+  padding: 7px;
+  gap: 7px;
+  border-radius: 11px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.accentTelegram .metric {
+  padding: 7px 8px 7px 11px;
+  min-height: 0;
+  border-radius: 8px;
+  gap: 2px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.95) inset, 0 3px 10px rgba(15, 23, 42, 0.035);
+}
+
+.accentTelegram .metric::before {
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: 2px;
+  transform: none;
+  border-radius: 0 2px 2px 0;
+}
+
+.accentTelegram .metricValue {
+  font-size: 16px;
+  line-height: 1.05;
+}
+
+.accentTelegram .metricLabel {
+  font-size: 8px;
+  letter-spacing: 0.1em;
+}
+
+.accentTelegram .footer {
+  margin-top: 7px;
+  padding-top: 7px;
+  justify-content: flex-start;
+}
+
+.accentTelegram .chip,
+.accentTelegram .chipMuted {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.accentTelegram .problemsWrap {
+  margin-top: 9px;
+  padding: 9px 11px;
+  border-radius: 10px;
+}
+
+.accentTelegram .problemsKicker {
+  margin-bottom: 6px;
+  font-size: 9px;
+}
+
+.accentTelegram .problemsList {
+  gap: 6px;
+}
+
+.accentTelegram .problemItem {
+  font-size: 12px;
+  line-height: 1.38;
+}
+
+.accentTelegram .media {
+  margin-top: 9px;
+  padding-top: 9px;
+  gap: 8px;
+}
+
+.accentBrigadier .rail {
+  background: linear-gradient(180deg, var(--brand-navy, #172a4d) 0%, var(--brand-red, #ee2d3a) 100%);
+}
+
+.head {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 18px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 13px 7px 11px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(23, 42, 77, 0.07) 0%, rgba(23, 42, 77, 0.04) 100%);
+  border: 1px solid rgba(23, 42, 77, 0.16);
+  color: var(--brand-navy, #172a4d);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+}
+
+.accentTelegram .badge {
+  background: linear-gradient(180deg, rgba(45, 167, 236, 0.12) 0%, rgba(45, 167, 236, 0.05) 100%);
+  border-color: rgba(45, 167, 236, 0.35);
+  color: #1f6fa3;
+}
+
+.badgeIcon {
+  flex-shrink: 0;
+}
+
+.badgeText {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.badgeKicker {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin-bottom: 2px;
+}
+
+.badgeTitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.date {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+  padding: 6px 11px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.dateIcon {
+  color: var(--brand-navy, #172a4d);
+  opacity: 0.75;
+}
+
+.dateMuted {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.narrative {
+  position: relative;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(23, 42, 77, 0.05);
+  border: 1px solid rgba(23, 42, 77, 0.08);
+}
+
+.narrativeKicker {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.narrativeBody {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-strong);
+  white-space: pre-wrap;
+}
+
+.mediaMissing {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 120px;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px dashed rgba(15, 23, 42, 0.18);
+  justify-content: center;
+}
+
+.mediaMissingTitle {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--status-bad, #c62828);
+}
+
+.mediaMissingText {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.lines {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.line {
+  position: relative;
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.idx {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--brand-navy, #172a4d);
+  background: linear-gradient(180deg, rgba(23, 42, 77, 0.08) 0%, rgba(23, 42, 77, 0.04) 100%);
+  border: 1px solid rgba(23, 42, 77, 0.18);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  letter-spacing: -0.01em;
+  margin-top: 1px;
+}
+
+.accentTelegram .idx {
+  color: #1f6fa3;
+  background: linear-gradient(180deg, rgba(45, 167, 236, 0.14) 0%, rgba(45, 167, 236, 0.06) 100%);
+  border-color: rgba(45, 167, 236, 0.32);
+}
+
+.txt {
+  color: var(--text);
+  padding-top: 2px;
+}
+
+.problemsWrap {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(198, 120, 40, 0.28);
+  background:
+    linear-gradient(180deg, rgba(198, 120, 40, 0.09) 0%, rgba(198, 120, 40, 0.04) 100%);
+}
+
+.problemsKicker {
+  margin: 0 0 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8a5a18;
+}
+
+.problemsList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.problemItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.problemKind {
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.problemDetails {
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.media {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.figure {
+  margin: 0;
+  min-width: 0;
+}
+
+.thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  display: block;
+}
+
+.caption {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.captionKind {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.captionMeta,
+.captionFile {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.captionFile {
+  color: var(--muted);
+}
+
+.metricStrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 14px;
+  list-style: none;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(15, 23, 42, 0.035) 0%, rgba(15, 23, 42, 0.015) 100%);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.metric {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 6px 14px rgba(15, 23, 42, 0.04);
+}
+
+.metric::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 4px 4px 0;
+  background: currentColor;
+  opacity: 0.85;
+}
+
+.metricValue {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+
+.metricLabel {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.metricNavy {
+  color: var(--brand-navy, #172a4d);
+}
+.metricRed {
+  color: var(--brand-red, #ee2d3a);
+}
+.metricNeutral {
+  color: rgba(15, 23, 42, 0.55);
+}
+.metricSuccess {
+  color: #1f7a45;
+}
+.metricWarning {
+  color: #b06a18;
+}
+.metricDanger {
+  color: #a8232f;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(15, 23, 42, 0.1);
+}
+
+.chip {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-strong);
+}
+
+.chipMuted {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 11px;
+  border-radius: 999px;
+  color: var(--muted);
+  border: 1px dashed var(--border);
+}
+
+@media (max-width: 640px) {
+  .card {
+    padding-top: 16px;
+    padding-right: max(14px, env(safe-area-inset-right, 0px));
+    padding-bottom: 14px;
+    padding-left: max(22px, calc(18px + env(safe-area-inset-left, 0px)));
+  }
+
+  .accentTelegram.card {
+    padding-top: 10px;
+    padding-right: max(10px, env(safe-area-inset-right, 0px));
+    padding-bottom: 8px;
+    padding-left: max(18px, calc(14px + env(safe-area-inset-left, 0px)));
+  }
+
+  .head {
+    gap: 8px 12px;
+  }
+
+  .accentTelegram .lines:has(> .line:nth-child(6)) {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    column-count: 1;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: none;
+  }
+
+  .accentTelegram .lines:has(> .line:nth-child(6)) .line {
+    margin-bottom: 0;
+  }
+}

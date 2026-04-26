@@ -1,0 +1,361 @@
+.page {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 32px max(24px, env(safe-area-inset-right, 0px)) 72px
+    max(24px, env(safe-area-inset-left, 0px));
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding-top: 20px;
+    padding-bottom: max(56px, calc(40px + env(safe-area-inset-bottom, 0px)));
+  }
+}
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin-bottom: 28px;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, #fff 0%, #f7f8fb 100%);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 4px 12px rgba(15, 17, 20, 0.05);
+}
+
+.back:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+/* ============================================================
+   Шапка раздела
+   ============================================================ */
+
+.head {
+  min-width: 0;
+  margin-bottom: 28px;
+}
+
+.headTopRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+  margin-bottom: 8px;
+}
+
+.headText {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* ============================================================
+   Кнопка «Добавить технику» — основной CTA раздела
+   ============================================================ */
+
+.addBtn {
+  font: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px 10px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: linear-gradient(180deg, #0f2850 0%, #152c58 100%);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 8px 20px rgba(15, 28, 54, 0.25);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+  flex-shrink: 0;
+}
+
+.addBtn:hover,
+.addBtn:focus-visible {
+  outline: none;
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 12px 28px rgba(15, 28, 54, 0.32);
+}
+
+.addBtnIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--brand-red, #ee2d3a) 0%, #c81b29 100%);
+  color: #fff;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.2) inset,
+    0 2px 6px rgba(198, 40, 40, 0.35);
+}
+
+.addBtnLabel {
+  white-space: nowrap;
+}
+
+.kicker {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brand-red, #ee2d3a);
+}
+
+.title {
+  margin: 0 0 10px;
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-strong);
+}
+
+.lead {
+  margin: 0;
+  max-width: 52ch;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+/* Блок сводки под лидом — две короткие метрики со встроенной разделительной линией */
+.summary {
+  margin: 20px 0 0;
+  padding: 14px 0 0;
+  display: grid;
+  gap: 0;
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  column-gap: 28px;
+  border-top: 1px solid var(--border);
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+}
+
+.summaryItem dt {
+  margin: 0;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.summaryItem dd {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   Сетка категорий
+   ============================================================ */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: linear-gradient(165deg, #ffffff 0%, #f5f7fb 100%);
+  text-decoration: none;
+  color: inherit;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 8px 22px rgba(15, 23, 42, 0.06);
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Тонкий фирменный акцент слева — появляется на hover/focus */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--brand-navy) 0%, var(--brand-red) 100%);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.card:hover,
+.card:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(28, 75, 130, 0.22);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 1) inset,
+    0 16px 36px rgba(15, 23, 42, 0.1);
+}
+
+.card:hover::before,
+.card:focus-visible::before {
+  opacity: 1;
+}
+
+.card:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px var(--accent-ring),
+    0 14px 32px rgba(15, 23, 42, 0.08);
+}
+
+.cardIcon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  background: linear-gradient(180deg, #0f2850 0%, #152c58 100%);
+  color: #f4f7fc;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 6px 14px rgba(15, 28, 54, 0.22);
+  transition: transform 0.2s ease;
+}
+
+.card:hover .cardIcon {
+  transform: scale(1.04);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.cardTitle {
+  font-size: 15.5px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--text-strong);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cardCustom {
+  border-style: dashed;
+}
+
+.cardCustomTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary-red, #ba2126);
+  background: rgba(186, 33, 38, 0.08);
+  border: 1px solid rgba(186, 33, 38, 0.22);
+  border-radius: 999px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.cardMeta {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.cardChevron {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--brand-navy);
+  opacity: 0.45;
+  transform: translateX(0);
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.card:hover .cardChevron,
+.card:focus-visible .cardChevron {
+  opacity: 1;
+  transform: translateX(3px);
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card {
+    padding: 14px 16px;
+    gap: 14px;
+  }
+
+  .cardIcon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+  }
+
+  .cardTitle {
+    font-size: 15px;
+    white-space: normal;
+  }
+}

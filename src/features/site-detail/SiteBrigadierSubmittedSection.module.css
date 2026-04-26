@@ -1,0 +1,79 @@
+.section {
+  margin-bottom: clamp(24px, 3vw, 32px);
+}
+
+.head {
+  margin-bottom: 16px;
+}
+
+.title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+}
+
+.lead {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.empty {
+  padding: 22px 20px;
+  border-radius: 14px;
+  border: 1px dashed var(--border-strong);
+  background: var(--surface);
+}
+
+.emptyTitle {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.emptyText {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.reportBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.removeBtn {
+  align-self: flex-start;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(198, 40, 40, 0.35);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--status-bad);
+  cursor: pointer;
+}
+
+.removeBtn:hover {
+  background: rgba(198, 40, 40, 0.06);
+}
+
+.removeBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.25);
+}

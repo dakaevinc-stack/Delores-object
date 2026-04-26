@@ -1,0 +1,149 @@
+.figure {
+  margin: 0;
+  padding: 0;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(28, 75, 130, 0.06) 0%, rgba(255, 255, 255, 0) 55%),
+    linear-gradient(180deg, #fbfcfe 0%, #f2f4f8 100%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.95) inset, 0 8px 24px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.canvas {
+  padding: 16px 12px 8px;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  height: auto;
+}
+
+.ground {
+  fill: rgba(15, 23, 42, 0.12);
+}
+
+.chassis {
+  fill: rgba(15, 23, 42, 0.35);
+}
+
+.cabin {
+  fill: rgba(23, 42, 77, 0.55);
+  stroke: rgba(15, 23, 42, 0.15);
+  stroke-width: 1;
+}
+
+.body {
+  fill: rgba(28, 75, 130, 0.35);
+  stroke: rgba(15, 23, 42, 0.12);
+  stroke-width: 1;
+}
+
+.engine {
+  fill: rgba(45, 167, 236, 0.45);
+  stroke: rgba(23, 42, 77, 0.2);
+  stroke-width: 1;
+}
+
+.steering {
+  fill: rgba(23, 42, 77, 0.5);
+}
+
+.transmission {
+  fill: rgba(15, 23, 42, 0.4);
+}
+
+.brakes {
+  fill: rgba(198, 40, 40, 0.35);
+}
+
+.arm {
+  fill: rgba(28, 75, 130, 0.4);
+  stroke: rgba(15, 23, 42, 0.12);
+  stroke-width: 1;
+}
+
+.bucket {
+  fill: rgba(23, 42, 77, 0.45);
+  stroke: rgba(15, 23, 42, 0.15);
+  stroke-width: 1;
+}
+
+.undercarriage {
+  fill: rgba(15, 23, 42, 0.28);
+}
+
+.turret {
+  fill: rgba(28, 75, 130, 0.38);
+  stroke: rgba(15, 23, 42, 0.12);
+  stroke-width: 1;
+}
+
+.drum {
+  fill: rgba(23, 42, 77, 0.32);
+  stroke: rgba(15, 23, 42, 0.1);
+  stroke-width: 1;
+}
+
+.screed {
+  fill: rgba(28, 75, 130, 0.32);
+  stroke: rgba(15, 23, 42, 0.1);
+  stroke-width: 1;
+}
+
+.crane {
+  fill: rgba(198, 120, 40, 0.45);
+  stroke: rgba(15, 23, 42, 0.12);
+  stroke-width: 1;
+}
+
+.partHot {
+  fill: rgba(238, 45, 58, 0.92) !important;
+  stroke: rgba(122, 21, 21, 0.55) !important;
+  filter: drop-shadow(0 0 6px rgba(238, 45, 58, 0.45));
+}
+
+.caption {
+  margin: 0;
+  padding: 0 16px 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.legend {
+  margin: 0;
+  padding: 10px 16px 14px;
+  list-style: none;
+  border-top: 1px dashed rgba(15, 23, 42, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.legendSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: rgba(238, 45, 58, 0.95);
+  box-shadow: 0 0 0 1px rgba(122, 21, 21, 0.35);
+  flex-shrink: 0;
+}
+
+.hint {
+  margin: 0;
+  padding: 8px 16px 14px;
+  font-size: 12px;
+  color: var(--muted);
+}

@@ -1,0 +1,195 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rowHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+}
+
+.value {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+}
+
+.valueNum {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.valuePct {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-left: 1px;
+}
+
+.track {
+  position: relative;
+  width: 100%;
+  height: 14px;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, #eef0f4 0%, #e3e6ed 100%);
+  box-shadow:
+    inset 0 1px 2px rgba(15, 17, 20, 0.10),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.8),
+    0 1px 0 rgba(255, 255, 255, 0.55);
+  overflow: hidden;
+}
+
+.trackTicks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.trackTick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(15, 17, 20, 0.07);
+  transform: translateX(-0.5px);
+}
+
+.fill {
+  position: relative;
+  height: 100%;
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.18),
+    0 2px 6px rgba(15, 17, 20, 0.18);
+  transition: width 1.05s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: width;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fill {
+    transition: none;
+  }
+}
+
+.fillNormal {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(0, 0, 0, 0) 55%),
+    linear-gradient(90deg, #2bb368 0%, #1f8f4a 60%, #155f33 100%);
+}
+
+.fillAttention {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(0, 0, 0, 0) 55%),
+    linear-gradient(90deg, #ecbf3c 0%, #c9970a 55%, #8a6500 100%);
+}
+
+.fillCritical {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(0, 0, 0, 0) 55%),
+    linear-gradient(90deg, #e34c4c 0%, #c62828 55%, #7a1515 100%);
+}
+
+.sheen {
+  position: absolute;
+  inset: 1px 1px auto 1px;
+  height: 45%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+}
+
+.cap {
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 60%;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.32);
+  filter: blur(0.4px);
+  pointer-events: none;
+}
+
+.scale {
+  position: relative;
+  height: 18px;
+  margin-top: 4px;
+  border-top: 1px dashed var(--border);
+  padding-top: 6px;
+}
+
+.scaleTick {
+  position: absolute;
+  top: -1px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.scaleTick::before {
+  content: '';
+  width: 1px;
+  height: 4px;
+  background: var(--border-strong);
+}
+
+.scaleLabel {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Edge fix: первая и последняя метки — сдвинуть подпись внутрь карточки. */
+.scaleTick:first-child .scaleLabel {
+  transform: translateX(40%);
+}
+.scaleTick:last-child .scaleLabel {
+  transform: translateX(-40%);
+}

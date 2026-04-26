@@ -1,0 +1,81 @@
+.section {
+  margin-bottom: 0;
+}
+
+.sectionHead {
+  margin-bottom: 16px;
+}
+
+.sectionTitle {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+}
+
+.sectionLead {
+  margin: 0;
+  max-width: 52ch;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.panel {
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.rowLabel {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-strong);
+}
+
+.badge {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--muted);
+}
+
+.badge[data-state='ok'] {
+  border-color: rgba(31, 143, 74, 0.35);
+  background: rgba(31, 143, 74, 0.08);
+  color: var(--status-ok);
+}
+
+.badge[data-state='warn'] {
+  border-color: rgba(212, 160, 23, 0.45);
+  background: rgba(212, 160, 23, 0.1);
+  color: #8a6500;
+}
+
+.badge[data-state='bad'] {
+  border-color: rgba(198, 40, 40, 0.4);
+  background: rgba(198, 40, 40, 0.08);
+  color: var(--status-bad);
+}
