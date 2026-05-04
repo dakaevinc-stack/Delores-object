@@ -3,14 +3,35 @@ import {
   brigadierProblemKindLabel,
   type BrigadierStoredReport,
 } from '../../domain/brigadierReport'
-import { FieldReportCard } from './FieldReportCard'
+import { brigadierAttachmentBlobUrl } from '../../lib/siteFormsApi'
+import { FieldReportCard, type FieldReportAttachment } from './FieldReportCard'
 import styles from './SiteBrigadierSubmittedSection.module.css'
 
 type Props = {
+  siteId: string
   siteName: string
   reports: readonly BrigadierStoredReport[]
   serverBacked?: boolean
   onRemoveReport: (id: string) => void | Promise<void>
+}
+
+/**
+ * Превращает локальное вложение в `FieldReportAttachment` с готовым
+ * `previewUrl`. Если локального preview нет (data:/blob:), но API
+ * подключён и файл не помечен `notPersisted` — собираем прямую ссылку
+ * на серверный blob; браузер сам подгрузит изображение/видео.
+ */
+function resolveAttachment(
+  siteId: string,
+  reportId: string,
+  a: BrigadierStoredReport['attachments'][number],
+  serverBacked: boolean,
+): FieldReportAttachment {
+  if (a.previewUrl) return a
+  if (serverBacked && !a.notPersisted) {
+    return { ...a, previewUrl: brigadierAttachmentBlobUrl(siteId, reportId, a.id) }
+  }
+  return a
 }
 
 function reportsWord(n: number): string {
@@ -65,6 +86,7 @@ function pickActiveResponsibles(
 }
 
 export function SiteBrigadierSubmittedReportsSection({
+  siteId,
   siteName,
   reports,
   serverBacked = false,
@@ -208,7 +230,9 @@ export function SiteBrigadierSubmittedReportsSection({
                   kindLabel: brigadierProblemKindLabel(p.kindId),
                   details: p.details,
                 }))}
-                attachments={r.attachments}
+                attachments={r.attachments.map((a) =>
+                  resolveAttachment(siteId, r.id, a, serverBacked),
+                )}
               />
               <button
                 type="button"

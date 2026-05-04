@@ -22,6 +22,7 @@ import {
   deleteProcurementRequestRemote,
   fetchSiteFormsFromServer,
   patchProcurementRequestRemote,
+  uploadBrigadierAttachmentRemote,
 } from '../lib/siteFormsApi'
 import { useAllSites } from '../lib/useAllSites'
 import { BrigadierReportModal } from '../features/site-detail/BrigadierReportModal'
@@ -262,6 +263,7 @@ export function ObjectDetailPage() {
       />
 
       <SiteBrigadierSubmittedReportsSection
+        siteId={site.id}
         siteName={site.name}
         reports={brigadierReports}
         serverBacked={remoteFormsActive}
@@ -302,14 +304,69 @@ export function ObjectDetailPage() {
           siteName={site.name}
           plan={workPlan}
           onSubmit={async (report) => {
-            const persisted = await materializeBrigadierReportForLocalStorage(report)
+            // 1) Сначала — пока живы оригинальные blob:URL — заливаем
+            //    каждый файл на сервер отдельным запросом. Так JSON
+            //    отчёта остаётся лёгким и других устройств не «душит»
+            //    мегабайтами base64.
+            const uploadResults = new Map<string, boolean>()
             if (remoteFormsRef.current) {
-              const ok = await createBrigadierReportRemote(site.id, persisted)
+              for (const a of report.attachments) {
+                try {
+                  const resp = await fetch(a.previewUrl)
+                  const blob = await resp.blob()
+                  const ok = await uploadBrigadierAttachmentRemote(
+                    site.id,
+                    report.id,
+                    a.id,
+                    blob,
+                  )
+                  uploadResults.set(a.id, ok)
+                } catch {
+                  uploadResults.set(a.id, false)
+                }
+              }
+            }
+
+            // 2) Локально материализуем (для немедленного показа на
+            //    этом устройстве и работы оффлайн). Сжимает фото в
+            //    data: URL; для крупного видео ставит previewUrl=''
+            //    и notPersisted=true. Это ВСЁ ещё актуально как
+            //    fallback для оффлайн-устройств.
+            const persisted = await materializeBrigadierReportForLocalStorage(report)
+
+            // 3) Если blob успешно ушёл на сервер — снимаем флаг
+            //    notPersisted: на других устройствах файл подтянется
+            //    через серверный URL.
+            const adjustedAttachments = persisted.attachments.map((a) => {
+              const uploaded = uploadResults.get(a.id) === true
+              if (uploaded) {
+                return { ...a, notPersisted: false }
+              }
+              if (remoteFormsRef.current && uploadResults.get(a.id) === false && !a.previewUrl) {
+                return { ...a, notPersisted: true }
+              }
+              return a
+            })
+            const persistedFinal = { ...persisted, attachments: adjustedAttachments }
+
+            // 4) JSON отчёта на сервер: previewUrl пустой, blobs
+            //    хранятся отдельно в /attachments/.../blob.
+            if (remoteFormsRef.current) {
+              const lightReport: BrigadierStoredReport = {
+                ...persistedFinal,
+                attachments: persistedFinal.attachments.map((a) => ({
+                  ...a,
+                  previewUrl: '',
+                  notPersisted: uploadResults.get(a.id) === false,
+                })),
+              }
+              const ok = await createBrigadierReportRemote(site.id, lightReport)
               if (!ok) {
                 throw new Error('brigadier_remote_save')
               }
             }
-            setBrigadierReports((prev) => [persisted, ...prev])
+
+            setBrigadierReports((prev) => [persistedFinal, ...prev])
           }}
         />
       ) : null}

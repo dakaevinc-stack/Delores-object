@@ -350,6 +350,8 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
         id: a.id,
         kind: a.kind,
         name: a.file.name,
+        mime: a.file.type || (a.kind === 'photo' ? 'image/jpeg' : 'video/mp4'),
+        sizeBytes: a.file.size,
         previewUrl,
         registeredAtIso: a.registeredAtIso,
         fileModifiedIso: a.fileModifiedIso,

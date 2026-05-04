@@ -77,12 +77,30 @@ export type BrigadierStoredAttachment = {
   id: string
   kind: 'photo' | 'video'
   name: string
-  /** data: URL после сохранения или blob: во время ввода */
+  /**
+   * URL для отображения. Может быть:
+   *  - `blob:` — пока файл в памяти браузера (черновик),
+   *  - `data:` — после материализации в localStorage (только фото и
+   *    короткие видео),
+   *  - `''` — для отображения нужен серверный blob по
+   *    `/api/sites/.../brigadier-reports/.../attachments/<id>/blob`.
+   * Вычисление «есть ли blob на сервере» делается на уровне
+   * UI: если есть API + не выставлен `notPersisted`, ссылка собирается
+   * автоматически.
+   */
   previewUrl: string
   registeredAtIso: string
   fileModifiedIso: string
-  /** Файл не поместился в локальное хранилище браузера */
+  /**
+   * `true` — файл не поместился в localStorage и при этом не
+   * загружен на сервер. Когда blob успешно ушёл на сервер, это
+   * поле всегда `false` (или отсутствует).
+   */
   notPersisted?: boolean
+  /** MIME исходного файла. Нужен для корректного `<img>` / `<video>`. */
+  mime?: string
+  /** Размер исходного файла в байтах (до сжатия). */
+  sizeBytes?: number
 }
 
 /**

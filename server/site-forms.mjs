@@ -298,7 +298,103 @@ const server = http.createServer(async (req, res) => {
         const list = await readJsonArray(file)
         const next = list.filter((x) => !isBrigadierReportRow(x) || /** @type {{id:string}} */ (x).id !== id)
         await writeJsonArray(file, next)
+        // Удаляем каталог blobs этого отчёта (если был)
+        const blobsDir = path.join(DATA_ROOT, 'sites', siteId, 'brigadier-blobs', id)
+        try {
+          await fs.rm(blobsDir, { recursive: true, force: true })
+        } catch (e) {
+          if (/** @type {NodeJS.ErrnoException} */ (e).code !== 'ENOENT') throw e
+        }
         sendJson(res, 200, { ok: true })
+        return
+      }
+
+      // POST /api/sites/:siteId/brigadier-reports/:reportId/attachments
+      // body: { id, name, mime, sizeBytes, dataBase64 }
+      if (parts.length === 6 && parts[5] === 'attachments' && req.method === 'POST') {
+        if (!checkWrite(req, res)) return
+        const reportId = parts[4]
+        if (!reportId || reportId.includes('..') || !/^[a-zA-Z0-9._-]+$/.test(reportId)) {
+          sendJson(res, 400, { error: 'bad_report_id' })
+          return
+        }
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        if (!body || typeof body !== 'object') {
+          sendJson(res, 400, { error: 'invalid_attachment' })
+          return
+        }
+        const b = /** @type {Record<string, unknown>} */ (body)
+        const attId = typeof b.id === 'string' ? b.id : ''
+        if (!attId || attId.includes('..') || !/^[a-zA-Z0-9._-]+$/.test(attId)) {
+          sendJson(res, 400, { error: 'bad_attachment_id' })
+          return
+        }
+        if (typeof b.dataBase64 !== 'string') {
+          sendJson(res, 400, { error: 'invalid_attachment' })
+          return
+        }
+        const buf = Buffer.from(b.dataBase64, 'base64')
+        if (buf.length === 0) {
+          sendJson(res, 400, { error: 'empty_payload' })
+          return
+        }
+        const dir = path.join(DATA_ROOT, 'sites', siteId, 'brigadier-blobs', reportId)
+        await fs.mkdir(dir, { recursive: true })
+        await fs.writeFile(path.join(dir, attId), buf)
+        sendJson(res, 201, { ok: true })
+        return
+      }
+
+      // GET /api/sites/:siteId/brigadier-reports/:reportId/attachments/:attId/blob
+      if (
+        parts.length === 8 &&
+        parts[5] === 'attachments' &&
+        parts[7] === 'blob' &&
+        req.method === 'GET'
+      ) {
+        const reportId = parts[4]
+        const attId = parts[6]
+        if (!reportId || reportId.includes('..') || !/^[a-zA-Z0-9._-]+$/.test(reportId)) {
+          sendJson(res, 400, { error: 'bad_report_id' })
+          return
+        }
+        if (!attId || attId.includes('..') || !/^[a-zA-Z0-9._-]+$/.test(attId)) {
+          sendJson(res, 400, { error: 'bad_attachment_id' })
+          return
+        }
+        // Mime берём из родительского JSON отчёта (attachments[].mime).
+        let mime = 'application/octet-stream'
+        const list = await readJsonArray(file)
+        const report = list.find(
+          (x) => isBrigadierReportRow(x) && /** @type {{id:string}} */ (x).id === reportId,
+        )
+        if (report) {
+          const r = /** @type {{ attachments: Array<Record<string, unknown>> }} */ (report)
+          const att = r.attachments.find((a) => /** @type {{id:string}} */ (a).id === attId)
+          if (att && typeof att.mime === 'string' && att.mime) {
+            mime = att.mime
+          } else if (att && att.kind === 'photo') {
+            mime = 'image/jpeg'
+          } else if (att && att.kind === 'video') {
+            mime = 'video/mp4'
+          }
+        }
+        const blobPath = path.join(DATA_ROOT, 'sites', siteId, 'brigadier-blobs', reportId, attId)
+        try {
+          const buf = await fs.readFile(blobPath)
+          setCors(res)
+          res.statusCode = 200
+          res.setHeader('Content-Type', mime)
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+          res.end(buf)
+        } catch (e) {
+          if (/** @type {NodeJS.ErrnoException} */ (e).code === 'ENOENT') {
+            sendJson(res, 404, { error: 'blob_missing' })
+          } else {
+            throw e
+          }
+        }
         return
       }
     }

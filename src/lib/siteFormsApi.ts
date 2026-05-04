@@ -219,3 +219,47 @@ export async function deleteBrigadierReportRemote(siteId: string, id: string): P
     return false
   }
 }
+
+/**
+ * Отправляет blob вложения отчёта на сервер. Хранится отдельно от
+ * JSON, чтобы основной payload отчёта оставался лёгким и читался
+ * быстро всеми клиентами.
+ */
+export async function uploadBrigadierAttachmentRemote(
+  siteId: string,
+  reportId: string,
+  attachmentId: string,
+  blob: Blob,
+): Promise<boolean> {
+  try {
+    const dataBase64 = await readBlobAsBase64(blob)
+    if (!dataBase64) return false
+    const res = await fetch(
+      siteUrl(siteId, `/brigadier-reports/${encodeURIComponent(reportId)}/attachments`),
+      {
+        method: 'POST',
+        headers: writeHeaders(true),
+        body: JSON.stringify({ id: attachmentId, dataBase64 }),
+      },
+    )
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Полный URL для прямой подстановки в `<img src>` / `<video src>`.
+ * Никаких загрузок в JS — браузер сам тянет ресурс с правильным
+ * Content-Type и кэшированием.
+ */
+export function brigadierAttachmentBlobUrl(
+  siteId: string,
+  reportId: string,
+  attachmentId: string,
+): string {
+  const b = apiBase()
+  return `${b}/api/sites/${encodeURIComponent(siteId)}/brigadier-reports/${encodeURIComponent(
+    reportId,
+  )}/attachments/${encodeURIComponent(attachmentId)}/blob`
+}
