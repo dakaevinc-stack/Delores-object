@@ -64,15 +64,29 @@ function InspectionAdminCardBody({ interactive }: { interactive: boolean }) {
           <span className={styles.inspectionAdminKickerBar} aria-hidden />
           Веб-панель
         </span>
-        <span className={styles.inspectionAdminTitle}>Приём и учёт спецтехники</span>
+        <span className={styles.inspectionAdminTitleRow}>
+          <span className={styles.inspectionAdminTitle}>Приём и учёт спецтехники</span>
+          <span className={styles.inspectionAdminBadge} aria-label="Открывается в новой вкладке">
+            <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden focusable="false">
+              <path
+                d="M4.5 2.5h5v5M9.5 2.5l-6 6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Внешняя панель
+          </span>
+        </span>
         <span className={styles.inspectionAdminLead}>
-          Поиск и просмотр актов приёмки: фото, чек-листы, история и решения механиков. Отдельная панель
-          Streamlit (репозиторий приёмки через Telegram).
+          Поиск и просмотр актов приёмки: фото, чек-листы, история и решения механиков.
         </span>
         <ul className={styles.inspectionAdminTags} aria-label="Разделы панели">
           <li>
             <span className={styles.inspectionAdminTagDot} aria-hidden />
-            Отчёты
+            Чек-листы
           </li>
           <li>
             <span className={styles.inspectionAdminTagDot} aria-hidden />
@@ -80,7 +94,15 @@ function InspectionAdminCardBody({ interactive }: { interactive: boolean }) {
           </li>
           <li>
             <span className={styles.inspectionAdminTagDot} aria-hidden />
-            Аналитика
+            История
+          </li>
+          <li>
+            <span className={styles.inspectionAdminTagDot} aria-hidden />
+            Решения
+          </li>
+          <li>
+            <span className={styles.inspectionAdminTagDot} aria-hidden />
+            Отчёты
           </li>
         </ul>
       </span>
@@ -90,7 +112,7 @@ function InspectionAdminCardBody({ interactive }: { interactive: boolean }) {
           <span className={styles.inspectionAdminCtaArrow}>
             <svg viewBox="0 0 20 20" width="14" height="14" fill="none">
               <path
-                d="M4 10h11M10 5l5 5-5 5"
+                d="M7 13L13 7M7 7h6v6"
                 stroke="currentColor"
                 strokeWidth="2"
                 strokeLinecap="round"

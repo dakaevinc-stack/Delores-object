@@ -358,18 +358,24 @@
   margin: 0 0 28px;
 }
 
-@media (min-width: 960px) {
+@media (min-width: 820px) {
   .fleetHubRow {
-    grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+.fleetHubRow > * {
+  width: 100%;
 }
 
 .fleetHubMain {
   min-width: 0;
+  height: 100%;
 }
 
 .fleetHubAside {
   min-width: 0;
+  height: 100%;
 }
 
 /* Вход в реестр спецтехники */
@@ -385,8 +391,13 @@
 .fleetEntryLink {
   position: relative;
   display: flex;
-  align-items: center;
-  gap: clamp(16px, 2.6vw, 24px);
+  flex-direction: column;
+  align-items: stretch;
+  gap: clamp(14px, 2vw, 18px);
+  width: 100%;
+  /* Та же логика, что и у .inspectionAdminLink: min-height вместо height — иначе CTA «Открыть»
+     обрезается из-за overflow:hidden, когда колонка сетки выше внутреннего контента. */
+  min-height: 100%;
   padding: clamp(18px, 2.6vw, 24px) clamp(20px, 3vw, 28px);
   border-radius: 22px;
   border: 1px solid rgba(23, 42, 77, 0.12);
@@ -452,6 +463,7 @@
 .fleetEntryIcon {
   position: relative;
   flex-shrink: 0;
+  align-self: flex-start;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -486,6 +498,7 @@
   position: relative;
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -611,6 +624,8 @@
 }
 
 .fleetEntryCta {
+  margin-top: auto;
+  align-self: flex-start;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -710,8 +725,11 @@
   flex-direction: column;
   align-items: stretch;
   gap: clamp(14px, 2vw, 18px);
+  width: 100%;
   /* Без фиксированной height: 100% — иначе при flex:1 у .inspectionAdminText и overflow:hidden
-     нижняя часть карточки (CTA / зона клика ссылки) обрезается, если колонка сетки ниже контента. */
+     нижняя часть карточки (CTA «Открыть панель» / зона клика ссылки) обрезается, если колонка
+     сетки ниже контента. Используем min-height, чтобы карточка визуально заполняла колонку,
+     но при необходимости могла расти под содержимое без клиппинга. */
   min-height: 100%;
   padding: clamp(18px, 2.6vw, 24px) clamp(20px, 3vw, 28px);
   border-radius: 22px;
@@ -849,14 +867,45 @@
   background: linear-gradient(90deg, var(--brand-red, #ba2126) 0%, rgba(186, 33, 38, 0) 100%);
 }
 
-.inspectionAdminTitle {
-  display: block;
+.inspectionAdminTitleRow {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 14px;
   margin-top: 2px;
+}
+
+.inspectionAdminTitle {
   font-size: clamp(20px, 2.4vw, 26px);
   font-weight: 800;
   letter-spacing: -0.025em;
   color: var(--text-strong);
   line-height: 1.1;
+}
+
+/* Бейдж «Внешняя панель» рядом с заголовком — визуальный близнец .fleetEntryStat,
+   но семантически индикатор открытия в новой вкладке. Капс + иконка ↗ — дизайнерский
+   паттерн «вы покидаете приложение», без необходимости писать это словами в лиде. */
+.inspectionAdminBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(23, 42, 77, 0.05);
+  border: 1px solid rgba(23, 42, 77, 0.1);
+  color: var(--brand-navy);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.inspectionAdminBadge svg {
+  flex: none;
+  opacity: 0.85;
 }
 
 .inspectionAdminLead {
@@ -866,6 +915,7 @@
   line-height: 1.5;
   color: var(--text);
   letter-spacing: 0.003em;
+  max-width: 56ch;
   text-wrap: pretty;
 }
 
@@ -1002,6 +1052,12 @@
 }
 
 @media (max-width: 540px) {
+  .inspectionAdminBadge {
+    padding: 3px 9px;
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+  }
+
   .inspectionAdminTags {
     gap: 5px 6px;
   }
