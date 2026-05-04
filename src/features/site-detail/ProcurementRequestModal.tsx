@@ -128,6 +128,15 @@ function CategoryGlyph({ accent }: { accent: string }) {
           <path d="M11 7L3 15v6h6l8-8" />
         </svg>
       )
+    case 'people':
+      return (
+        <svg {...props}>
+          <circle cx="9" cy="8" r="3" />
+          <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" />
+          <circle cx="17" cy="9.5" r="2.4" />
+          <path d="M14.5 14.5c2-.5 5 .8 5 4" />
+        </svg>
+      )
     default:
       return (
         <svg {...props}>

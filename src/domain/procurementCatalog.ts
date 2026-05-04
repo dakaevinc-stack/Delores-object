@@ -30,6 +30,7 @@ export type ProcurementCategoryId =
   | 'machinery'
   | 'topsoil'
   | 'tools'
+  | 'labor'
 
 export type ProcurementCategory = {
   readonly id: ProcurementCategoryId
@@ -37,7 +38,17 @@ export type ProcurementCategory = {
   /** Однострочное пояснение всей группы. */
   readonly hint: string
   /** Декоративный набор, что-бы CSS могла подставить иконку и акцент. */
-  readonly accent: 'sand' | 'stone' | 'concrete' | 'asphalt' | 'pipe' | 'truck' | 'machinery' | 'soil' | 'tool'
+  readonly accent:
+    | 'sand'
+    | 'stone'
+    | 'concrete'
+    | 'asphalt'
+    | 'pipe'
+    | 'truck'
+    | 'machinery'
+    | 'soil'
+    | 'tool'
+    | 'people'
 }
 
 export type ProcurementPreset = {
@@ -65,9 +76,10 @@ export const PROCUREMENT_CATEGORIES: readonly ProcurementCategory[] = [
   { id: 'plastic-pipes', title: 'Трубы пластиковые', hint: 'по диаметру и назначению', accent: 'pipe' },
   { id: 'rcc', title: 'ЖБИ-изделия', hint: 'колодцы, плиты, лотки', accent: 'concrete' },
   { id: 'waste-removal', title: 'Вывоз отходов', hint: 'в бортах самосвала (≈10–12 м³)', accent: 'truck' },
-  { id: 'machinery', title: 'Спецтехника', hint: 'аренда смен, классы из реестра парка', accent: 'machinery' },
+  { id: 'machinery', title: 'Спецтехника', hint: 'все классы из реестра парка, аренда смен', accent: 'machinery' },
   { id: 'topsoil', title: 'Грунт растительный', hint: 'для газонов и озеленения', accent: 'soil' },
-  { id: 'tools', title: 'Машины и инструмент', hint: 'малая механизация, в сменах', accent: 'tool' },
+  { id: 'tools', title: 'Инструмент', hint: 'малая механизация (бензорез, виброплита и пр.), в сменах', accent: 'tool' },
+  { id: 'labor', title: 'Бригада', hint: 'дополнительные люди на объект — на смену или вахту', accent: 'people' },
 ] as const
 
 /* ─── Позиции каталога ─────────────────────────────────────────────── */
@@ -273,38 +285,114 @@ export const PROCUREMENT_MATERIAL_PRESETS: readonly ProcurementPreset[] = [
     aliases: ['срезка', 'фрезерат'],
   },
 
-  /* ── Спецтехника (смена) — соответствует классам в нашем парке ── */
+  /* ── Спецтехника (смена) ─────────────────────────────────────────────
+     Все 13 классов соответствуют реестру нашего парка
+     (FLEET_CATEGORIES в src/data/fleet.mock.ts). Когда туда добавляется
+     новый класс — добавьте такой же сюда, чтобы бригадир мог его
+     заявить. ID связан с fleetCategoryId через хвост `-<id>`. */
   {
-    id: 'machinery-backhoe',
+    id: 'machinery-light-trucks',
+    categoryId: 'machinery',
+    title: 'Малотоннажный а/м',
+    subtitle: 'материалы малыми партиями, развозка по объектам',
+    defaultUnit: 'shift',
+    aliases: ['газель', 'малотоннаж', 'фургон'],
+  },
+  {
+    id: 'machinery-buses',
+    categoryId: 'machinery',
+    title: 'Автобус для персонала',
+    subtitle: 'доставка бригады, вахтовые перевозки',
+    defaultUnit: 'shift',
+    aliases: ['автобус', 'паз', 'вахта'],
+  },
+  {
+    id: 'machinery-special-trucks',
+    categoryId: 'machinery',
+    title: 'Спецавтомобиль',
+    subtitle: 'автокран, гидроподъёмник, цистерна — спецназначение',
+    defaultUnit: 'shift',
+    aliases: ['спецавто', 'автокран', 'кран', 'вышка', 'ассенизатор'],
+  },
+  {
+    id: 'machinery-dump-trucks',
+    categoryId: 'machinery',
+    title: 'Самосвал',
+    subtitle: 'перевозка сыпучих и строительного мусора (20–25 т)',
+    defaultUnit: 'shift',
+    aliases: ['самосвал', 'камаз', 'shacman'],
+  },
+  {
+    id: 'machinery-road-tractors',
+    categoryId: 'machinery',
+    title: 'Седельный тягач',
+    subtitle: 'магистральные перевозки с полуприцепом',
+    defaultUnit: 'shift',
+    aliases: ['тягач', 'фура', 'седельник'],
+  },
+  {
+    id: 'machinery-trailers',
+    categoryId: 'machinery',
+    title: 'Полуприцеп / прицеп',
+    subtitle: 'под ваш тягач — длинномер, низкорамник, тент',
+    defaultUnit: 'shift',
+    aliases: ['полуприцеп', 'прицеп', 'низкорамник'],
+  },
+  {
+    id: 'machinery-front-loaders',
+    categoryId: 'machinery',
+    title: 'Фронтальный погрузчик',
+    subtitle: 'погрузка сыпучих и навалов',
+    defaultUnit: 'shift',
+    aliases: ['фронтальник', 'frontloader'],
+  },
+  {
+    id: 'machinery-mini-loaders',
+    categoryId: 'machinery',
+    title: 'Минипогрузчик',
+    subtitle: 'благоустройство и узкие зоны (Bobcat и аналоги)',
+    defaultUnit: 'shift',
+    aliases: ['bobcat', 'бобкэт', 'минипогрузчик', 'миник'],
+  },
+  {
+    id: 'machinery-backhoes',
     categoryId: 'machinery',
     title: 'Экскаватор-погрузчик',
-    subtitle: 'универсал — траншеи, погрузка, разработка',
+    subtitle: 'универсал — траншеи, погрузка, разработка (JCB / Cat)',
     defaultUnit: 'shift',
-    aliases: ['jcb', 'cat', 'погрузчик', 'backhoe'],
+    aliases: ['jcb', 'cat', 'backhoe', 'экскаватор погрузчик'],
   },
   {
-    id: 'machinery-excavator',
+    id: 'machinery-excavators',
     categoryId: 'machinery',
-    title: 'Экскаватор колёсный (1,0–1,5 м³)',
-    subtitle: 'рытьё траншей и котлованов',
+    title: 'Экскаватор',
+    subtitle: 'котлованы и траншеи, рабочий орган 1,0–1,5 м³',
     defaultUnit: 'shift',
-    aliases: ['экскаватор', 'эо'],
+    aliases: ['экскаватор', 'эо', 'гусеничный', 'волво', 'hitachi'],
   },
   {
-    id: 'machinery-dump-truck',
+    id: 'machinery-rollers',
     categoryId: 'machinery',
-    title: 'Самосвал 20 т',
-    subtitle: 'перевозка сыпучих материалов и отходов',
+    title: 'Каток самоходный',
+    subtitle: 'уплотнение оснований и асфальта (5–18 т)',
     defaultUnit: 'shift',
-    aliases: ['самосвал', 'камаз'],
+    aliases: ['каток', 'дорожный каток'],
   },
   {
-    id: 'machinery-roller',
+    id: 'machinery-pavers',
     categoryId: 'machinery',
-    title: 'Каток самоходный 10 т',
-    subtitle: 'уплотнение оснований и асфальта',
+    title: 'Асфальтоукладчик',
+    subtitle: 'укладка асфальтобетонных покрытий',
     defaultUnit: 'shift',
-    aliases: ['каток'],
+    aliases: ['укладчик', 'paver', 'асфальтоукладчик', 'volvo'],
+  },
+  {
+    id: 'machinery-cold-mills',
+    categoryId: 'machinery',
+    title: 'Дорожная фреза',
+    subtitle: 'снятие асфальта, фрезеровка дорожного полотна',
+    defaultUnit: 'shift',
+    aliases: ['фреза', 'фрезеровка', 'wirtgen'],
   },
 
   /* ── Грунт растительный (м³) ── */
@@ -342,6 +430,35 @@ export const PROCUREMENT_MATERIAL_PRESETS: readonly ProcurementPreset[] = [
     defaultUnit: 'shift',
     aliases: ['виброплита', 'трамбовка'],
   },
+
+  /* ── Бригада (чел.) ─────────────────────────────────────────────────
+     Заявка дополнительной рабочей силы на объект — например, когда на
+     завтра нужно усилить бригаду на земляные работы. Указывается
+     в человеках, объёмно по смене или вахте — детали в комментарии. */
+  {
+    id: 'labor-workers',
+    categoryId: 'labor',
+    title: 'Дополнительные рабочие',
+    subtitle: 'универсальные рабочие на объект — землекопы, монтажники',
+    defaultUnit: 'person',
+    aliases: ['рабочие', 'усиление', 'бригада', 'допсилы'],
+  },
+  {
+    id: 'labor-itr',
+    categoryId: 'labor',
+    title: 'ИТР (мастер / прораб)',
+    subtitle: 'инженерно-технический работник на смену',
+    defaultUnit: 'person',
+    aliases: ['итр', 'мастер', 'прораб', 'инженер'],
+  },
+  {
+    id: 'labor-helpers',
+    categoryId: 'labor',
+    title: 'Разнорабочие (подсобники)',
+    subtitle: 'разгрузка, уборка, вспомогательные работы',
+    defaultUnit: 'person',
+    aliases: ['подсобники', 'разнорабочие', 'грузчики'],
+  },
 ] as const
 
 /* ─── Утилиты ──────────────────────────────────────────────────────── */
@@ -361,11 +478,17 @@ const CATEGORY_BY_ID = new Map(
  * единица. Карточка не падает, в ленте отчётов всё на месте.
  */
 const LEGACY_PRESET_TO_NEW: Readonly<Record<string, string>> = {
+  // Самые первые id с прошлого года (плоский каталог из 5 позиций).
   curb: 'curb-br-100-30-15',
   pipes: 'pipe-pe-d110',
   sand: 'sand-quarry',
   asphalt: 'asphalt-type-a-15',
   'crushed-stone': 'crushed-granite-20-40',
+  // Ранние machinery-id (до выравнивания со всеми классами парка).
+  'machinery-backhoe': 'machinery-backhoes',
+  'machinery-excavator': 'machinery-excavators',
+  'machinery-dump-truck': 'machinery-dump-trucks',
+  'machinery-roller': 'machinery-rollers',
 }
 
 export function findProcurementPreset(id: string | null | undefined): ProcurementPreset | null {
