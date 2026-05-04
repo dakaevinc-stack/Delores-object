@@ -8,6 +8,8 @@ import {
   type BrigadierProblemDraft,
   type BrigadierProblemKindId,
   type BrigadierStoredReport,
+  type BrigadierWorkEntry,
+  type BrigadierWorkEntryDraft,
   type MeasurementUnitId,
   brigadierProblemKindLabel,
   unitLabel,
@@ -16,12 +18,26 @@ import {
   BRIGADIER_WORK_PRESETS,
   type BrigadierWorkPreset,
 } from '../../data/brigadierWorkPresets'
+import {
+  formatVolume,
+  isItemDeferred,
+  workItemPercent,
+  type WorkPlan,
+  type WorkPlanItem,
+} from '../../domain/workPlan'
 import styles from './BrigadierReportModal.module.css'
 
 type Props = {
   onClose: () => void
   siteId: string
   siteName: string
+  /**
+   * Производственный план объекта. Если задан — в форме появится
+   * блок «Привязка к плану»: бригадир сможет выбрать строки плана
+   * (1.1, 2.3 …) и сразу указать выполненный объём; этот объём
+   * прибавится к факту в общей секции «План работ» без участия офиса.
+   */
+  plan?: WorkPlan | null
   onSubmit: (report: BrigadierStoredReport) => void | Promise<void>
 }
 
@@ -43,7 +59,7 @@ function parseDateTimeLocal(s: string): string {
   return d.toISOString()
 }
 
-export function BrigadierReportModal({ onClose, siteId, siteName, onSubmit }: Props) {
+export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit }: Props) {
   const uid = useId()
   const photoRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLInputElement>(null)
@@ -54,8 +70,39 @@ export function BrigadierReportModal({ onClose, siteId, siteName, onSubmit }: Pr
   const [problems, setProblems] = useState<BrigadierProblemDraft[]>([])
   const [attachments, setAttachments] = useState<BrigadierAttachmentDraft[]>([])
   const [reportComment, setReportComment] = useState('')
+  const [workEntries, setWorkEntries] = useState<BrigadierWorkEntryDraft[]>([])
+  const [planPickerOpen, setPlanPickerOpen] = useState(false)
+  const [planSearch, setPlanSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
   const attachmentsRef = useRef<BrigadierAttachmentDraft[]>([])
+
+  const filteredPlanRows = useMemo(() => {
+    if (!plan) return [] as ReadonlyArray<{
+      sectionNumber: string
+      sectionTitle: string
+      item: WorkPlanItem
+    }>
+    const q = planSearch.trim().toLowerCase()
+    const rows: { sectionNumber: string; sectionTitle: string; item: WorkPlanItem }[] = []
+    for (const s of plan.sections) {
+      for (const it of s.items) {
+        if (q.length === 0) {
+          rows.push({ sectionNumber: s.number, sectionTitle: s.title, item: it })
+          continue
+        }
+        const haystack = `${it.number} ${it.title} ${s.number} ${s.title}`.toLowerCase()
+        if (haystack.includes(q)) {
+          rows.push({ sectionNumber: s.number, sectionTitle: s.title, item: it })
+        }
+      }
+    }
+    return rows
+  }, [plan, planSearch])
+
+  const planTotalItemsCount = useMemo(
+    () => (plan ? plan.sections.reduce((acc, s) => acc + s.items.length, 0) : 0),
+    [plan],
+  )
 
   const revokeAttachmentUrls = useCallback((rows: BrigadierAttachmentDraft[]) => {
     for (const a of rows) {
@@ -144,6 +191,33 @@ export function BrigadierReportModal({ onClose, siteId, siteName, onSubmit }: Pr
     pushCriterion({ title: '', unitId: 'm', presetId: null })
   }
 
+  const togglePlanRow = (item: WorkPlanItem, on: boolean) => {
+    setWorkEntries((prev) => {
+      if (on) {
+        if (prev.some((row) => row.planNumber === item.number)) return prev
+        return [
+          ...prev,
+          {
+            id: newId(),
+            planNumber: item.number,
+            planTitle: item.title,
+            qty: '',
+            unit: item.unit,
+          },
+        ]
+      }
+      return prev.filter((row) => row.planNumber !== item.number)
+    })
+  }
+
+  const removeWorkEntry = (id: string) => {
+    setWorkEntries((prev) => prev.filter((r) => r.id !== id))
+  }
+
+  const updateWorkEntry = (id: string, patch: Partial<BrigadierWorkEntryDraft>) => {
+    setWorkEntries((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))
+  }
+
   const addProblem = () => {
     setProblems((prev) => [
       ...prev,
@@ -194,14 +268,32 @@ export function BrigadierReportModal({ onClose, siteId, siteName, onSubmit }: Pr
       .map((p) => ({ kindId: p.kindId, details: p.details.trim() }))
       .filter((p) => p.details.length > 0)
 
+    const filledWorkEntries: BrigadierWorkEntry[] = []
+    for (const w of workEntries) {
+      const num = (w.planNumber ?? '').trim()
+      if (!num) continue
+      const qtyStr = String(w.qty ?? '').replace(',', '.').trim()
+      if (!qtyStr) continue
+      const qty = Number(qtyStr)
+      if (!Number.isFinite(qty) || qty <= 0) continue
+      filledWorkEntries.push({
+        id: w.id,
+        planNumber: num,
+        planTitle: w.planTitle,
+        qty,
+        unit: w.unit,
+      })
+    }
+
     const hasWork = filled.length > 0
     const hasComment = commentTrim.length > 0
     const hasProblems = filledProblems.length > 0
     const hasMedia = attachments.length > 0
+    const hasPlanFact = filledWorkEntries.length > 0
 
-    if (!hasWork && !hasComment && !hasProblems && !hasMedia) {
+    if (!hasWork && !hasComment && !hasProblems && !hasMedia && !hasPlanFact) {
       setError(
-        'Добавьте работы с объёмами, комментарий, проблему или прикрепите фото или видео.',
+        'Добавьте работы с объёмами, привяжите факт к плану, комментарий, проблему или прикрепите фото или видео.',
       )
       return
     }
@@ -217,11 +309,22 @@ export function BrigadierReportModal({ onClose, siteId, siteName, onSubmit }: Pr
           text: `${c.title.trim()} — ${String(c.quantity).trim()} ${unitLabel(c.unitId)}`,
         })
       }
-    } else if (hasMedia || hasComment || hasProblems) {
-      lines.push({
-        index: index++,
-        text: 'Объёмы работ в форме не заполнены — см. комментарий, проблемы и вложения.',
-      })
+    } else if (hasMedia || hasComment || hasProblems || hasPlanFact) {
+      if (!hasPlanFact) {
+        lines.push({
+          index: index++,
+          text: 'Объёмы работ в форме не заполнены — см. комментарий, проблемы и вложения.',
+        })
+      }
+    }
+
+    if (hasPlanFact) {
+      for (const w of filledWorkEntries) {
+        lines.push({
+          index: index++,
+          text: `План ${w.planNumber} «${w.planTitle}» — выполнено ${formatVolume(w.qty)} ${unitLabel(w.unit)}`,
+        })
+      }
     }
 
     for (const p of filledProblems) {
@@ -261,6 +364,7 @@ export function BrigadierReportModal({ onClose, siteId, siteName, onSubmit }: Pr
       responsible: responsible.trim() || '—',
       comment: commentTrim,
       attachments: mappedAttachments,
+      workEntries: filledWorkEntries.length > 0 ? filledWorkEntries : undefined,
     }
 
     try {
@@ -454,6 +558,149 @@ export function BrigadierReportModal({ onClose, siteId, siteName, onSubmit }: Pr
               )}
             </div>
           </div>
+
+          {plan && planTotalItemsCount > 0 ? (
+            <div className={styles.planBlock}>
+              <div className={styles.planHeadRow}>
+                <p className={styles.planKicker}>План объекта · факт за смену</p>
+                <span className={styles.planSummary}>
+                  {workEntries.length > 0
+                    ? `${workEntries.length} из ${planTotalItemsCount}`
+                    : `${planTotalItemsCount} строк`}
+                </span>
+              </div>
+              <p className={styles.planTitle}>Что сделано по плану</p>
+              <p className={styles.planIntro}>
+                Выберите строки плана и впишите выполненный сегодня объём — он сразу
+                добавится к факту в секции «План работ».
+              </p>
+
+              {workEntries.length > 0 ? (
+                <ul className={styles.planPickedList}>
+                  {workEntries.map((entry) => {
+                    const item = plan.sections
+                      .flatMap((s) => s.items)
+                      .find((it) => it.number === entry.planNumber)
+                    return (
+                      <li key={entry.id} className={styles.planPickedItem}>
+                        <div className={styles.planPickedHead}>
+                          <div className={styles.planPickedTitleWrap}>
+                            <span className={styles.planPickedNumber}>
+                              {entry.planNumber}
+                            </span>
+                            <span className={styles.planPickedTitle}>
+                              {entry.planTitle}
+                            </span>
+                            {item ? (
+                              <span className={styles.planPickedTotal}>
+                                План: {formatVolume(item.total)} {unitLabel(item.unit)} ·
+                                {' '}
+                                факт уже {formatVolume(item.done)} ({Math.round(workItemPercent(item))}%)
+                              </span>
+                            ) : null}
+                          </div>
+                          <button
+                            type="button"
+                            className={styles.pickedRemove}
+                            onClick={() => removeWorkEntry(entry.id)}
+                            aria-label="Убрать привязку к плану"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <div className={styles.planPickedControls}>
+                          <input
+                            className={styles.planPickedQty}
+                            inputMode="decimal"
+                            placeholder="Сделано сегодня"
+                            value={entry.qty}
+                            onChange={(e) =>
+                              updateWorkEntry(entry.id, { qty: e.target.value })
+                            }
+                            aria-label={`Объём по строке ${entry.planNumber}`}
+                          />
+                          <span className={styles.planPickedUnit}>
+                            {unitLabel(entry.unit)}
+                          </span>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : null}
+
+              <div className={styles.planActions}>
+                <button
+                  type="button"
+                  className={`${styles.planAddBtn} ${planPickerOpen ? styles.planAddBtnActive : ''}`}
+                  onClick={() => setPlanPickerOpen((v) => !v)}
+                  aria-expanded={planPickerOpen}
+                >
+                  {planPickerOpen ? 'Скрыть список плана' : '+ Привязать строку плана'}
+                </button>
+              </div>
+
+              {planPickerOpen ? (
+                <div className={styles.planPicker}>
+                  <input
+                    className={styles.planSearchInput}
+                    type="search"
+                    placeholder="Поиск: 6.1, щебень, тротуар…"
+                    value={planSearch}
+                    onChange={(e) => setPlanSearch(e.target.value)}
+                    aria-label="Поиск по плану"
+                  />
+                  <div className={styles.planRowsScroll}>
+                    {filteredPlanRows.length === 0 ? (
+                      <p className={styles.planRowsEmpty}>Ничего не найдено по запросу.</p>
+                    ) : (
+                      filteredPlanRows.map((row) => {
+                        const checked = workEntries.some(
+                          (w) => w.planNumber === row.item.number,
+                        )
+                        const deferred = isItemDeferred(row.item)
+                        return (
+                          <button
+                            key={row.item.number}
+                            type="button"
+                            className={`${styles.planRow} ${checked ? styles.planRowChecked : ''}`}
+                            onClick={() => togglePlanRow(row.item, !checked)}
+                            aria-pressed={checked}
+                          >
+                            <input
+                              type="checkbox"
+                              className={styles.planRowCheck}
+                              checked={checked}
+                              readOnly
+                              tabIndex={-1}
+                              aria-hidden
+                            />
+                            <span className={styles.planRowBody}>
+                              <span className={styles.planRowTopLine}>
+                                <span className={styles.planRowNumber}>{row.item.number}</span>
+                                <span className={styles.planRowTitle}>{row.item.title}</span>
+                                {deferred ? (
+                                  <span className={styles.planRowDeferred}>без срока</span>
+                                ) : null}
+                              </span>
+                              {row.item.total > 0 ? (
+                                <span className={styles.planRowMeta}>
+                                  План: {formatVolume(row.item.total)} {unitLabel(row.item.unit)}
+                                  {row.item.done > 0
+                                    ? ` · факт ${formatVolume(row.item.done)} (${Math.round(workItemPercent(row.item))}%)`
+                                    : ''}
+                                </span>
+                              ) : null}
+                            </span>
+                          </button>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className={styles.block}>
             <div className={styles.blockHead}>

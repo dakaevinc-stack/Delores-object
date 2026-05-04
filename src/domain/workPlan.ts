@@ -1,4 +1,4 @@
-import type { MeasurementUnitId } from './brigadierReport'
+import type { BrigadierStoredReport, MeasurementUnitId } from './brigadierReport'
 
 /**
  * Производственный план объекта — то, что в офисе ведут как
@@ -238,4 +238,97 @@ export function durationDays(
   const b = new Date(endIso).getTime()
   if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return null
   return Math.round((b - a) / 86_400_000) + 1
+}
+
+/* ─── Слияние плана с фактом из бригадирских отчётов ────────────────── */
+
+/**
+ * Накопленный факт по строке плана: суммарный объём из всех бригадирских
+ * привязок плюс дата последнего обновления (ISO) — для отображения
+ * «обновлено N <дата>».
+ */
+export type PlanItemFactAccumulator = {
+  /** Сумма qty из workEntries (в единицах строки плана). */
+  readonly qtyAdded: number
+  /** Сколько привязок в сумме (для подсчёта «N записей»). */
+  readonly entriesCount: number
+  /** Самая свежая дата отчёта, в котором есть привязка к этой строке. */
+  readonly lastReportedAtIso: string | null
+}
+
+/**
+ * Считает по каждому `planNumber`, сколько суммарно сделано (`qtyAdded`)
+ * и когда последний раз отчитывались. Учитывает только отчёты по
+ * `siteId` плана.
+ *
+ * Если бригадир ввёл объём в чужой единице — мы всё равно складываем
+ * как есть. Это сознательное упрощение: офис увидит несоответствие в
+ * UI (рядом со строкой плана будет «странная» цифра) и поправит вручную.
+ * Альтернатива — конвертация — требует таблицы плотностей и в полевых
+ * условиях ошибается чаще, чем помогает.
+ */
+export function computePlanFactFromReports(
+  plan: WorkPlan,
+  reports: readonly BrigadierStoredReport[],
+): ReadonlyMap<string, PlanItemFactAccumulator> {
+  const acc = new Map<string, { qtyAdded: number; entriesCount: number; lastReportedAtIso: string | null }>()
+  for (const r of reports) {
+    if (r.siteId !== plan.siteId) continue
+    const entries = r.workEntries
+    if (!entries || entries.length === 0) continue
+    for (const e of entries) {
+      const num = e.planNumber.trim()
+      if (!num) continue
+      const qty = Number.isFinite(e.qty) ? e.qty : 0
+      const prev = acc.get(num)
+      if (!prev) {
+        acc.set(num, {
+          qtyAdded: qty,
+          entriesCount: 1,
+          lastReportedAtIso: r.reportedAtIso ?? null,
+        })
+        continue
+      }
+      const prevTs = prev.lastReportedAtIso ? new Date(prev.lastReportedAtIso).getTime() : 0
+      const curTs = r.reportedAtIso ? new Date(r.reportedAtIso).getTime() : 0
+      acc.set(num, {
+        qtyAdded: prev.qtyAdded + qty,
+        entriesCount: prev.entriesCount + 1,
+        lastReportedAtIso:
+          curTs > prevTs ? (r.reportedAtIso ?? prev.lastReportedAtIso) : prev.lastReportedAtIso,
+      })
+    }
+  }
+  return acc
+}
+
+/**
+ * Возвращает копию плана, где `done` каждой строки увеличен на
+ * соответствующую сумму из бригадирских отчётов. Базовое значение
+ * `done` из снимка сохраняется (его офис мог проставить вручную) —
+ * фактический прирост из отчётов добавляется сверху.
+ *
+ * Структура `WorkPlan` иммутабельна (readonly), поэтому возвращается
+ * новый объект; исходный план остаётся как «снимок из Excel».
+ */
+export function applyWorkEntriesToPlan(
+  plan: WorkPlan,
+  reports: readonly BrigadierStoredReport[],
+): WorkPlan {
+  const factByNumber = computePlanFactFromReports(plan, reports)
+  if (factByNumber.size === 0) return plan
+  return {
+    ...plan,
+    sections: plan.sections.map((section) => ({
+      ...section,
+      items: section.items.map((item) => {
+        const fact = factByNumber.get(item.number)
+        if (!fact) return item
+        return {
+          ...item,
+          done: item.done + fact.qtyAdded,
+        }
+      }),
+    })),
+  }
 }

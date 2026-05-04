@@ -398,6 +398,330 @@
   color: #8e8e93;
 }
 
+.planBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px 16px;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(28, 75, 130, 0.06) 0%, rgba(198, 40, 40, 0.04) 100%),
+    #fff;
+  box-shadow: 0 0 0 0.5px rgba(28, 75, 130, 0.18);
+}
+
+.planHeadRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.planKicker {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.planSummary {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.planTitle {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+}
+
+.planIntro {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.planActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.planAddBtn {
+  flex: 1;
+  min-height: 44px;
+  min-width: 180px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px dashed rgba(28, 75, 130, 0.45);
+  background: rgba(28, 75, 130, 0.06);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.planAddBtn:hover {
+  background: rgba(28, 75, 130, 0.1);
+  border-color: rgba(28, 75, 130, 0.6);
+}
+
+.planAddBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+.planAddBtnActive {
+  background: linear-gradient(180deg, #1a2d4d 0%, #0f1724 100%);
+  color: #f4f6f9;
+  border-style: solid;
+  border-color: rgba(15, 24, 40, 0.85);
+}
+
+.planAddBtnActive:hover {
+  background: linear-gradient(180deg, #20355a 0%, #131c2c 100%);
+}
+
+.planPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: inset 0 0 0 0.5px rgba(60, 60, 67, 0.18);
+}
+
+.planSearchInput {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: none;
+  background: #f2f2f7;
+  font: inherit;
+  font-size: 15px;
+  color: var(--text-strong);
+}
+
+.planSearchInput::placeholder {
+  color: #aeaeb2;
+}
+
+.planSearchInput:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+.planRowsScroll {
+  max-height: 280px;
+  overflow-y: auto;
+  border-radius: 10px;
+  background: #f9f9fb;
+}
+
+.planRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-bottom: 0.5px solid rgba(60, 60, 67, 0.1);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.planRow:last-child {
+  border-bottom: none;
+}
+
+.planRow:hover,
+.planRow:focus-visible {
+  outline: none;
+  background: rgba(28, 75, 130, 0.06);
+}
+
+.planRowChecked {
+  background: rgba(28, 75, 130, 0.08);
+}
+
+.planRowCheck {
+  flex-shrink: 0;
+  margin-top: 4px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  pointer-events: none;
+}
+
+.planRowBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.planRowTopLine {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.planRowNumber {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+.planRowTitle {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+  line-height: 1.3;
+}
+
+.planRowMeta {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.planRowDeferred {
+  display: inline-block;
+  padding: 1px 6px;
+  margin-left: 4px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(142, 142, 147, 0.16);
+  color: #6e6e73;
+}
+
+.planRowsEmpty {
+  margin: 0;
+  padding: 18px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: #8e8e93;
+}
+
+.planPickedList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.planPickedItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(60, 60, 67, 0.16);
+}
+
+.planPickedHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.planPickedTitleWrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.planPickedNumber {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.planPickedTitle {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+}
+
+.planPickedTotal {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.planPickedControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.planPickedQty {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: none;
+  background: #f2f2f7;
+  font: inherit;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+}
+
+.planPickedQty::placeholder {
+  color: #aeaeb2;
+}
+
+.planPickedQty:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+.planPickedUnit {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  padding: 0 4px;
+}
+
 .problemFormList {
   list-style: none;
   margin: 10px 0 0;

@@ -1,4 +1,10 @@
-import type { BrigadierStoredAttachment, BrigadierStoredReport } from '../domain/brigadierReport'
+import {
+  MEASUREMENT_UNITS,
+  type BrigadierStoredAttachment,
+  type BrigadierStoredReport,
+  type BrigadierWorkEntry,
+  type MeasurementUnitId,
+} from '../domain/brigadierReport'
 
 const KEY = (siteId: string) => `deloresh-brigadier-reports:${siteId}:v1`
 const MAX_VIDEO_BYTES = 5.5 * 1024 * 1024
@@ -75,9 +81,25 @@ export function isReportRow(x: unknown): boolean {
   )
 }
 
+function isWorkEntryLike(x: unknown): x is BrigadierWorkEntry {
+  if (!x || typeof x !== 'object') return false
+  const w = x as Record<string, unknown>
+  if (typeof w.id !== 'string' || w.id.length === 0) return false
+  if (typeof w.planNumber !== 'string' || w.planNumber.length === 0) return false
+  if (typeof w.planTitle !== 'string') return false
+  if (typeof w.qty !== 'number' || !Number.isFinite(w.qty)) return false
+  if (typeof w.unit !== 'string') return false
+  return MEASUREMENT_UNITS.some((u) => u.id === (w.unit as MeasurementUnitId))
+}
+
 export function coerceReport(x: unknown): BrigadierStoredReport {
-  const r = x as BrigadierStoredReport & { comment?: string }
+  const r = x as BrigadierStoredReport & {
+    comment?: string
+    workEntries?: readonly BrigadierWorkEntry[]
+  }
   const attachments = (r.attachments ?? []).filter(isAttachmentLike)
+  const workEntriesRaw = Array.isArray(r.workEntries) ? r.workEntries : []
+  const workEntries = workEntriesRaw.filter(isWorkEntryLike)
   return {
     ...r,
     comment: typeof r.comment === 'string' ? r.comment : '',
@@ -85,6 +107,7 @@ export function coerceReport(x: unknown): BrigadierStoredReport {
       ...a,
       notPersisted: Boolean(a.notPersisted),
     })),
+    workEntries: workEntries.length > 0 ? workEntries : undefined,
   }
 }
 

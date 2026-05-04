@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyWorkEntriesToPlan,
+  computePlanFactFromReports,
   durationDays,
   formatPeriod,
   isItemDeferred,
@@ -11,6 +13,7 @@ import {
   type WorkPlan,
   type WorkPlanItem,
 } from './workPlan'
+import type { BrigadierStoredReport } from './brigadierReport'
 import { BRUSILOVA_WORK_PLAN } from '../data/workPlans/brusilova'
 
 describe('parseRussianShortDate', () => {
@@ -201,5 +204,164 @@ describe('Брусиловский план: целостность данных
     const cable = electrical?.items.find((i) => i.number === '9.2')
     expect(cable?.title).toMatch(/Прокладка/i)
     expect(cable?.total).toBe(17045)
+  })
+})
+
+describe('applyWorkEntriesToPlan / computePlanFactFromReports', () => {
+  const plan: WorkPlan = {
+    siteId: 'site-x',
+    siteName: 'X',
+    asOfIso: '2026-05-01T00:00:00.000Z',
+    sections: [
+      {
+        number: '1',
+        title: 'Бортовой камень',
+        items: [
+          {
+            number: '1.1',
+            title: 'Бетон',
+            unit: 'm',
+            total: 100,
+            done: 10,
+            startIso: '2026-05-01',
+            endIso: '2026-06-01',
+          },
+          {
+            number: '1.2',
+            title: 'Гранит',
+            unit: 'm',
+            total: 50,
+            done: 0,
+            startIso: '2026-05-15',
+            endIso: '2026-06-15',
+          },
+        ],
+      },
+    ],
+  }
+
+  function makeReport(
+    overrides: Partial<BrigadierStoredReport> & {
+      siteId?: string
+      reportedAtIso?: string
+      workEntries?: BrigadierStoredReport['workEntries']
+    },
+  ): BrigadierStoredReport {
+    return {
+      id: overrides.id ?? `r-${Math.random()}`,
+      siteId: overrides.siteId ?? 'site-x',
+      reportedAtIso: overrides.reportedAtIso ?? '2026-05-04T10:00:00.000Z',
+      lines: overrides.lines ?? [],
+      problems: overrides.problems ?? [],
+      responsible: overrides.responsible ?? '—',
+      comment: overrides.comment ?? '',
+      attachments: overrides.attachments ?? [],
+      workEntries: overrides.workEntries,
+    }
+  }
+
+  it('старые отчёты без workEntries не падают и план остаётся прежним', () => {
+    const reports = [makeReport({})]
+    const merged = applyWorkEntriesToPlan(plan, reports)
+    expect(merged).toBe(plan)
+  })
+
+  it('пустой массив отчётов возвращает исходный план', () => {
+    expect(applyWorkEntriesToPlan(plan, [])).toBe(plan)
+  })
+
+  it('суммирует qty по нескольким отчётам в одну строку плана', () => {
+    const reports = [
+      makeReport({
+        id: 'r1',
+        reportedAtIso: '2026-05-04T08:00:00.000Z',
+        workEntries: [
+          { id: 'a', planNumber: '1.1', planTitle: 'Бетон', qty: 15, unit: 'm' },
+        ],
+      }),
+      makeReport({
+        id: 'r2',
+        reportedAtIso: '2026-05-05T08:00:00.000Z',
+        workEntries: [
+          { id: 'b', planNumber: '1.1', planTitle: 'Бетон', qty: 25, unit: 'm' },
+        ],
+      }),
+    ]
+    const merged = applyWorkEntriesToPlan(plan, reports)
+    const item = merged.sections[0]!.items[0]!
+    expect(item.done).toBe(10 + 15 + 25)
+    expect(item.total).toBe(100)
+  })
+
+  it('игнорирует отчёты с другого объекта', () => {
+    const reports = [
+      makeReport({
+        siteId: 'other-site',
+        workEntries: [
+          { id: 'x', planNumber: '1.1', planTitle: 'Бетон', qty: 999, unit: 'm' },
+        ],
+      }),
+    ]
+    const merged = applyWorkEntriesToPlan(plan, reports)
+    expect(merged.sections[0]!.items[0]!.done).toBe(10)
+  })
+
+  it('игнорирует ссылки на несуществующие строки плана', () => {
+    const reports = [
+      makeReport({
+        workEntries: [
+          { id: 'x', planNumber: '99.99', planTitle: 'Призрак', qty: 5, unit: 'm' },
+        ],
+      }),
+    ]
+    const merged = applyWorkEntriesToPlan(plan, reports)
+    expect(merged.sections[0]!.items[0]!.done).toBe(10)
+    expect(merged.sections[0]!.items[1]!.done).toBe(0)
+  })
+
+  it('computePlanFactFromReports: учитывает дату последнего отчёта', () => {
+    const reports = [
+      makeReport({
+        id: 'r1',
+        reportedAtIso: '2026-05-04T08:00:00.000Z',
+        workEntries: [
+          { id: 'a', planNumber: '1.1', planTitle: 'Бетон', qty: 5, unit: 'm' },
+        ],
+      }),
+      makeReport({
+        id: 'r2',
+        reportedAtIso: '2026-05-06T15:00:00.000Z',
+        workEntries: [
+          { id: 'b', planNumber: '1.1', planTitle: 'Бетон', qty: 7, unit: 'm' },
+        ],
+      }),
+      makeReport({
+        id: 'r3',
+        reportedAtIso: '2026-05-05T15:00:00.000Z',
+        workEntries: [
+          { id: 'c', planNumber: '1.1', planTitle: 'Бетон', qty: 3, unit: 'm' },
+        ],
+      }),
+    ]
+    const acc = computePlanFactFromReports(plan, reports)
+    const fact = acc.get('1.1')
+    expect(fact?.qtyAdded).toBe(5 + 7 + 3)
+    expect(fact?.entriesCount).toBe(3)
+    expect(fact?.lastReportedAtIso).toBe('2026-05-06T15:00:00.000Z')
+  })
+
+  it('summarize ВместеСФактом: средний % растёт после привязок', () => {
+    const reports = [
+      makeReport({
+        workEntries: [
+          { id: 'a', planNumber: '1.1', planTitle: 'Бетон', qty: 90, unit: 'm' },
+          { id: 'b', planNumber: '1.2', planTitle: 'Гранит', qty: 50, unit: 'm' },
+        ],
+      }),
+    ]
+    const merged = applyWorkEntriesToPlan(plan, reports)
+    const summary = summarizeWorkPlan(merged)
+    expect(summary.completedCount).toBe(2)
+    expect(summary.averagePercent).toBe(100)
   })
 })

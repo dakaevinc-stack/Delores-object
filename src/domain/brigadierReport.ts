@@ -85,6 +85,39 @@ export type BrigadierStoredAttachment = {
   notPersisted?: boolean
 }
 
+/**
+ * Запись «сделано по плану» — связь конкретной строки производственного
+ * плана (раздел.номер, например '2.1' или '11.8') с фактом работы.
+ *
+ * Поле существует, чтобы офис не пересобирал план вручную: бригадир
+ * приложением сам подставляет, к какой строке плана относится сделанный
+ * объём, и какое количество выполнено в этот день. Когда план объекта
+ * рендерится — мы суммируем все workEntries по `planNumber` и подмешиваем
+ * к `done` соответствующей строки плана.
+ *
+ * `unit` хранится отдельно, чтобы факт оставался читаемым даже если в
+ * плане позже поменяют единицу измерения. Если бригадир ввёл объём не в
+ * той единице — это всё равно зафиксируется и не «потеряется».
+ */
+export type BrigadierWorkEntry = {
+  readonly id: string
+  readonly planNumber: string
+  /** Снимок названия строки плана на момент привязки — для аудита. */
+  readonly planTitle: string
+  /** Сделано сегодня в этой строке плана. */
+  readonly qty: number
+  readonly unit: MeasurementUnitId
+}
+
+/** Черновик `BrigadierWorkEntry` в форме (qty — строка для ввода). */
+export type BrigadierWorkEntryDraft = {
+  id: string
+  planNumber: string
+  planTitle: string
+  qty: string
+  unit: MeasurementUnitId
+}
+
 export type BrigadierStoredReport = {
   id: string
   siteId: string
@@ -96,4 +129,10 @@ export type BrigadierStoredReport = {
   /** Свободный комментарий к отчёту (текст). */
   comment: string
   attachments: readonly BrigadierStoredAttachment[]
+  /**
+   * Привязки к строкам производственного плана. Опционально — старые
+   * отчёты без привязок остаются валидными. Новый отчёт без привязок
+   * (например, если бригадир заполнил только проблемы) тоже допустим.
+   */
+  workEntries?: readonly BrigadierWorkEntry[]
 }

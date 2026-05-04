@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { BrigadierStoredReport } from '../domain/brigadierReport'
 import type { ProcurementRequest } from '../domain/procurementRequest'
+import { applyWorkEntriesToPlan } from '../domain/workPlan'
 import { getSiteDetailDashboard } from '../data/siteDetail.mock'
 import { getWorkPlanForSite } from '../data/workPlans'
 import {
@@ -134,6 +135,12 @@ export function ObjectDetailPage() {
     }
   }, [])
 
+  const basePlan = site ? getWorkPlanForSite(site.id) : null
+  const workPlan = useMemo(
+    () => (basePlan ? applyWorkEntriesToPlan(basePlan, brigadierReports) : null),
+    [basePlan, brigadierReports],
+  )
+
   if (!site) {
     return (
       <div className={styles.page}>
@@ -151,7 +158,6 @@ export function ObjectDetailPage() {
   }
 
   const dashboard = getSiteDetailDashboard(site)
-  const workPlan = getWorkPlanForSite(site.id)
 
   return (
     <div className={styles.page}>
@@ -294,6 +300,7 @@ export function ObjectDetailPage() {
           onClose={() => setComposerOpen(false)}
           siteId={site.id}
           siteName={site.name}
+          plan={workPlan}
           onSubmit={async (report) => {
             const persisted = await materializeBrigadierReportForLocalStorage(report)
             if (remoteFormsRef.current) {
