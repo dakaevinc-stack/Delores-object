@@ -1,27 +1,32 @@
 import { MEASUREMENT_UNITS, type MeasurementUnitId, unitLabel } from './brigadierReport'
+export {
+  PROCUREMENT_CATEGORIES,
+  PROCUREMENT_MATERIAL_PRESETS,
+  findProcurementCategory,
+  findProcurementPreset,
+  searchProcurementPresets,
+  groupProcurementPresets,
+} from './procurementCatalog'
+export type {
+  ProcurementCategory,
+  ProcurementCategoryId,
+  ProcurementPreset,
+} from './procurementCatalog'
 
 /** Разрешаем переиспользовать единицы из доменной модели бригадира. */
 export { MEASUREMENT_UNITS, unitLabel }
 export type { MeasurementUnitId }
 
 /**
- * Типовые материалы для заявок снабженца. Список можно расширять —
- * добавление произвольного материала тоже доступно в форме.
+ * Идентификатор пресета материала.
+ *
+ * Раньше это был узкий union из 5 значений. Сейчас каталог расширен
+ * (см. procurementCatalog.ts) и набирается ~30 позиций — поэтому тип
+ * стал просто `string`. Все проверки идут через `findProcurementPreset`,
+ * который отдаёт null для неизвестных id и умеет матчить устаревшие
+ * id (curb/pipes/sand/asphalt/crushed-stone) на новые позиции.
  */
-export const PROCUREMENT_MATERIAL_PRESETS = [
-  { id: 'curb', title: 'Бортовой камень', defaultUnit: 'pcs' as MeasurementUnitId },
-  { id: 'pipes', title: 'Трубы', defaultUnit: 'lm' as MeasurementUnitId },
-  { id: 'sand', title: 'Песок', defaultUnit: 'm3' as MeasurementUnitId },
-  { id: 'asphalt', title: 'Асфальт', defaultUnit: 't' as MeasurementUnitId },
-  { id: 'crushed-stone', title: 'Щебень', defaultUnit: 't' as MeasurementUnitId },
-] as const
-
-export type ProcurementMaterialPresetId =
-  (typeof PROCUREMENT_MATERIAL_PRESETS)[number]['id']
-
-export function findProcurementPreset(id: ProcurementMaterialPresetId) {
-  return PROCUREMENT_MATERIAL_PRESETS.find((p) => p.id === id)
-}
+export type ProcurementMaterialPresetId = string
 
 /** Черновик строки внутри формы. Сохраняем как строки — удобно для контролируемых input. */
 export type ProcurementLineDraft = {

@@ -10,6 +10,7 @@ export const MEASUREMENT_UNITS = [
   { id: 'm3', label: 'м³', note: 'объём' },
   { id: 't', label: 'т', note: 'масса' },
   { id: 'pcs', label: 'шт.', note: 'штуки' },
+  { id: 'truckload', label: 'борт', note: 'один борт самосвала (≈10–12 м³ или 18–20 т)' },
   { id: 'person', label: 'чел.', note: 'человек' },
   { id: 'machine_h', label: 'маш.-ч', note: 'машино-часы' },
   { id: 'shift', label: 'смена', note: 'учёт смен' },
