@@ -824,19 +824,47 @@ export function SiteObjectMediaDropSection({
           </div>
           <button
             type="button"
-            className={styles.dropBtn}
+            className={`${styles.dropBtn} ${styles.dropBtnPhoto}`}
             onClick={() => photoRef.current?.click()}
           >
-            <span className={styles.dropBtnLabel}>Добавить фото</span>
-            <span className={styles.dropBtnHint}>с камеры или галереи</span>
+            <span className={styles.dropBtnIcon} aria-hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.7c.5 0 .96-.27 1.2-.7l.6-1.05A2 2 0 0 1 11.74 3h.52a2 2 0 0 1 1.74 1.25l.6 1.05c.24.43.7.7 1.2.7h1.7A2.5 2.5 0 0 1 20 8.5V17a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V8.5Z" />
+                <circle cx="12" cy="13" r="3.6" />
+              </svg>
+            </span>
+            <span className={styles.dropBtnBody}>
+              <span className={styles.dropBtnLabel}>Добавить фото</span>
+              <span className={styles.dropBtnHint}>с камеры или галереи</span>
+            </span>
+            <span className={styles.dropBtnArrow} aria-hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 5v14" />
+                <path d="M5 12h14" />
+              </svg>
+            </span>
           </button>
           <button
             type="button"
-            className={styles.dropBtn}
+            className={`${styles.dropBtn} ${styles.dropBtnVideo}`}
             onClick={() => videoRef.current?.click()}
           >
-            <span className={styles.dropBtnLabel}>Добавить видео</span>
-            <span className={styles.dropBtnHint}>ролик с площадки</span>
+            <span className={styles.dropBtnIcon} aria-hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="6" width="13" height="12" rx="2.4" />
+                <path d="m16 10.5 4.4-2.6c.4-.24.9.05.9.52v7.16c0 .47-.5.76-.9.52L16 13.5" />
+              </svg>
+            </span>
+            <span className={styles.dropBtnBody}>
+              <span className={styles.dropBtnLabel}>Добавить видео</span>
+              <span className={styles.dropBtnHint}>ролик с площадки</span>
+            </span>
+            <span className={styles.dropBtnArrow} aria-hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 5v14" />
+                <path d="M5 12h14" />
+              </svg>
+            </span>
           </button>
         </div>
       </div>
