@@ -37,6 +37,18 @@ npm run preview
 
 Статика окажется в каталоге **`dist/`** — её можно раздавать любым статическим хостингом (Nginx, S3, Netlify, Cloudflare Pages и т.д.).
 
+### Развёртывание на VPS (94.242.58.24) одной командой
+
+Полный пошаговый гайд: **[docs/DEPLOY.ru.md](docs/DEPLOY.ru.md)**.
+
+Кратко: на чистом Ubuntu/Debian-сервере под `sudo`-юзером выполните
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dakaevinc-stack/Delores-object/main/scripts/deploy/server-bootstrap.sh | sudo bash
+```
+
+Скрипт сам ставит Node.js 20 + nginx, создаёт пользователя `deploy`, клонирует репозиторий, собирает фронт, ставит systemd-сервис `site-forms` (бэкенд заявок/отчётов/медиа) и nginx-конфиг с проксированием `/api → 127.0.0.1:8787`. После завершения шеф открывает `http://<IP>/`.
+
 ## Полезные команды
 
 | Команда | Назначение |

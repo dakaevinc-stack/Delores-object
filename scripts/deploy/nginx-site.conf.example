@@ -1,5 +1,6 @@
 # Скопируйте в /etc/nginx/sites-available/ и подставьте домен + путь к dist.
 # SPA (React Router): все пути отдаются через index.html.
+# /api/* — проксируется на бэкенд site-forms.mjs (Node.js на 127.0.0.1:8787).
 
 server {
     listen 80;
@@ -9,8 +10,24 @@ server {
     root /var/www/delores-object;
     index index.html;
 
+    # Аплоад фото/видео с объектов до 100 МБ (синхронно с MAX_BODY_BYTES в site-forms.mjs).
+    client_max_body_size 100m;
+
     location / {
         try_files $uri $uri/ /index.html;
+    }
+
+    # API заявок снабженцу, отчётов бригадира, медиа объектов.
+    location /api/ {
+        proxy_pass http://127.0.0.1:8787;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 30s;
+        proxy_send_timeout    300s;
+        proxy_read_timeout    300s;
     }
 
     # Кэш статики Vite (имена файлов с хэшем)

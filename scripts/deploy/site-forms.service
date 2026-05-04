@@ -1,0 +1,36 @@
+[Unit]
+Description=Deloresh Objects — site-forms API (procurement, brigadier reports, object media)
+Documentation=https://github.com/dakaevinc-stack/Delores-object
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Подставьте реального юзера, под которым лежит репозиторий и каталог данных.
+# По умолчанию — deploy. Если у вас иной — поправьте User и WorkingDirectory.
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/Delores-object
+
+# Файл с переменными окружения. Создайте его вручную (см. site-forms.env.example).
+EnvironmentFile=/etc/deloresh/site-forms.env
+
+ExecStart=/usr/bin/node server/site-forms.mjs
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=15
+
+# Логи в journald — смотреть так: journalctl -u site-forms -f
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=site-forms
+
+# Пишем только в каталог данных приложения (sandbox-режим systemd).
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths=/var/lib/deloresh/site-forms
+
+[Install]
+WantedBy=multi-user.target

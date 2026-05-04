@@ -1,19 +1,23 @@
 # Развёртывание без домена — только по IP.
 #
-# Вариант A — основной сайт на порту 80 (адрес http://94.242.58.24/)
-#   Скопируйте в /etc/nginx/sites-available/delores-object-ip
-#   default_server отдаёт этот сайт для любого Host (в т.ч. по IP).
+# Что делает этот конфиг:
+#   1. Раздаёт собранную SPA-статику React/Vite из /var/www/delores-object.
+#   2. Все маршруты SPA уходят на index.html (try_files), чтобы React Router работал.
+#   3. /api/* проксируется на бэкенд site-forms.mjs (Node.js, порт 8787 на 127.0.0.1).
+#   4. Аплоад/скачивание медиа объектов поддерживается через client_max_body_size.
 #
-# Вариант B — отдельный порт, «как Streamlit» (например http://94.242.58.24:8080/)
-#   Раскомментируйте второй блок server ниже, закомментируйте первый,
-#   или держите оба: 80 для основного, 8080 для второго сервиса.
+# Куда положить:
+#   /etc/nginx/sites-available/delores-object-ip
+# и включить:
+#   sudo ln -s /etc/nginx/sites-available/delores-object-ip /etc/nginx/sites-enabled/
+#   sudo nginx -t && sudo systemctl reload nginx
 #
-# Важно: если открываете приложение на 8080 и на 8081, у обоих server {}
-# должен быть ОДИН И ТОТ ЖЕ root (одна копия dist после rsync).
-# Иначе один порт покажет свежую сборку со ссылкой на панель приёмки,
-# а второй — старую без VITE_AMEDA_INSPECTION_DASHBOARD_URL (карточка не <a>).
+# Важно: на одной машине сразу два варианта (порт 80 и порт 8080) ставить НЕ нужно —
+# раскомментируйте только тот блок server{}, который вам подходит.
 
-# --- Вариант A: порт 80 ---
+# ============================================================
+#  Вариант A — основной сайт на порту 80 (адрес http://94.242.58.24/)
+# ============================================================
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -22,10 +26,30 @@ server {
     root /var/www/delores-object;
     index index.html;
 
+    # Аплоад фото/видео с объектов: до 100 МБ на запрос (синхронно с MAX_BODY_BYTES в site-forms.mjs).
+    client_max_body_size 100m;
+
+    # SPA — все неизвестные пути отдают index.html.
     location / {
         try_files $uri $uri/ /index.html;
     }
 
+    # API заявок снабженцу, отчётов бригадира и медиа объектов.
+    location /api/ {
+        proxy_pass http://127.0.0.1:8787;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Аплоад/скачивание медиа может занимать заметно дольше, чем JSON-запросы.
+        proxy_connect_timeout 30s;
+        proxy_send_timeout    300s;
+        proxy_read_timeout    300s;
+    }
+
+    # Кэш статики Vite (имена файлов с хэшем — можно безопасно держать долго).
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|webmanifest)$ {
         expires 30d;
         add_header Cache-Control "public, immutable";
@@ -33,9 +57,14 @@ server {
     }
 
     add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
 }
 
-# --- Вариант B: отдельный порт (раскомментируйте при необходимости) ---
+# ============================================================
+#  Вариант B — отдельный порт 8080 (адрес http://94.242.58.24:8080/),
+#  если 80-й порт занят чем-то другим. Раскомментируйте при необходимости
+#  и закомментируйте Вариант A выше.
+# ============================================================
 # server {
 #     listen 8080 default_server;
 #     listen [::]:8080 default_server;
@@ -43,33 +72,22 @@ server {
 #
 #     root /var/www/delores-object;
 #     index index.html;
+#     client_max_body_size 100m;
 #
 #     location / {
 #         try_files $uri $uri/ /index.html;
 #     }
 #
-#     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|webmanifest)$ {
-#         expires 30d;
-#         add_header Cache-Control "public, immutable";
-#         try_files $uri =404;
-#     }
-#
-#     add_header X-Content-Type-Options nosniff always;
-# }
-
-# --- Вариант C: два порта — одна статика (8080 + 8081 → один каталог) ---
-# server {
-#     listen 8080;
-#     listen [::]:8080;
-#     listen 8081;
-#     listen [::]:8081;
-#     server_name _;
-#
-#     root /var/www/delores-object;
-#     index index.html;
-#
-#     location / {
-#         try_files $uri $uri/ /index.html;
+#     location /api/ {
+#         proxy_pass http://127.0.0.1:8787;
+#         proxy_http_version 1.1;
+#         proxy_set_header Host $host;
+#         proxy_set_header X-Real-IP $remote_addr;
+#         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#         proxy_connect_timeout 30s;
+#         proxy_send_timeout    300s;
+#         proxy_read_timeout    300s;
 #     }
 #
 #     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|webmanifest)$ {
