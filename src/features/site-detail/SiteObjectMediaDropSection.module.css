@@ -1025,3 +1025,321 @@
   background: rgba(60, 60, 67, 0.06);
   border-color: rgba(60, 60, 67, 0.18);
 }
+
+/* ============================================================
+   Подготовлено к отправке (staged)
+   ============================================================ */
+
+.stagedPanel {
+  margin-top: 16px;
+  padding: 16px 18px 18px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Левый цветной разрез navy → red — фирменная вертикаль раздела */
+.stagedPanel::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(
+    180deg,
+    var(--brand-navy, #0f2850) 0%,
+    var(--brand-red, #ee2d3a) 100%
+  );
+  opacity: 0.85;
+}
+
+.stagedHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 14px;
+  padding-left: 10px;
+}
+
+.stagedHeadLeft {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stagedKicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-red, #ee2d3a);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stagedKicker::before {
+  content: '';
+  display: inline-block;
+  width: 22px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--brand-navy, #0f2850) 0%,
+    var(--brand-red, #ee2d3a) 100%
+  );
+}
+
+.stagedTitle {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+}
+
+.stagedHint {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.stagedHeadActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.stagedClear {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.stagedClear:hover {
+  background: rgba(60, 60, 67, 0.06);
+  border-color: rgba(60, 60, 67, 0.28);
+}
+
+.stagedClear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.stagedSend {
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    var(--brand-navy, #0f2850) 0%,
+    var(--brand-red, #ee2d3a) 100%
+  );
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 6px 16px rgba(15, 28, 54, 0.22);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.15s ease,
+    filter 0.15s ease;
+}
+
+.stagedSend:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 10px 22px rgba(15, 28, 54, 0.28);
+  filter: brightness(1.04);
+}
+
+.stagedSend:active {
+  transform: translateY(0);
+  filter: brightness(0.97);
+}
+
+.stagedSend:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px var(--accent-ring),
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 6px 16px rgba(15, 28, 54, 0.22);
+}
+
+.stagedSend:disabled {
+  opacity: 0.7;
+  cursor: progress;
+  transform: none;
+  filter: saturate(0.85);
+}
+
+.stagedList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.stagedTile {
+  position: relative;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 8px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, rgba(28, 75, 130, 0.04) 0%, rgba(28, 75, 130, 0.01) 100%),
+    var(--surface);
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease;
+}
+
+.stagedTile:hover {
+  border-color: rgba(28, 75, 130, 0.28);
+}
+
+.stagedThumb {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0f2850;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stagedThumb img,
+.stagedThumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.stagedKindBadge {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  line-height: 1;
+}
+
+.stagedMeta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.stagedName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stagedSize {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.stagedRemove {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.stagedRemove:hover {
+  background: rgba(178, 42, 53, 0.08);
+  color: var(--brand-red, #ee2d3a);
+  border-color: rgba(178, 42, 53, 0.32);
+}
+
+.stagedRemove:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+
+.stagedRemove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+  .stagedHead {
+    align-items: flex-start;
+  }
+
+  .stagedHeadActions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .stagedSend {
+    flex: 1;
+  }
+
+  .stagedList {
+    grid-template-columns: 1fr;
+  }
+}

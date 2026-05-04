@@ -210,6 +210,34 @@ export function SiteObjectMediaDropSection({
   const [authorError, setAuthorError] = useState<string | null>(null)
   const [otherFioMode, setOtherFioMode] = useState(false)
 
+  /**
+   * «Подготовлено к отправке». Бригадир сначала добавляет фото/видео
+   * в эту очередь — без записи в IndexedDB и без обращения к API,
+   * — затем подтверждает кнопкой «Отправить». До нажатия можно убрать
+   * лишний кадр или поменять ФИО.
+   */
+  type StagedFile = {
+    id: string
+    file: File
+    kind: 'photo' | 'video'
+    previewUrl: string
+    name: string
+    sizeBytes: number
+  }
+  const [staged, setStaged] = useState<StagedFile[]>([])
+  const [sending, setSending] = useState(false)
+  const stagedRef = useRef<StagedFile[]>([])
+  useEffect(() => {
+    stagedRef.current = staged
+  }, [staged])
+
+  // При размонтировании — отзываем blob:URL подготовленных файлов.
+  useEffect(() => {
+    return () => {
+      for (const s of stagedRef.current) URL.revokeObjectURL(s.previewUrl)
+    }
+  }, [])
+
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [rangePreset, setRangePreset] = useState<RangePreset>('all')
   const [rangeFrom, setRangeFrom] = useState<string>('')
@@ -250,9 +278,11 @@ export function SiteObjectMediaDropSection({
    * пока не докачалось».
    */
   useEffect(() => {
-    const dirty = Object.values(syncStatusById).some(
-      (s) => s === 'uploading' || s === 'failed',
-    )
+    const dirty =
+      staged.length > 0 ||
+      Object.values(syncStatusById).some(
+        (s) => s === 'uploading' || s === 'failed',
+      )
     if (!dirty) return
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault()
@@ -260,7 +290,7 @@ export function SiteObjectMediaDropSection({
     }
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
-  }, [syncStatusById])
+  }, [syncStatusById, staged.length])
 
   const serverManifestKey = useMemo(() => {
     const head = `${siteId}:`
@@ -387,73 +417,127 @@ export function SiteObjectMediaDropSection({
     return t
   }
 
-  const addFiles = async (files: FileList | null, kind: 'photo' | 'video') => {
+  /**
+   * Кладёт выбранные файлы в очередь подготовки. Никаких I/O —
+   * пользователь подтверждает отправку отдельной кнопкой.
+   */
+  const stageFiles = (files: FileList | null, kind: 'photo' | 'video') => {
     if (!files?.length) return
-    const caption = captionOrError()
-    if (!caption) return
-    const nowIso = new Date().toISOString()
-    const added: Array<{ item: SiteObjectMediaItem; record: StoredSiteMedia; file: File }> = []
-
+    setAuthorError(null)
+    const next: StagedFile[] = []
     for (let i = 0; i < files.length; i += 1) {
       const file = files.item(i)
       if (!file) continue
-      const capturedAtIso = file.lastModified
-        ? new Date(file.lastModified).toISOString()
-        : nowIso
-      const record: StoredSiteMedia = {
+      next.push({
         id: newId(),
-        siteId,
+        file,
         kind,
+        previewUrl: URL.createObjectURL(file),
         name: file.name,
-        mime: file.type || (kind === 'photo' ? 'image/jpeg' : 'video/mp4'),
         sizeBytes: file.size,
-        capturedAtIso,
-        uploadedAtIso: nowIso,
-        authorCaption: caption,
-      }
-      try {
-        await putMedia(record, file)
-        const url = URL.createObjectURL(file)
-        added.push({ item: storedToItem(record, url), record, file })
-      } catch (err) {
-        console.error('[media] save failed', err)
-      }
+      })
     }
+    if (next.length) setStaged((prev) => [...prev, ...next])
+  }
 
-    if (added.length) {
-      rememberAuthorName(siteId, caption)
-      setKnownAuthors(loadRememberedAuthorNames(siteId))
-      setItems((prev) =>
-        [...added.map((a) => a.item), ...prev].sort(
-          (a, b) =>
-            new Date(b.capturedAtIso).getTime() - new Date(a.capturedAtIso).getTime(),
-        ),
-      )
+  const removeStaged = (id: string) => {
+    setStaged((prev) => {
+      const row = prev.find((s) => s.id === id)
+      if (row) URL.revokeObjectURL(row.previewUrl)
+      return prev.filter((s) => s.id !== id)
+    })
+  }
 
-      // Сразу выставляем статус: 'uploading' (или 'local-only' если API выкл).
-      updateSyncStatusBatch(
-        added.map(({ record }) => [
-          record.id,
-          serverBacked ? 'uploading' : 'local-only',
-        ]),
-      )
-    }
+  const clearStaged = () => {
+    for (const s of stagedRef.current) URL.revokeObjectURL(s.previewUrl)
+    setStaged([])
+  }
 
-    // Загрузка на сервер — параллельно, по одному файлу за раз, чтобы
-    // не «съесть» сеть. Каждый успех/провал немедленно отражается в UI.
-    if (serverBacked) {
-      let remoteSaveFailed = false
-      for (const a of added) {
-        const ok = await createObjectMediaRemote(siteId, a.record, a.file)
-        updateSyncStatus(a.record.id, ok ? 'remote' : 'failed')
-        if (!ok) remoteSaveFailed = true
+  /**
+   * Реальная отправка: записывает файлы в IndexedDB и параллельно
+   * заливает на сервер. Каждый файл получает свой статус —
+   * uploading → remote (успех) или failed (нужен retry).
+   */
+  const commitStaged = async () => {
+    if (sending) return
+    if (staged.length === 0) return
+    const caption = captionOrError()
+    if (!caption) return
+    setSending(true)
+    try {
+      const nowIso = new Date().toISOString()
+      const added: Array<{ item: SiteObjectMediaItem; record: StoredSiteMedia; file: File; previewUrl: string }> = []
+      for (const s of staged) {
+        const capturedAtIso = s.file.lastModified
+          ? new Date(s.file.lastModified).toISOString()
+          : nowIso
+        const record: StoredSiteMedia = {
+          id: newId(),
+          siteId,
+          kind: s.kind,
+          name: s.name,
+          mime: s.file.type || (s.kind === 'photo' ? 'image/jpeg' : 'video/mp4'),
+          sizeBytes: s.sizeBytes,
+          capturedAtIso,
+          uploadedAtIso: nowIso,
+          authorCaption: caption,
+        }
+        try {
+          await putMedia(record, s.file)
+          // Передаём в галерею тот же blob:URL, что был в превью —
+          // тогда не придётся пересоздавать его и можно прозрачно
+          // отозвать после revoke ниже.
+          added.push({ item: storedToItem(record, s.previewUrl), record, file: s.file, previewUrl: s.previewUrl })
+        } catch (err) {
+          console.error('[media] save failed', err)
+        }
       }
-      if (remoteSaveFailed) {
-        onRemoteSyncError?.(
-          'Часть файлов не удалось отправить на сервер. На плитке появится «Не на сервере» — нажмите ↻ чтобы повторить.',
+
+      if (added.length) {
+        rememberAuthorName(siteId, caption)
+        setKnownAuthors(loadRememberedAuthorNames(siteId))
+        setItems((prev) =>
+          [...added.map((a) => a.item), ...prev].sort(
+            (a, b) =>
+              new Date(b.capturedAtIso).getTime() - new Date(a.capturedAtIso).getTime(),
+          ),
         )
+        updateSyncStatusBatch(
+          added.map(({ record }) => [
+            record.id,
+            serverBacked ? 'uploading' : 'local-only',
+          ]),
+        )
+        // Очищаем очередь СРАЗУ — пользователь видит, что нажатие
+        // прошло. Превью-URL переехали в галерею, поэтому НЕ
+        // отзываем их здесь.
+        setStaged([])
       }
+
+      if (serverBacked) {
+        let remoteSaveFailed = false
+        for (const a of added) {
+          const ok = await createObjectMediaRemote(siteId, a.record, a.file)
+          updateSyncStatus(a.record.id, ok ? 'remote' : 'failed')
+          if (!ok) remoteSaveFailed = true
+        }
+        if (remoteSaveFailed) {
+          onRemoteSyncError?.(
+            'Часть файлов не удалось отправить на сервер. На плитке появится «Не на сервере» — нажмите ↻ чтобы повторить.',
+          )
+        }
+      }
+    } finally {
+      setSending(false)
     }
+  }
+
+  const formatStagedCount = (n: number): string => {
+    const m10 = n % 10
+    const m100 = n % 100
+    if (m10 === 1 && m100 !== 11) return `${n} файл`
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return `${n} файла`
+    return `${n} файлов`
   }
 
   /** Ручной retry для конкретной плитки. */
@@ -721,7 +805,7 @@ export function SiteObjectMediaDropSection({
               tabIndex={-1}
               className={styles.hiddenFile}
               onChange={(e) => {
-                void addFiles(e.target.files, 'photo')
+                stageFiles(e.target.files, 'photo')
                 e.target.value = ''
               }}
             />
@@ -733,7 +817,7 @@ export function SiteObjectMediaDropSection({
               tabIndex={-1}
               className={styles.hiddenFile}
               onChange={(e) => {
-                void addFiles(e.target.files, 'video')
+                stageFiles(e.target.files, 'video')
                 e.target.value = ''
               }}
             />
@@ -756,6 +840,84 @@ export function SiteObjectMediaDropSection({
           </button>
         </div>
       </div>
+
+      {staged.length > 0 ? (
+        <div
+          className={styles.stagedPanel}
+          aria-live="polite"
+          aria-label="Подготовлено к отправке"
+        >
+          <div className={styles.stagedHead}>
+            <div className={styles.stagedHeadLeft}>
+              <span className={styles.stagedKicker}>ГОТОВО К ОТПРАВКЕ</span>
+              <span className={styles.stagedTitle}>
+                {formatStagedCount(staged.length)} ·{' '}
+                {formatBytes(staged.reduce((sum, s) => sum + s.sizeBytes, 0))}
+              </span>
+              <span className={styles.stagedHint}>
+                Проверьте кадры и нажмите «Отправить».
+              </span>
+            </div>
+            <div className={styles.stagedHeadActions}>
+              <button
+                type="button"
+                className={styles.stagedClear}
+                onClick={clearStaged}
+                disabled={sending}
+              >
+                Очистить
+              </button>
+              <button
+                type="button"
+                className={styles.stagedSend}
+                onClick={() => {
+                  void commitStaged()
+                }}
+                disabled={sending}
+              >
+                {sending
+                  ? 'Отправляем…'
+                  : `Отправить · ${formatStagedCount(staged.length)}`}
+              </button>
+            </div>
+          </div>
+
+          <ul className={styles.stagedList}>
+            {staged.map((s) => (
+              <li key={s.id} className={styles.stagedTile}>
+                <div className={styles.stagedThumb}>
+                  {s.kind === 'photo' ? (
+                    <img src={s.previewUrl} alt={s.name} loading="lazy" />
+                  ) : (
+                    <video src={s.previewUrl} muted preload="metadata" />
+                  )}
+                  <span className={styles.stagedKindBadge}>
+                    {s.kind === 'photo' ? 'фото' : 'видео'}
+                  </span>
+                </div>
+                <div className={styles.stagedMeta}>
+                  <span className={styles.stagedName} title={s.name}>
+                    {s.name}
+                  </span>
+                  <span className={styles.stagedSize}>
+                    {formatBytes(s.sizeBytes)}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className={styles.stagedRemove}
+                  onClick={() => removeStaged(s.id)}
+                  disabled={sending}
+                  aria-label={`Убрать ${s.name}`}
+                  title="Убрать из очереди"
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {loadState === 'loading' ? (
         <p className={styles.empty}>Загружаем сохранённые фото и видео…</p>
