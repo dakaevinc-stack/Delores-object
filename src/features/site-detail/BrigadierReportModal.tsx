@@ -16,6 +16,7 @@ import {
 } from '../../domain/brigadierReport'
 import {
   BRIGADIER_WORK_PRESETS,
+  groupBrigadierPresets,
   type BrigadierWorkPreset,
 } from '../../data/brigadierWorkPresets'
 import {
@@ -434,18 +435,35 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
             </p>
 
             <div className={styles.iosCard}>
-              {BRIGADIER_WORK_PRESETS.map((p) => {
-                const checked = criteria.some((c) => c.presetId === p.id)
+              {groupBrigadierPresets().map(({ group, items }) => {
+                if (items.length === 0) return null
+                const checkedInGroup = items.reduce(
+                  (n, it) => (criteria.some((c) => c.presetId === it.id) ? n + 1 : n),
+                  0,
+                )
                 return (
-                  <label key={p.id} className={styles.catalogRow}>
-                    <input
-                      type="checkbox"
-                      className={styles.catalogCheck}
-                      checked={checked}
-                      onChange={(e) => togglePreset(p, e.target.checked)}
-                    />
-                    <span className={styles.catalogRowTitle}>{p.title}</span>
-                  </label>
+                  <div key={group.id} className={styles.catalogGroup}>
+                    <div className={styles.catalogGroupHead}>
+                      <span className={styles.catalogGroupTitle}>{group.title}</span>
+                      {checkedInGroup > 0 ? (
+                        <span className={styles.catalogGroupBadge}>{checkedInGroup}</span>
+                      ) : null}
+                    </div>
+                    {items.map((p) => {
+                      const checked = criteria.some((c) => c.presetId === p.id)
+                      return (
+                        <label key={p.id} className={styles.catalogRow}>
+                          <input
+                            type="checkbox"
+                            className={styles.catalogCheck}
+                            checked={checked}
+                            onChange={(e) => togglePreset(p, e.target.checked)}
+                          />
+                          <span className={styles.catalogRowTitle}>{p.title}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
                 )
               })}
               <button type="button" className={styles.addOwnRow} onClick={addCustomWork}>

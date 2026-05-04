@@ -318,6 +318,51 @@
   color: #8e8e93;
 }
 
+.catalogGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.catalogGroup + .catalogGroup {
+  border-top: 0.5px solid rgba(60, 60, 67, 0.12);
+}
+
+.catalogGroupHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 16px 6px;
+  background: #fafafa;
+  border-bottom: 0.5px solid rgba(60, 60, 67, 0.08);
+}
+
+.catalogGroupTitle {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6e6e73;
+}
+
+.catalogGroupBadge {
+  flex-shrink: 0;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(28, 75, 130, 0.95) 0%, rgba(15, 24, 40, 0.95) 100%);
+  color: #f4f6f9;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .catalogRow {
   display: flex;
   align-items: center;
@@ -336,6 +381,10 @@
   color: var(--text-strong);
   cursor: pointer;
   transition: background 0.12s ease;
+}
+
+.catalogGroup .catalogRow:last-child {
+  border-bottom: none;
 }
 
 .catalogRow:active {
