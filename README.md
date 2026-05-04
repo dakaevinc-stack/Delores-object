@@ -41,13 +41,15 @@ npm run preview
 
 Полный пошаговый гайд: **[docs/DEPLOY.ru.md](docs/DEPLOY.ru.md)**.
 
-Кратко: на чистом Ubuntu/Debian-сервере под `sudo`-юзером выполните
+С вашего Mac, из корня проекта:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dakaevinc-stack/Delores-object/main/scripts/deploy/server-bootstrap.sh | sudo bash
+npm run deploy:server -- <ваш-логин>@94.242.58.24
 ```
 
-Скрипт сам ставит Node.js 20 + nginx, создаёт пользователя `deploy`, клонирует репозиторий, собирает фронт, ставит systemd-сервис `site-forms` (бэкенд заявок/отчётов/медиа) и nginx-конфиг с проксированием `/api → 127.0.0.1:8787`. После завершения шеф открывает `http://<IP>/`.
+Wrapper подключится по SSH, скачает свежий `server-bootstrap.sh` из
+ветки `main` на GitHub и запустит его на сервере. Bootstrap идемпотентный:
+ставит Node.js 20 + nginx, создаёт пользователя `deploy`, клонирует репозиторий, собирает фронт, ставит systemd-сервис `site-forms` (бэкенд заявок/отчётов/медиа) и nginx-конфиг с проксированием `/api → 127.0.0.1:8787`. После завершения шеф открывает `http://<IP>/`.
 
 ## Полезные команды
 
