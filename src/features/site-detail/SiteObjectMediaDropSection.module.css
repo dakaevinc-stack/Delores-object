@@ -937,3 +937,91 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ============================================================
+   Индикатор синхронизации с сервером — каждой плитки
+   ============================================================ */
+
+.syncRow {
+  margin-top: 6px;
+  display: flex;
+}
+
+.syncPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: default;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  user-select: none;
+}
+
+.syncPill:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+
+.syncDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.syncSpinner {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1.6px solid currentColor;
+  border-right-color: transparent;
+  flex-shrink: 0;
+  animation: deloreshSyncSpin 0.7s linear infinite;
+}
+
+@keyframes deloreshSyncSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.syncPillRemote {
+  color: #1a6b3b;
+  background: rgba(26, 107, 59, 0.08);
+  border-color: rgba(26, 107, 59, 0.22);
+}
+
+.syncPillUploading {
+  color: #1c4b82;
+  background: rgba(28, 75, 130, 0.08);
+  border-color: rgba(28, 75, 130, 0.22);
+}
+
+.syncPillFailed {
+  color: #b22a35;
+  background: rgba(178, 42, 53, 0.07);
+  border-color: rgba(178, 42, 53, 0.3);
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.syncPillFailed:hover {
+  background: rgba(178, 42, 53, 0.13);
+  border-color: rgba(178, 42, 53, 0.45);
+}
+
+.syncPillLocal {
+  color: #6e6e73;
+  background: rgba(60, 60, 67, 0.06);
+  border-color: rgba(60, 60, 67, 0.18);
+}

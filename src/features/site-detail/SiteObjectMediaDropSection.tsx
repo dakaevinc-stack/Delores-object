@@ -185,6 +185,26 @@ export function SiteObjectMediaDropSection({
   const [items, setItems] = useState<SiteObjectMediaItem[]>([])
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
 
+  /**
+   * Карта статуса синхронизации каждого файла:
+   *   • 'remote'      — есть и локально, и на сервере (✓ другие устройства видят)
+   *   • 'uploading'   — сейчас идёт upload
+   *   • 'failed'      — попытка upload закончилась ошибкой; нужен retry
+   *   • 'local-only'  — только локально (либо API выключен, либо ещё не доходило до бэкфила)
+   * Ключ = id записи. Не лежит в IndexedDB — это derived state, чтобы
+   * не трогать схему хранилища и не зависеть от старых данных.
+   */
+  type SyncStatus = 'remote' | 'uploading' | 'failed' | 'local-only'
+  const [syncStatusById, setSyncStatusById] = useState<Record<string, SyncStatus>>({})
+  const updateSyncStatus = (id: string, status: SyncStatus) =>
+    setSyncStatusById((prev) => ({ ...prev, [id]: status }))
+  const updateSyncStatusBatch = (entries: Array<[string, SyncStatus]>) =>
+    setSyncStatusById((prev) => {
+      const next = { ...prev }
+      for (const [id, st] of entries) next[id] = st
+      return next
+    })
+
   const [knownAuthors, setKnownAuthors] = useState(() => loadRememberedAuthorNames(siteId))
   const [authorFio, setAuthorFio] = useState(() => loadRememberedAuthorNames(siteId)[0] ?? '')
   const [authorError, setAuthorError] = useState<string | null>(null)
@@ -223,6 +243,25 @@ export function SiteObjectMediaDropSection({
     itemsRef.current = items
   }, [items])
 
+  /**
+   * Если у пользователя ещё не залились файлы (uploading/failed) —
+   * на закрытии вкладки показываем нативное предупреждение «уверены,
+   * что хотите уйти?». Это спасает от «положил телефон в карман,
+   * пока не докачалось».
+   */
+  useEffect(() => {
+    const dirty = Object.values(syncStatusById).some(
+      (s) => s === 'uploading' || s === 'failed',
+    )
+    if (!dirty) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [syncStatusById])
+
   const serverManifestKey = useMemo(() => {
     const head = `${siteId}:`
     if (!serverBacked) return `${head}off`
@@ -239,6 +278,12 @@ export function SiteObjectMediaDropSection({
 
     void (async () => {
       try {
+        const remoteIds = new Set(
+          serverManifest.filter((m) => m.siteId === siteId).map((m) => m.id),
+        )
+
+        // (1) Скачиваем с сервера то, чего нет локально — чтобы это
+        //     устройство тоже видело файлы, добавленные с других.
         if (serverBacked && serverManifest.length > 0) {
           const localRows = await listMediaBySite(siteId)
           const localIds = new Set(localRows.map((r) => r.id))
@@ -272,6 +317,40 @@ export function SiteObjectMediaDropSection({
         }
         setItems(resolved)
         setLoadState('ready')
+
+        // (2) Считаем стартовый статус каждой плитки.
+        const initial: Record<string, SyncStatus> = {}
+        for (const m of resolved) {
+          if (!serverBacked) {
+            initial[m.id] = 'local-only'
+          } else if (remoteIds.has(m.id)) {
+            initial[m.id] = 'remote'
+          } else {
+            // Файл есть локально, но не пришёл с сервера → надо залить.
+            initial[m.id] = 'uploading'
+          }
+        }
+        setSyncStatusById(initial)
+
+        // (3) Бэкфил: для каждого `uploading` пытаемся залить blob на сервер.
+        //     Если получилось — статус 'remote'. Если нет — 'failed'
+        //     (с возможностью ретрая по кнопке).
+        if (serverBacked) {
+          const localRowsAfter = await listMediaBySite(siteId)
+          for (const row of localRowsAfter) {
+            if (cancelled) return
+            if (remoteIds.has(row.id)) continue
+            const blob = await getMediaBlob(row.id)
+            if (!blob) {
+              updateSyncStatus(row.id, 'failed')
+              continue
+            }
+            const ok = await createObjectMediaRemote(siteId, row, blob)
+            if (cancelled) return
+            updateSyncStatus(row.id, ok ? 'remote' : 'failed')
+            if (ok) remoteIds.add(row.id)
+          }
+        }
       } catch (err) {
         console.error('[media] load failed', err)
         if (!cancelled) setLoadState('error')
@@ -313,8 +392,7 @@ export function SiteObjectMediaDropSection({
     const caption = captionOrError()
     if (!caption) return
     const nowIso = new Date().toISOString()
-    const added: SiteObjectMediaItem[] = []
-    let remoteSaveFailed = false
+    const added: Array<{ item: SiteObjectMediaItem; record: StoredSiteMedia; file: File }> = []
 
     for (let i = 0; i < files.length; i += 1) {
       const file = files.item(i)
@@ -336,32 +414,72 @@ export function SiteObjectMediaDropSection({
       try {
         await putMedia(record, file)
         const url = URL.createObjectURL(file)
-        added.push(storedToItem(record, url))
-        if (serverBacked) {
-          const ok = await createObjectMediaRemote(siteId, record, file)
-          if (!ok) remoteSaveFailed = true
-        }
+        added.push({ item: storedToItem(record, url), record, file })
       } catch (err) {
         console.error('[media] save failed', err)
       }
-    }
-
-    if (remoteSaveFailed) {
-      onRemoteSyncError?.(
-        'Файлы сохранены на устройстве, но не удалось отправить на сервер. Проверьте сеть или ключ записи.',
-      )
     }
 
     if (added.length) {
       rememberAuthorName(siteId, caption)
       setKnownAuthors(loadRememberedAuthorNames(siteId))
       setItems((prev) =>
-        [...added, ...prev].sort(
+        [...added.map((a) => a.item), ...prev].sort(
           (a, b) =>
             new Date(b.capturedAtIso).getTime() - new Date(a.capturedAtIso).getTime(),
         ),
       )
+
+      // Сразу выставляем статус: 'uploading' (или 'local-only' если API выкл).
+      updateSyncStatusBatch(
+        added.map(({ record }) => [
+          record.id,
+          serverBacked ? 'uploading' : 'local-only',
+        ]),
+      )
     }
+
+    // Загрузка на сервер — параллельно, по одному файлу за раз, чтобы
+    // не «съесть» сеть. Каждый успех/провал немедленно отражается в UI.
+    if (serverBacked) {
+      let remoteSaveFailed = false
+      for (const a of added) {
+        const ok = await createObjectMediaRemote(siteId, a.record, a.file)
+        updateSyncStatus(a.record.id, ok ? 'remote' : 'failed')
+        if (!ok) remoteSaveFailed = true
+      }
+      if (remoteSaveFailed) {
+        onRemoteSyncError?.(
+          'Часть файлов не удалось отправить на сервер. На плитке появится «Не на сервере» — нажмите ↻ чтобы повторить.',
+        )
+      }
+    }
+  }
+
+  /** Ручной retry для конкретной плитки. */
+  const handleRetry = async (id: string) => {
+    if (!serverBacked) return
+    const item = itemsRef.current.find((x) => x.id === id)
+    if (!item) return
+    const record: StoredSiteMedia = {
+      id: item.id,
+      siteId: item.siteId,
+      kind: item.kind,
+      name: item.name,
+      mime: item.mime,
+      sizeBytes: item.sizeBytes,
+      capturedAtIso: item.capturedAtIso,
+      uploadedAtIso: item.uploadedAtIso,
+      authorCaption: item.authorCaption,
+    }
+    const blob = await getMediaBlob(id)
+    if (!blob) {
+      updateSyncStatus(id, 'failed')
+      return
+    }
+    updateSyncStatus(id, 'uploading')
+    const ok = await createObjectMediaRemote(siteId, record, blob)
+    updateSyncStatus(id, ok ? 'remote' : 'failed')
   }
 
   const handleRemove = async (id: string) => {
@@ -858,6 +976,61 @@ export function SiteObjectMediaDropSection({
                               >
                                 {formatUploadedStamp(m.uploadedAtIso)}
                               </time>
+                            </div>
+                            <div className={styles.syncRow}>
+                              {(() => {
+                                const status = syncStatusById[m.id] ?? 'local-only'
+                                if (status === 'remote') {
+                                  return (
+                                    <span
+                                      className={`${styles.syncPill} ${styles.syncPillRemote}`}
+                                      title="Файл загружен на сервер — виден всем устройствам и офису"
+                                    >
+                                      <span className={styles.syncDot} aria-hidden />
+                                      В облаке
+                                    </span>
+                                  )
+                                }
+                                if (status === 'uploading') {
+                                  return (
+                                    <span
+                                      className={`${styles.syncPill} ${styles.syncPillUploading}`}
+                                      title="Идёт загрузка на сервер — не закрывайте страницу до завершения"
+                                    >
+                                      <span className={styles.syncSpinner} aria-hidden />
+                                      Загружается…
+                                    </span>
+                                  )
+                                }
+                                if (status === 'failed') {
+                                  return (
+                                    <button
+                                      type="button"
+                                      className={`${styles.syncPill} ${styles.syncPillFailed}`}
+                                      onClick={() => {
+                                        void handleRetry(m.id)
+                                      }}
+                                      title="Не удалось отправить на сервер — нажмите, чтобы повторить"
+                                    >
+                                      <span className={styles.syncDot} aria-hidden />
+                                      Не на сервере · ↻ повторить
+                                    </button>
+                                  )
+                                }
+                                return (
+                                  <span
+                                    className={`${styles.syncPill} ${styles.syncPillLocal}`}
+                                    title={
+                                      serverBacked
+                                        ? 'Только на этом устройстве'
+                                        : 'API отчётов недоступно — файл лежит локально'
+                                    }
+                                  >
+                                    <span className={styles.syncDot} aria-hidden />
+                                    Только локально
+                                  </span>
+                                )
+                              })()}
                             </div>
                           </figcaption>
                         </figure>
