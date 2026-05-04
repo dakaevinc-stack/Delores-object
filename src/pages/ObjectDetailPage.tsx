@@ -181,18 +181,6 @@ export function ObjectDetailPage() {
         <button
           type="button"
           className={styles.toolbarCta}
-          onClick={() =>
-            document.getElementById('site-object-media')?.scrollIntoView({
-              behavior: 'smooth',
-              block: 'start',
-            })
-          }
-        >
-          Фото и видео без отчёта
-        </button>
-        <button
-          type="button"
-          className={styles.toolbarCta}
           onClick={() => {
             setProcurementKey((k) => k + 1)
             setProcurementOpen(true)
