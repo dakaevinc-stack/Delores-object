@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import type { BrigadierStoredReport } from '../domain/brigadierReport'
 import type { ProcurementRequest } from '../domain/procurementRequest'
 import { getSiteDetailDashboard } from '../data/siteDetail.mock'
+import { getWorkPlanForSite } from '../data/workPlans'
 import {
   loadBrigadierReports,
   materializeBrigadierReportForLocalStorage,
@@ -33,6 +34,7 @@ import { SiteReportingSection } from '../features/site-detail/SiteReportingSecti
 import { SiteRisksSection } from '../features/site-detail/SiteRisksSection'
 import { SiteScheduleSection } from '../features/site-detail/SiteScheduleSection'
 import { SiteWorkCriteriaSection } from '../features/site-detail/SiteWorkCriteriaSection'
+import { SiteWorkPlanSection } from '../features/site-detail/SiteWorkPlanSection'
 import styles from './ObjectDetailPage.module.css'
 
 export function ObjectDetailPage() {
@@ -149,6 +151,7 @@ export function ObjectDetailPage() {
   }
 
   const dashboard = getSiteDetailDashboard(site)
+  const workPlan = getWorkPlanForSite(site.id)
 
   return (
     <div className={styles.page}>
@@ -212,6 +215,8 @@ export function ObjectDetailPage() {
 
       <SiteDetailKpiGrid kpis={dashboard.kpis} />
       <SiteWorkCriteriaSection criteria={dashboard.criteria} />
+
+      {workPlan ? <SiteWorkPlanSection plan={workPlan} /> : null}
 
       <div className={styles.midGrid}>
         <SiteScheduleSection schedule={dashboard.schedule} />
