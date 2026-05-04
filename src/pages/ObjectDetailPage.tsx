@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { BrigadierStoredReport } from '../domain/brigadierReport'
 import type { ProcurementRequest } from '../domain/procurementRequest'
-import { getTelegramDailyReportsForSite } from '../data/dailyTelegramReports.mock'
 import { getSiteDetailDashboard } from '../data/siteDetail.mock'
 import {
   loadBrigadierReports,
@@ -26,7 +25,6 @@ import { useAllSites } from '../lib/useAllSites'
 import { BrigadierReportModal } from '../features/site-detail/BrigadierReportModal'
 import { ProcurementRequestModal } from '../features/site-detail/ProcurementRequestModal'
 import { SiteBrigadierSubmittedReportsSection } from '../features/site-detail/SiteBrigadierSubmittedSection'
-import { SiteDailyTelegramReportsSection } from '../features/site-detail/SiteDailyTelegramReportsSection'
 import { SiteObjectMediaDropSection } from '../features/site-detail/SiteObjectMediaDropSection'
 import { SiteProcurementRequestsSection } from '../features/site-detail/SiteProcurementRequestsSection'
 import { SiteDetailHeader } from '../features/site-detail/SiteDetailHeader'
@@ -151,7 +149,6 @@ export function ObjectDetailPage() {
   }
 
   const dashboard = getSiteDetailDashboard(site)
-  const telegramReports = getTelegramDailyReportsForSite(site.id)
 
   return (
     <div className={styles.page}>
@@ -277,8 +274,6 @@ export function ObjectDetailPage() {
           })
         }}
       />
-      <SiteDailyTelegramReportsSection siteName={site.name} reports={telegramReports} />
-
       <SiteRisksSection risks={dashboard.risks} />
 
       <footer className={styles.footer}>
