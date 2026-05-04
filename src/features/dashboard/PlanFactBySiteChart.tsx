@@ -13,6 +13,7 @@ import type { ConstructionSite } from '../../types/constructionSite'
 import { planFactGapPoints } from '../../domain/executiveDashboard'
 import { CHART } from './chartTheme'
 import { DashboardCard } from './DashboardCard'
+import { PlanFactBySiteList } from './PlanFactBySiteList'
 import { SiteAxisTick } from './SiteAxisTick'
 import styles from './PlanFactBySiteChart.module.css'
 
@@ -39,7 +40,15 @@ export function PlanFactBySiteChart({
       title="План и факт по объектам"
       description="Сравнение планового и фактического прогресса. Если план выше факта — объект отстаёт; порядок — по величине отставания."
     >
-      <div className={styles.chart}>
+      {/* Мобильный вид: компактный список с прогресс-барами на всю ширину
+          и подписью отставания/опережения. На широких экранах скрыт через CSS. */}
+      <div className={styles.mobileOnly}>
+        <PlanFactBySiteList sites={sites} />
+      </div>
+
+      {/* Десктоп: горизонтальный BarChart от recharts.
+          На мобильных скрыт через CSS, чтобы не сжимать столбики до 150 px. */}
+      <div className={`${styles.chart} ${styles.desktopOnly}`}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             layout="vertical"

@@ -5,8 +5,27 @@
   min-height: 380px;
 }
 
+/* Контейнеры для переключения «мобильный список ↔ десктопный график».
+   Поддерживается через display:none, чтобы recharts не считал размеры
+   неактивного варианта. */
+.desktopOnly {
+  display: block;
+}
+
+.mobileOnly {
+  display: none;
+}
+
 @media (max-width: 640px) {
+  .desktopOnly {
+    display: none;
+  }
+  .mobileOnly {
+    display: block;
+  }
   .chart {
+    /* На случай, если кто-то форс-показывает .chart — подстраиваем высоту,
+       но при display:none эти правила всё равно не сработают. */
     min-height: 260px;
     height: min(360px, 52vh);
   }
