@@ -40,6 +40,7 @@ npm run preview
 ### Развёртывание на VPS (94.242.58.24) одной командой
 
 Полный пошаговый гайд: **[docs/DEPLOY.ru.md](docs/DEPLOY.ru.md)**.
+Подключение Telegram-группы как источника отчётов бригадира: **[docs/TELEGRAM-BRIDGE.ru.md](docs/TELEGRAM-BRIDGE.ru.md)**.
 
 С вашего Mac, из корня проекта:
 

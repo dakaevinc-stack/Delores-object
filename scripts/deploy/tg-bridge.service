@@ -1,0 +1,33 @@
+[Unit]
+Description=Deloresh Objects — Telegram → site-forms bridge (бригадирские отчёты)
+Documentation=https://github.com/dakaevinc-stack/Delores-object
+After=network-online.target site-forms.service
+Wants=network-online.target
+Requires=site-forms.service
+
+[Service]
+Type=simple
+# Подменяется bootstrap-скриптом на вашего DEPLOY_USER (по умолчанию deploy).
+User=deploy
+Group=deploy
+WorkingDirectory=/home/deploy/Delores-object
+EnvironmentFile=/etc/deloresh/tg-bridge.env
+
+ExecStart=/usr/bin/node server/tg-bridge.mjs
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tg-bridge
+
+# Sandbox: пишем только в каталог состояния site-forms.
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=true
+NoNewPrivileges=true
+ReadWritePaths=/var/lib/deloresh/site-forms
+
+[Install]
+WantedBy=multi-user.target

@@ -170,6 +170,47 @@ step_systemd_service() {
     systemctl --no-pager --full status site-forms.service | head -n 20 || true
 }
 
+step_tg_bridge() {
+    local TG_ENV="/etc/deloresh/tg-bridge.env"
+    if [[ ! -f "$TG_ENV" ]]; then
+        log "Telegram-бридж: $TG_ENV не найден — пропускаю установку (включится автоматически после создания файла)."
+        # Если сервис уже стоял — оставим как есть.
+        return
+    fi
+
+    log "Ставлю systemd unit tg-bridge (Telegram → site-forms)"
+    local UNIT_SRC="$INSTALL_DIR/scripts/deploy/tg-bridge.service"
+    local UNIT_DST="/etc/systemd/system/tg-bridge.service"
+
+    if [[ ! -f "$UNIT_SRC" ]]; then
+        die "В репозитории не найден $UNIT_SRC — обновите код."
+    fi
+
+    # Подкладываем секрет site-forms в env tg-bridge, если его там ещё нет
+    # (чтобы оператору не приходилось вручную копировать одно и то же значение).
+    local SITE_SECRET
+    SITE_SECRET="$(awk -F= '/^DELORESH_SITE_FORMS_WRITE_SECRET=/{print substr($0, index($0,"=")+1)}' "$ENV_FILE")"
+    if [[ -n "$SITE_SECRET" ]] && grep -qE '^SITE_FORMS_WRITE_SECRET=\s*$' "$TG_ENV"; then
+        log "  подставляю SITE_FORMS_WRITE_SECRET в $TG_ENV"
+        sed -i "s|^SITE_FORMS_WRITE_SECRET=\\s*$|SITE_FORMS_WRITE_SECRET=${SITE_SECRET}|" "$TG_ENV"
+    fi
+
+    sed \
+        -e "s|^User=.*|User=${DEPLOY_USER}|" \
+        -e "s|^Group=.*|Group=${DEPLOY_USER}|" \
+        -e "s|^WorkingDirectory=.*|WorkingDirectory=${INSTALL_DIR}|" \
+        -e "s|^ReadWritePaths=.*|ReadWritePaths=${DATA_ROOT}|" \
+        "$UNIT_SRC" > "$UNIT_DST"
+
+    chmod 644 "$UNIT_DST"
+
+    systemctl daemon-reload
+    systemctl enable tg-bridge.service
+    systemctl restart tg-bridge.service
+    sleep 1
+    systemctl --no-pager --full status tg-bridge.service | head -n 20 || true
+}
+
 step_nginx() {
     log "Ставлю nginx-конфиг ($NGINX_VARIANT)"
     local NGINX_SRC NGINX_DST="/etc/nginx/sites-available/${NGINX_SITE_NAME}"
@@ -236,6 +277,7 @@ main() {
     step_clone_or_update
     step_build_frontend
     step_systemd_service
+    step_tg_bridge
     step_nginx
     step_firewall
     step_smoke_test
