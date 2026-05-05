@@ -51,7 +51,7 @@ export function CompletionBySiteChart({
     <DashboardCard
       kicker="Готовность портфеля"
       title="Фактическое выполнение по объектам"
-      description="Снизу — отстающие площадки, сверху — лидеры. Сортировка по фактическому проценту готовности."
+      description="Сверху — объекты, по которым нужна ближайшая оперативка: готовность ниже среднего по портфелю."
       meta={
         <span className={styles.metaPill}>
           <span className={styles.metaLabel}>Среднее</span>
