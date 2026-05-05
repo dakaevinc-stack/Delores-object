@@ -158,6 +158,98 @@
   letter-spacing: 0;
 }
 
+/* ─── Светофор по статусам разделов ─────────────────────────────── */
+
+.healthRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.healthPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
+  backdrop-filter: blur(6px);
+  font-size: 12.5px;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.healthPillDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.healthPillCount {
+  font-weight: 800;
+}
+
+.healthPillLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.healthPillCritical {
+  border-color: rgba(238, 45, 58, 0.32);
+  background: linear-gradient(180deg, rgba(238, 45, 58, 0.12) 0%, rgba(238, 45, 58, 0.04) 100%);
+}
+.healthPillCritical .healthPillDot {
+  background: var(--brand-red, #ee2d3a);
+  box-shadow: 0 0 8px rgba(238, 45, 58, 0.55);
+}
+.healthPillCritical .healthPillLabel {
+  color: var(--brand-red, #ee2d3a);
+}
+
+.healthPillAttention {
+  border-color: rgba(180, 83, 9, 0.32);
+  background: linear-gradient(180deg, rgba(194, 105, 26, 0.12) 0%, rgba(180, 83, 9, 0.04) 100%);
+}
+.healthPillAttention .healthPillDot {
+  background: #c2691a;
+  box-shadow: 0 0 8px rgba(180, 83, 9, 0.45);
+}
+.healthPillAttention .healthPillLabel {
+  color: #b45309;
+}
+
+.healthPillNormal {
+  border-color: rgba(22, 163, 74, 0.3);
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.12) 0%, rgba(22, 163, 74, 0.04) 100%);
+}
+.healthPillNormal .healthPillDot {
+  background: #16a34a;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.45);
+}
+.healthPillNormal .healthPillLabel {
+  color: #14532d;
+}
+
+.healthPillMuted {
+  border-color: rgba(15, 23, 42, 0.16);
+  background: rgba(15, 23, 42, 0.04);
+}
+.healthPillMuted .healthPillDot {
+  background: rgba(15, 23, 42, 0.4);
+}
+.healthPillMuted .healthPillLabel {
+  color: var(--muted);
+}
+
 /* ─── Список разделов (аккордеон) ──────────────────────────────────── */
 
 .sections {
@@ -169,13 +261,44 @@
   gap: 10px;
 }
 
+/*
+ * Карточка раздела плана. В шапке несёт всю аналитику:
+ * статус относительно дневного графика, % выполнения, тонкую
+ * шкалу с маркером «сегодня». Раскрытие — список позиций.
+ */
 .sectionCard {
+  position: relative;
   border-radius: 16px;
   background: #fff;
   border: 1px solid rgba(15, 23, 42, 0.08);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   overflow: hidden;
   transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+/* Цветной рельс слева — мгновенный визуальный сигнал статуса. */
+.sectionCard::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: rgba(15, 23, 42, 0.16);
+  z-index: 1;
+}
+
+.sectionTone_normal::before {
+  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+}
+.sectionTone_attention::before {
+  background: linear-gradient(180deg, #c2691a 0%, #b45309 100%);
+}
+.sectionTone_critical::before {
+  background: linear-gradient(180deg, #ef4444 0%, var(--brand-red, #ee2d3a) 100%);
+}
+.sectionTone_muted::before {
+  background: rgba(15, 23, 42, 0.18);
 }
 
 .sectionCardOpen {
@@ -188,8 +311,8 @@
   align-items: center;
   gap: 14px;
   width: 100%;
-  min-height: 64px;
-  padding: 12px 16px;
+  min-height: 76px;
+  padding: 14px 18px 14px 22px;
   border: none;
   background: transparent;
   font: inherit;
@@ -212,8 +335,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 10px;
   background: linear-gradient(180deg, var(--brand-navy, #172a4d) 0%, #0f1f3b 100%);
   color: #f4f6f9;
@@ -229,7 +352,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .sectionTitle {
@@ -249,23 +372,177 @@
   color: var(--muted);
 }
 
+.sectionMetaDivider {
+  color: rgba(15, 23, 42, 0.2);
+}
+
+.sectionMetaLag {
+  color: var(--brand-red, #ee2d3a);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/*
+ * Pill «В графике / Внимание / Отстаём / Без графика» в шапке раздела.
+ * Тон отдаёт цвет точки и рамке, лейбл всегда читаемый.
+ */
+.sectionStatusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.sectionStatusDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.sectionStatusPill_normal {
+  color: #14532d;
+  border-color: rgba(22, 163, 74, 0.32);
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.16) 0%, rgba(22, 163, 74, 0.04) 100%);
+}
+.sectionStatusPill_normal .sectionStatusDot {
+  background: #16a34a;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+}
+
+.sectionStatusPill_attention {
+  color: #7a3a0a;
+  border-color: rgba(180, 83, 9, 0.32);
+  background: linear-gradient(180deg, rgba(194, 105, 26, 0.14) 0%, rgba(180, 83, 9, 0.04) 100%);
+}
+.sectionStatusPill_attention .sectionStatusDot {
+  background: #c2691a;
+  box-shadow: 0 0 6px rgba(180, 83, 9, 0.6);
+}
+
+.sectionStatusPill_critical {
+  color: #7a0c14;
+  border-color: rgba(238, 45, 58, 0.32);
+  background: linear-gradient(180deg, rgba(238, 45, 58, 0.16) 0%, rgba(238, 45, 58, 0.04) 100%);
+}
+.sectionStatusPill_critical .sectionStatusDot {
+  background: var(--brand-red, #ee2d3a);
+  box-shadow: 0 0 6px rgba(238, 45, 58, 0.6);
+}
+
+.sectionStatusPill_muted {
+  color: var(--muted);
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(15, 23, 42, 0.04);
+}
+.sectionStatusPill_muted .sectionStatusDot {
+  background: rgba(15, 23, 42, 0.4);
+}
+
 .deferredHint {
   color: #b45309;
 }
 
+/*
+ * Тонкая шкала прогресса в шапке раздела с маркером «сегодня».
+ * Главный визуальный сигнал — если заливка не дотягивает до риски,
+ * раздел отстаёт от графика.
+ */
+.sectionBar {
+  position: relative;
+  display: block;
+  height: 6px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: rgba(23, 42, 77, 0.07);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 1px 1px rgba(15, 23, 42, 0.04) inset;
+}
+
+.sectionBarFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: rgba(23, 42, 77, 0.5);
+  transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sectionTone_normal .sectionBarFill {
+  background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.35);
+}
+.sectionTone_attention .sectionBarFill {
+  background: linear-gradient(90deg, #1c4b82 0%, #c2691a 70%, #b45309 100%);
+  box-shadow: 0 0 10px rgba(194, 105, 26, 0.35);
+}
+.sectionTone_critical .sectionBarFill {
+  background: linear-gradient(90deg, var(--brand-navy, #172a4d) 0%, var(--brand-red, #ee2d3a) 100%);
+  box-shadow: 0 0 10px rgba(238, 45, 58, 0.35);
+}
+.sectionTone_muted .sectionBarFill {
+  background: rgba(15, 23, 42, 0.18);
+}
+
+.sectionBarToday {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: linear-gradient(
+    180deg,
+    var(--brand-navy, #172a4d) 0%,
+    var(--brand-red, #ee2d3a) 100%
+  );
+  border-radius: 1px;
+  transform: translateX(-1px);
+  box-shadow: 0 0 6px rgba(238, 45, 58, 0.4);
+}
+
+/* Большой % выполнения справа в шапке раздела. */
 .sectionPercent {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: baseline;
   min-width: 56px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(23, 42, 77, 0.06);
+  padding: 0;
+  background: transparent;
+  border: none;
   color: var(--text-strong);
-  font-size: 13px;
-  font-weight: 700;
-  text-align: center;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
-  border: 1px solid rgba(23, 42, 77, 0.1);
+  line-height: 1;
+}
+
+.sectionPercentSign {
+  font-size: 0.55em;
+  font-weight: 700;
+  margin-left: 2px;
+  color: var(--muted);
+}
+
+.sectionTone_normal .sectionPercent {
+  color: #16a34a;
+}
+.sectionTone_attention .sectionPercent {
+  color: #b45309;
+}
+.sectionTone_critical .sectionPercent {
+  color: var(--brand-red, #ee2d3a);
+}
+.sectionTone_muted .sectionPercent {
+  color: var(--muted);
 }
 
 .sectionChevron {
@@ -628,14 +905,12 @@
   }
 
   .sectionHead {
-    padding: 12px 12px 12px 14px;
+    padding: 12px 12px 12px 18px;
     gap: 10px;
   }
 
   .sectionPercent {
-    min-width: 48px;
-    padding: 5px 10px;
-    font-size: 12px;
+    font-size: 22px;
   }
 
   .sectionTitle {
@@ -645,6 +920,28 @@
   .sectionMeta {
     font-size: 12px;
     gap: 6px;
+  }
+
+  .sectionStatusPill {
+    padding: 2px 8px 2px 6px;
+    font-size: 10px;
+  }
+
+  .sectionBar {
+    height: 5px;
+  }
+
+  .healthRow {
+    gap: 6px;
+  }
+
+  .healthPill {
+    padding: 5px 12px 5px 10px;
+    font-size: 11.5px;
+  }
+
+  .healthPillLabel {
+    font-size: 10px;
   }
 
   .itemList {

@@ -37,7 +37,6 @@ import { SiteDetailKpiGrid } from '../features/site-detail/SiteDetailKpiGrid'
 import { SiteReportingSection } from '../features/site-detail/SiteReportingSection'
 import { SiteRisksSection } from '../features/site-detail/SiteRisksSection'
 import { SiteScheduleSection } from '../features/site-detail/SiteScheduleSection'
-import { SiteWorkCriteriaSection } from '../features/site-detail/SiteWorkCriteriaSection'
 import { SiteWorkPlanSection } from '../features/site-detail/SiteWorkPlanSection'
 import styles from './ObjectDetailPage.module.css'
 
@@ -211,7 +210,6 @@ export function ObjectDetailPage() {
       />
 
       <SiteDetailKpiGrid kpis={dashboard.kpis} />
-      <SiteWorkCriteriaSection plan={workPlan} criteria={dashboard.criteria} />
 
       {workPlan ? <SiteWorkPlanSection plan={workPlan} /> : null}
 

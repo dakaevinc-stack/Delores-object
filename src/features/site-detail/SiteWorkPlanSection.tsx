@@ -7,9 +7,12 @@ import {
   formatVolume,
   isItemDeferred,
   isItemScheduled,
+  summarizeSectionSchedule,
   summarizeWorkPlan,
   summarizeWorkPlanSection,
   workItemPercent,
+  type SectionScheduleHealth,
+  type SectionScheduleStatus,
   type WorkPlan,
   type WorkPlanSection,
 } from '../../domain/workPlan'
@@ -27,8 +30,48 @@ function pluralize(n: number, [one, few, many]: readonly [string, string, string
   return many
 }
 
+const STATUS_LABEL: Record<SectionScheduleStatus, string> = {
+  normal: 'В графике',
+  attention: 'Внимание',
+  critical: 'Отстаём',
+  not_scheduled: 'Без графика',
+}
+
+const NUM_FMT = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 })
+
+function fmtSigned(n: number): string {
+  if (n === 0) return '0'
+  if (n > 0) return `+${NUM_FMT.format(n)}`
+  return `−${NUM_FMT.format(Math.abs(n))}`
+}
+
 export function SiteWorkPlanSection({ plan }: Props) {
   const summary = useMemo(() => summarizeWorkPlan(plan), [plan])
+  const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), [])
+
+  // Здоровье каждого раздела относительно дневного графика.
+  // Сюда складываем общую логику бывшей `SiteWorkCriteriaSection` —
+  // теперь она не отдельная секция, а часть шапки раздела плана.
+  const healthByNumber = useMemo(() => {
+    const map = new Map<string, SectionScheduleHealth>()
+    for (const s of plan.sections) {
+      map.set(s.number, summarizeSectionSchedule(s, todayIso))
+    }
+    return map
+  }, [plan, todayIso])
+
+  // Распределение разделов по статусам — для пилюль в шапке.
+  const healthBuckets = useMemo(() => {
+    const buckets: Record<SectionScheduleStatus, number> = {
+      normal: 0,
+      attention: 0,
+      critical: 0,
+      not_scheduled: 0,
+    }
+    for (const h of healthByNumber.values()) buckets[h.status] += 1
+    return buckets
+  }, [healthByNumber])
+
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set())
 
   const toggleSection = (number: string) => {
@@ -123,6 +166,43 @@ export function SiteWorkPlanSection({ plan }: Props) {
               </div>
             ) : null}
           </dl>
+
+          {/*
+           * Светофор по разделам относительно дневного графика. Это
+           * главный индикатор «здоровья объекта» одной строкой —
+           * раньше жил в отдельной секции «Критерии выполнения работ»,
+           * сейчас живёт прямо здесь, чтобы не дублировать данные.
+           */}
+          <div className={styles.healthRow}>
+            {healthBuckets.critical > 0 ? (
+              <span className={`${styles.healthPill} ${styles.healthPillCritical}`}>
+                <span className={styles.healthPillDot} aria-hidden />
+                <span className={styles.healthPillCount}>{healthBuckets.critical}</span>
+                <span className={styles.healthPillLabel}>отстают</span>
+              </span>
+            ) : null}
+            {healthBuckets.attention > 0 ? (
+              <span className={`${styles.healthPill} ${styles.healthPillAttention}`}>
+                <span className={styles.healthPillDot} aria-hidden />
+                <span className={styles.healthPillCount}>{healthBuckets.attention}</span>
+                <span className={styles.healthPillLabel}>под вниманием</span>
+              </span>
+            ) : null}
+            {healthBuckets.normal > 0 ? (
+              <span className={`${styles.healthPill} ${styles.healthPillNormal}`}>
+                <span className={styles.healthPillDot} aria-hidden />
+                <span className={styles.healthPillCount}>{healthBuckets.normal}</span>
+                <span className={styles.healthPillLabel}>в графике</span>
+              </span>
+            ) : null}
+            {healthBuckets.not_scheduled > 0 ? (
+              <span className={`${styles.healthPill} ${styles.healthPillMuted}`}>
+                <span className={styles.healthPillDot} aria-hidden />
+                <span className={styles.healthPillCount}>{healthBuckets.not_scheduled}</span>
+                <span className={styles.healthPillLabel}>без графика</span>
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -131,6 +211,7 @@ export function SiteWorkPlanSection({ plan }: Props) {
           <SectionCard
             key={section.number}
             section={section}
+            health={healthByNumber.get(section.number)}
             open={openSections.has(section.number)}
             onToggle={() => toggleSection(section.number)}
           />
@@ -142,10 +223,12 @@ export function SiteWorkPlanSection({ plan }: Props) {
 
 function SectionCard({
   section,
+  health,
   open,
   onToggle,
 }: {
   section: WorkPlanSection
+  health: SectionScheduleHealth | undefined
   open: boolean
   onToggle: () => void
 }) {
@@ -153,8 +236,37 @@ function SectionCard({
   const period = formatPeriod(summary.earliestStartIso, summary.latestEndIso)
   const headingId = `work-plan-section-${section.number}`
 
+  // Тон карточки и шкалы — по статусу здоровья.
+  // Если health не пришёл (что не должно случаться, но на всякий
+  // случай) — деградируем в нейтральный normal.
+  const statusKey: SectionScheduleStatus = health?.status ?? 'not_scheduled'
+  const tone =
+    statusKey === 'normal'
+      ? 'normal'
+      : statusKey === 'attention'
+        ? 'attention'
+        : statusKey === 'critical'
+          ? 'critical'
+          : 'muted'
+
+  // Маркер «где должно быть к сегодня по графику» на шкале раздела —
+  // главный визуальный сигнал. Считаем относительно `planUnits`,
+  // потому что заливка тоже считается от него (factUnits/planUnits).
+  const todayMarkerPercent =
+    health && health.planUnits > 0 && health.expectedTodayUnits !== null
+      ? Math.max(0, Math.min(100, (health.expectedTodayUnits / health.planUnits) * 100))
+      : null
+
+  // Лаг от графика в абсолютных числах для подсказки в шапке.
+  const lag =
+    health && health.expectedTodayUnits !== null
+      ? Math.round(health.factUnits - health.expectedTodayUnits)
+      : null
+
   return (
-    <li className={`${styles.sectionCard} ${open ? styles.sectionCardOpen : ''}`}>
+    <li
+      className={`${styles.sectionCard} ${open ? styles.sectionCardOpen : ''} ${styles[`sectionTone_${tone}`]}`}
+    >
       <button
         type="button"
         className={styles.sectionHead}
@@ -170,24 +282,67 @@ function SectionCard({
             {section.title}
           </span>
           <span className={styles.sectionMeta}>
+            <span className={`${styles.sectionStatusPill} ${styles[`sectionStatusPill_${tone}`]}`}>
+              <span className={styles.sectionStatusDot} aria-hidden />
+              {STATUS_LABEL[statusKey]}
+            </span>
+            <span aria-hidden className={styles.sectionMetaDivider}>
+              ·
+            </span>
             <span>
               {summary.itemsCount}{' '}
               {pluralize(summary.itemsCount, ['позиция', 'позиции', 'позиций'])}
             </span>
-            <span aria-hidden>·</span>
+            <span aria-hidden className={styles.sectionMetaDivider}>
+              ·
+            </span>
             <span>{period}</span>
+            {health && lag !== null && lag < 0 && health.unit ? (
+              <>
+                <span aria-hidden className={styles.sectionMetaDivider}>
+                  ·
+                </span>
+                <span className={styles.sectionMetaLag}>
+                  {fmtSigned(lag)} {unitLabel(health.unit)} к графику
+                </span>
+              </>
+            ) : null}
             {summary.deferredCount > 0 ? (
               <>
-                <span aria-hidden>·</span>
+                <span aria-hidden className={styles.sectionMetaDivider}>
+                  ·
+                </span>
                 <span className={styles.deferredHint}>
                   {summary.deferredCount} без срока
                 </span>
               </>
             ) : null}
           </span>
+
+          {/*
+           * Тонкая шкала прогресса прямо в шапке раздела с маркером
+           * «сегодня» на ней. Это позволяет прорабу видеть здоровье
+           * раздела без раскрытия аккордеона.
+           */}
+          <span className={styles.sectionBar} aria-hidden>
+            <span
+              className={styles.sectionBarFill}
+              style={{ width: `${Math.max(0, Math.min(100, summary.averagePercent))}%` }}
+            />
+            {todayMarkerPercent !== null ? (
+              <span
+                className={styles.sectionBarToday}
+                style={{ left: `${todayMarkerPercent}%` }}
+              />
+            ) : null}
+          </span>
         </span>
-        <span className={styles.sectionPercent} aria-label={`выполнено ${summary.averagePercent}%`}>
-          {summary.averagePercent.toFixed(0)}%
+        <span
+          className={styles.sectionPercent}
+          aria-label={`выполнено ${summary.averagePercent} процентов`}
+        >
+          {summary.averagePercent.toFixed(0)}
+          <span className={styles.sectionPercentSign}>%</span>
         </span>
         <span className={styles.sectionChevron} aria-hidden>
           <svg
