@@ -1,10 +1,15 @@
 /*
- * Премиум-чарт «План и факт по объектам» — плотный dumbbell.
+ * Премиум-чарт «План и факт по объектам» — bullet pattern.
  *
- * Каждая строка занимает ~52 px: название и значения в шапке,
- * dumbbell-трек снизу. Подписи значений ушли из-под точек в
- * шапку строки — это убирает «двойной» вертикальный воздух и
- * делает блок раза в три ниже, чем в первой ревизии.
+ * Каждая строка читается за полсекунды:
+ * — цветной столбик «факт» от 0 до фактического %, тон по статусу;
+ * — вертикальная навигационная отметка «план» — куда должен прийти объект;
+ * — между ними, при отставании, штрихованная красная зона «долга»;
+ * — при опережении — мягкая зелёная подсветка «бонуса».
+ *
+ * Это классический bullet-pattern из dataviz-практики (Stephen Few),
+ * проверенный годами на дашбордах исполнения и закупок: одна заливка +
+ * одна целевая риска — глаз ловит дельту мгновенно, без расчётов.
  */
 
 .wrap {
@@ -74,7 +79,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 11px 16px 13px 18px;
+  padding: 12px 16px 14px 18px;
   border-radius: 14px;
   border: 1px solid rgba(15, 23, 42, 0.07);
   background: rgba(255, 255, 255, 0.7);
@@ -86,7 +91,7 @@
 
 .row:hover {
   transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.95);
   box-shadow: 0 8px 22px rgba(15, 23, 42, 0.07);
 }
 
@@ -248,18 +253,20 @@
   box-shadow: 0 0 6px rgba(238, 45, 58, 0.6);
 }
 
-/* ─── Dumbbell-трек ──────────────────────────────────────────────── */
+/* ─── Bullet-track ───────────────────────────────────────────────── */
 
 .track {
   position: relative;
   width: 100%;
-  height: 14px;
+  height: 18px;
   margin-top: 2px;
+  border-radius: 999px;
+  overflow: visible;
 }
 
 .trackBase {
   position: absolute;
-  inset: 5px 0;
+  inset: 0;
   border-radius: 999px;
   background: linear-gradient(
     180deg,
@@ -273,7 +280,7 @@
 
 .trackTicks {
   position: absolute;
-  inset: 5px 0;
+  inset: 0;
   pointer-events: none;
   border-radius: 999px;
   overflow: hidden;
@@ -281,97 +288,153 @@
 
 .trackTick {
   position: absolute;
-  top: 0;
-  bottom: 0;
+  top: 4px;
+  bottom: 4px;
   width: 1px;
   background: rgba(15, 17, 20, 0.06);
   transform: translateX(-0.5px);
 }
 
-.spine {
+/* Заливка «факт» — основной сигнал. */
+.factFill {
   position: absolute;
-  top: 6px;
-  bottom: 6px;
+  top: 0;
+  bottom: 0;
   left: 0;
   border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    rgba(23, 42, 77, 0.10) 0%,
-    rgba(23, 42, 77, 0.18) 100%
-  );
-}
-
-.connector {
-  position: absolute;
-  top: 5px;
-  bottom: 5px;
-  border-radius: 999px;
   z-index: 1;
+  overflow: hidden;
+  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.connector_behind {
+.factFill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+}
+
+.factSheen {
+  position: absolute;
+  inset: 1px 0 auto 0;
+  height: 6px;
+  border-radius: 999px;
   background: linear-gradient(
-    90deg,
-    var(--brand-red, #ee2d3a) 0%,
-    var(--brand-navy, #172a4d) 100%
+    180deg,
+    rgba(255, 255, 255, 0.45) 0%,
+    rgba(255, 255, 255, 0) 100%
   );
-  box-shadow: 0 0 12px rgba(238, 45, 58, 0.4);
+  pointer-events: none;
 }
 
-.connector_ahead {
-  background: linear-gradient(90deg, #16a34a 0%, #1c4b82 100%);
+.factFill_behind {
+  background: linear-gradient(
+    180deg,
+    #f87171 0%,
+    var(--brand-red, #ee2d3a) 60%,
+    #c81d28 100%
+  );
+  box-shadow: 0 0 10px rgba(238, 45, 58, 0.35);
+}
+
+.factFill_ahead {
+  background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+}
+
+.factFill_ontrack {
+  background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%);
   box-shadow: 0 0 10px rgba(34, 197, 94, 0.35);
 }
 
-.connector_ontrack {
-  background: linear-gradient(90deg, #16a34a 0%, #16a34a 100%);
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
-}
-
-/* ─── Dumbbell-точки (компакт, 14 px) ────────────────────────────── */
-
-.dot {
+/* Зона долга — между фактом и планом, когда отстаём. Полосочки + красный. */
+.gapZone {
   position: absolute;
-  top: 50%;
-  width: 14px;
-  height: 14px;
-  margin-left: -7px;
-  border-radius: 999px;
-  transform: translateY(-50%);
+  top: 2px;
+  bottom: 2px;
+  border-radius: 4px;
   z-index: 2;
+  background-image:
+    linear-gradient(
+      135deg,
+      rgba(238, 45, 58, 0.22) 0px,
+      rgba(238, 45, 58, 0.22) 4px,
+      rgba(238, 45, 58, 0.05) 4px,
+      rgba(238, 45, 58, 0.05) 8px
+    );
+  border: 1px dashed rgba(238, 45, 58, 0.55);
+}
+
+/* Зона бонуса — когда опережаем. Лёгкая зелень. */
+.bonusZone {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 4px;
+  z-index: 2;
+  background-image:
+    linear-gradient(
+      135deg,
+      rgba(34, 197, 94, 0.25) 0px,
+      rgba(34, 197, 94, 0.25) 4px,
+      rgba(34, 197, 94, 0.06) 4px,
+      rgba(34, 197, 94, 0.06) 8px
+    );
+  border: 1px dashed rgba(22, 163, 74, 0.55);
+}
+
+/* Плановая отметка — точно «куда должны прийти». */
+.planMarker {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  z-index: 3;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.planMarkerLine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  margin-left: -1.5px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    var(--brand-navy, #172a4d) 0%,
+    #1c4b82 100%
+  );
   box-shadow:
-    0 0 0 2.5px #fff,
-    0 4px 10px rgba(15, 23, 42, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
-  transition: transform 0.18s ease;
+    0 0 0 1px #fff,
+    0 4px 10px rgba(15, 23, 42, 0.28);
 }
 
-.row:hover .dot {
-  transform: translateY(-50%) scale(1.12);
+.planMarkerCap {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  width: 11px;
+  height: 11px;
+  margin-left: -5.5px;
+  background: var(--brand-navy, #172a4d);
+  border-radius: 3px;
+  transform: rotate(45deg);
+  box-shadow:
+    0 0 0 2px #fff,
+    0 4px 10px rgba(15, 23, 42, 0.28);
 }
 
-.dotPlan {
-  background: linear-gradient(180deg, #1c4b82 0%, var(--brand-navy, #172a4d) 100%);
-}
-
-.dotFact_behind {
-  background: linear-gradient(180deg, #f57878 0%, var(--brand-red, #ee2d3a) 100%);
-}
-
-.dotFact_ahead {
-  background: linear-gradient(180deg, #3fd07a 0%, #16a34a 100%);
-}
-
-.dotFact_ontrack {
-  background: linear-gradient(180deg, #3fd07a 0%, #16a34a 100%);
-}
-
-/* ─── Ось снизу (под всеми строками) ─────────────────────────────── */
+/* ─── Ось ────────────────────────────────────────────────────────── */
 
 .scale {
   position: relative;
   height: 18px;
-  margin-top: 2px;
+  margin-top: 4px;
   border-top: 1px dashed rgba(15, 23, 42, 0.14);
   padding-top: 6px;
 }
@@ -429,48 +492,88 @@
   color: var(--muted);
 }
 
-.legendDot {
-  display: inline-block;
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    0 0 0 1px rgba(0, 0, 0, 0.06);
-}
-
-.legendDotPlan {
-  background: linear-gradient(180deg, #1c4b82 0%, var(--brand-navy, #172a4d) 100%);
-}
-
-.legendDotFact {
-  background: linear-gradient(180deg, #f57878 0%, var(--brand-red, #ee2d3a) 100%);
-}
-
 .legendBar {
   display: inline-block;
-  width: 24px;
-  height: 4px;
+  width: 26px;
+  height: 8px;
   border-radius: 999px;
 }
 
-.legendBar_behind {
-  background: linear-gradient(
-    90deg,
-    var(--brand-red, #ee2d3a) 0%,
-    var(--brand-navy, #172a4d) 100%
-  );
-  box-shadow: 0 0 8px rgba(238, 45, 58, 0.35);
+.legendBar_fact {
+  background: linear-gradient(180deg, #4ade80 0%, #16a34a 100%);
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.35);
 }
 
-.legendBar_ahead {
-  background: linear-gradient(90deg, #16a34a 0%, #1c4b82 100%);
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.35);
+.legendMarker {
+  position: relative;
+  display: inline-block;
+  width: 11px;
+  height: 14px;
+}
+
+.legendMarker::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  margin-left: -1.5px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    var(--brand-navy, #172a4d) 0%,
+    #1c4b82 100%
+  );
+}
+
+.legendMarker::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  background: var(--brand-navy, #172a4d);
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+
+.legendHatch {
+  display: inline-block;
+  width: 26px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+.legendHatch_behind {
+  background-image:
+    linear-gradient(
+      135deg,
+      rgba(238, 45, 58, 0.35) 0px,
+      rgba(238, 45, 58, 0.35) 4px,
+      rgba(238, 45, 58, 0.08) 4px,
+      rgba(238, 45, 58, 0.08) 8px
+    );
+  border: 1px dashed rgba(238, 45, 58, 0.55);
+}
+
+.legendHatch_ahead {
+  background-image:
+    linear-gradient(
+      135deg,
+      rgba(34, 197, 94, 0.4) 0px,
+      rgba(34, 197, 94, 0.4) 4px,
+      rgba(34, 197, 94, 0.1) 4px,
+      rgba(34, 197, 94, 0.1) 8px
+    );
+  border: 1px dashed rgba(22, 163, 74, 0.55);
 }
 
 @media (max-width: 720px) {
   .row {
-    padding: 10px 12px 12px 14px;
+    padding: 11px 12px 13px 14px;
   }
 
   .name {
@@ -492,7 +595,8 @@
     font-size: 11.5px;
   }
 
-  .legendBar {
-    width: 18px;
+  .legendBar,
+  .legendHatch {
+    width: 20px;
   }
 }

@@ -61,7 +61,7 @@ export function PlanFactBySiteChart({
     <DashboardCard
       kicker="План и факт"
       title="Сравнение по объектам"
-      description="Каждая строка — пара точек «Факт ↔ План». Цветная перемычка показывает, насколько площадка отстаёт или идёт впереди графика."
+      description="Цветная полоса — фактическое выполнение, вертикальная отметка — где объект должен быть по плану. Расстояние между ними — отставание или опережение."
       meta={
         <span className={styles.metaPill}>
           <span className={styles.metaLabel}>Среднее</span>
@@ -98,16 +98,6 @@ export function PlanFactBySiteChart({
                   <span className={styles.name}>{r.name}</span>
                   <span className={styles.values}>
                     <span className={styles.value}>
-                      <span className={styles.valueLabel}>План</span>
-                      <span className={`${styles.valueNum} ${styles.valueNum_plan}`}>
-                        {Math.round(plan)}
-                      </span>
-                      <span className={styles.valuePct}>%</span>
-                    </span>
-                    <span className={styles.valueDivider} aria-hidden>
-                      ·
-                    </span>
-                    <span className={styles.value}>
                       <span className={styles.valueLabel}>Факт</span>
                       <span
                         className={`${styles.valueNum} ${
@@ -119,6 +109,16 @@ export function PlanFactBySiteChart({
                         }`}
                       >
                         {Math.round(fact)}
+                      </span>
+                      <span className={styles.valuePct}>%</span>
+                    </span>
+                    <span className={styles.valueDivider} aria-hidden>
+                      ·
+                    </span>
+                    <span className={styles.value}>
+                      <span className={styles.valueLabel}>План</span>
+                      <span className={`${styles.valueNum} ${styles.valueNum_plan}`}>
+                        {Math.round(plan)}
                       </span>
                       <span className={styles.valuePct}>%</span>
                     </span>
@@ -136,8 +136,9 @@ export function PlanFactBySiteChart({
                 <div
                   className={styles.track}
                   role="img"
-                  aria-label={`${r.name}: план ${Math.round(plan)}%, факт ${Math.round(fact)}%`}
+                  aria-label={`${r.name}: факт ${Math.round(fact)}%, план ${Math.round(plan)}%`}
                 >
+                  {/* Серая дорожка-фон. */}
                   <div className={styles.trackBase} aria-hidden />
                   <div className={styles.trackTicks} aria-hidden>
                     {[25, 50, 75].map((t) => (
@@ -149,42 +150,50 @@ export function PlanFactBySiteChart({
                     ))}
                   </div>
 
-                  {/* Тонкий шов от 0 до меньшей точки. */}
-                  <span
-                    className={styles.spine}
-                    style={{ width: `${lo}%` }}
-                    aria-hidden
-                  />
-
-                  {/* Цветная перемычка между фактом и планом. */}
-                  <span
-                    className={`${styles.connector} ${
+                  {/* Заливка факта — главный сигнал. Цвет — по статусу. */}
+                  <div
+                    className={`${styles.factFill} ${
                       isBehind
-                        ? styles.connector_behind
+                        ? styles.factFill_behind
                         : isAhead
-                          ? styles.connector_ahead
-                          : styles.connector_ontrack
+                          ? styles.factFill_ahead
+                          : styles.factFill_ontrack
                     }`}
-                    style={{ left: `${lo}%`, width: `${Math.max(0, hi - lo)}%` }}
+                    style={{ width: `${fact}%` }}
                     aria-hidden
-                  />
+                  >
+                    <span className={styles.factSheen} aria-hidden />
+                  </div>
 
-                  <span
-                    className={`${styles.dot} ${styles.dotPlan}`}
+                  {/* Заштрихованный «долг» — только когда отстаём:
+                      зона от факта до плановой отметки. */}
+                  {isBehind && (
+                    <div
+                      className={styles.gapZone}
+                      style={{ left: `${lo}%`, width: `${Math.max(0, hi - lo)}%` }}
+                      aria-hidden
+                    />
+                  )}
+
+                  {/* Лёгкий «бонус» — когда опережаем: подсветка
+                      участка от плана до факта. */}
+                  {isAhead && (
+                    <div
+                      className={styles.bonusZone}
+                      style={{ left: `${lo}%`, width: `${Math.max(0, hi - lo)}%` }}
+                      aria-hidden
+                    />
+                  )}
+
+                  {/* Плановая отметка — где объект должен быть. */}
+                  <div
+                    className={styles.planMarker}
                     style={{ left: `${plan}%` }}
                     aria-hidden
-                  />
-                  <span
-                    className={`${styles.dot} ${
-                      isBehind
-                        ? styles.dotFact_behind
-                        : isAhead
-                          ? styles.dotFact_ahead
-                          : styles.dotFact_ontrack
-                    }`}
-                    style={{ left: `${fact}%` }}
-                    aria-hidden
-                  />
+                  >
+                    <span className={styles.planMarkerLine} />
+                    <span className={styles.planMarkerCap} />
+                  </div>
                 </div>
               </li>
             )
@@ -201,20 +210,29 @@ export function PlanFactBySiteChart({
 
         <div className={styles.legend}>
           <span className={styles.legendItem}>
-            <span className={`${styles.legendDot} ${styles.legendDotPlan}`} aria-hidden />
-            План
-          </span>
-          <span className={styles.legendItem}>
-            <span className={`${styles.legendDot} ${styles.legendDotFact}`} aria-hidden />
+            <span
+              className={`${styles.legendBar} ${styles.legendBar_fact}`}
+              aria-hidden
+            />
             Факт
           </span>
           <span className={styles.legendItem}>
-            <span className={`${styles.legendBar} ${styles.legendBar_behind}`} aria-hidden />
-            Отстаём
+            <span className={styles.legendMarker} aria-hidden />
+            План
           </span>
           <span className={styles.legendItem}>
-            <span className={`${styles.legendBar} ${styles.legendBar_ahead}`} aria-hidden />
-            Опережаем
+            <span
+              className={`${styles.legendHatch} ${styles.legendHatch_behind}`}
+              aria-hidden
+            />
+            Отставание
+          </span>
+          <span className={styles.legendItem}>
+            <span
+              className={`${styles.legendHatch} ${styles.legendHatch_ahead}`}
+              aria-hidden
+            />
+            Опережение
           </span>
         </div>
       </div>
