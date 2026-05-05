@@ -221,7 +221,13 @@ export function ObjectDetailPage() {
 
       <SiteDetailKpiGrid kpis={liveKpis} />
 
-      {workPlan ? <SiteWorkPlanSection plan={workPlan} /> : null}
+      {workPlan ? (
+        <SiteWorkPlanSection
+          plan={workPlan}
+          windowStartIso={liveKpis.startIso}
+          windowEndIso={liveKpis.endIso}
+        />
+      ) : null}
 
       <div className={styles.midGrid}>
         <SiteScheduleSection schedule={dashboard.schedule} />

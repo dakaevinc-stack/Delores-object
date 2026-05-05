@@ -195,8 +195,8 @@ describe('Брусиловский план: целостность данных
     expect(beton.unit).toBe('m')
     expect(beton.total).toBe(15461)
     expect(beton.done).toBe(0)
-    expect(beton.startIso).toBe('2025-05-01')
-    expect(beton.endIso).toBe('2025-07-03')
+    expect(beton.startIso).toBe('2026-05-01')
+    expect(beton.endIso).toBe('2026-07-03')
   })
 
   it('конкретная строка: 9.2 Прокладка кабеля — 17 045 м', () => {

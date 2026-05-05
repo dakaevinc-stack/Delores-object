@@ -99,10 +99,11 @@
 
 .lead {
   margin: 0;
-  max-width: 78ch;
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--text);
+  max-width: 60ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  letter-spacing: -0.005em;
 }
 
 .summary {

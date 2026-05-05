@@ -3,7 +3,6 @@ import { unitLabel } from '../../domain/brigadierReport'
 import {
   durationDays,
   formatPeriod,
-  formatShortDate,
   formatVolume,
   isItemDeferred,
   isItemScheduled,
@@ -20,6 +19,13 @@ import styles from './SiteWorkPlanSection.module.css'
 
 type Props = {
   plan: WorkPlan
+  /**
+   * Календарные сроки объекта (старт/завершение по контракту).
+   * Если переданы — берём их как «период» в шапке плана, иначе
+   * деградируем к самым ранним/поздним датам позиций.
+   */
+  windowStartIso?: string
+  windowEndIso?: string
 }
 
 function pluralize(n: number, [one, few, many]: readonly [string, string, string]): string {
@@ -39,13 +45,30 @@ const STATUS_LABEL: Record<SectionScheduleStatus, string> = {
 
 const NUM_FMT = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 })
 
+// Формат дат для «Периода» в шапке плана: с полным четырёхзначным годом
+// и человеческим месяцем («17 апр. 2026 г.»). Это «бизнес-формат»
+// для верхнеуровневой строки, в отличие от компактного `formatShortDate`,
+// который мы используем в позициях.
+const LONG_DATE_FMT = new Intl.DateTimeFormat('ru-RU', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+})
+
+function fmtLongDate(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (!Number.isFinite(d.getTime())) return null
+  return LONG_DATE_FMT.format(d)
+}
+
 function fmtSigned(n: number): string {
   if (n === 0) return '0'
   if (n > 0) return `+${NUM_FMT.format(n)}`
   return `−${NUM_FMT.format(Math.abs(n))}`
 }
 
-export function SiteWorkPlanSection({ plan }: Props) {
+export function SiteWorkPlanSection({ plan, windowStartIso, windowEndIso }: Props) {
   const summary = useMemo(() => summarizeWorkPlan(plan), [plan])
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), [])
 
@@ -83,8 +106,13 @@ export function SiteWorkPlanSection({ plan }: Props) {
     })
   }
 
-  const earliest = formatShortDate(summary.earliestStartIso)
-  const latest = formatShortDate(summary.latestEndIso)
+  // Источник правды для «Периода» — официальные сроки объекта
+  // (start/end из карточки), а не агрегат самых ранних/поздних дат
+  // отдельных позиций. Если сроки не пришли — деградируем к плану.
+  const periodStartIso = windowStartIso ?? summary.earliestStartIso
+  const periodEndIso = windowEndIso ?? summary.latestEndIso
+  const earliest = fmtLongDate(periodStartIso)
+  const latest = fmtLongDate(periodEndIso)
   const period =
     earliest && latest ? (earliest === latest ? earliest : `${earliest} — ${latest}`) : null
 
@@ -125,14 +153,11 @@ export function SiteWorkPlanSection({ plan }: Props) {
           </div>
 
           <p className={styles.lead}>
-            Сводный график проектных работ по объекту «{plan.siteName}» —{' '}
-            {summary.sectionsCount}{' '}
-            {pluralize(summary.sectionsCount, ['раздел', 'раздела', 'разделов'])} и{' '}
             {summary.itemsCount}{' '}
-            {pluralize(summary.itemsCount, ['позиция', 'позиции', 'позиций'])}.{' '}
-            Раскройте раздел, чтобы увидеть строки с объёмами, остатками и сроками. Активные
-            позиции — те, у которых есть план и/или утверждённые сроки; остальные ждут
-            уточнения.
+            {pluralize(summary.itemsCount, ['позиция', 'позиции', 'позиций'])} в{' '}
+            {summary.sectionsCount}{' '}
+            {pluralize(summary.sectionsCount, ['разделе', 'разделах', 'разделах'])}. Факт
+            пересчитывается из отчётов бригадира.
           </p>
 
           <dl className={styles.summary}>
