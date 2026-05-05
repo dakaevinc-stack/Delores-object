@@ -230,7 +230,11 @@ export function ObjectDetailPage() {
       ) : null}
 
       <div className={styles.midGrid}>
-        <SiteScheduleSection schedule={dashboard.schedule} />
+        <SiteScheduleSection
+          kpis={liveKpis}
+          basePlan={basePlan}
+          reports={brigadierReports}
+        />
         <SiteReportingSection reporting={dashboard.reporting} />
       </div>
 

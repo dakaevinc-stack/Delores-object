@@ -1,109 +1,319 @@
+/*
+ * Карточка «Сроки и динамика».
+ * Премиум-композиция: navy→red rail, kicker «Сроки и динамика»,
+ * статус-pill, четыре метрики и большая кривая «План vs Факт» с
+ * заливкой и риской «сегодня».
+ */
+
 .section {
+  position: relative;
   margin-bottom: 0;
+  border-radius: 22px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background:
+    radial-gradient(140% 100% at 100% 0%, rgba(238, 45, 58, 0.06) 0%, rgba(238, 45, 58, 0) 55%),
+    linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 18px 40px rgba(15, 23, 42, 0.06);
+  padding: 22px 22px 16px;
+  overflow: hidden;
 }
 
+.section::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(
+    180deg,
+    var(--brand-navy, #172a4d) 0%,
+    var(--brand-red, #ee2d3a) 100%
+  );
+}
+
+.tone_normal::before {
+  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+}
+.tone_attention::before {
+  background: linear-gradient(180deg, #c2691a 0%, #b45309 100%);
+}
+.tone_critical::before {
+  background: linear-gradient(180deg, var(--brand-navy, #172a4d) 0%, var(--brand-red, #ee2d3a) 100%);
+}
+.tone_muted::before {
+  background: rgba(15, 23, 42, 0.18);
+}
+
+/* ─── Шапка ──────────────────────────────────────────────────────── */
+
 .sectionHead {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+}
+
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 4px 12px 4px 8px;
+  border-radius: 999px;
+  background: rgba(23, 42, 77, 0.06);
+  color: var(--brand-navy, #172a4d);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.kickerMark {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
 }
 
 .sectionTitle {
-  margin: 0 0 6px;
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  margin: 0;
+  font-size: clamp(20px, 1.9vw, 22px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
   color: var(--text-strong);
 }
 
 .sectionLead {
   margin: 0;
   max-width: 60ch;
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  letter-spacing: -0.005em;
 }
 
-.panel {
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  padding: 20px 18px 12px;
-}
-
-.summary {
-  display: grid;
-  gap: 14px 18px;
-  margin-bottom: 8px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-@media (min-width: 640px) {
-  .summary {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 900px) {
-  .summary {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-}
-
-.summaryItem[data-wide] {
-  grid-column: span 2;
-}
-
-@media (min-width: 900px) {
-  .summaryItem[data-wide] {
-    grid-column: span 1;
-  }
-}
-
-.summaryLabel {
-  margin: 0 0 4px;
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 7px;
+  border-radius: 999px;
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(6px);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
-.summaryValue {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-strong);
-  font-variant-numeric: tabular-nums;
-  line-height: 1.25;
-}
-
-.statusRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.dot {
-  width: 9px;
-  height: 9px;
+.statusDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
   border-radius: 999px;
   flex-shrink: 0;
 }
 
-.dot[data-status='success'] {
-  background: var(--status-ok);
+.statusPill_normal {
+  color: #14532d;
+  border-color: rgba(22, 163, 74, 0.32);
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.16) 0%, rgba(22, 163, 74, 0.04) 100%);
+}
+.statusPill_normal .statusDot {
+  background: #16a34a;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
 }
 
-.dot[data-status='warning'] {
-  background: var(--status-warn);
+.statusPill_attention {
+  color: #7a3a0a;
+  border-color: rgba(180, 83, 9, 0.32);
+  background: linear-gradient(180deg, rgba(194, 105, 26, 0.14) 0%, rgba(180, 83, 9, 0.04) 100%);
+}
+.statusPill_attention .statusDot {
+  background: #c2691a;
+  box-shadow: 0 0 6px rgba(180, 83, 9, 0.6);
 }
 
-.dot[data-status='danger'] {
-  background: var(--status-bad);
+.statusPill_critical {
+  color: #7a0c14;
+  border-color: rgba(238, 45, 58, 0.32);
+  background: linear-gradient(180deg, rgba(238, 45, 58, 0.16) 0%, rgba(238, 45, 58, 0.04) 100%);
 }
+.statusPill_critical .statusDot {
+  background: var(--brand-red, #ee2d3a);
+  box-shadow: 0 0 6px rgba(238, 45, 58, 0.6);
+}
+
+.statusPill_muted {
+  color: var(--muted);
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(15, 23, 42, 0.04);
+}
+.statusPill_muted .statusDot {
+  background: rgba(15, 23, 42, 0.4);
+}
+
+/* ─── Метрики ────────────────────────────────────────────────────── */
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  margin-bottom: 12px;
+}
+
+@media (max-width: 720px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.metricLabel {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.metricValue {
+  margin: 0;
+  font-size: clamp(18px, 1.8vw, 22px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.metricUnit {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-left: 2px;
+}
+
+.metricDev_normal .metricValue {
+  color: #16a34a;
+}
+.metricDev_attention .metricValue {
+  color: #b45309;
+}
+.metricDev_critical .metricValue {
+  color: var(--brand-red, #ee2d3a);
+}
+
+/* ─── График ─────────────────────────────────────────────────────── */
 
 .chartWrap {
   width: 100%;
   min-height: 240px;
-  margin-top: 8px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 6px;
+  padding: 0 6px 4px;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: -0.005em;
+}
+
+.legendSwatch {
+  display: inline-block;
+  width: 18px;
+  height: 3px;
+  border-radius: 999px;
+}
+
+.legendSwatchPlan {
+  background: var(--brand-navy, #172a4d);
+}
+
+.legendSwatchFact {
+  background: var(--brand-red, #ee2d3a);
+  box-shadow: 0 0 8px rgba(238, 45, 58, 0.45);
+}
+
+/* ─── Кастомный тултип ───────────────────────────────────────────── */
+
+.tooltip {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  min-width: 168px;
+  backdrop-filter: blur(8px);
+}
+
+.tooltipDate {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.tooltipRow {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.tooltipDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.tooltipDotPlan {
+  background: var(--brand-navy, #172a4d);
+}
+
+.tooltipDotFact {
+  background: var(--brand-red, #ee2d3a);
+}
+
+.tooltipLabel {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tooltipValue {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
 }
