@@ -16,10 +16,12 @@ import {
 } from '../lib/procurementRequestsRepository'
 import type { StoredSiteMedia } from '../lib/mediaRepository'
 import {
+  RemoteWriteFailure,
   createBrigadierReportRemote,
   createProcurementRequestRemote,
   deleteBrigadierReportRemote,
   deleteProcurementRequestRemote,
+  describeRemoteWriteError,
   fetchSiteFormsFromServer,
   patchProcurementRequestRemote,
   uploadBrigadierAttachmentRemote,
@@ -348,9 +350,11 @@ export function ObjectDetailPage() {
                   notPersisted: uploadResults.get(a.id) === false,
                 })),
               }
-              const ok = await createBrigadierReportRemote(site.id, lightReport)
-              if (!ok) {
-                throw new Error('brigadier_remote_save')
+              const result = await createBrigadierReportRemote(site.id, lightReport)
+              if (!result.ok) {
+                throw new RemoteWriteFailure(
+                  describeRemoteWriteError(result, 'отчёт'),
+                )
               }
             }
 
@@ -367,9 +371,11 @@ export function ObjectDetailPage() {
           siteName={site.name}
           onSubmit={async (req) => {
             if (remoteFormsRef.current) {
-              const ok = await createProcurementRequestRemote(site.id, req)
-              if (!ok) {
-                throw new Error('procurement_remote_save')
+              const result = await createProcurementRequestRemote(site.id, req)
+              if (!result.ok) {
+                throw new RemoteWriteFailure(
+                  describeRemoteWriteError(result, 'заявку'),
+                )
               }
             }
             setProcurementRequests((prev) => [req, ...prev])

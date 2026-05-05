@@ -372,13 +372,21 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
 
     try {
       await Promise.resolve(onSubmit(report))
-    } catch {
+    } catch (err) {
       for (const a of mappedAttachments) {
         if (a.previewUrl.startsWith('blob:')) URL.revokeObjectURL(a.previewUrl)
       }
       setAttachments([])
       setProblems([])
-      setError('Не удалось сохранить отчёт. Уменьшите видео или число фото и попробуйте снова.')
+      // Внутренние ошибки `RemoteWriteFailure` уже несут готовый текст
+      // (403 «нет ключа», 413 «слишком большой», network и т. п.).
+      // Иначе — это или баг в форме, или сбой кодирования вложений:
+      // показываем общий совет про размер файлов.
+      const message =
+        err instanceof Error && err.name === 'RemoteWriteFailure'
+          ? err.message
+          : 'Не удалось сохранить отчёт. Если вложений много или есть тяжёлое видео — уменьшите и попробуйте снова.'
+      setError(message)
       return
     }
 

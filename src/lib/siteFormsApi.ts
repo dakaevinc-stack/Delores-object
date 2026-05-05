@@ -49,6 +49,57 @@ function parseObjectMediaManifestJson(data: unknown): StoredSiteMedia[] {
   return data.filter(isObjectMediaRecord)
 }
 
+/**
+ * Результат write-запроса. Возвращаем не голый boolean, а статус,
+ * чтобы интерфейс мог отличать «сервер требует ключ» (403) от
+ * «сервер недоступен» (network) и от «слишком большой файл» (413) —
+ * иначе пользователю показывается одно и то же неинформативное «не сохранилось».
+ */
+export type RemoteWriteResult =
+  | { ok: true }
+  | { ok: false; reason: 'forbidden' | 'too_large' | 'server' | 'network'; status: number | null }
+
+/**
+ * Маркер «ошибка пришла из write-API» — модалки ловят её
+ * по `instanceof` и показывают `message` как есть, без обёрток.
+ */
+export class RemoteWriteFailure extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'RemoteWriteFailure'
+  }
+}
+
+function classifyResponse(status: number): RemoteWriteResult {
+  if (status === 401 || status === 403) {
+    return { ok: false, reason: 'forbidden', status }
+  }
+  if (status === 413) {
+    return { ok: false, reason: 'too_large', status }
+  }
+  return { ok: false, reason: 'server', status }
+}
+
+/**
+ * Человекочитаемое описание причины — единое для всех модалок,
+ * чтобы юзер видел один и тот же стиль сообщений.
+ */
+export function describeRemoteWriteError(
+  result: Extract<RemoteWriteResult, { ok: false }>,
+  what: 'отчёт' | 'заявку' | 'изменения' | 'удаление' | 'файл',
+): string {
+  if (result.reason === 'forbidden') {
+    return `Сервер отклонил ${what}: нет ключа записи. Нужен новый деплой бандла с актуальным VITE_SITE_FORMS_WRITE_SECRET — сообщите администратору.`
+  }
+  if (result.reason === 'too_large') {
+    return `${what.charAt(0).toUpperCase()}${what.slice(1)} не приняли — слишком большой объём. Уменьшите видео или количество фото и повторите.`
+  }
+  if (result.reason === 'network') {
+    return `Сервер недоступен — проверьте интернет и повторите попытку. ${what} осталась на устройстве.`
+  }
+  return `Сервер вернул ошибку ${result.status ?? '?'} при сохранении (${what}). Попробуйте ещё раз или сообщите администратору.`
+}
+
 async function readBlobAsBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader()
@@ -150,16 +201,17 @@ export async function deleteObjectMediaRemote(siteId: string, mediaId: string): 
 export async function createProcurementRequestRemote(
   siteId: string,
   req: ProcurementRequest,
-): Promise<boolean> {
+): Promise<RemoteWriteResult> {
   try {
     const res = await fetch(siteUrl(siteId, '/procurement-requests'), {
       method: 'POST',
       headers: writeHeaders(true),
       body: JSON.stringify(req),
     })
-    return res.ok
+    if (res.ok) return { ok: true }
+    return classifyResponse(res.status)
   } catch {
-    return false
+    return { ok: false, reason: 'network', status: null }
   }
 }
 
@@ -195,16 +247,17 @@ export async function deleteProcurementRequestRemote(siteId: string, id: string)
 export async function createBrigadierReportRemote(
   siteId: string,
   report: BrigadierStoredReport,
-): Promise<boolean> {
+): Promise<RemoteWriteResult> {
   try {
     const res = await fetch(siteUrl(siteId, '/brigadier-reports'), {
       method: 'POST',
       headers: writeHeaders(true),
       body: JSON.stringify(report),
     })
-    return res.ok
+    if (res.ok) return { ok: true }
+    return classifyResponse(res.status)
   } catch {
-    return false
+    return { ok: false, reason: 'network', status: null }
   }
 }
 

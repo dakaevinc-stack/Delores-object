@@ -320,10 +320,12 @@ export function ProcurementRequestModal({ onClose, siteId, siteName, onSubmit }:
 
     try {
       await Promise.resolve(onSubmit(req))
-    } catch {
-      setError(
-        'Не удалось сохранить заявку на сервер. Проверьте сеть, секрет записи (если задан) и повторите.',
-      )
+    } catch (err) {
+      const message =
+        err instanceof Error && err.name === 'RemoteWriteFailure'
+          ? err.message
+          : 'Не удалось сохранить заявку на сервер. Проверьте сеть, секрет записи (если задан) и повторите.'
+      setError(message)
       return
     }
     onClose()
