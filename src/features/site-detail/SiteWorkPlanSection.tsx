@@ -214,6 +214,12 @@ function SectionCard({
               const scheduled = isItemScheduled(item)
               const deferred = isItemDeferred(item)
               const days = durationDays(item.startIso, item.endIso)
+              const period = formatPeriod(item.startIso, item.endIso)
+              // Семантика тона:
+              // done       — закрыто на 100%, зелёный
+              // progress   — что-то сделано, фирменный navy→orange градиент
+              // planned    — есть план/сроки, но факт = 0 (синий)
+              // deferred   — без сроков и/или без объёма (янтарный/серый)
               const tone =
                 percent >= 100
                   ? 'done'
@@ -222,62 +228,96 @@ function SectionCard({
                     : scheduled
                       ? 'planned'
                       : 'deferred'
+              // Текст статуса: бригадиру и прорабу должно быть понятно
+              // без объяснения, что произошло с этой позицией.
+              const statusLabel =
+                tone === 'done'
+                  ? 'Готово'
+                  : tone === 'progress'
+                    ? 'В работе'
+                    : tone === 'planned'
+                      ? 'Не начато'
+                      : item.total === 0
+                        ? 'В реестре'
+                        : 'Без срока'
+              const percentText = percent.toFixed(1).replace('.', ',')
               return (
                 <li key={item.number} className={`${styles.itemRow} ${styles[`tone_${tone}`]}`}>
                   <div className={styles.itemHead}>
-                    <span className={styles.itemNumber}>{item.number}</span>
-                    <span className={styles.itemTitle}>{item.title}</span>
-                    {deferred && item.total === 0 ? (
-                      <span className={styles.deferBadge}>в реестре</span>
-                    ) : deferred ? (
-                      <span className={styles.deferBadge}>срок не задан</span>
-                    ) : null}
+                    <span className={styles.itemNumber} aria-hidden>
+                      {item.number}
+                    </span>
+                    <h4 className={styles.itemTitle}>{item.title}</h4>
+                    <span className={`${styles.itemStatus} ${styles[`status_${tone}`]}`}>
+                      {statusLabel}
+                    </span>
                   </div>
 
-                  <div className={styles.itemMetrics}>
-                    <span className={styles.itemMetric}>
-                      <span className={styles.itemMetricLabel}>План</span>
-                      <span className={styles.itemMetricValue}>
+                  <div className={styles.itemHero}>
+                    <div className={styles.itemHeroFigures}>
+                      <span className={styles.itemDone}>{formatVolume(item.done)}</span>
+                      <span className={styles.itemSlash}>из</span>
+                      <span className={styles.itemTotal}>
                         {formatVolume(item.total)} {unitLabel(item.unit)}
                       </span>
-                    </span>
-                    <span className={styles.itemMetric}>
-                      <span className={styles.itemMetricLabel}>Факт</span>
-                      <span className={styles.itemMetricValue}>
-                        {formatVolume(item.done)} {unitLabel(item.unit)}
-                      </span>
-                    </span>
-                    <span className={styles.itemMetric}>
-                      <span className={styles.itemMetricLabel}>Остаток</span>
-                      <span className={styles.itemMetricValue}>
-                        {formatVolume(remainder)} {unitLabel(item.unit)}
-                      </span>
-                    </span>
-                    <span className={styles.itemMetric}>
-                      <span className={styles.itemMetricLabel}>Сроки</span>
-                      <span className={styles.itemMetricValue}>
-                        {formatPeriod(item.startIso, item.endIso)}
-                        {days != null ? (
-                          <span className={styles.itemDuration}>
-                            · {days} {pluralize(days, ['день', 'дня', 'дней'])}
-                          </span>
-                        ) : null}
-                      </span>
+                    </div>
+                    <span className={styles.itemPercent} aria-label={`выполнено ${percentText} процентов`}>
+                      {percentText}
+                      <span className={styles.itemPercentSign}>%</span>
                     </span>
                   </div>
 
                   <div className={styles.itemBar} aria-hidden>
                     <span
                       className={styles.itemBarFill}
-                      style={{ width: `${Math.max(2, Math.min(100, percent))}%` }}
+                      style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
                     />
                   </div>
-                  <div className={styles.itemBarRow}>
-                    <span className={styles.itemBarLabel}>Прогресс</span>
-                    <span className={styles.itemBarValue}>
-                      {percent.toFixed(1).replace('.', ',')}%
+
+                  <div className={styles.itemFoot}>
+                    <span className={styles.itemFootDate}>
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="14"
+                        height="14"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden
+                      >
+                        <rect x="3.5" y="5" width="17" height="15" rx="2" />
+                        <path d="M3.5 9.5h17M8 3.5v3M16 3.5v3" />
+                      </svg>
+                      <span>{period}</span>
+                      {days != null ? (
+                        <span className={styles.itemFootDuration}>
+                          · {days} {pluralize(days, ['день', 'дня', 'дней'])}
+                        </span>
+                      ) : null}
                     </span>
+                    {item.total > 0 && remainder > 0 ? (
+                      <span className={styles.itemFootRemainder}>
+                        Осталось{' '}
+                        <strong>
+                          {formatVolume(remainder)} {unitLabel(item.unit)}
+                        </strong>
+                      </span>
+                    ) : item.total === 0 ? (
+                      <span className={styles.itemFootRemainder}>
+                        Объём ещё не определён
+                      </span>
+                    ) : null}
                   </div>
+
+                  {deferred ? (
+                    <div className={styles.itemNote}>
+                      {item.total === 0
+                        ? 'Позиция в реестре — объём и сроки появятся после уточнения.'
+                        : 'Сроки не утверждены — попадёт в график после согласования.'}
+                    </div>
+                  ) : null}
                 </li>
               )
             })}
