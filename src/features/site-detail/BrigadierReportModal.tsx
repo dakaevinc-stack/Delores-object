@@ -26,6 +26,10 @@ import {
   type WorkPlan,
   type WorkPlanItem,
 } from '../../domain/workPlan'
+import {
+  readLastResponsible,
+  writeLastResponsible,
+} from '../../lib/brigadierReportPrefs'
 import styles from './BrigadierReportModal.module.css'
 
 type Props = {
@@ -66,7 +70,10 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
   const videoRef = useRef<HTMLInputElement>(null)
 
   const [reportedAtLocal, setReportedAtLocal] = useState(() => toDateTimeLocalValue(new Date()))
-  const [responsible, setResponsible] = useState('')
+  // Подставляем последнее введённое ФИО, если бригадир уже отправлял
+  // отчёты с этого устройства. См. brigadierReportPrefs — там описаны
+  // edge-cases (SSR, приватный режим Safari, два бригадира).
+  const [responsible, setResponsible] = useState(() => readLastResponsible())
   const [criteria, setCriteria] = useState<BrigadierCriterionDraft[]>([])
   const [problems, setProblems] = useState<BrigadierProblemDraft[]>([])
   const [attachments, setAttachments] = useState<BrigadierAttachmentDraft[]>([])
@@ -76,27 +83,59 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
   const [error, setError] = useState<string | null>(null)
   const attachmentsRef = useRef<BrigadierAttachmentDraft[]>([])
 
-  const filteredPlanRows = useMemo(() => {
-    if (!plan) return [] as ReadonlyArray<{
+  /**
+   * Список плана, сгруппированный по разделам, после применения поиска.
+   *
+   * Зачем группировка: у объекта может быть 47 строк в плане,
+   * и плоский список одной кучей сбивал с толку. Раздел («Бортовой
+   * камень», «Тротуар», «Газон») — уже готовая визуальная единица
+   * из самого плана: оставляем только её и не выдумываем своих
+   * категорий.
+   *
+   * Поведение поиска: если запрос совпадает с номером/названием
+   * раздела — показываем все строки этого раздела (поэтому в
+   * `haystack` участвуют и номер, и название секции). Если совпадает
+   * только с конкретной работой — раздел остаётся, но в нём
+   * отображаются только подходящие строки. Полностью пустые после
+   * фильтрации разделы не рендерим.
+   */
+  const filteredPlanGroups = useMemo(() => {
+    if (!plan) {
+      return [] as ReadonlyArray<{
+        sectionNumber: string
+        sectionTitle: string
+        items: ReadonlyArray<WorkPlanItem>
+      }>
+    }
+    const q = planSearch.trim().toLowerCase()
+    const groups: {
       sectionNumber: string
       sectionTitle: string
-      item: WorkPlanItem
-    }>
-    const q = planSearch.trim().toLowerCase()
-    const rows: { sectionNumber: string; sectionTitle: string; item: WorkPlanItem }[] = []
+      items: WorkPlanItem[]
+    }[] = []
     for (const s of plan.sections) {
+      const sectionMatches =
+        q.length > 0 && `${s.number} ${s.title}`.toLowerCase().includes(q)
+      const items: WorkPlanItem[] = []
       for (const it of s.items) {
-        if (q.length === 0) {
-          rows.push({ sectionNumber: s.number, sectionTitle: s.title, item: it })
+        if (q.length === 0 || sectionMatches) {
+          items.push(it)
           continue
         }
-        const haystack = `${it.number} ${it.title} ${s.number} ${s.title}`.toLowerCase()
+        const haystack = `${it.number} ${it.title}`.toLowerCase()
         if (haystack.includes(q)) {
-          rows.push({ sectionNumber: s.number, sectionTitle: s.title, item: it })
+          items.push(it)
         }
       }
+      if (items.length > 0) {
+        groups.push({
+          sectionNumber: s.number,
+          sectionTitle: s.title,
+          items,
+        })
+      }
     }
-    return rows
+    return groups
   }, [plan, planSearch])
 
   const planTotalItemsCount = useMemo(
@@ -394,6 +433,13 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
       return
     }
 
+    // Отчёт принят сервером — запоминаем ФИО локально, чтобы при
+    // следующем открытии модалки оно подставилось автоматически.
+    // Сохраняем ИМЕННО ЗДЕСЬ (после успешного onSubmit), а не при
+    // вводе в поле, — иначе случайно записали бы мусор в случае
+    // отмены формы или ошибки сервера.
+    writeLastResponsible(responsible)
+
     setAttachments([])
     setProblems([])
     setReportComment('')
@@ -496,72 +542,98 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
               />
 
               <div className={styles.planRowsScroll}>
-                {filteredPlanRows.length === 0 ? (
+                {filteredPlanGroups.length === 0 ? (
                   <p className={styles.planRowsEmpty}>
                     Ничего не нашли. Попробуйте проще — например «камень» или «бетон».
                   </p>
                 ) : (
-                  filteredPlanRows.map((row) => {
-                    const entry = workEntries.find(
-                      (w) => w.planNumber === row.item.number,
+                  filteredPlanGroups.map((group) => {
+                    // Сколько строк раздела отмечено в этом отчёте —
+                    // нужно для бейджа «1 из 3» в шапке группы.
+                    const checkedInGroup = group.items.reduce(
+                      (n, it) =>
+                        workEntries.some((w) => w.planNumber === it.number) ? n + 1 : n,
+                      0,
                     )
-                    const checked = Boolean(entry)
-                    const deferred = isItemDeferred(row.item)
                     return (
-                      <div
-                        key={row.item.number}
-                        className={`${styles.planItem} ${checked ? styles.planItemChecked : ''}`}
-                      >
-                        <button
-                          type="button"
-                          className={styles.planItemHead}
-                          onClick={() => togglePlanRow(row.item, !checked)}
-                          aria-pressed={checked}
-                        >
-                          <input
-                            type="checkbox"
-                            className={styles.planRowCheck}
-                            checked={checked}
-                            readOnly
-                            tabIndex={-1}
-                            aria-hidden
-                          />
-                          <span className={styles.planRowBody}>
-                            <span className={styles.planRowTopLine}>
-                              <span className={styles.planRowNumber}>{row.item.number}</span>
-                              <span className={styles.planRowTitle}>{row.item.title}</span>
-                              {deferred ? (
-                                <span className={styles.planRowDeferred}>без срока</span>
+                      <div key={group.sectionNumber} className={styles.planGroup}>
+                        <div className={styles.planGroupHead}>
+                          <span className={styles.planGroupNumber}>{group.sectionNumber}</span>
+                          <span className={styles.planGroupTitle}>{group.sectionTitle}</span>
+                          {checkedInGroup > 0 ? (
+                            <span className={styles.planGroupBadge}>
+                              {checkedInGroup} из {group.items.length}
+                            </span>
+                          ) : (
+                            <span className={styles.planGroupCount}>
+                              {group.items.length}
+                            </span>
+                          )}
+                        </div>
+                        {group.items.map((item) => {
+                          const entry = workEntries.find(
+                            (w) => w.planNumber === item.number,
+                          )
+                          const checked = Boolean(entry)
+                          const deferred = isItemDeferred(item)
+                          return (
+                            <div
+                              key={item.number}
+                              className={`${styles.planItem} ${checked ? styles.planItemChecked : ''}`}
+                            >
+                              <button
+                                type="button"
+                                className={styles.planItemHead}
+                                onClick={() => togglePlanRow(item, !checked)}
+                                aria-pressed={checked}
+                              >
+                                <input
+                                  type="checkbox"
+                                  className={styles.planRowCheck}
+                                  checked={checked}
+                                  readOnly
+                                  tabIndex={-1}
+                                  aria-hidden
+                                />
+                                <span className={styles.planRowBody}>
+                                  <span className={styles.planRowTopLine}>
+                                    <span className={styles.planRowNumber}>{item.number}</span>
+                                    <span className={styles.planRowTitle}>{item.title}</span>
+                                    {deferred ? (
+                                      <span className={styles.planRowDeferred}>без срока</span>
+                                    ) : null}
+                                  </span>
+                                  {item.total > 0 ? (
+                                    <span className={styles.planRowMeta}>
+                                      В плане: {formatVolume(item.total)} {unitLabel(item.unit)}
+                                      {item.done > 0
+                                        ? ` · уже сделано ${formatVolume(item.done)} (${Math.round(workItemPercent(item))}%)`
+                                        : ''}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </button>
+                              {checked && entry ? (
+                                <div className={styles.planItemQty}>
+                                  <input
+                                    className={styles.planItemQtyInput}
+                                    inputMode="decimal"
+                                    placeholder="Сколько сделали сегодня"
+                                    value={entry.qty}
+                                    onChange={(e) =>
+                                      updateWorkEntry(entry.id, { qty: e.target.value })
+                                    }
+                                    aria-label={`Сколько сделали по строке ${entry.planNumber}`}
+                                    autoFocus
+                                  />
+                                  <span className={styles.planItemQtyUnit}>
+                                    {unitLabel(entry.unit)}
+                                  </span>
+                                </div>
                               ) : null}
-                            </span>
-                            {row.item.total > 0 ? (
-                              <span className={styles.planRowMeta}>
-                                В плане: {formatVolume(row.item.total)} {unitLabel(row.item.unit)}
-                                {row.item.done > 0
-                                  ? ` · уже сделано ${formatVolume(row.item.done)} (${Math.round(workItemPercent(row.item))}%)`
-                                  : ''}
-                              </span>
-                            ) : null}
-                          </span>
-                        </button>
-                        {checked && entry ? (
-                          <div className={styles.planItemQty}>
-                            <input
-                              className={styles.planItemQtyInput}
-                              inputMode="decimal"
-                              placeholder="Сколько сделали сегодня"
-                              value={entry.qty}
-                              onChange={(e) =>
-                                updateWorkEntry(entry.id, { qty: e.target.value })
-                              }
-                              aria-label={`Сколько сделали по строке ${entry.planNumber}`}
-                              autoFocus
-                            />
-                            <span className={styles.planItemQtyUnit}>
-                              {unitLabel(entry.unit)}
-                            </span>
-                          </div>
-                        ) : null}
+                            </div>
+                          )
+                        })}
                       </div>
                     )
                   })

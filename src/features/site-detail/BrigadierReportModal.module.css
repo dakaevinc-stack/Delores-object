@@ -669,12 +669,103 @@
 }
 
 .planRowsScroll {
-  max-height: 320px;
+  max-height: 360px;
   overflow-y: auto;
   border-radius: 12px;
   border: 1px solid rgba(15, 23, 42, 0.06);
   background: #ffffff;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+/*
+ * Группа раздела плана (например «1. Бортовой камень»).
+ * Заголовок группы — sticky, чтобы при прокрутке списка
+ * было видно, в каком разделе сейчас бригадир. Внутри —
+ * вертикальная стопка строк работ.
+ *
+ * Если в текущем отчёте уже отмечены работы из этой группы —
+ * показываем navy-бейдж «N из M» (мини-индикатор прогресса
+ * по разделу). Иначе — нейтральный счётчик количества работ.
+ */
+.planGroup {
+  display: flex;
+  flex-direction: column;
+}
+
+.planGroup + .planGroup {
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.planGroupHead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background:
+    linear-gradient(180deg, rgba(247, 249, 252, 0.96) 0%, rgba(247, 249, 252, 0.92) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(23, 42, 77, 0.1);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+}
+
+.planGroupNumber {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--brand-navy, #172a4d) 0%, #0f1f3b 100%);
+  color: #f4f6f9;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.18);
+}
+
+.planGroupTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+  line-height: 1.2;
+  text-wrap: pretty;
+}
+
+.planGroupCount {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.planGroupBadge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--brand-navy, #172a4d) 0%, #0f1f3b 100%);
+  border: 1px solid rgba(238, 45, 58, 0.3);
+  color: #f4f6f9;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);
 }
 
 .planRow {
