@@ -7,7 +7,6 @@ import styles from './SiteDetailKpiGrid.module.css'
 
 type Props = {
   kpis: SiteLiveKpis
-  openIssuesCount: number
 }
 
 const NUM_FMT = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 })
@@ -57,11 +56,12 @@ function fmtPct(n: number): string {
 
 function fmtSignedPct(n: number): string {
   if (n === 0) return '0,0'
+  // Отстаём → знак «минус», опережаем → «плюс».
   const sign = n > 0 ? '−' : '+'
   return `${sign}${Math.abs(n).toFixed(1).replace('.', ',')}`
 }
 
-export function SiteDetailKpiGrid({ kpis, openIssuesCount }: Props) {
+export function SiteDetailKpiGrid({ kpis }: Props) {
   const tone = STATUS_TONE[kpis.status]
   const statusLabel = STATUS_LABEL[kpis.status]
 
@@ -69,8 +69,6 @@ export function SiteDetailKpiGrid({ kpis, openIssuesCount }: Props) {
   // где должны были быть к сегодня по календарному графику.
   const todayMarkerPercent = Math.max(0, Math.min(100, kpis.planToDatePercent))
   const factFillPercent = Math.max(0, Math.min(100, kpis.factPercent))
-
-  // Шкала срока — сколько процентов длительности уже за плечами.
   const periodFillPercent = Math.max(0, Math.min(100, kpis.scheduleProgressPercent))
 
   const devTone =
@@ -81,6 +79,13 @@ export function SiteDetailKpiGrid({ kpis, openIssuesCount }: Props) {
         : kpis.deviationPercent <= -1
           ? 'ahead'
           : 'normal'
+
+  const devNarrative =
+    kpis.deviationPercent > 0
+      ? 'отстаём от плана на сегодня'
+      : kpis.deviationPercent < 0
+        ? 'опережаем план на сегодня'
+        : 'идём ровно по плану'
 
   return (
     <section className={styles.section} aria-labelledby="site-kpi-heading">
@@ -104,8 +109,8 @@ export function SiteDetailKpiGrid({ kpis, openIssuesCount }: Props) {
       </div>
 
       <div className={styles.grid}>
-        {/* ── Прогресс по объекту ─────────────────────────────────────── */}
-        <article className={`${styles.card} ${styles.cardHero} ${styles[`tone_${tone}`]}`}>
+        {/* ── Прогресс ─────────────────────────────────────────────── */}
+        <article className={`${styles.card} ${styles[`tone_${tone}`]}`}>
           <header className={styles.cardHead}>
             <span className={styles.label}>Прогресс по объекту</span>
             <span className={`${styles.statusPill} ${styles[`statusPill_${tone}`]}`}>
@@ -114,36 +119,36 @@ export function SiteDetailKpiGrid({ kpis, openIssuesCount }: Props) {
             </span>
           </header>
 
-          <div className={styles.heroFigure}>
-            <span className={styles.heroValue}>{fmtPct(kpis.factPercent)}</span>
-            <span className={styles.heroSign}>%</span>
+          <div className={styles.figure}>
+            <span className={styles.figureValue}>{fmtPct(kpis.factPercent)}</span>
+            <span className={styles.figureSign}>%</span>
           </div>
-          <p className={styles.heroSub}>факт по объёмам</p>
+          <p className={styles.figureSub}>факт по объёмам</p>
 
-          <div className={styles.progressBar} aria-hidden>
+          <div className={styles.bar} aria-hidden>
             <span
-              className={styles.progressFill}
+              className={styles.barFill}
               style={{ width: `${factFillPercent}%` }}
             />
             <span
-              className={styles.progressMarker}
+              className={styles.barMarker}
               style={{ left: `${todayMarkerPercent}%` }}
             />
           </div>
 
-          <dl className={styles.miniMetrics}>
-            <div className={styles.miniMetric}>
+          <dl className={styles.metaRow}>
+            <div className={styles.metaCell}>
               <dt>План на сегодня</dt>
               <dd>{fmtPct(kpis.planToDatePercent)}%</dd>
             </div>
-            <div className={styles.miniMetric}>
+            <div className={styles.metaCell}>
               <dt>Факт</dt>
               <dd>{fmtPct(kpis.factPercent)}%</dd>
             </div>
           </dl>
         </article>
 
-        {/* ── Срок объекта ────────────────────────────────────────────── */}
+        {/* ── Срок ─────────────────────────────────────────────────── */}
         <article className={`${styles.card} ${styles.cardSchedule}`}>
           <header className={styles.cardHead}>
             <span className={styles.label}>Срок</span>
@@ -152,127 +157,73 @@ export function SiteDetailKpiGrid({ kpis, openIssuesCount }: Props) {
             </span>
           </header>
 
-          <div className={styles.countdown}>
-            <span className={styles.countdownNumber}>
+          <div className={styles.figure}>
+            <span className={styles.figureValue}>
               {NUM_FMT.format(kpis.daysToCompletion)}
             </span>
-            <span className={styles.countdownUnit}>
-              {pluralizeDays(kpis.daysToCompletion)} до завершения
+            <span className={styles.figureSign}>
+              {pluralizeDays(kpis.daysToCompletion)}
             </span>
           </div>
+          <p className={styles.figureSub}>до завершения</p>
 
-          <div className={styles.timeline} aria-hidden>
+          <div className={styles.bar} aria-hidden>
             <span
-              className={styles.timelineFill}
+              className={styles.barFill}
               style={{ width: `${periodFillPercent}%` }}
             />
             <span
-              className={styles.timelineToday}
+              className={styles.barMarker}
               style={{ left: `${periodFillPercent}%` }}
             />
           </div>
 
-          <dl className={styles.timelineMeta}>
-            <div className={styles.timelineMetaItem}>
+          <dl className={styles.metaRow}>
+            <div className={styles.metaCell}>
               <dt>Старт</dt>
               <dd title={fmtDate(kpis.startIso)}>{fmtDateShort(kpis.startIso)}</dd>
             </div>
-            <div className={styles.timelineMetaItem} data-align="right">
+            <div className={styles.metaCell} data-align="right">
               <dt>Завершение</dt>
               <dd title={fmtDate(kpis.endIso)}>{fmtDateShort(kpis.endIso)}</dd>
             </div>
           </dl>
-
-          <p className={styles.timelineNote}>
-            Прошло {NUM_FMT.format(kpis.daysSinceStart)} из{' '}
-            {NUM_FMT.format(kpis.daysTotal)} {pluralizeDays(kpis.daysTotal)}
-          </p>
         </article>
 
-        {/* ── Отклонение от графика ───────────────────────────────────── */}
+        {/* ── Отклонение ───────────────────────────────────────────── */}
         <article className={`${styles.card} ${styles.cardDeviation} ${styles[`devTone_${devTone}`]}`}>
           <header className={styles.cardHead}>
             <span className={styles.label}>Отклонение от графика</span>
-            <span className={styles.devTrend} aria-hidden>
-              {kpis.deviationPercent > 0 ? (
-                /* Падение / отстаём */
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 9l7 7 7-7" />
-                </svg>
-              ) : kpis.deviationPercent < 0 ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 15l7-7 7 7" />
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14" />
-                </svg>
-              )}
-            </span>
           </header>
 
-          <div className={styles.heroFigure}>
-            <span className={styles.heroValue}>
+          <div className={styles.figure}>
+            <span className={styles.figureValue}>
               {fmtSignedPct(kpis.deviationPercent)}
             </span>
-            <span className={styles.heroSign}>п.п.</span>
+            <span className={styles.figureSign}>%</span>
           </div>
-          <p className={styles.heroSub}>
-            {kpis.deviationPercent > 0
-              ? 'отстаём от плана на сегодня'
-              : kpis.deviationPercent < 0
-                ? 'опережаем план на сегодня'
-                : 'идём ровно по плану'}
-          </p>
+          <p className={styles.figureSub}>{devNarrative}</p>
 
-          <div className={styles.devCompare}>
-            <div className={styles.devRow}>
-              <span className={styles.devRowLabel}>План</span>
-              <span className={styles.devRowBar}>
-                <span
-                  className={`${styles.devRowFill} ${styles.devRowFillPlan}`}
-                  style={{ width: `${todayMarkerPercent}%` }}
-                />
-              </span>
-              <span className={styles.devRowValue}>{fmtPct(kpis.planToDatePercent)}%</span>
-            </div>
-            <div className={styles.devRow}>
-              <span className={styles.devRowLabel}>Факт</span>
-              <span className={styles.devRowBar}>
-                <span
-                  className={`${styles.devRowFill} ${styles.devRowFillFact}`}
-                  style={{ width: `${factFillPercent}%` }}
-                />
-              </span>
-              <span className={styles.devRowValue}>{fmtPct(kpis.factPercent)}%</span>
-            </div>
-          </div>
-        </article>
-
-        {/* ── Замечаний / рисков ──────────────────────────────────────── */}
-        <article className={`${styles.card} ${styles.cardIssues}`}>
-          <header className={styles.cardHead}>
-            <span className={styles.label}>Замечаний / рисков</span>
-            {openIssuesCount === 0 ? (
-              <span className={`${styles.statusPill} ${styles.statusPill_normal}`}>
-                <span className={styles.statusDot} aria-hidden />
-                Чисто
-              </span>
-            ) : null}
-          </header>
-          <div className={styles.issuesValue}>
-            <span className={styles.issuesNumber}>{openIssuesCount}</span>
-            <span className={styles.issuesUnit}>
-              {openIssuesCount === 0
-                ? 'открытых пунктов'
-                : 'в работе у руководства'}
+          <div className={styles.compareRow}>
+            <span className={styles.compareLabel}>План</span>
+            <span className={styles.compareBar}>
+              <span
+                className={`${styles.compareFill} ${styles.compareFillPlan}`}
+                style={{ width: `${todayMarkerPercent}%` }}
+              />
             </span>
+            <span className={styles.compareValue}>{fmtPct(kpis.planToDatePercent)}%</span>
           </div>
-          <p className={styles.issuesHint}>
-            {openIssuesCount === 0
-              ? 'Замечаний и рисков по объекту нет.'
-              : 'Снимаются после устранения и принятия технадзором.'}
-          </p>
+          <div className={styles.compareRow}>
+            <span className={styles.compareLabel}>Факт</span>
+            <span className={styles.compareBar}>
+              <span
+                className={`${styles.compareFill} ${styles.compareFillFact}`}
+                style={{ width: `${factFillPercent}%` }}
+              />
+            </span>
+            <span className={styles.compareValue}>{fmtPct(kpis.factPercent)}%</span>
+          </div>
         </article>
       </div>
     </section>

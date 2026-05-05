@@ -219,7 +219,7 @@ export function ObjectDetailPage() {
         onRemoteSyncError={(msg) => setFormsApiMessage(msg)}
       />
 
-      <SiteDetailKpiGrid kpis={liveKpis} openIssuesCount={dashboard.kpis.openIssuesCount} />
+      <SiteDetailKpiGrid kpis={liveKpis} />
 
       {workPlan ? <SiteWorkPlanSection plan={workPlan} /> : null}
 

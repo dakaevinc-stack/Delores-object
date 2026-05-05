@@ -1,10 +1,9 @@
 /*
  * Премиальная KPI-сетка объекта.
- * Фирменный язык: navy→red рейлы, источник «Сводка по объекту»,
- * tabular-nums числа, плотные тени и backdrop-blur пилюли.
- *
- * Сетка состоит из 3 hero-карточек одинаковой высоты + узкой
- * карточки замечаний.
+ * 3 равных карточки в строку: Прогресс / Срок / Отклонение.
+ * Все карточки несут одинаковый ритм:
+ *   header → главная цифра → подпись → шкала → две мини-метрики.
+ * Нет пустых пространств — каждая клетка занята «по делу».
  */
 
 .section {
@@ -15,16 +14,16 @@
 
 .sectionHead {
   position: relative;
-  margin-bottom: 18px;
-  padding: 22px 24px 18px;
-  border-radius: 22px;
+  margin-bottom: 14px;
+  padding: 18px 22px 16px;
+  border-radius: 18px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   background:
     radial-gradient(120% 90% at 100% 0%, rgba(238, 45, 58, 0.08) 0%, rgba(238, 45, 58, 0) 55%),
     linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 18px 40px rgba(15, 23, 42, 0.06);
+    0 14px 32px rgba(15, 23, 42, 0.06);
   overflow: hidden;
 }
 
@@ -44,7 +43,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   padding: 4px 12px 4px 8px;
   border-radius: 999px;
   background: rgba(23, 42, 77, 0.06);
@@ -62,8 +61,8 @@
 }
 
 .sectionTitle {
-  margin: 0 0 8px;
-  font-size: clamp(20px, 2vw, 24px);
+  margin: 0 0 6px;
+  font-size: clamp(20px, 1.9vw, 22px);
   font-weight: 800;
   letter-spacing: -0.03em;
   color: var(--text-strong);
@@ -72,7 +71,7 @@
 .sectionLead {
   margin: 0;
   max-width: 60ch;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--muted);
 }
@@ -81,64 +80,13 @@
 
 .grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: auto auto;
-  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
-.cardHero {
-  grid-column: 1 / 2;
-  grid-row: 1 / 3;
-}
-
-.cardSchedule {
-  grid-column: 2 / 3;
-  grid-row: 1 / 2;
-}
-
-.cardDeviation {
-  grid-column: 3 / 4;
-  grid-row: 1 / 2;
-}
-
-.cardIssues {
-  grid-column: 2 / 4;
-  grid-row: 2 / 3;
-}
-
-@media (max-width: 1023px) {
-  .grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto auto auto;
-  }
-
-  .cardHero {
-    grid-column: 1 / 3;
-    grid-row: auto;
-  }
-  .cardSchedule {
-    grid-column: 1 / 2;
-    grid-row: auto;
-  }
-  .cardDeviation {
-    grid-column: 2 / 3;
-    grid-row: auto;
-  }
-  .cardIssues {
-    grid-column: 1 / 3;
-    grid-row: auto;
-  }
-}
-
-@media (max-width: 600px) {
+@media (max-width: 880px) {
   .grid {
     grid-template-columns: 1fr;
-  }
-  .cardHero,
-  .cardSchedule,
-  .cardDeviation,
-  .cardIssues {
-    grid-column: 1 / -1;
   }
 }
 
@@ -146,19 +94,20 @@
 
 .card {
   position: relative;
-  border-radius: 20px;
+  border-radius: 18px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   background:
     radial-gradient(140% 100% at 100% 0%, rgba(23, 42, 77, 0.05) 0%, rgba(23, 42, 77, 0) 50%),
     linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 14px 32px rgba(15, 23, 42, 0.06);
-  padding: 20px 22px;
+    0 12px 28px rgba(15, 23, 42, 0.06);
+  padding: 16px 18px 14px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
   overflow: hidden;
+  min-height: 260px;
 }
 
 .card::before {
@@ -188,12 +137,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  min-height: 24px;
+  gap: 10px;
+  min-height: 22px;
 }
 
 .label {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -204,9 +153,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px 4px 8px;
+  padding: 3px 10px 3px 7px;
   border-radius: 999px;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -264,17 +213,28 @@
   background: rgba(15, 23, 42, 0.4);
 }
 
-/* ─── Hero-цифра (выполнение / отклонение) ───────────────────────── */
+/* Подпись «X% срока пройдено» в шапке Срока. */
+.scheduleProgress {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-navy, #172a4d);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 
-.heroFigure {
+/* ─── Главная цифра ──────────────────────────────────────────────── */
+
+.figure {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 6px;
   margin-top: 2px;
 }
 
-.heroValue {
-  font-size: clamp(48px, 6vw, 64px);
+.figureValue {
+  font-size: clamp(38px, 4.6vw, 48px);
   font-weight: 800;
   letter-spacing: -0.05em;
   line-height: 1;
@@ -282,69 +242,92 @@
   font-variant-numeric: tabular-nums;
 }
 
-.heroSign {
-  font-size: clamp(20px, 2vw, 26px);
+.figureSign {
+  font-size: clamp(14px, 1.4vw, 16px);
   font-weight: 700;
   color: var(--muted);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
-.heroSub {
+.figureSub {
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--muted);
   letter-spacing: -0.005em;
 }
 
-.tone_normal .heroValue {
+.tone_normal .figureValue {
   color: #16a34a;
 }
-.tone_attention .heroValue {
+.tone_attention .figureValue {
   color: #b45309;
 }
-.tone_critical .heroValue {
+.tone_critical .figureValue {
   color: var(--brand-red, #ee2d3a);
 }
 
-/* ─── Прогресс-шкала (hero) ──────────────────────────────────────── */
+/* В карточке «Срок» цифру делаем фирменным градиентом navy→red. */
+.cardSchedule .figureValue {
+  background: linear-gradient(
+    180deg,
+    var(--brand-navy, #172a4d) 0%,
+    var(--brand-red, #ee2d3a) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 
-.progressBar {
+/* ─── Шкала прогресса ────────────────────────────────────────────── */
+
+.bar {
   position: relative;
-  height: 10px;
+  height: 8px;
   border-radius: 999px;
   background: rgba(23, 42, 77, 0.07);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.85) inset,
     0 1px 1px rgba(15, 23, 42, 0.05) inset;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
-.progressFill {
+.barFill {
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--brand-navy, #172a4d) 0%, var(--brand-red, #ee2d3a) 100%);
-  box-shadow: 0 0 12px rgba(238, 45, 58, 0.35);
+  box-shadow: 0 0 10px rgba(238, 45, 58, 0.3);
   transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.tone_normal .progressFill {
+.tone_normal .barFill {
   background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
-  box-shadow: 0 0 12px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.35);
 }
-.tone_attention .progressFill {
+.tone_attention .barFill {
   background: linear-gradient(90deg, #1c4b82 0%, #c2691a 70%, #b45309 100%);
-  box-shadow: 0 0 12px rgba(194, 105, 26, 0.4);
+  box-shadow: 0 0 10px rgba(194, 105, 26, 0.35);
 }
-.tone_critical .progressFill {
+.tone_critical .barFill {
   background: linear-gradient(90deg, var(--brand-navy, #172a4d) 0%, var(--brand-red, #ee2d3a) 100%);
-  box-shadow: 0 0 12px rgba(238, 45, 58, 0.45);
+  box-shadow: 0 0 10px rgba(238, 45, 58, 0.4);
 }
 
-.progressMarker {
+/* В «Сроке» заливка идёт фирменным градиентом по умолчанию. */
+.cardSchedule .barFill {
+  background: linear-gradient(
+    90deg,
+    var(--brand-navy, #172a4d) 0%,
+    rgba(23, 42, 77, 0.55) 60%,
+    rgba(23, 42, 77, 0.25) 100%
+  );
+  box-shadow: none;
+}
+
+.barMarker {
   position: absolute;
-  top: -4px;
-  bottom: -4px;
+  top: -3px;
+  bottom: -3px;
   width: 2px;
   background: linear-gradient(
     180deg,
@@ -357,168 +340,46 @@
   pointer-events: none;
 }
 
-/* ─── Мини-метрики под hero-шкалой ───────────────────────────────── */
+/* ─── Мини-метрики ───────────────────────────────────────────────── */
 
-.miniMetrics {
+.metaRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin: 6px 0 0;
-  padding: 14px 16px;
-  border-radius: 14px;
+  gap: 10px;
+  margin: auto 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.6);
   border: 1px solid rgba(15, 23, 42, 0.06);
 }
 
-.miniMetric {
+.metaCell {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
-.miniMetric dt {
+.metaCell[data-align='right'] {
+  text-align: right;
+  align-items: flex-end;
+}
+
+.metaCell dt {
   margin: 0;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
-.miniMetric dd {
+.metaCell dd {
   margin: 0;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 800;
   color: var(--text-strong);
   letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ─── Срок ───────────────────────────────────────────────────────── */
-
-.cardSchedule .label {
-  color: var(--brand-navy, #172a4d);
-}
-
-.scheduleProgress {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.countdown {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.countdownNumber {
-  font-size: clamp(40px, 5vw, 56px);
-  font-weight: 800;
-  letter-spacing: -0.05em;
-  line-height: 1;
-  background: linear-gradient(
-    180deg,
-    var(--brand-navy, #172a4d) 0%,
-    var(--brand-red, #ee2d3a) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  font-variant-numeric: tabular-nums;
-}
-
-.countdownUnit {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.timeline {
-  position: relative;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(23, 42, 77, 0.07);
-  margin-top: 2px;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.85) inset,
-    0 1px 1px rgba(15, 23, 42, 0.05) inset;
-}
-
-.timelineFill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    var(--brand-navy, #172a4d) 0%,
-    rgba(23, 42, 77, 0.55) 60%,
-    rgba(23, 42, 77, 0.25) 100%
-  );
-  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.timelineToday {
-  position: absolute;
-  top: -4px;
-  bottom: -4px;
-  width: 3px;
-  border-radius: 2px;
-  background: linear-gradient(
-    180deg,
-    var(--brand-navy, #172a4d) 0%,
-    var(--brand-red, #ee2d3a) 100%
-  );
-  box-shadow: 0 0 8px rgba(238, 45, 58, 0.55);
-  transform: translateX(-1.5px);
-  pointer-events: none;
-}
-
-.timelineMeta {
-  display: flex;
-  justify-content: space-between;
-  margin: 0;
-  gap: 12px;
-}
-
-.timelineMetaItem {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.timelineMetaItem[data-align='right'] {
-  text-align: right;
-}
-
-.timelineMetaItem dt {
-  margin: 0;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.timelineMetaItem dd {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-strong);
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-}
-
-.timelineNote {
-  margin: 0;
-  font-size: 12px;
-  color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -537,75 +398,47 @@
   background: linear-gradient(180deg, var(--brand-navy, #172a4d) 0%, var(--brand-red, #ee2d3a) 100%);
 }
 
-.devTone_normal .heroValue {
+.devTone_normal .figureValue {
   color: #16a34a;
 }
-.devTone_ahead .heroValue {
+.devTone_ahead .figureValue {
   color: #16a34a;
 }
-.devTone_attention .heroValue {
+.devTone_attention .figureValue {
   color: #b45309;
 }
-.devTone_critical .heroValue {
+.devTone_critical .figureValue {
   color: var(--brand-red, #ee2d3a);
 }
 
-.devTrend {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.6);
-  color: var(--muted);
+/* Карточка отклонения переопределяет figureValue (она не использует
+   цвет от tone_*). Никаких градиентов, чистый цвет. */
+.cardDeviation .figureValue {
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
 }
 
-.devTone_critical .devTrend {
-  color: var(--brand-red, #ee2d3a);
-  border-color: rgba(238, 45, 58, 0.32);
-  background: linear-gradient(180deg, rgba(238, 45, 58, 0.14) 0%, rgba(238, 45, 58, 0.02) 100%);
-}
-.devTone_attention .devTrend {
-  color: #b45309;
-  border-color: rgba(180, 83, 9, 0.32);
-  background: linear-gradient(180deg, rgba(194, 105, 26, 0.14) 0%, rgba(180, 83, 9, 0.02) 100%);
-}
-.devTone_normal .devTrend,
-.devTone_ahead .devTrend {
-  color: #16a34a;
-  border-color: rgba(22, 163, 74, 0.32);
-  background: linear-gradient(180deg, rgba(34, 197, 94, 0.14) 0%, rgba(22, 163, 74, 0.02) 100%);
-}
-
-.devCompare {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: auto;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(15, 23, 42, 0.06);
-}
-
-.devRow {
+.compareRow {
   display: grid;
-  grid-template-columns: 60px 1fr auto;
+  grid-template-columns: 44px 1fr auto;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
-.devRowLabel {
-  font-size: 11px;
+.compareRow + .compareRow {
+  margin-top: 2px;
+}
+
+.compareLabel {
+  font-size: 10.5px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted);
 }
 
-.devRowBar {
+.compareBar {
   position: relative;
   height: 6px;
   border-radius: 999px;
@@ -613,107 +446,56 @@
   overflow: hidden;
 }
 
-.devRowFill {
+.compareFill {
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: 999px;
   transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.devRowFillPlan {
+.compareFillPlan {
   background: linear-gradient(90deg, var(--brand-navy, #172a4d) 0%, rgba(23, 42, 77, 0.55) 100%);
 }
 
-.devRowFillFact {
+.compareFillFact {
   background: linear-gradient(90deg, var(--brand-red, #ee2d3a) 0%, #b91326 100%);
 }
 
-.devTone_normal .devRowFillFact,
-.devTone_ahead .devRowFillFact {
+.devTone_normal .compareFillFact,
+.devTone_ahead .compareFillFact {
   background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
 }
-.devTone_attention .devRowFillFact {
+.devTone_attention .compareFillFact {
   background: linear-gradient(90deg, #c2691a 0%, #b45309 100%);
 }
 
-.devRowValue {
-  font-size: 13px;
+.compareValue {
+  font-size: 12.5px;
   font-weight: 800;
   letter-spacing: -0.01em;
   color: var(--text-strong);
   font-variant-numeric: tabular-nums;
 }
 
-/* ─── Замечания ──────────────────────────────────────────────────── */
-
-.cardIssues {
-  flex-direction: row;
-  align-items: center;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.cardIssues .cardHead {
-  flex: 1 1 auto;
-  min-width: 160px;
-}
-
-.issuesValue {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.issuesNumber {
-  font-size: clamp(40px, 4.5vw, 52px);
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  color: var(--text-strong);
-  font-variant-numeric: tabular-nums;
-}
-
-.issuesUnit {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.issuesHint {
-  margin: 0;
-  font-size: 12.5px;
-  color: var(--muted);
-  flex: 1 1 240px;
-}
-
 @media (max-width: 600px) {
   .card {
-    padding: 18px 18px;
+    padding: 14px 16px 12px;
+    min-height: 0;
   }
 
-  .heroValue {
-    font-size: 44px;
+  .figureValue {
+    font-size: 36px;
   }
 
-  .countdownNumber {
-    font-size: 38px;
+  .metaRow {
+    padding: 9px 11px;
   }
 
-  .miniMetrics {
-    padding: 12px 14px;
+  .compareRow {
+    grid-template-columns: 36px 1fr auto;
   }
 
-  .devCompare {
-    padding: 12px 14px;
-  }
-
-  .devRow {
-    grid-template-columns: 48px 1fr auto;
-    gap: 8px;
-  }
-
-  .cardIssues {
-    flex-direction: column;
-    align-items: stretch;
+  .scheduleProgress {
+    font-size: 10px;
   }
 }
