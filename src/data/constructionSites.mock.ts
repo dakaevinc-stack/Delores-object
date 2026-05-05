@@ -9,6 +9,8 @@ export const MOCK_CONSTRUCTION_SITES: readonly ConstructionSite[] = [
     id: 'kirpichnogo-zavoda',
     name: 'пос. Кирпичного завода',
     status: 'normal',
+    startDateIso: '2026-04-07',
+    endDateIso: '2026-05-15',
     executive: {
       planPercent: 64,
       factPercent: 62,
@@ -42,6 +44,8 @@ export const MOCK_CONSTRUCTION_SITES: readonly ConstructionSite[] = [
     id: 'scherbinka-vokzalnaya',
     name: 'Щербинка, Вокзальная',
     status: 'normal',
+    startDateIso: '2026-04-07',
+    endDateIso: '2026-05-15',
     executive: {
       planPercent: 58,
       factPercent: 59,
@@ -91,6 +95,8 @@ export const MOCK_CONSTRUCTION_SITES: readonly ConstructionSite[] = [
     id: 'krekshino-ryabinovaya',
     name: 'Крекшино, Рябиновая',
     status: 'normal',
+    startDateIso: '2026-04-03',
+    endDateIso: '2026-05-15',
     executive: {
       planPercent: 41,
       factPercent: 41,
