@@ -76,7 +76,7 @@ function renderSliceValue(props: PieLabelRenderProps) {
       textAnchor="middle"
       verticalAnchor="middle"
       fontSize={20}
-      fontWeight={700}
+      fontWeight={800}
       style={sliceLabelStyle(name)}
     >
       {value}
@@ -90,19 +90,30 @@ const LEGEND_DOT: Record<SiteStatus, string> = {
   critical: CHART.bad,
 }
 
-function LegendDockFixed({ data, total }: { data: Slice[]; total: number }) {
+const LEGEND_TONE: Record<SiteStatus, 'normal' | 'attention' | 'critical'> = {
+  normal: 'normal',
+  attention: 'attention',
+  critical: 'critical',
+}
+
+function LegendDock({ data, total }: { data: Slice[]; total: number }) {
   return (
     <footer className={styles.legendDock}>
       <ul className={styles.legend}>
         {data.map((d) => {
           const share = total > 0 ? Math.round((d.value / total) * 100) : 0
           return (
-            <li key={d.key} className={styles.legendRow}>
-              <span
-                className={styles.swatch}
-                style={{ background: LEGEND_DOT[d.key] }}
-              />
-              <span className={styles.legendName}>{d.name}</span>
+            <li
+              key={d.key}
+              className={`${styles.legendCard} ${styles[`legendCard_${LEGEND_TONE[d.key]}`]}`}
+            >
+              <span className={styles.legendHead}>
+                <span
+                  className={styles.swatch}
+                  style={{ background: LEGEND_DOT[d.key] }}
+                />
+                <span className={styles.legendName}>{d.name}</span>
+              </span>
               <span className={styles.legendVal}>
                 <span className={styles.legendCount}>{d.value}</span>
                 <span className={styles.legendShare}>{share}%</span>
@@ -122,6 +133,7 @@ export function StatusDistributionChart({ counts }: { counts: StatusCounts }) {
 
   return (
     <DashboardCard
+      kicker="Портфель"
       title="Распределение по статусам"
       description="Сколько объектов в каждом управленческом статусе — мгновенная сводка портфеля."
     >
@@ -202,7 +214,6 @@ export function StatusDistributionChart({ counts }: { counts: StatusCounts }) {
                 </Pie>
               </Layer>
 
-              {/* Сияющий блик сверху на ободе — даёт объём. */}
               <Pie
                 data={[{ name: 'sheen', value: 1 }]}
                 dataKey="value"
@@ -265,7 +276,7 @@ export function StatusDistributionChart({ counts }: { counts: StatusCounts }) {
             </PieChart>
           </ResponsiveContainer>
         </div>
-        <LegendDockFixed data={data} total={total} />
+        <LegendDock data={data} total={total} />
       </div>
     </DashboardCard>
   )

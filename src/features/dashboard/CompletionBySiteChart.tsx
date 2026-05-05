@@ -14,10 +14,10 @@ type Row = {
 
 const TICKS = [0, 25, 50, 75, 100] as const
 
-const STATUS_CLASS: Record<SiteStatus, string> = {
-  normal: styles.fillNormal,
-  attention: styles.fillAttention,
-  critical: styles.fillCritical,
+const STATUS_TONE: Record<SiteStatus, 'normal' | 'attention' | 'critical'> = {
+  normal: 'normal',
+  attention: 'attention',
+  critical: 'critical',
 }
 
 export function CompletionBySiteChart({
@@ -36,20 +36,43 @@ export function CompletionBySiteChart({
       }))
   }, [sites])
 
+  const counts = useMemo(() => {
+    const total = data.length
+    const min = total > 0 ? Math.min(...data.map((d) => d.fact)) : 0
+    const max = total > 0 ? Math.max(...data.map((d) => d.fact)) : 0
+    const avg =
+      total > 0
+        ? Math.round(data.reduce((acc, d) => acc + d.fact, 0) / total)
+        : 0
+    return { total, min, max, avg }
+  }, [data])
+
   return (
     <DashboardCard
+      kicker="Готовность портфеля"
       title="Фактическое выполнение по объектам"
-      description="Ниже — хуже: сортировка от минимального факта к максимальному, чтобы сразу увидеть отстающие площадки."
+      description="Снизу — отстающие площадки, сверху — лидеры. Сортировка по фактическому проценту готовности."
+      meta={
+        <span className={styles.metaPill}>
+          <span className={styles.metaLabel}>Среднее</span>
+          <span className={styles.metaValue}>{counts.avg}%</span>
+        </span>
+      }
     >
       <div className={styles.wrap}>
         <ul className={styles.list}>
           {data.map((row) => {
             const visible = Math.max(0, Math.min(100, row.fact))
             const widthPct = Math.max(2, visible)
+            const tone = STATUS_TONE[row.status]
             return (
-              <li key={row.id} className={styles.row}>
+              <li key={row.id} className={`${styles.row} ${styles[`tone_${tone}`]}`}>
                 <div className={styles.rowHead}>
                   <span className={styles.name}>{row.name}</span>
+                  <span className={`${styles.statusPill} ${styles[`statusPill_${tone}`]}`}>
+                    <span className={styles.statusDot} aria-hidden />
+                    {SITE_STATUS_LABEL[row.status]}
+                  </span>
                   <span className={styles.value}>
                     <span className={styles.valueNum}>{visible}</span>
                     <span className={styles.valuePct}>%</span>
@@ -73,7 +96,7 @@ export function CompletionBySiteChart({
                     ))}
                   </div>
                   <div
-                    className={`${styles.fill} ${STATUS_CLASS[row.status]}`}
+                    className={styles.fill}
                     style={{ width: `${widthPct}%` }}
                   >
                     <span className={styles.sheen} aria-hidden />
