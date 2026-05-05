@@ -74,7 +74,7 @@ export function PlanFactBySiteChart({
                   : ''
             }`}
           >
-            {fmtSigned(summary.avgGap)} п.п.
+            {fmtSigned(summary.avgGap)}%
           </span>
         </span>
       }
@@ -129,7 +129,7 @@ export function PlanFactBySiteChart({
                     <span className={styles.gapDot} aria-hidden />
                     {r.status === 'on_track'
                       ? 'По графику'
-                      : `${fmtSigned(r.gap)} п.п.`}
+                      : `${fmtSigned(r.gap)}%`}
                   </span>
                 </div>
 
