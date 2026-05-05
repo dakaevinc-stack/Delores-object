@@ -1,32 +1,475 @@
-.chart {
+/*
+ * Премиум-чарт «План и факт по объектам» в формате dumbbell:
+ * на едином 0..100% треке две точки — План (navy glass) и
+ * Факт (тон по статусу), между ними — цветная вилка-разность.
+ *
+ * Так читается лучше двойного бара: глаз сразу ловит, на сколько
+ * именно факт отстаёт или опережает, без необходимости считать
+ * разницу в голове.
+ */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   width: 100%;
   min-width: 0;
-  height: min(480px, 64vh);
-  min-height: 380px;
+  flex: 1 1 auto;
 }
 
-/* Контейнеры для переключения «мобильный список ↔ десктопный график».
-   Поддерживается через display:none, чтобы recharts не считал размеры
-   неактивного варианта. */
-.desktopOnly {
+/* Мета-пилюля справа от заголовка карточки. */
+.metaPill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 14px 5px 12px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(23, 42, 77, 0.06) 0%, rgba(23, 42, 77, 0.02) 100%);
+  border: 1px solid rgba(23, 42, 77, 0.12);
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+}
+
+.metaLabel {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.metaValue {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--brand-navy, #172a4d);
+  font-variant-numeric: tabular-nums;
+}
+
+.metaValue_behind {
+  color: var(--brand-red, #ee2d3a);
+}
+
+.metaValue_ahead {
+  color: #16a34a;
+}
+
+/* ─── Список ─────────────────────────────────────────────────────── */
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.row {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 16px 24px 36px 22px;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+}
+
+.row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 3px;
+}
+
+.row_on_track::before {
+  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+}
+
+.row_ahead::before {
+  background: linear-gradient(180deg, #1c4b82 0%, #16a34a 100%);
+}
+
+.row_behind::before {
+  background: linear-gradient(180deg, var(--brand-navy, #172a4d) 0%, var(--brand-red, #ee2d3a) 100%);
+}
+
+.rowHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
+}
+
+/* ─── Pill «−17 п.п. / По графику» ───────────────────────────────── */
+
+.gapPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: -0.005em;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(6px);
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.gapDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.gapPill_on_track {
+  color: #14532d;
+  border-color: rgba(22, 163, 74, 0.32);
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.16) 0%, rgba(22, 163, 74, 0.04) 100%);
+}
+.gapPill_on_track .gapDot {
+  background: #16a34a;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+}
+
+.gapPill_ahead {
+  color: #14532d;
+  border-color: rgba(22, 163, 74, 0.32);
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.18) 0%, rgba(22, 163, 74, 0.04) 100%);
+}
+.gapPill_ahead .gapDot {
+  background: #16a34a;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+}
+
+.gapPill_behind {
+  color: #7a0c14;
+  border-color: rgba(238, 45, 58, 0.32);
+  background: linear-gradient(180deg, rgba(238, 45, 58, 0.16) 0%, rgba(238, 45, 58, 0.04) 100%);
+}
+.gapPill_behind .gapDot {
+  background: var(--brand-red, #ee2d3a);
+  box-shadow: 0 0 6px rgba(238, 45, 58, 0.6);
+}
+
+/* ─── Дамбелл-трек ───────────────────────────────────────────────── */
+
+.track {
+  position: relative;
+  width: 100%;
+  height: 14px;
+  border-radius: 999px;
+}
+
+.trackBase {
+  position: absolute;
+  inset: 4px 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(23, 42, 77, 0.07) 0%, rgba(23, 42, 77, 0.03) 100%);
+  box-shadow:
+    inset 0 1px 2px rgba(15, 17, 20, 0.10),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.trackTicks {
+  position: absolute;
+  inset: 4px 0;
+  pointer-events: none;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.trackTick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(15, 17, 20, 0.07);
+  transform: translateX(-0.5px);
+}
+
+/* Серая «спина» от 0 до меньшей из точек: чуть темнее чем base. */
+.spine {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(23, 42, 77, 0.12) 0%, rgba(23, 42, 77, 0.18) 100%);
+}
+
+/* Цветная вилка между фактом и планом — главный визуальный сигнал. */
+.connector {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 999px;
+  z-index: 1;
+}
+
+.connector_behind {
+  background: linear-gradient(
+    90deg,
+    var(--brand-red, #ee2d3a) 0%,
+    var(--brand-navy, #172a4d) 100%
+  );
+  box-shadow: 0 0 14px rgba(238, 45, 58, 0.45);
+}
+
+.connector_ahead {
+  background: linear-gradient(90deg, #16a34a 0%, #1c4b82 100%);
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.4);
+}
+
+.connector_ontrack {
+  background: linear-gradient(90deg, #16a34a 0%, #16a34a 100%);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.35);
+}
+
+/* ─── Точки-капсулы ──────────────────────────────────────────────── */
+
+.dot {
+  position: absolute;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin-left: -11px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  box-shadow:
+    0 0 0 3px #fff,
+    0 6px 14px rgba(15, 23, 42, 0.22);
+  transition: transform 0.18s ease;
+}
+
+.row:hover .dot {
+  transform: translateY(-50%) scale(1.06);
+}
+
+.dotInner {
   display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 
-.mobileOnly {
-  display: none;
+.dotPlan {
+  background: linear-gradient(180deg, #1c4b82 0%, var(--brand-navy, #172a4d) 100%);
+}
+
+.dotFact_behind {
+  background: linear-gradient(180deg, #f57878 0%, var(--brand-red, #ee2d3a) 100%);
+}
+
+.dotFact_ahead {
+  background: linear-gradient(180deg, #3fd07a 0%, #16a34a 100%);
+}
+
+.dotFact_ontrack {
+  background: linear-gradient(180deg, #3fd07a 0%, #16a34a 100%);
+}
+
+/* ─── Подписи значений у точек ───────────────────────────────────── */
+
+.dotValue {
+  position: absolute;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: -0.005em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.dotValue_plan {
+  top: -22px;
+  color: var(--brand-navy, #172a4d);
+}
+
+.dotValue_fact {
+  bottom: -22px;
+  color: #b45309;
+}
+
+.dotValue_behind {
+  color: var(--brand-red, #ee2d3a);
+}
+
+.dotValue_ahead {
+  color: #16a34a;
+}
+
+/* ─── Ось снизу всего блока ──────────────────────────────────────── */
+
+.scale {
+  position: relative;
+  height: 18px;
+  margin-top: 4px;
+  border-top: 1px dashed rgba(15, 23, 42, 0.14);
+  padding-top: 6px;
+}
+
+.scaleTick {
+  position: absolute;
+  top: -1px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.scaleTick::before {
+  content: '';
+  width: 1px;
+  height: 4px;
+  background: rgba(15, 23, 42, 0.2);
+}
+
+.scaleLabel {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.scaleTick:first-child .scaleLabel {
+  transform: translateX(40%);
+}
+.scaleTick:last-child .scaleLabel {
+  transform: translateX(-40%);
+}
+
+/* ─── Легенда ────────────────────────────────────────────────────── */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  letter-spacing: -0.005em;
+  color: var(--muted);
+}
+
+.legendDot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.legendDotPlan {
+  background: linear-gradient(180deg, #1c4b82 0%, var(--brand-navy, #172a4d) 100%);
+}
+
+.legendDotFact {
+  background: linear-gradient(180deg, #f57878 0%, var(--brand-red, #ee2d3a) 100%);
+}
+
+.legendBar {
+  display: inline-block;
+  width: 28px;
+  height: 5px;
+  border-radius: 999px;
+}
+
+.legendBar_behind {
+  background: linear-gradient(
+    90deg,
+    var(--brand-red, #ee2d3a) 0%,
+    var(--brand-navy, #172a4d) 100%
+  );
+  box-shadow: 0 0 8px rgba(238, 45, 58, 0.4);
+}
+
+.legendBar_ahead {
+  background: linear-gradient(90deg, #16a34a 0%, #1c4b82 100%);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
 }
 
 @media (max-width: 640px) {
-  .desktopOnly {
-    display: none;
+  .row {
+    padding: 14px 18px 30px 18px;
+    gap: 26px;
   }
-  .mobileOnly {
-    display: block;
+
+  .name {
+    font-size: 13.5px;
   }
-  .chart {
-    /* На случай, если кто-то форс-показывает .chart — подстраиваем высоту,
-       но при display:none эти правила всё равно не сработают. */
-    min-height: 260px;
-    height: min(360px, 52vh);
+
+  .dot {
+    width: 18px;
+    height: 18px;
+    margin-left: -9px;
+  }
+
+  .dotInner {
+    width: 6px;
+    height: 6px;
+  }
+
+  .dotValue {
+    font-size: 10px;
+  }
+
+  .legendBar {
+    width: 22px;
+  }
+
+  .legend {
+    gap: 12px;
+    font-size: 11.5px;
   }
 }
