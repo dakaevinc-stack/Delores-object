@@ -415,12 +415,24 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
         aria-labelledby={`${uid}-title`}
       >
         <header className={styles.dialogHead}>
-          <div>
-            <p className={styles.kicker}>Объект</p>
+          <div className={styles.dialogHeadMain}>
+            <p className={styles.kicker}>
+              <img
+                className={styles.kickerMark}
+                src="/brand-chevron.svg"
+                alt=""
+                aria-hidden="true"
+              />
+              <span>Отчёт бригадира</span>
+            </p>
             <h2 className={styles.title} id={`${uid}-title`}>
-              Отчёт бригадира
+              Смена за сегодня
             </h2>
-            <p className={styles.sub}>{siteName}</p>
+            <p className={styles.sub}>
+              <span>Объект</span>
+              <span className={styles.subDot} aria-hidden />
+              <span>{siteName}</span>
+            </p>
           </div>
           <button type="button" className={styles.close} onClick={onClose} aria-label="Закрыть">
             ×
@@ -453,13 +465,22 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
             // двух разных списках, с двумя разными формами.
             <div className={styles.planBlock}>
               <div className={styles.planHeadRow}>
-                <p className={styles.planKicker}>Что сделано сегодня</p>
+                <p className={styles.planKicker}>
+                  <img
+                    className={styles.planKickerMark}
+                    src="/brand-chevron.svg"
+                    alt=""
+                    aria-hidden="true"
+                  />
+                  <span>Производственный план</span>
+                </p>
                 <span className={styles.planSummary}>
                   {workEntries.length > 0
                     ? `отмечено ${workEntries.length} из ${planTotalItemsCount}`
                     : `${planTotalItemsCount} работ в плане`}
                 </span>
               </div>
+              <h3 className={styles.planTitle}>Что сделано сегодня</h3>
               <p className={styles.planIntro}>
                 Поставьте галку у каждой работы, что делали сегодня, и впишите
                 объём — он сразу прибавится к плану на странице объекта.
