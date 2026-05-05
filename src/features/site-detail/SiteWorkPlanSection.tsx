@@ -45,21 +45,47 @@ const STATUS_LABEL: Record<SectionScheduleStatus, string> = {
 
 const NUM_FMT = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 })
 
-// Формат дат для «Периода» в шапке плана: с полным четырёхзначным годом
-// и человеческим месяцем («17 апр. 2026 г.»). Это «бизнес-формат»
-// для верхнеуровневой строки, в отличие от компактного `formatShortDate`,
-// который мы используем в позициях.
+// Форматтеры дат для «Периода» в шапке плана. Бизнес-формат, в отличие
+// от компактного `formatShortDate`, который мы используем в позициях.
 const LONG_DATE_FMT = new Intl.DateTimeFormat('ru-RU', {
   day: 'numeric',
   month: 'long',
   year: 'numeric',
 })
+const DAY_MONTH_FMT = new Intl.DateTimeFormat('ru-RU', {
+  day: 'numeric',
+  month: 'long',
+})
 
-function fmtLongDate(iso: string | null | undefined): string | null {
+function parseIso(iso: string | null | undefined): Date | null {
   if (!iso) return null
   const d = new Date(iso)
-  if (!Number.isFinite(d.getTime())) return null
-  return LONG_DATE_FMT.format(d)
+  return Number.isFinite(d.getTime()) ? d : null
+}
+
+function fmtLongDate(iso: string | null | undefined): string | null {
+  const d = parseIso(iso)
+  return d ? LONG_DATE_FMT.format(d) : null
+}
+
+/**
+ * «17 апреля — 31 августа 2026 г.» — если обе даты в одном году,
+ * год выносим в конец. Иначе показываем оба года.
+ */
+function formatPeriodHumanRu(
+  startIso: string | null | undefined,
+  endIso: string | null | undefined,
+): string | null {
+  const start = parseIso(startIso)
+  const end = parseIso(endIso)
+  if (!start || !end) {
+    return fmtLongDate(startIso) ?? fmtLongDate(endIso)
+  }
+  if (start.getTime() === end.getTime()) return LONG_DATE_FMT.format(start)
+  if (start.getFullYear() === end.getFullYear()) {
+    return `${DAY_MONTH_FMT.format(start)} — ${LONG_DATE_FMT.format(end)}`
+  }
+  return `${LONG_DATE_FMT.format(start)} — ${LONG_DATE_FMT.format(end)}`
 }
 
 function fmtSigned(n: number): string {
@@ -111,10 +137,7 @@ export function SiteWorkPlanSection({ plan, windowStartIso, windowEndIso }: Prop
   // отдельных позиций. Если сроки не пришли — деградируем к плану.
   const periodStartIso = windowStartIso ?? summary.earliestStartIso
   const periodEndIso = windowEndIso ?? summary.latestEndIso
-  const earliest = fmtLongDate(periodStartIso)
-  const latest = fmtLongDate(periodEndIso)
-  const period =
-    earliest && latest ? (earliest === latest ? earliest : `${earliest} — ${latest}`) : null
+  const period = formatPeriodHumanRu(periodStartIso, periodEndIso)
 
   return (
     <section className={styles.section} aria-labelledby="work-plan-heading">
