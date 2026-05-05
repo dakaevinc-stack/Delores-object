@@ -24,6 +24,8 @@ export const MOCK_CONSTRUCTION_SITES: readonly ConstructionSite[] = [
     id: 'brusilova',
     name: 'Брусилова',
     status: 'attention',
+    startDateIso: '2026-04-17',
+    endDateIso: '2026-08-31',
     executive: {
       planPercent: 71,
       factPercent: 63,

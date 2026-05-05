@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import type { BrigadierStoredReport } from '../domain/brigadierReport'
 import type { ProcurementRequest } from '../domain/procurementRequest'
 import { applyWorkEntriesToPlan } from '../domain/workPlan'
+import { computeSiteLiveKpis, todayIsoMsk } from '../domain/siteKpis'
 import { getSiteDetailDashboard } from '../data/siteDetail.mock'
 import { getWorkPlanForSite } from '../data/workPlans'
 import {
@@ -161,6 +162,15 @@ export function ObjectDetailPage() {
 
   const dashboard = getSiteDetailDashboard(site)
 
+  // Реальный KPI считаем по `workPlan` + срокам объекта, чтобы сетка
+  // не показывала «синтетические» mock-проценты, а двигалась вместе
+  // с фактом из бригадирских отчётов и календарным графиком.
+  const liveKpis = (() => {
+    const startIso = site.startDateIso ?? dashboard.kpis.startDateIso
+    const endIso = site.endDateIso ?? dashboard.kpis.endDateIso
+    return computeSiteLiveKpis(workPlan, startIso, endIso, todayIsoMsk())
+  })()
+
   return (
     <div className={styles.page}>
       <SiteDetailHeader site={site} dashboard={dashboard} />
@@ -209,7 +219,7 @@ export function ObjectDetailPage() {
         onRemoteSyncError={(msg) => setFormsApiMessage(msg)}
       />
 
-      <SiteDetailKpiGrid kpis={dashboard.kpis} />
+      <SiteDetailKpiGrid kpis={liveKpis} openIssuesCount={dashboard.kpis.openIssuesCount} />
 
       {workPlan ? <SiteWorkPlanSection plan={workPlan} /> : null}
 
