@@ -586,7 +586,7 @@
   align-items: flex-start;
   gap: 10px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 12px 12px;
   border: none;
   border-bottom: 0.5px solid rgba(60, 60, 67, 0.1);
   background: transparent;
@@ -594,6 +594,85 @@
   text-align: left;
   cursor: pointer;
   transition: background 0.12s ease;
+}
+
+/*
+ * Контейнер строки плана с раскрывающимся inline-полем объёма.
+ * Делаем `div`, а не `button`, чтобы внутрь можно было положить
+ * input — иначе клик по полю «Сделано» будет тоже снимать чекбокс.
+ */
+.planItem {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 0.5px solid rgba(60, 60, 67, 0.1);
+  background: transparent;
+  transition: background 0.12s ease;
+}
+
+.planItem:last-child {
+  border-bottom: none;
+}
+
+.planItemChecked {
+  background: rgba(28, 75, 130, 0.06);
+}
+
+.planItemHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 12px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.planItemHead:hover,
+.planItemHead:focus-visible {
+  outline: none;
+  background: rgba(28, 75, 130, 0.05);
+}
+
+.planItemQty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 12px 40px;
+}
+
+.planItemQtyInput {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: none;
+  background: #fff;
+  box-shadow: 0 0 0 0.5px rgba(60, 60, 67, 0.18);
+  font: inherit;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+}
+
+.planItemQtyInput::placeholder {
+  color: #aeaeb2;
+}
+
+.planItemQtyInput:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+.planItemQtyUnit {
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .planRow:last-child {

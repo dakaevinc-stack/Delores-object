@@ -72,7 +72,6 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
   const [attachments, setAttachments] = useState<BrigadierAttachmentDraft[]>([])
   const [reportComment, setReportComment] = useState('')
   const [workEntries, setWorkEntries] = useState<BrigadierWorkEntryDraft[]>([])
-  const [planPickerOpen, setPlanPickerOpen] = useState(false)
   const [planSearch, setPlanSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
   const attachmentsRef = useRef<BrigadierAttachmentDraft[]>([])
@@ -104,6 +103,11 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
     () => (plan ? plan.sections.reduce((acc, s) => acc + s.items.length, 0) : 0),
     [plan],
   )
+
+  // Главный признак, который определяет UX: если у объекта есть
+  // непустой план — показываем только список плана и прячем каталог
+  // пресетов; если плана нет — пресеты остаются как fallback.
+  const hasPlan = Boolean(plan) && planTotalItemsCount > 0
 
   const revokeAttachmentUrls = useCallback((rows: BrigadierAttachmentDraft[]) => {
     for (const a of rows) {
@@ -211,10 +215,6 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
     })
   }
 
-  const removeWorkEntry = (id: string) => {
-    setWorkEntries((prev) => prev.filter((r) => r.id !== id))
-  }
-
   const updateWorkEntry = (id: string, patch: Partial<BrigadierWorkEntryDraft>) => {
     setWorkEntries((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))
   }
@@ -292,9 +292,13 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
     const hasMedia = attachments.length > 0
     const hasPlanFact = filledWorkEntries.length > 0
 
+    // Бригадиру важно простое правило: не отметил ни одной работы,
+    // не написал комментарий, не приложил фото — отчёт пустой.
+    // Текст ниже сознательно не упоминает «привязку к плану» и
+    // прочий жаргон — оставляем то, что бригадир видит на экране.
     if (!hasWork && !hasComment && !hasProblems && !hasMedia && !hasPlanFact) {
       setError(
-        'Добавьте работы с объёмами, привяжите факт к плану, комментарий, проблему или прикрепите фото или видео.',
+        'Отчёт пустой. Отметьте хотя бы одну работу из плана, напишите комментарий, отметьте проблему или приложите фото/видео.',
       )
       return
     }
@@ -438,297 +442,269 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
             />
           </div>
 
-          <div className={styles.workBlock}>
-            <p className={styles.workKicker}>Работы</p>
-            <p className={styles.workIntro}>
-              Отметьте, что делали сегодня, затем укажите объёмы в блоке ниже.
-            </p>
-
-            <div className={styles.iosCard}>
-              {groupBrigadierPresets().map(({ group, items }) => {
-                if (items.length === 0) return null
-                const checkedInGroup = items.reduce(
-                  (n, it) => (criteria.some((c) => c.presetId === it.id) ? n + 1 : n),
-                  0,
-                )
-                return (
-                  <div key={group.id} className={styles.catalogGroup}>
-                    <div className={styles.catalogGroupHead}>
-                      <span className={styles.catalogGroupTitle}>{group.title}</span>
-                      {checkedInGroup > 0 ? (
-                        <span className={styles.catalogGroupBadge}>{checkedInGroup}</span>
-                      ) : null}
-                    </div>
-                    {items.map((p) => {
-                      const checked = criteria.some((c) => c.presetId === p.id)
-                      return (
-                        <label key={p.id} className={styles.catalogRow}>
-                          <input
-                            type="checkbox"
-                            className={styles.catalogCheck}
-                            checked={checked}
-                            onChange={(e) => togglePreset(p, e.target.checked)}
-                          />
-                          <span className={styles.catalogRowTitle}>{p.title}</span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                )
-              })}
-              <button type="button" className={styles.addOwnRow} onClick={addCustomWork}>
-                <span className={styles.addOwnLabel}>Добавить работу</span>
-                <span className={styles.addOwnHint}>название и единица вручную</span>
-              </button>
-            </div>
-
-            <p className={styles.catalogHint}>Объёмы по отмеченным строкам</p>
-
-            <div className={styles.iosCard}>
-              {criteria.length === 0 ? (
-                <p className={styles.pickedEmpty}>
-                  Пока ничего не отмечено — выберите пункты в списке выше.
-                </p>
-              ) : (
-                <ul className={styles.pickedList}>
-                  {criteriaOrdered.map((c) => (
-                    <li key={c.id} className={styles.pickedItem}>
-                      {c.presetId ? (
-                        <>
-                          <div className={styles.pickedRow}>
-                            <span className={styles.pickedName}>{c.title}</span>
-                            <button
-                              type="button"
-                              className={styles.pickedRemove}
-                              onClick={() => removeCriterion(c.id)}
-                              aria-label="Снять отметку"
-                            >
-                              ×
-                            </button>
-                          </div>
-                          <div className={styles.pickedControls}>
-                            <input
-                              className={styles.pickedQty}
-                              inputMode="decimal"
-                              placeholder="Объём"
-                              value={c.quantity}
-                              onChange={(e) => updateCriterion(c.id, { quantity: e.target.value })}
-                              aria-label={`Объём: ${c.title}`}
-                            />
-                            <select
-                              className={styles.pickedUnit}
-                              value={c.unitId}
-                              onChange={(e) =>
-                                updateCriterion(c.id, {
-                                  unitId: e.target.value as MeasurementUnitId,
-                                })
-                              }
-                              aria-label="Единица"
-                            >
-                              {MEASUREMENT_UNITS.map((u) => (
-                                <option key={u.id} value={u.id}>
-                                  {u.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className={styles.pickedRow}>
-                            <input
-                              className={styles.customName}
-                              placeholder="Что делали"
-                              value={c.title}
-                              onChange={(e) => updateCriterion(c.id, { title: e.target.value })}
-                              aria-label="Название работы"
-                            />
-                            <button
-                              type="button"
-                              className={styles.pickedRemove}
-                              onClick={() => removeCriterion(c.id)}
-                              aria-label="Убрать строку"
-                            >
-                              ×
-                            </button>
-                          </div>
-                          <div className={styles.pickedControls}>
-                            <input
-                              className={styles.pickedQty}
-                              inputMode="decimal"
-                              placeholder="Объём"
-                              value={c.quantity}
-                              onChange={(e) => updateCriterion(c.id, { quantity: e.target.value })}
-                              aria-label="Объём"
-                            />
-                            <select
-                              className={styles.pickedUnit}
-                              value={c.unitId}
-                              onChange={(e) =>
-                                updateCriterion(c.id, {
-                                  unitId: e.target.value as MeasurementUnitId,
-                                })
-                              }
-                              aria-label="Единица"
-                            >
-                              {MEASUREMENT_UNITS.map((u) => (
-                                <option key={u.id} value={u.id}>
-                                  {u.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-
-          {plan && planTotalItemsCount > 0 ? (
+          {hasPlan ? (
+            // Главный сценарий: у объекта есть план — бригадир видит ОДИН
+            // список работ из плана, ставит галку и тут же вписывает
+            // «сколько сделал». Объём сразу прибавится к факту в секции
+            // «План работ» на странице объекта (см. applyWorkEntriesToPlan).
+            //
+            // Сознательно прячем старую секцию пресетов: она дублировала
+            // ввод и путала бригадиров — выбирали работу два раза, в
+            // двух разных списках, с двумя разными формами.
             <div className={styles.planBlock}>
               <div className={styles.planHeadRow}>
-                <p className={styles.planKicker}>План объекта · факт за смену</p>
+                <p className={styles.planKicker}>Что сделано сегодня</p>
                 <span className={styles.planSummary}>
                   {workEntries.length > 0
-                    ? `${workEntries.length} из ${planTotalItemsCount}`
-                    : `${planTotalItemsCount} строк`}
+                    ? `отмечено ${workEntries.length} из ${planTotalItemsCount}`
+                    : `${planTotalItemsCount} работ в плане`}
                 </span>
               </div>
-              <p className={styles.planTitle}>Что сделано по плану</p>
               <p className={styles.planIntro}>
-                Выберите строки плана и впишите выполненный сегодня объём — он сразу
-                добавится к факту в секции «План работ».
+                Поставьте галку у каждой работы, что делали сегодня, и впишите
+                объём — он сразу прибавится к плану на странице объекта.
               </p>
 
-              {workEntries.length > 0 ? (
-                <ul className={styles.planPickedList}>
-                  {workEntries.map((entry) => {
-                    const item = plan.sections
-                      .flatMap((s) => s.items)
-                      .find((it) => it.number === entry.planNumber)
+              <input
+                className={styles.planSearchInput}
+                type="search"
+                placeholder="Поиск: бортовой камень, тротуар, 6.1…"
+                value={planSearch}
+                onChange={(e) => setPlanSearch(e.target.value)}
+                aria-label="Поиск работы из плана"
+              />
+
+              <div className={styles.planRowsScroll}>
+                {filteredPlanRows.length === 0 ? (
+                  <p className={styles.planRowsEmpty}>
+                    Ничего не нашли. Попробуйте проще — например «камень» или «бетон».
+                  </p>
+                ) : (
+                  filteredPlanRows.map((row) => {
+                    const entry = workEntries.find(
+                      (w) => w.planNumber === row.item.number,
+                    )
+                    const checked = Boolean(entry)
+                    const deferred = isItemDeferred(row.item)
                     return (
-                      <li key={entry.id} className={styles.planPickedItem}>
-                        <div className={styles.planPickedHead}>
-                          <div className={styles.planPickedTitleWrap}>
-                            <span className={styles.planPickedNumber}>
-                              {entry.planNumber}
+                      <div
+                        key={row.item.number}
+                        className={`${styles.planItem} ${checked ? styles.planItemChecked : ''}`}
+                      >
+                        <button
+                          type="button"
+                          className={styles.planItemHead}
+                          onClick={() => togglePlanRow(row.item, !checked)}
+                          aria-pressed={checked}
+                        >
+                          <input
+                            type="checkbox"
+                            className={styles.planRowCheck}
+                            checked={checked}
+                            readOnly
+                            tabIndex={-1}
+                            aria-hidden
+                          />
+                          <span className={styles.planRowBody}>
+                            <span className={styles.planRowTopLine}>
+                              <span className={styles.planRowNumber}>{row.item.number}</span>
+                              <span className={styles.planRowTitle}>{row.item.title}</span>
+                              {deferred ? (
+                                <span className={styles.planRowDeferred}>без срока</span>
+                              ) : null}
                             </span>
-                            <span className={styles.planPickedTitle}>
-                              {entry.planTitle}
-                            </span>
-                            {item ? (
-                              <span className={styles.planPickedTotal}>
-                                План: {formatVolume(item.total)} {unitLabel(item.unit)} ·
-                                {' '}
-                                факт уже {formatVolume(item.done)} ({Math.round(workItemPercent(item))}%)
+                            {row.item.total > 0 ? (
+                              <span className={styles.planRowMeta}>
+                                В плане: {formatVolume(row.item.total)} {unitLabel(row.item.unit)}
+                                {row.item.done > 0
+                                  ? ` · уже сделано ${formatVolume(row.item.done)} (${Math.round(workItemPercent(row.item))}%)`
+                                  : ''}
                               </span>
                             ) : null}
-                          </div>
-                          <button
-                            type="button"
-                            className={styles.pickedRemove}
-                            onClick={() => removeWorkEntry(entry.id)}
-                            aria-label="Убрать привязку к плану"
-                          >
-                            ×
-                          </button>
-                        </div>
-                        <div className={styles.planPickedControls}>
-                          <input
-                            className={styles.planPickedQty}
-                            inputMode="decimal"
-                            placeholder="Сделано сегодня"
-                            value={entry.qty}
-                            onChange={(e) =>
-                              updateWorkEntry(entry.id, { qty: e.target.value })
-                            }
-                            aria-label={`Объём по строке ${entry.planNumber}`}
-                          />
-                          <span className={styles.planPickedUnit}>
-                            {unitLabel(entry.unit)}
                           </span>
-                        </div>
-                      </li>
+                        </button>
+                        {checked && entry ? (
+                          <div className={styles.planItemQty}>
+                            <input
+                              className={styles.planItemQtyInput}
+                              inputMode="decimal"
+                              placeholder="Сколько сделали сегодня"
+                              value={entry.qty}
+                              onChange={(e) =>
+                                updateWorkEntry(entry.id, { qty: e.target.value })
+                              }
+                              aria-label={`Сколько сделали по строке ${entry.planNumber}`}
+                              autoFocus
+                            />
+                            <span className={styles.planItemQtyUnit}>
+                              {unitLabel(entry.unit)}
+                            </span>
+                          </div>
+                        ) : null}
+                      </div>
                     )
-                  })}
-                </ul>
-              ) : null}
+                  })
+                )}
+              </div>
+            </div>
+          ) : (
+            // Fallback: у объекта нет плана (старый или новый объект,
+            // план ещё не загрузили). Тогда оставляем старый каталог
+            // пресетов «Установка БК — бетон / гранит / …» — это
+            // единственный способ зафиксировать объёмы без плана.
+            <div className={styles.workBlock}>
+              <p className={styles.workKicker}>Что сделано сегодня</p>
+              <p className={styles.workIntro}>
+                У объекта пока нет плана. Отметьте, что делали, и укажите объём.
+              </p>
 
-              <div className={styles.planActions}>
-                <button
-                  type="button"
-                  className={`${styles.planAddBtn} ${planPickerOpen ? styles.planAddBtnActive : ''}`}
-                  onClick={() => setPlanPickerOpen((v) => !v)}
-                  aria-expanded={planPickerOpen}
-                >
-                  {planPickerOpen ? 'Скрыть список плана' : '+ Привязать строку плана'}
+              <div className={styles.iosCard}>
+                {groupBrigadierPresets().map(({ group, items }) => {
+                  if (items.length === 0) return null
+                  const checkedInGroup = items.reduce(
+                    (n, it) => (criteria.some((c) => c.presetId === it.id) ? n + 1 : n),
+                    0,
+                  )
+                  return (
+                    <div key={group.id} className={styles.catalogGroup}>
+                      <div className={styles.catalogGroupHead}>
+                        <span className={styles.catalogGroupTitle}>{group.title}</span>
+                        {checkedInGroup > 0 ? (
+                          <span className={styles.catalogGroupBadge}>{checkedInGroup}</span>
+                        ) : null}
+                      </div>
+                      {items.map((p) => {
+                        const checked = criteria.some((c) => c.presetId === p.id)
+                        return (
+                          <label key={p.id} className={styles.catalogRow}>
+                            <input
+                              type="checkbox"
+                              className={styles.catalogCheck}
+                              checked={checked}
+                              onChange={(e) => togglePreset(p, e.target.checked)}
+                            />
+                            <span className={styles.catalogRowTitle}>{p.title}</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )
+                })}
+                <button type="button" className={styles.addOwnRow} onClick={addCustomWork}>
+                  <span className={styles.addOwnLabel}>Добавить работу</span>
+                  <span className={styles.addOwnHint}>название и единица вручную</span>
                 </button>
               </div>
 
-              {planPickerOpen ? (
-                <div className={styles.planPicker}>
-                  <input
-                    className={styles.planSearchInput}
-                    type="search"
-                    placeholder="Поиск: 6.1, щебень, тротуар…"
-                    value={planSearch}
-                    onChange={(e) => setPlanSearch(e.target.value)}
-                    aria-label="Поиск по плану"
-                  />
-                  <div className={styles.planRowsScroll}>
-                    {filteredPlanRows.length === 0 ? (
-                      <p className={styles.planRowsEmpty}>Ничего не найдено по запросу.</p>
-                    ) : (
-                      filteredPlanRows.map((row) => {
-                        const checked = workEntries.some(
-                          (w) => w.planNumber === row.item.number,
-                        )
-                        const deferred = isItemDeferred(row.item)
-                        return (
-                          <button
-                            key={row.item.number}
-                            type="button"
-                            className={`${styles.planRow} ${checked ? styles.planRowChecked : ''}`}
-                            onClick={() => togglePlanRow(row.item, !checked)}
-                            aria-pressed={checked}
-                          >
-                            <input
-                              type="checkbox"
-                              className={styles.planRowCheck}
-                              checked={checked}
-                              readOnly
-                              tabIndex={-1}
-                              aria-hidden
-                            />
-                            <span className={styles.planRowBody}>
-                              <span className={styles.planRowTopLine}>
-                                <span className={styles.planRowNumber}>{row.item.number}</span>
-                                <span className={styles.planRowTitle}>{row.item.title}</span>
-                                {deferred ? (
-                                  <span className={styles.planRowDeferred}>без срока</span>
-                                ) : null}
-                              </span>
-                              {row.item.total > 0 ? (
-                                <span className={styles.planRowMeta}>
-                                  План: {formatVolume(row.item.total)} {unitLabel(row.item.unit)}
-                                  {row.item.done > 0
-                                    ? ` · факт ${formatVolume(row.item.done)} (${Math.round(workItemPercent(row.item))}%)`
-                                    : ''}
-                                </span>
-                              ) : null}
-                            </span>
-                          </button>
-                        )
-                      })
-                    )}
-                  </div>
-                </div>
-              ) : null}
+              <p className={styles.catalogHint}>Объёмы по отмеченным строкам</p>
+
+              <div className={styles.iosCard}>
+                {criteria.length === 0 ? (
+                  <p className={styles.pickedEmpty}>
+                    Пока ничего не отмечено — выберите пункты в списке выше.
+                  </p>
+                ) : (
+                  <ul className={styles.pickedList}>
+                    {criteriaOrdered.map((c) => (
+                      <li key={c.id} className={styles.pickedItem}>
+                        {c.presetId ? (
+                          <>
+                            <div className={styles.pickedRow}>
+                              <span className={styles.pickedName}>{c.title}</span>
+                              <button
+                                type="button"
+                                className={styles.pickedRemove}
+                                onClick={() => removeCriterion(c.id)}
+                                aria-label="Снять отметку"
+                              >
+                                ×
+                              </button>
+                            </div>
+                            <div className={styles.pickedControls}>
+                              <input
+                                className={styles.pickedQty}
+                                inputMode="decimal"
+                                placeholder="Объём"
+                                value={c.quantity}
+                                onChange={(e) =>
+                                  updateCriterion(c.id, { quantity: e.target.value })
+                                }
+                                aria-label={`Объём: ${c.title}`}
+                              />
+                              <select
+                                className={styles.pickedUnit}
+                                value={c.unitId}
+                                onChange={(e) =>
+                                  updateCriterion(c.id, {
+                                    unitId: e.target.value as MeasurementUnitId,
+                                  })
+                                }
+                                aria-label="Единица"
+                              >
+                                {MEASUREMENT_UNITS.map((u) => (
+                                  <option key={u.id} value={u.id}>
+                                    {u.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className={styles.pickedRow}>
+                              <input
+                                className={styles.customName}
+                                placeholder="Что делали"
+                                value={c.title}
+                                onChange={(e) => updateCriterion(c.id, { title: e.target.value })}
+                                aria-label="Название работы"
+                              />
+                              <button
+                                type="button"
+                                className={styles.pickedRemove}
+                                onClick={() => removeCriterion(c.id)}
+                                aria-label="Убрать строку"
+                              >
+                                ×
+                              </button>
+                            </div>
+                            <div className={styles.pickedControls}>
+                              <input
+                                className={styles.pickedQty}
+                                inputMode="decimal"
+                                placeholder="Объём"
+                                value={c.quantity}
+                                onChange={(e) =>
+                                  updateCriterion(c.id, { quantity: e.target.value })
+                                }
+                                aria-label="Объём"
+                              />
+                              <select
+                                className={styles.pickedUnit}
+                                value={c.unitId}
+                                onChange={(e) =>
+                                  updateCriterion(c.id, {
+                                    unitId: e.target.value as MeasurementUnitId,
+                                  })
+                                }
+                                aria-label="Единица"
+                              >
+                                {MEASUREMENT_UNITS.map((u) => (
+                                  <option key={u.id} value={u.id}>
+                                    {u.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
-          ) : null}
+          )}
 
           <div className={styles.block}>
             <div className={styles.blockHead}>
