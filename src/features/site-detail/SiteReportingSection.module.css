@@ -1,81 +1,362 @@
+/*
+ * Карточка «Отчётность бригады».
+ * Тот же визуальный язык, что у `SiteScheduleSection`:
+ * navy→red rail, kicker, status pill, hero-цифра, неделя
+ * отчётности дотами и таблица материалов смены.
+ *
+ * Карточка раскрывается на всю высоту соседней секции «Сроки и
+ * динамика» через `display: flex; flex-direction: column;` и
+ * растяжку футера через `margin-top: auto`.
+ */
+
 .section {
-  margin-bottom: 0;
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-radius: 22px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background:
+    radial-gradient(140% 100% at 100% 0%, rgba(238, 45, 58, 0.06) 0%, rgba(238, 45, 58, 0) 55%),
+    linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 18px 40px rgba(15, 23, 42, 0.06);
+  padding: 22px 22px 18px;
+  overflow: hidden;
 }
 
+.section::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(
+    180deg,
+    var(--brand-navy, #172a4d) 0%,
+    var(--brand-red, #ee2d3a) 100%
+  );
+}
+
+.tone_normal::before {
+  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+}
+.tone_attention::before {
+  background: linear-gradient(180deg, #c2691a 0%, #b45309 100%);
+}
+.tone_critical::before {
+  background: linear-gradient(180deg, var(--brand-navy, #172a4d) 0%, var(--brand-red, #ee2d3a) 100%);
+}
+.tone_muted::before {
+  background: rgba(15, 23, 42, 0.18);
+}
+
+/* ─── Шапка ──────────────────────────────────────────────────────── */
+
 .sectionHead {
-  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 4px 12px 4px 8px;
+  border-radius: 999px;
+  background: rgba(23, 42, 77, 0.06);
+  color: var(--brand-navy, #172a4d);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  align-self: flex-start;
+}
+
+.kickerMark {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .sectionTitle {
-  margin: 0 0 6px;
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  margin: 0;
+  font-size: clamp(20px, 1.9vw, 22px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
   color: var(--text-strong);
 }
 
 .sectionLead {
   margin: 0;
-  max-width: 52ch;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
-  color: var(--text);
+  color: var(--muted);
+  letter-spacing: -0.005em;
 }
 
-.panel {
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
-}
-
-.row {
-  display: flex;
+.statusPill {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-}
-
-.row:last-child {
-  border-bottom: none;
-}
-
-.rowLabel {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-strong);
-}
-
-.badge {
-  flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 5px 12px;
+  gap: 6px;
+  padding: 3px 10px 3px 7px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(6px);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.statusDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.statusPill_normal {
+  color: #14532d;
+  border-color: rgba(22, 163, 74, 0.32);
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.16) 0%, rgba(22, 163, 74, 0.04) 100%);
+}
+.statusPill_normal .statusDot {
+  background: #16a34a;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+}
+
+.statusPill_attention {
+  color: #7a3a0a;
+  border-color: rgba(180, 83, 9, 0.32);
+  background: linear-gradient(180deg, rgba(194, 105, 26, 0.14) 0%, rgba(180, 83, 9, 0.04) 100%);
+}
+.statusPill_attention .statusDot {
+  background: #c2691a;
+  box-shadow: 0 0 6px rgba(180, 83, 9, 0.6);
+}
+
+.statusPill_critical {
+  color: #7a0c14;
+  border-color: rgba(238, 45, 58, 0.32);
+  background: linear-gradient(180deg, rgba(238, 45, 58, 0.16) 0%, rgba(238, 45, 58, 0.04) 100%);
+}
+.statusPill_critical .statusDot {
+  background: var(--brand-red, #ee2d3a);
+  box-shadow: 0 0 6px rgba(238, 45, 58, 0.6);
+}
+
+.statusPill_muted {
+  color: var(--muted);
+  border-color: rgba(15, 23, 42, 0.14);
+  background: rgba(15, 23, 42, 0.04);
+}
+.statusPill_muted .statusDot {
+  background: rgba(15, 23, 42, 0.4);
+}
+
+/* ─── Hero-блок ──────────────────────────────────────────────────── */
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.heroFigure {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.heroValue {
+  font-size: clamp(36px, 4vw, 44px);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  color: var(--text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.tone_normal .heroValue {
+  color: #16a34a;
+}
+.tone_attention .heroValue {
+  color: #b45309;
+}
+.tone_critical .heroValue {
+  color: var(--brand-red, #ee2d3a);
+}
+.tone_muted .heroValue {
   color: var(--muted);
 }
 
-.badge[data-state='ok'] {
-  border-color: rgba(31, 143, 74, 0.35);
-  background: rgba(31, 143, 74, 0.08);
-  color: var(--status-ok);
+.heroSub {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  letter-spacing: -0.005em;
+  font-variant-numeric: tabular-nums;
 }
 
-.badge[data-state='warn'] {
-  border-color: rgba(212, 160, 23, 0.45);
-  background: rgba(212, 160, 23, 0.1);
-  color: #8a6500;
+/* ─── Неделя в дотах ─────────────────────────────────────────────── */
+
+.week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(15, 23, 42, 0.06);
 }
 
-.badge[data-state='bad'] {
-  border-color: rgba(198, 40, 40, 0.4);
-  background: rgba(198, 40, 40, 0.08);
-  color: var(--status-bad);
+.weekDay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 4px;
+  border-radius: 10px;
+  cursor: default;
+  transition: background 0.15s ease;
+}
+
+.weekDayToday {
+  background: rgba(23, 42, 77, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(23, 42, 77, 0.12);
+}
+
+.weekLabel {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.weekDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.15);
+  box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.04);
+}
+
+.weekDayOn .weekDot {
+  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+  box-shadow:
+    0 0 0 2px rgba(34, 197, 94, 0.18),
+    0 0 8px rgba(34, 197, 94, 0.45);
+}
+
+.weekDayOff .weekDot {
+  background: rgba(15, 23, 42, 0.18);
+}
+
+.weekDayToday .weekLabel {
+  color: var(--brand-navy, #172a4d);
+}
+
+.weekDayToday.weekDayOff .weekDot {
+  background: linear-gradient(
+    180deg,
+    var(--brand-navy, #172a4d) 0%,
+    var(--brand-red, #ee2d3a) 100%
+  );
+  box-shadow: 0 0 8px rgba(238, 45, 58, 0.45);
+}
+
+/* ─── Метрики смены ──────────────────────────────────────────────── */
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.metric dt {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.metric dd {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-strong);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.metricWarn {
+  border-color: rgba(180, 83, 9, 0.28);
+  background: linear-gradient(180deg, rgba(194, 105, 26, 0.1) 0%, rgba(180, 83, 9, 0.02) 100%);
+}
+
+.metricWarn dd {
+  color: #b45309;
+}
+
+/* ─── Футер ──────────────────────────────────────────────────────── */
+
+.footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(23, 42, 77, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.footerText {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.005em;
+}
+
+.footerStrong {
+  color: var(--text-strong);
+  font-weight: 800;
+}
+
+.footerWarn {
+  color: #b45309;
+  font-weight: 800;
 }

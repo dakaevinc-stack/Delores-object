@@ -235,7 +235,7 @@ export function ObjectDetailPage() {
           basePlan={basePlan}
           reports={brigadierReports}
         />
-        <SiteReportingSection reporting={dashboard.reporting} />
+        <SiteReportingSection reports={brigadierReports} todayIso={liveKpis.todayIso} />
       </div>
 
       <SiteProcurementRequestsSection
