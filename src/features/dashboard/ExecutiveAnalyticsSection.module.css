@@ -38,18 +38,7 @@
 }
 
 .gridFull {
-  margin-bottom: 18px;
-}
-
-.gridBottom {
-  display: grid;
-  gap: 18px;
-}
-
-@media (min-width: 900px) {
-  .gridBottom {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  /* Последний блок секции — нижний отступ не нужен. */
 }
 
 @media (max-width: 640px) {
@@ -64,13 +53,5 @@
   .gridTop {
     gap: 14px;
     margin-bottom: 14px;
-  }
-
-  .gridFull {
-    margin-bottom: 14px;
-  }
-
-  .gridBottom {
-    gap: 14px;
   }
 }

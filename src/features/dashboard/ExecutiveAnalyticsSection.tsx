@@ -1,9 +1,7 @@
 import type { ConstructionSite } from '../../types/constructionSite'
 import type { StatusCounts } from '../../domain/executiveDashboard'
 import { CompletionBySiteChart } from './CompletionBySiteChart'
-import { LaggingObjectsPanel } from './LaggingObjectsPanel'
 import { PlanFactBySiteChart } from './PlanFactBySiteChart'
-import { ProblemStagesPanel } from './ProblemStagesPanel'
 import { StatusDistributionChart } from './StatusDistributionChart'
 import styles from './ExecutiveAnalyticsSection.module.css'
 
@@ -32,11 +30,6 @@ export function ExecutiveAnalyticsSection({ sites, counts }: Props) {
 
       <div className={styles.gridFull}>
         <PlanFactBySiteChart sites={sites} />
-      </div>
-
-      <div className={styles.gridBottom}>
-        <LaggingObjectsPanel sites={sites} />
-        <ProblemStagesPanel sites={sites} />
       </div>
     </section>
   )
