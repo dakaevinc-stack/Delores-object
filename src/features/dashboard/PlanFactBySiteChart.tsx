@@ -34,9 +34,7 @@ export function PlanFactBySiteChart({
   const rows = useMemo<Row[]>(() => {
     return [...sites]
       .map((s) => {
-        // Семантика gap: положительное = отстаём (план > факт),
-        // отрицательное = опережаем. Это удобно для сортировки по
-        // «болевой точке».
+        // Положительный gap = отстаём (план > факт), отрицательный = опережаем.
         const gap = planFactGapPoints(s)
         const status: Row['status'] =
           gap > 1 ? 'behind' : gap < -1 ? 'ahead' : 'on_track'
@@ -52,29 +50,21 @@ export function PlanFactBySiteChart({
       .sort((a, b) => b.gap - a.gap)
   }, [sites])
 
-  // Сводка по портфелю — в meta-pill справа от заголовка.
   const summary = useMemo(() => {
     const total = rows.length
-    if (total === 0) return { total: 0, avgPlan: 0, avgFact: 0, avgGap: 0 }
-    const sumPlan = rows.reduce((acc, r) => acc + r.plan, 0)
-    const sumFact = rows.reduce((acc, r) => acc + r.fact, 0)
+    if (total === 0) return { total: 0, avgGap: 0 }
     const sumGap = rows.reduce((acc, r) => acc + r.gap, 0)
-    return {
-      total,
-      avgPlan: Math.round(sumPlan / total),
-      avgFact: Math.round(sumFact / total),
-      avgGap: Math.round(sumGap / total),
-    }
+    return { total, avgGap: Math.round(sumGap / total) }
   }, [rows])
 
   return (
     <DashboardCard
       kicker="План и факт"
       title="Сравнение по объектам"
-      description="Каждый объект — две точки на шкале: «Факт» и «План». Цветная вилка между ними — фактическое отставание или опережение."
+      description="Каждая строка — пара точек «Факт ↔ План». Цветная перемычка показывает, насколько площадка отстаёт или идёт впереди графика."
       meta={
         <span className={styles.metaPill}>
-          <span className={styles.metaLabel}>Среднее отставание</span>
+          <span className={styles.metaLabel}>Среднее</span>
           <span
             className={`${styles.metaValue} ${
               summary.avgGap > 1
@@ -106,7 +96,36 @@ export function PlanFactBySiteChart({
               >
                 <div className={styles.rowHead}>
                   <span className={styles.name}>{r.name}</span>
-                  <span className={`${styles.gapPill} ${styles[`gapPill_${r.status}`]}`}>
+                  <span className={styles.values}>
+                    <span className={styles.value}>
+                      <span className={styles.valueLabel}>План</span>
+                      <span className={`${styles.valueNum} ${styles.valueNum_plan}`}>
+                        {Math.round(plan)}
+                      </span>
+                      <span className={styles.valuePct}>%</span>
+                    </span>
+                    <span className={styles.valueDivider} aria-hidden>
+                      ·
+                    </span>
+                    <span className={styles.value}>
+                      <span className={styles.valueLabel}>Факт</span>
+                      <span
+                        className={`${styles.valueNum} ${
+                          isBehind
+                            ? styles.valueNum_behind
+                            : isAhead
+                              ? styles.valueNum_ahead
+                              : styles.valueNum_ontrack
+                        }`}
+                      >
+                        {Math.round(fact)}
+                      </span>
+                      <span className={styles.valuePct}>%</span>
+                    </span>
+                  </span>
+                  <span
+                    className={`${styles.gapPill} ${styles[`gapPill_${r.status}`]}`}
+                  >
                     <span className={styles.gapDot} aria-hidden />
                     {r.status === 'on_track'
                       ? 'По графику'
@@ -130,14 +149,14 @@ export function PlanFactBySiteChart({
                     ))}
                   </div>
 
-                  {/* Серая «спина» от 0 до меньшей из точек */}
+                  {/* Тонкий шов от 0 до меньшей точки. */}
                   <span
                     className={styles.spine}
                     style={{ width: `${lo}%` }}
                     aria-hidden
                   />
 
-                  {/* Цветная «вилка» между фактом и планом */}
+                  {/* Цветная перемычка между фактом и планом. */}
                   <span
                     className={`${styles.connector} ${
                       isBehind
@@ -150,18 +169,13 @@ export function PlanFactBySiteChart({
                     aria-hidden
                   />
 
-                  {/* План-точка (navy, glass) */}
                   <span
                     className={`${styles.dot} ${styles.dotPlan}`}
                     style={{ left: `${plan}%` }}
                     aria-hidden
-                  >
-                    <span className={styles.dotInner} />
-                  </span>
-
-                  {/* Факт-точка (тон по статусу) */}
+                  />
                   <span
-                    className={`${styles.dot} ${styles.dotFact} ${
+                    className={`${styles.dot} ${
                       isBehind
                         ? styles.dotFact_behind
                         : isAhead
@@ -170,29 +184,7 @@ export function PlanFactBySiteChart({
                     }`}
                     style={{ left: `${fact}%` }}
                     aria-hidden
-                  >
-                    <span className={styles.dotInner} />
-                  </span>
-
-                  {/* Подписи значений рядом с точками */}
-                  <span
-                    className={`${styles.dotValue} ${styles.dotValue_plan}`}
-                    style={{ left: `${plan}%` }}
-                  >
-                    План {Math.round(plan)}%
-                  </span>
-                  <span
-                    className={`${styles.dotValue} ${styles.dotValue_fact} ${
-                      isBehind
-                        ? styles.dotValue_behind
-                        : isAhead
-                          ? styles.dotValue_ahead
-                          : ''
-                    }`}
-                    style={{ left: `${fact}%` }}
-                  >
-                    Факт {Math.round(fact)}%
-                  </span>
+                  />
                 </div>
               </li>
             )
@@ -217,18 +209,12 @@ export function PlanFactBySiteChart({
             Факт
           </span>
           <span className={styles.legendItem}>
-            <span
-              className={`${styles.legendBar} ${styles.legendBar_behind}`}
-              aria-hidden
-            />
-            Отстаём от плана
+            <span className={`${styles.legendBar} ${styles.legendBar_behind}`} aria-hidden />
+            Отстаём
           </span>
           <span className={styles.legendItem}>
-            <span
-              className={`${styles.legendBar} ${styles.legendBar_ahead}`}
-              aria-hidden
-            />
-            Опережаем план
+            <span className={`${styles.legendBar} ${styles.legendBar_ahead}`} aria-hidden />
+            Опережаем
           </span>
         </div>
       </div>

@@ -1,30 +1,34 @@
 /*
- * Премиум-чарт «План и факт по объектам» в формате dumbbell:
- * на едином 0..100% треке две точки — План (navy glass) и
- * Факт (тон по статусу), между ними — цветная вилка-разность.
+ * Премиум-чарт «План и факт по объектам» — плотный dumbbell.
  *
- * Так читается лучше двойного бара: глаз сразу ловит, на сколько
- * именно факт отстаёт или опережает, без необходимости считать
- * разницу в голове.
+ * Каждая строка занимает ~52 px: название и значения в шапке,
+ * dumbbell-трек снизу. Подписи значений ушли из-под точек в
+ * шапку строки — это убирает «двойной» вертикальный воздух и
+ * делает блок раза в три ниже, чем в первой ревизии.
  */
 
 .wrap {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   width: 100%;
   min-width: 0;
   flex: 1 1 auto;
 }
 
-/* Мета-пилюля справа от заголовка карточки. */
+/* ─── Мета-пилюля «Среднее ±N п.п.» ──────────────────────────────── */
+
 .metaPill {
   display: inline-flex;
   align-items: baseline;
   gap: 8px;
   padding: 5px 14px 5px 12px;
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(23, 42, 77, 0.06) 0%, rgba(23, 42, 77, 0.02) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(23, 42, 77, 0.06) 0%,
+    rgba(23, 42, 77, 0.02) 100%
+  );
   border: 1px solid rgba(23, 42, 77, 0.12);
   backdrop-filter: blur(6px);
   white-space: nowrap;
@@ -54,7 +58,7 @@
   color: #16a34a;
 }
 
-/* ─── Список ─────────────────────────────────────────────────────── */
+/* ─── Список строк ───────────────────────────────────────────────── */
 
 .list {
   list-style: none;
@@ -62,36 +66,38 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 8px;
 }
 
 .row {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 32px;
-  padding: 16px 24px 36px 22px;
-  border-radius: 16px;
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  background: rgba(255, 255, 255, 0.65);
+  gap: 8px;
+  padding: 11px 16px 13px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(6px);
   overflow: hidden;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease,
+    background-color 0.18s ease;
 }
 
 .row:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.07);
 }
 
 .row::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 0;
-  bottom: 0;
+  top: 8px;
+  bottom: 8px;
   width: 3px;
-  border-radius: 3px;
+  border-radius: 999px;
 }
 
 .row_on_track::before {
@@ -106,23 +112,83 @@
   background: linear-gradient(180deg, var(--brand-navy, #172a4d) 0%, var(--brand-red, #ee2d3a) 100%);
 }
 
+/* ─── Шапка строки: название + цифры + пилюля ────────────────────── */
+
 .rowHead {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .name {
-  flex: 1;
+  flex: 1 1 220px;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--text-strong);
+}
+
+.values {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.valueLabel {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.valueNum {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.valuePct {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-left: -1px;
+}
+
+.valueNum_plan {
+  color: var(--brand-navy, #172a4d);
+}
+
+.valueNum_behind {
+  color: var(--brand-red, #ee2d3a);
+}
+
+.valueNum_ahead {
+  color: #16a34a;
+}
+
+.valueNum_ontrack {
+  color: #16a34a;
+}
+
+.valueDivider {
+  color: rgba(15, 23, 42, 0.22);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
 }
 
 /* ─── Pill «−17 п.п. / По графику» ───────────────────────────────── */
@@ -131,9 +197,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 10px 3px 7px;
+  padding: 3px 10px 3px 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 800;
   letter-spacing: -0.005em;
   border: 1px solid rgba(15, 23, 42, 0.1);
@@ -182,20 +248,24 @@
   box-shadow: 0 0 6px rgba(238, 45, 58, 0.6);
 }
 
-/* ─── Дамбелл-трек ───────────────────────────────────────────────── */
+/* ─── Dumbbell-трек ──────────────────────────────────────────────── */
 
 .track {
   position: relative;
   width: 100%;
   height: 14px;
-  border-radius: 999px;
+  margin-top: 2px;
 }
 
 .trackBase {
   position: absolute;
-  inset: 4px 0;
+  inset: 5px 0;
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(23, 42, 77, 0.07) 0%, rgba(23, 42, 77, 0.03) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(23, 42, 77, 0.07) 0%,
+    rgba(23, 42, 77, 0.03) 100%
+  );
   box-shadow:
     inset 0 1px 2px rgba(15, 17, 20, 0.10),
     inset 0 -1px 0 rgba(255, 255, 255, 0.7);
@@ -203,7 +273,7 @@
 
 .trackTicks {
   position: absolute;
-  inset: 4px 0;
+  inset: 5px 0;
   pointer-events: none;
   border-radius: 999px;
   overflow: hidden;
@@ -214,25 +284,27 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background: rgba(15, 17, 20, 0.07);
+  background: rgba(15, 17, 20, 0.06);
   transform: translateX(-0.5px);
 }
 
-/* Серая «спина» от 0 до меньшей из точек: чуть темнее чем base. */
 .spine {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(23, 42, 77, 0.10) 0%,
+    rgba(23, 42, 77, 0.18) 100%
+  );
+}
+
+.connector {
   position: absolute;
   top: 5px;
   bottom: 5px;
-  left: 0;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(23, 42, 77, 0.12) 0%, rgba(23, 42, 77, 0.18) 100%);
-}
-
-/* Цветная вилка между фактом и планом — главный визуальный сигнал. */
-.connector {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
   border-radius: 999px;
   z-index: 1;
 }
@@ -243,50 +315,39 @@
     var(--brand-red, #ee2d3a) 0%,
     var(--brand-navy, #172a4d) 100%
   );
-  box-shadow: 0 0 14px rgba(238, 45, 58, 0.45);
+  box-shadow: 0 0 12px rgba(238, 45, 58, 0.4);
 }
 
 .connector_ahead {
   background: linear-gradient(90deg, #16a34a 0%, #1c4b82 100%);
-  box-shadow: 0 0 14px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.35);
 }
 
 .connector_ontrack {
   background: linear-gradient(90deg, #16a34a 0%, #16a34a 100%);
-  box-shadow: 0 0 10px rgba(34, 197, 94, 0.35);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
 }
 
-/* ─── Точки-капсулы ──────────────────────────────────────────────── */
+/* ─── Dumbbell-точки (компакт, 14 px) ────────────────────────────── */
 
 .dot {
   position: absolute;
   top: 50%;
-  width: 22px;
-  height: 22px;
-  margin-left: -11px;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
   border-radius: 999px;
   transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   z-index: 2;
   box-shadow:
-    0 0 0 3px #fff,
-    0 6px 14px rgba(15, 23, 42, 0.22);
+    0 0 0 2.5px #fff,
+    0 4px 10px rgba(15, 23, 42, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
   transition: transform 0.18s ease;
 }
 
 .row:hover .dot {
-  transform: translateY(-50%) scale(1.06);
-}
-
-.dotInner {
-  display: block;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  transform: translateY(-50%) scale(1.12);
 }
 
 .dotPlan {
@@ -305,44 +366,12 @@
   background: linear-gradient(180deg, #3fd07a 0%, #16a34a 100%);
 }
 
-/* ─── Подписи значений у точек ───────────────────────────────────── */
-
-.dotValue {
-  position: absolute;
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: -0.005em;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  pointer-events: none;
-  transform: translateX(-50%);
-}
-
-.dotValue_plan {
-  top: -22px;
-  color: var(--brand-navy, #172a4d);
-}
-
-.dotValue_fact {
-  bottom: -22px;
-  color: #b45309;
-}
-
-.dotValue_behind {
-  color: var(--brand-red, #ee2d3a);
-}
-
-.dotValue_ahead {
-  color: #16a34a;
-}
-
-/* ─── Ось снизу всего блока ──────────────────────────────────────── */
+/* ─── Ось снизу (под всеми строками) ─────────────────────────────── */
 
 .scale {
   position: relative;
   height: 18px;
-  margin-top: 4px;
+  margin-top: 2px;
   border-top: 1px dashed rgba(15, 23, 42, 0.14);
   padding-top: 6px;
 }
@@ -361,7 +390,7 @@
   content: '';
   width: 1px;
   height: 4px;
-  background: rgba(15, 23, 42, 0.2);
+  background: rgba(15, 23, 42, 0.18);
 }
 
 .scaleLabel {
@@ -384,17 +413,17 @@
 .legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.6);
+  gap: 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.55);
   border: 1px solid rgba(15, 23, 42, 0.06);
 }
 
 .legendItem {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   font-size: 12px;
   letter-spacing: -0.005em;
   color: var(--muted);
@@ -402,12 +431,12 @@
 
 .legendDot {
   display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 999px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    0 0 0 1px rgba(0, 0, 0, 0.08);
+    0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
 .legendDotPlan {
@@ -420,8 +449,8 @@
 
 .legendBar {
   display: inline-block;
-  width: 28px;
-  height: 5px;
+  width: 24px;
+  height: 4px;
   border-radius: 999px;
 }
 
@@ -431,45 +460,39 @@
     var(--brand-red, #ee2d3a) 0%,
     var(--brand-navy, #172a4d) 100%
   );
-  box-shadow: 0 0 8px rgba(238, 45, 58, 0.4);
+  box-shadow: 0 0 8px rgba(238, 45, 58, 0.35);
 }
 
 .legendBar_ahead {
   background: linear-gradient(90deg, #16a34a 0%, #1c4b82 100%);
-  box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.35);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 720px) {
   .row {
-    padding: 14px 18px 30px 18px;
-    gap: 26px;
+    padding: 10px 12px 12px 14px;
   }
 
   .name {
+    flex: 1 1 100%;
     font-size: 13.5px;
   }
 
-  .dot {
-    width: 18px;
-    height: 18px;
-    margin-left: -9px;
+  .values {
+    order: 2;
   }
 
-  .dotInner {
-    width: 6px;
-    height: 6px;
-  }
-
-  .dotValue {
-    font-size: 10px;
-  }
-
-  .legendBar {
-    width: 22px;
+  .gapPill {
+    order: 3;
+    margin-left: auto;
   }
 
   .legend {
-    gap: 12px;
+    gap: 10px;
     font-size: 11.5px;
+  }
+
+  .legendBar {
+    width: 18px;
   }
 }
