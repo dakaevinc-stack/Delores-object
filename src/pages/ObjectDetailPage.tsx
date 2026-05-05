@@ -211,7 +211,7 @@ export function ObjectDetailPage() {
       />
 
       <SiteDetailKpiGrid kpis={dashboard.kpis} />
-      <SiteWorkCriteriaSection criteria={dashboard.criteria} />
+      <SiteWorkCriteriaSection plan={workPlan} criteria={dashboard.criteria} />
 
       {workPlan ? <SiteWorkPlanSection plan={workPlan} /> : null}
 

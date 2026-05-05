@@ -228,6 +228,144 @@ export function formatPeriod(
   return s ?? e ?? '—'
 }
 
+/**
+ * Сколько объёма должно быть выполнено к сегодня по линейному графику.
+ *
+ * Считаем линейную интерполяцию между `startIso` и `endIso`:
+ *   today < start    → 0 (ещё не начали)
+ *   today >= end     → total (срок наступил, должно быть всё)
+ *   между            → total * (today - start) / (end - start)
+ *
+ * Допущения:
+ *   • интенсивность работ равномерна (это упрощение, но для
+ *     сравнения «отстаём / идём в графике / опережаем» — лучшая
+ *     базовая модель из тех, что не требует кривой освоения);
+ *   • если у позиции нет плановой даты (`null`) — возвращаем `null`,
+ *     чтобы вызывающий код мог отличить «не запланировано» от «0».
+ */
+export function expectedDoneToday(
+  item: WorkPlanItem,
+  todayIso: string,
+): number | null {
+  if (item.total <= 0) return null
+  if (!item.startIso || !item.endIso) return null
+  const start = new Date(item.startIso).getTime()
+  const end = new Date(item.endIso).getTime()
+  const today = new Date(todayIso).getTime()
+  if (!Number.isFinite(start) || !Number.isFinite(end) || !Number.isFinite(today)) {
+    return null
+  }
+  if (end <= start) return item.total
+  if (today <= start) return 0
+  if (today >= end) return item.total
+  const ratio = (today - start) / (end - start)
+  return item.total * ratio
+}
+
+/**
+ * Здоровье раздела относительно графика:
+ *   • суммарный план / факт по позициям с одной единицей измерения
+ *     (если в разделе единицы разные — `unit === null` и в UI
+ *     выводим только проценты, абсолютные числа складывать
+ *     математически некорректно);
+ *   • ожидаемый по графику факт на сегодня (`expectedToday`);
+ *   • статус по соотношению фактического и ожидаемого:
+ *       fact >= expected            → 'normal'   (в графике/опережаем)
+ *       fact >= expected * 0.85     → 'attention'(лёгкое отставание)
+ *       иначе                       → 'critical' (серьёзно отстаём)
+ *   • если ни одна позиция не запланирована (нет дат) — статус
+ *     `'not_scheduled'`: показываем как «нет графика», без алёрта.
+ */
+export type SectionScheduleStatus = 'normal' | 'attention' | 'critical' | 'not_scheduled'
+
+export type SectionScheduleHealth = {
+  readonly sectionNumber: string
+  readonly sectionTitle: string
+  /** Единая единица измерения; null — позиции в разных единицах. */
+  readonly unit: MeasurementUnitId | null
+  readonly planUnits: number
+  readonly factUnits: number
+  /** Ожидаемое к сегодня. null если ни одна позиция не привязана к датам. */
+  readonly expectedTodayUnits: number | null
+  /** Среднее «факт / план * 100» по запланированным позициям. */
+  readonly completionPercent: number
+  /** Среднее «факт / ожидаемое сегодня * 100», для маркера на шкале. */
+  readonly scheduleProgressPercent: number | null
+  readonly status: SectionScheduleStatus
+}
+
+export function summarizeSectionSchedule(
+  section: WorkPlanSection,
+  todayIso: string,
+): SectionScheduleHealth {
+  const scheduled = section.items.filter((it) => it.total > 0)
+  if (scheduled.length === 0) {
+    return {
+      sectionNumber: section.number,
+      sectionTitle: section.title,
+      unit: null,
+      planUnits: 0,
+      factUnits: 0,
+      expectedTodayUnits: null,
+      completionPercent: 0,
+      scheduleProgressPercent: null,
+      status: 'not_scheduled',
+    }
+  }
+
+  // Если все позиции в одной единице — суммируем абсолютные числа.
+  // Иначе оставляем unit=null и в UI выводим только %.
+  const units = new Set(scheduled.map((it) => it.unit))
+  const unit = units.size === 1 ? scheduled[0]!.unit : null
+
+  let planUnits = 0
+  let factUnits = 0
+  let expectedTodayUnits = 0
+  let hasExpected = false
+
+  for (const it of scheduled) {
+    planUnits += it.total
+    factUnits += it.done
+    const exp = expectedDoneToday(it, todayIso)
+    if (exp !== null) {
+      expectedTodayUnits += exp
+      hasExpected = true
+    }
+  }
+
+  const completionPercent =
+    scheduled.reduce((acc, it) => acc + workItemPercent(it), 0) / scheduled.length
+
+  const scheduleProgressPercent = hasExpected && expectedTodayUnits > 0
+    ? Math.max(0, Math.min(100, (factUnits / expectedTodayUnits) * 100))
+    : null
+
+  let status: SectionScheduleStatus = 'normal'
+  if (!hasExpected) {
+    status = 'not_scheduled'
+  } else if (factUnits >= expectedTodayUnits) {
+    status = 'normal'
+  } else if (factUnits >= expectedTodayUnits * 0.85) {
+    status = 'attention'
+  } else {
+    status = 'critical'
+  }
+
+  return {
+    sectionNumber: section.number,
+    sectionTitle: section.title,
+    unit,
+    planUnits,
+    factUnits,
+    expectedTodayUnits: hasExpected ? expectedTodayUnits : null,
+    completionPercent: Math.round(completionPercent * 10) / 10,
+    scheduleProgressPercent: scheduleProgressPercent !== null
+      ? Math.round(scheduleProgressPercent * 10) / 10
+      : null,
+    status,
+  }
+}
+
 /** Длительность в днях (включительно) или null. */
 export function durationDays(
   startIso: string | null | undefined,
