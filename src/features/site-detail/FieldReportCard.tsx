@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactElement } from 'react'
 import { formatReportDateTime, formatReportDateTimeFull } from '../../domain/reportFormatting'
 import type { DailyTelegramWorkLine } from '../../domain/dailyTelegramReport'
 import type { BrigadierCommentSections } from './brigadierCommentSections'
+import { CollapseToggle } from './CollapseToggle'
 import styles from './FieldReportCard.module.css'
 
 export type FieldReportAttachment = {
@@ -413,25 +414,6 @@ function PersonIcon({ className }: { className?: string }) {
   )
 }
 
-function ChevronDownIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  )
-}
-
 function pluralRu(n: number, [one, few, many]: [string, string, string]): string {
   const m10 = n % 10
   const m100 = n % 100
@@ -625,19 +607,13 @@ export function FieldReportCard({
             <span className={styles.dateMuted}>без даты в источнике</span>
           )}
           {isCollapsible ? (
-            <button
-              type="button"
-              className={`${styles.toggle} ${expanded ? styles.toggleOpen : ''}`}
-              onClick={(e) => {
-                e.stopPropagation()
-                setExpanded((v) => !v)
-              }}
-              aria-expanded={expanded}
-              aria-label={expanded ? 'Свернуть отчёт' : 'Раскрыть отчёт'}
-              title={expanded ? 'Свернуть отчёт' : 'Раскрыть отчёт'}
-            >
-              <ChevronDownIcon className={styles.toggleIcon} />
-            </button>
+            <CollapseToggle
+              variant="icon"
+              expanded={expanded}
+              onToggle={() => setExpanded((v) => !v)}
+              expandedLabel="Свернуть отчёт"
+              collapsedLabel="Раскрыть отчёт"
+            />
           ) : null}
         </div>
       </header>

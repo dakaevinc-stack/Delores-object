@@ -98,60 +98,10 @@
   display: block;
 }
 
-/* ─── Кнопка-шеврон «открыть журнал / свернуть» ─────────────────── */
-
-.sectionToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 12px 7px 14px;
+/* Прижимаем общий CollapseToggle к правому краю title-row.
+ * Вся стилистика самой кнопки живёт в `CollapseToggle.module.css`. */
+.headToggle {
   margin-left: auto;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--brand-navy, #172a4d);
-  background: linear-gradient(
-    180deg,
-    rgba(23, 42, 77, 0.10) 0%,
-    rgba(23, 42, 77, 0.03) 100%
-  );
-  border: 1px solid rgba(23, 42, 77, 0.22);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.95) inset, 0 6px 14px rgba(15, 23, 42, 0.06);
-  cursor: pointer;
-  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease,
-    box-shadow 0.15s ease, transform 0.15s ease;
-}
-
-.sectionToggle:hover {
-  color: var(--brand-red, #ee2d3a);
-  border-color: rgba(238, 45, 58, 0.42);
-  background: linear-gradient(
-    180deg,
-    rgba(238, 45, 58, 0.10) 0%,
-    rgba(238, 45, 58, 0.03) 100%
-  );
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.95) inset, 0 8px 18px rgba(238, 45, 58, 0.18);
-  transform: translateY(-1px);
-}
-
-.sectionToggle:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(23, 42, 77, 0.25);
-}
-
-.sectionToggleLabel {
-  white-space: nowrap;
-}
-
-.sectionToggleIcon {
-  flex-shrink: 0;
-  transition: transform 0.22s ease;
-}
-
-.sectionToggleOpen .sectionToggleIcon {
-  transform: rotate(180deg);
 }
 
 .lead {

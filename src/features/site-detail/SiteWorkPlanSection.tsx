@@ -15,6 +15,7 @@ import {
   type WorkPlan,
   type WorkPlanSection,
 } from '../../domain/workPlan'
+import { CollapseToggle } from './CollapseToggle'
 import styles from './SiteWorkPlanSection.module.css'
 
 type Props = {
@@ -122,6 +123,7 @@ export function SiteWorkPlanSection({ plan, windowStartIso, windowEndIso }: Prop
   }, [healthByNumber])
 
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set())
+  const [planExpanded, setPlanExpanded] = useState(false)
 
   const toggleSection = (number: string) => {
     setOpenSections((prev) => {
@@ -156,23 +158,17 @@ export function SiteWorkPlanSection({ plan, windowStartIso, windowEndIso }: Prop
             <h2 className={styles.title} id="work-plan-heading">
               План работ по объекту
             </h2>
-            <span className={styles.sourceBadge}>
-              <svg
-                viewBox="0 0 24 24"
-                width="13"
-                height="13"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <rect x="4" y="3.5" width="14" height="17" rx="2" />
-                <path d="M8 8h6M8 12h6M8 16h4" />
-              </svg>
-              Справка по объекту
-            </span>
+            <CollapseToggle
+              expanded={planExpanded}
+              onToggle={() => setPlanExpanded((v) => !v)}
+              ariaControls="work-plan-sections"
+              expandedLabel="Свернуть план"
+              collapsedLabel={`Открыть ${summary.sectionsCount} ${pluralize(
+                summary.sectionsCount,
+                ['раздел', 'раздела', 'разделов'],
+              )}`}
+              className={styles.headToggle}
+            />
           </div>
 
           <p className={styles.lead}>
@@ -254,17 +250,19 @@ export function SiteWorkPlanSection({ plan, windowStartIso, windowEndIso }: Prop
         </div>
       </div>
 
-      <ol className={styles.sections}>
-        {plan.sections.map((section) => (
-          <SectionCard
-            key={section.number}
-            section={section}
-            health={healthByNumber.get(section.number)}
-            open={openSections.has(section.number)}
-            onToggle={() => toggleSection(section.number)}
-          />
-        ))}
-      </ol>
+      {planExpanded ? (
+        <ol className={styles.sections} id="work-plan-sections">
+          {plan.sections.map((section) => (
+            <SectionCard
+              key={section.number}
+              section={section}
+              health={healthByNumber.get(section.number)}
+              open={openSections.has(section.number)}
+              onToggle={() => toggleSection(section.number)}
+            />
+          ))}
+        </ol>
+      ) : null}
     </section>
   )
 }

@@ -4,6 +4,7 @@ import {
   type BrigadierStoredReport,
 } from '../../domain/brigadierReport'
 import { brigadierAttachmentBlobUrl } from '../../lib/siteFormsApi'
+import { CollapseToggle } from './CollapseToggle'
 import {
   FieldReportCard,
   type FieldReportAttachment,
@@ -214,36 +215,14 @@ export function SiteBrigadierSubmittedReportsSection({
               {serverBacked ? 'Источник · Сервер' : 'Источник · Это устройство'}
             </span>
             {canCollapse ? (
-              <button
-                type="button"
-                className={`${styles.sectionToggle} ${
-                  sectionExpanded ? styles.sectionToggleOpen : ''
-                }`}
-                onClick={() => setSectionExpanded((v) => !v)}
-                aria-expanded={sectionExpanded}
-                aria-controls="brigadier-submitted-list"
-                title={sectionExpanded ? 'Свернуть журнал' : 'Открыть журнал'}
-              >
-                <span className={styles.sectionToggleLabel}>
-                  {sectionExpanded
-                    ? 'Свернуть журнал'
-                    : `Открыть ${total} ${reportsWord(total)}`}
-                </span>
-                <svg
-                  className={styles.sectionToggleIcon}
-                  viewBox="0 0 24 24"
-                  width="16"
-                  height="16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
-              </button>
+              <CollapseToggle
+                expanded={sectionExpanded}
+                onToggle={() => setSectionExpanded((v) => !v)}
+                ariaControls="brigadier-submitted-list"
+                expandedLabel="Свернуть журнал"
+                collapsedLabel={`Открыть ${total} ${reportsWord(total)}`}
+                className={styles.headToggle}
+              />
             ) : null}
           </div>
 

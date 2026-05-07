@@ -1,0 +1,113 @@
+/*
+ * Единый «язык» кнопки раскрытия/сворачивания. Используется как в
+ * шапках секций (capsule с лейблом), так и внутри отдельных карточек
+ * (icon-only, 32 px). Hover — фирменный red, состояние `.open`
+ * поворачивает шеврон на 180°.
+ *
+ * Размеры подобраны так, чтобы:
+ *  - capsule визуально весил столько же, сколько премиум-пиллы
+ *    типа sourceBadge (≈40 px высоты с тенью);
+ *  - icon-вариант имел touch-цель ≥32 px и сохранял ту же радиальную
+ *    форму, чтобы пользователь сразу узнавал «это та самая
+ *    кнопка-стрелка раскрытия».
+ */
+
+.capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px 7px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--brand-navy, #172a4d);
+  background: linear-gradient(
+    180deg,
+    rgba(23, 42, 77, 0.10) 0%,
+    rgba(23, 42, 77, 0.03) 100%
+  );
+  border: 1px solid rgba(23, 42, 77, 0.22);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 6px 14px rgba(15, 23, 42, 0.06);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.capsule:hover {
+  color: var(--brand-red, #ee2d3a);
+  border-color: rgba(238, 45, 58, 0.42);
+  background: linear-gradient(
+    180deg,
+    rgba(238, 45, 58, 0.10) 0%,
+    rgba(238, 45, 58, 0.03) 100%
+  );
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 8px 18px rgba(238, 45, 58, 0.18);
+  transform: translateY(-1px);
+}
+
+.capsule:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(23, 42, 77, 0.25);
+}
+
+.label {
+  white-space: nowrap;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--brand-navy, #172a4d);
+  cursor: pointer;
+  flex-shrink: 0;
+  backdrop-filter: blur(4px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 4px 10px rgba(15, 23, 42, 0.04);
+  transition:
+    transform 0.18s ease,
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease,
+    color 0.15s ease;
+}
+
+.iconBtn:hover {
+  border-color: rgba(238, 45, 58, 0.42);
+  color: var(--brand-red, #ee2d3a);
+  background: rgba(238, 45, 58, 0.06);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 6px 14px rgba(238, 45, 58, 0.15);
+}
+
+.iconBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(23, 42, 77, 0.25);
+}
+
+.chevron {
+  flex-shrink: 0;
+  transition: transform 0.22s ease;
+}
+
+.open .chevron {
+  transform: rotate(180deg);
+}

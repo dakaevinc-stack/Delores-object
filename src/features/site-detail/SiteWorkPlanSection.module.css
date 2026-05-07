@@ -81,20 +81,8 @@
   color: var(--text-strong);
 }
 
-.sourceBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 11px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--brand-navy, #172a4d);
-  background: linear-gradient(180deg, rgba(23, 42, 77, 0.12) 0%, rgba(23, 42, 77, 0.04) 100%);
-  border: 1px solid rgba(23, 42, 77, 0.22);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+.headToggle {
+  margin-left: auto;
 }
 
 .lead {
