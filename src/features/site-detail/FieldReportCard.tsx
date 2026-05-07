@@ -557,6 +557,13 @@ export function FieldReportCard({
       ])}`,
     })
   }
+  if (narrativeStructured?.crew?.equipment != null) {
+    previewChips.push({
+      id: 'equipment',
+      icon: <TruckIcon className={styles.metaChipIcon} />,
+      label: `${narrativeStructured.crew.equipment} ед. техники`,
+    })
+  }
   const showPreview = isCollapsible && !expanded && (previewChips.length > 0 || (metaChips && metaChips.length > 0))
 
   const cardClass = [
