@@ -163,10 +163,7 @@ export function SiteWorkPlanSection({ plan, windowStartIso, windowEndIso }: Prop
               onToggle={() => setPlanExpanded((v) => !v)}
               ariaControls="work-plan-sections"
               expandedLabel="Свернуть план"
-              collapsedLabel={`Открыть ${summary.sectionsCount} ${pluralize(
-                summary.sectionsCount,
-                ['раздел', 'раздела', 'разделов'],
-              )}`}
+              collapsedLabel="Открыть план"
               className={styles.headToggle}
             />
           </div>
