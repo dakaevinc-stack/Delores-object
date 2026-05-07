@@ -215,12 +215,21 @@
   font-variant-numeric: tabular-nums;
 }
 
-.gapDot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
+/*
+ * Иконка-стрелка (↑/↓) или ✓ внутри pill. Цвет наследуется от
+ * самого пилла, чтобы соблюдать смысловую тройку «иконка → знак
+ * → цвет» одной и той же кистью. Свечение под иконку даёт ей
+ * лёгкое читаемое выделение, как раньше у точки.
+ */
+.gapIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
   flex-shrink: 0;
+  color: currentColor;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.45));
 }
 
 .gapPill_on_track {
@@ -228,9 +237,9 @@
   border-color: rgba(22, 163, 74, 0.32);
   background: linear-gradient(180deg, rgba(34, 197, 94, 0.16) 0%, rgba(22, 163, 74, 0.04) 100%);
 }
-.gapPill_on_track .gapDot {
-  background: #16a34a;
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+.gapPill_on_track .gapIcon {
+  color: #16a34a;
+  filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.5));
 }
 
 .gapPill_ahead {
@@ -238,9 +247,9 @@
   border-color: rgba(22, 163, 74, 0.32);
   background: linear-gradient(180deg, rgba(34, 197, 94, 0.18) 0%, rgba(22, 163, 74, 0.04) 100%);
 }
-.gapPill_ahead .gapDot {
-  background: #16a34a;
-  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+.gapPill_ahead .gapIcon {
+  color: #16a34a;
+  filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.5));
 }
 
 .gapPill_behind {
@@ -248,9 +257,9 @@
   border-color: rgba(238, 45, 58, 0.32);
   background: linear-gradient(180deg, rgba(238, 45, 58, 0.16) 0%, rgba(238, 45, 58, 0.04) 100%);
 }
-.gapPill_behind .gapDot {
-  background: var(--brand-red, #ee2d3a);
-  box-shadow: 0 0 6px rgba(238, 45, 58, 0.6);
+.gapPill_behind .gapIcon {
+  color: var(--brand-red, #ee2d3a);
+  filter: drop-shadow(0 0 4px rgba(238, 45, 58, 0.5));
 }
 
 /* ─── Bullet-track ───────────────────────────────────────────────── */

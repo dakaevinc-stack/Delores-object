@@ -20,10 +20,53 @@ function clampPct(n: number): number {
   return Math.max(0, Math.min(100, n))
 }
 
-function fmtSigned(n: number): string {
-  if (n === 0) return '0'
-  if (n > 0) return `+${Math.round(n)}`
-  return `−${Math.round(Math.abs(n))}`
+/**
+ * Внутренне `gap = planFactGapPoints(s)` положителен, когда фактический %
+ * НИЖЕ планового, т.е. «отстаём». Для пользователя такой знак
+ * контр-интуитивен (отставание со знаком «+»). Поэтому в UI мы
+ * показываем «расстояние факта от плана»: при отставании — со
+ * знаком «−», при опережении — со знаком «+».
+ *
+ * Передавайте сюда величину уже в «пользовательской» системе
+ * (то есть `-gap` для строк/среднего), функция только форматирует
+ * число со знаком и Unicode-минусом U+2212 (он визуально шире
+ * hyphen-minus и в премиум-наборе чисел смотрится опрятнее).
+ */
+function fmtSigned(displayValue: number): string {
+  if (displayValue === 0) return '0'
+  if (displayValue > 0) return `+${Math.round(displayValue)}`
+  return `−${Math.round(Math.abs(displayValue))}`
+}
+
+function GapIcon({ status }: { status: Row['status'] }) {
+  if (status === 'on_track') {
+    return (
+      <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden focusable="false">
+        <path
+          d="m3.5 8.5 3 3 6-7"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    )
+  }
+  // ↑ для «опережаем», ↓ для «отстаём» — цвет наследуем из пилла.
+  const upward = status === 'ahead'
+  return (
+    <svg viewBox="0 0 16 16" width="11" height="11" aria-hidden focusable="false">
+      <path
+        d={upward ? 'M8 12.5V3.5M4 7.5l4-4 4 4' : 'M8 3.5v9M4 8.5l4 4 4-4'}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
 }
 
 export function PlanFactBySiteChart({
@@ -74,7 +117,9 @@ export function PlanFactBySiteChart({
                   : ''
             }`}
           >
-            {fmtSigned(summary.avgGap)}%
+            {/* В UI — «расстояние факта от плана»: отстаём → −,
+                опережаем → +. См. fmtSigned. */}
+            {fmtSigned(-summary.avgGap)}%
           </span>
         </span>
       }
@@ -126,10 +171,12 @@ export function PlanFactBySiteChart({
                   <span
                     className={`${styles.gapPill} ${styles[`gapPill_${r.status}`]}`}
                   >
-                    <span className={styles.gapDot} aria-hidden />
+                    <span className={styles.gapIcon} aria-hidden>
+                      <GapIcon status={r.status} />
+                    </span>
                     {r.status === 'on_track'
                       ? 'По графику'
-                      : `${fmtSigned(r.gap)}%`}
+                      : `${fmtSigned(-r.gap)}%`}
                   </span>
                 </div>
 
