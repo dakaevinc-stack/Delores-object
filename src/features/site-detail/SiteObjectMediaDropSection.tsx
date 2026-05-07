@@ -686,30 +686,22 @@ export function SiteObjectMediaDropSection({
   }, [filtered])
 
   /**
-   * Раскрытость каждой даты в галерее. По умолчанию открыта только самая
-   * свежая дата (первая в `groups`) — это даёт фокус на свежих кадрах и
-   * не даёт ленте распухнуть, когда в архиве десятки папок. Для каждой
-   * даты пользователь явно решает «развернуть/свернуть»; решение
-   * запоминается до перезагрузки страницы.
+   * Раскрытость каждой даты в галерее. По умолчанию ВСЕ даты свёрнуты —
+   * лента остаётся компактной, и пользователь сам решает, какой день
+   * раскрыть. Это особенно важно при большом архиве (десятки дат с
+   * десятками кадров): иначе при заходе на объект страница сразу
+   * «улетает» вниз на сотни плиток.
    *
-   * Хранится `Record<string, boolean>` (а не `Set`), чтобы при добавлении
-   * новых дат «дефолтная» логика «открыть только самый верх» оставалась
-   * чистой: если у даты ещё не задано значение — берём `key === groups[0].key`.
+   * Состояние хранится как `Record<string, boolean>`: для дат, по
+   * которым пользователь ещё ничего не решил, действует общий
+   * дефолт — `false` (свёрнуто).
    */
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({})
 
-  const isDayExpanded = (key: string): boolean => {
-    const explicit = expandedDays[key]
-    if (typeof explicit === 'boolean') return explicit
-    return groups[0]?.key === key
-  }
+  const isDayExpanded = (key: string): boolean => expandedDays[key] === true
 
   const toggleDay = (key: string) => {
-    setExpandedDays((prev) => {
-      const cur = prev[key]
-      const next = typeof cur === 'boolean' ? !cur : !(groups[0]?.key === key)
-      return { ...prev, [key]: next }
-    })
+    setExpandedDays((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
   const setAllDays = (open: boolean) => {
