@@ -1,17 +1,23 @@
 #!/usr/bin/env node
 /**
- * Прикрепляет медиа-файлы (фото/видео) к существующим отчётам бригадира
- * на сервере. Идемпотентно: повторный запуск с тем же набором файлов
- * перезапишет blob и метаданные, дубликат в `attachments[]` не появится
- * (см. POST /attachments в server/site-forms.mjs).
+ * Загружает медиа-файлы (фото/видео) объекта в две «корзины»:
  *
- * Источник — папки вида `scripts/data/photo-imports/{siteId}/{YYYY-MM-DD}/`.
- * Для каждой даты скрипт находит на сервере отчёт того же объекта,
- * чей `reportedAtIso` приходится на эту календарную дату (UTC), и
- * прикрепляет к нему все файлы из папки.
+ *   1. Если для календарной UTC-даты папки на сервере есть отчёт
+ *      бригадира — файлы прикрепляются к этому отчёту (POST к
+ *      `/brigadier-reports/{id}/attachments`, см. server/site-forms.mjs).
+ *      Сервер идемпотентно обновит и blob, и `attachments[]` в JSON.
  *
- * Внутри одной даты порядок прикрепления — алфавитный по имени файла,
- * чтобы превью в карточке отчёта шло предсказуемо (IMG_001, IMG_002…).
+ *   2. Если отчёта на эту дату нет (фото/видео сняли РАНЬШЕ старта
+ *      ведения журнала, либо на день, который не отчитывали) — файлы
+ *      уходят в «Фото/Видео объекта» (POST к `/object-media`) с
+ *      `capturedAtIso = {YYYY-MM-DD}T12:00:NN.000Z`, где `NN` — порядок
+ *      файла в отсортированной по имени папке. Так группа «N апреля» в
+ *      галерее объекта собирается сама и в ней сохраняется
+ *      предсказуемый порядок кадров, без хаоса по timezone.
+ *
+ * Оба пути идемпотентны: повтор с тем же `id` не создаёт дубликата.
+ *
+ * Источник — `scripts/data/photo-imports/{siteId}/{YYYY-MM-DD}/`.
  *
  * Запуск (на сервере, где есть `/etc/deloresh/site-forms.env`):
  *
@@ -24,9 +30,10 @@
  *   фото:  .jpg .jpeg .png .heic .heif .webp .gif
  *   видео: .mp4 .mov .m4v .webm
  *
- * Имена файлов на сервере используются как `attachment.id` —
- * потому требование `^[a-zA-Z0-9._-]+$`. Пробелы и кириллицу скрипт
- * заменяет на `_` и логирует исходное имя в `attachment.name`.
+ * Имена файлов на сервере используются как `attachment.id` /
+ * `media.id` — потому требование `^[a-zA-Z0-9._-]+$`. Пробелы и
+ * кириллицу скрипт заменяет на `_` и логирует исходное имя в
+ * `name`.
  */
 
 import { readdir, readFile, stat } from 'node:fs/promises'
@@ -163,6 +170,37 @@ async function postAttachment(siteId, reportId, payload) {
   return body
 }
 
+async function postObjectMedia(siteId, payload) {
+  const url = `${API}/api/sites/${encodeURIComponent(siteId)}/object-media`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Deloresh-Write-Secret': SECRET,
+    },
+    body: JSON.stringify(payload),
+  })
+  const body = await res.text().catch(() => '')
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}: ${body.slice(0, 200)}`)
+  }
+  return body
+}
+
+/**
+ * Кого подписать автором архивных кадров «без отчёта»: берём
+ * `responsible` первого попавшегося отчёта объекта, чтобы галерея
+ * выглядела однородно. Если отчётов вообще нет — нейтральная подпись.
+ */
+function pickAuthorCaption(reports) {
+  for (const r of reports) {
+    if (r && typeof r.responsible === 'string' && r.responsible.trim()) {
+      return r.responsible.trim()
+    }
+  }
+  return 'Архив объекта'
+}
+
 const sitesToProcess = argSiteId ? [argSiteId] : await listSites()
 if (sitesToProcess.length === 0) {
   console.log(`Нет папок в ${ROOT} — нечего загружать.`)
@@ -199,14 +237,6 @@ for (const siteId of sitesToProcess) {
     }
 
     const matching = reports.filter((r) => utcDateOf(r.reportedAtIso) === date)
-    if (matching.length === 0) {
-      console.error(
-        `  ✗ ${siteId} ${date}: отчёта на эту дату нет — пропускаем ${files.length} файл(а/ов)`,
-      )
-      failed += files.length
-      failures.push({ siteId, date, error: 'no-report-for-date' })
-      continue
-    }
     if (matching.length > 1) {
       console.error(
         `  ✗ ${siteId} ${date}: несколько отчётов (${matching.length}) — нужна точная привязка, скрипт пока умеет только 1-к-1`,
@@ -215,13 +245,21 @@ for (const siteId of sitesToProcess) {
       failures.push({ siteId, date, error: 'multiple-reports' })
       continue
     }
-    const report = matching[0]
+    const report = matching[0] ?? null
+    const authorCaption = pickAuthorCaption(reports)
 
-    console.log(
-      `\n— ${siteId} ${date} → reportId=${report.id}: ${files.length} файл(а/ов)`,
-    )
+    if (report) {
+      console.log(
+        `\n— ${siteId} ${date} → отчёт ${report.id}: ${files.length} файл(а/ов) → attachments`,
+      )
+    } else {
+      console.log(
+        `\n— ${siteId} ${date} → отчёта нет, кладём в «Фото/Видео объекта»: ${files.length} файл(а/ов)`,
+      )
+    }
 
-    for (const fname of files) {
+    for (let i = 0; i < files.length; i += 1) {
+      const fname = files[i]
       const cls = classify(fname)
       if (!cls) {
         console.error(`  · пропускаем ${fname}: незнакомое расширение`)
@@ -240,24 +278,45 @@ for (const siteId of sitesToProcess) {
         failures.push({ siteId, date, file: fname, error: err.message })
         continue
       }
-
-      const attId = safeAttId(fname)
+      const id = safeAttId(fname)
       const dataBase64 = buf.toString('base64')
-      const payload = {
-        id: attId,
-        kind: cls.kind,
-        name: fname,
-        mime: cls.mime,
-        sizeBytes: st.size,
-        registeredAtIso: report.reportedAtIso,
-        fileModifiedIso: st.mtime.toISOString(),
-        dataBase64,
-      }
+      const sizeMb = (st.size / 1024 / 1024).toFixed(1)
+
       try {
-        await postAttachment(siteId, report.id, payload)
+        if (report) {
+          await postAttachment(siteId, report.id, {
+            id,
+            kind: cls.kind,
+            name: fname,
+            mime: cls.mime,
+            sizeBytes: st.size,
+            registeredAtIso: report.reportedAtIso,
+            fileModifiedIso: st.mtime.toISOString(),
+            dataBase64,
+          })
+          console.log(`  ✓ ${cls.kind} · ${fname} (${sizeMb} МБ) → отчёт`)
+        } else {
+          // Полдень UTC + порядковый номер в секундах: кадры одной даты
+          // ложатся в одну группу галереи и сохраняют алфавитный порядок.
+          const seconds = String(Math.min(i, 59)).padStart(2, '0')
+          const capturedAtIso = `${date}T12:00:${seconds}.000Z`
+          await postObjectMedia(siteId, {
+            record: {
+              id,
+              siteId,
+              kind: cls.kind,
+              name: fname,
+              mime: cls.mime,
+              sizeBytes: st.size,
+              capturedAtIso,
+              uploadedAtIso: new Date().toISOString(),
+              authorCaption,
+            },
+            dataBase64,
+          })
+          console.log(`  ✓ ${cls.kind} · ${fname} (${sizeMb} МБ) → галерея объекта`)
+        }
         attached += 1
-        const sizeMb = (st.size / 1024 / 1024).toFixed(1)
-        console.log(`  ✓ ${cls.kind} · ${fname} (${sizeMb} МБ)`)
       } catch (err) {
         failed += 1
         failures.push({ siteId, date, file: fname, error: err.message })
