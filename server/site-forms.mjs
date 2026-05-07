@@ -310,7 +310,13 @@ const server = http.createServer(async (req, res) => {
       }
 
       // POST /api/sites/:siteId/brigadier-reports/:reportId/attachments
-      // body: { id, name, mime, sizeBytes, dataBase64 }
+      // body: { id, name, mime, sizeBytes, dataBase64, kind?, registeredAtIso?, fileModifiedIso? }
+      //
+      // Пишет blob в brigadier-blobs/{reportId}/{attId} и (если переданы
+      // метаданные `kind`+`name`) идемпотентно добавляет/обновляет запись
+      // в `attachments[]` соответствующего отчёта в JSON. Идемпотентность
+      // важна для импортных скриптов: повторный вызов с тем же `id` не
+      // создаёт дубликат, а перезаписывает blob и метаданные.
       if (parts.length === 6 && parts[5] === 'attachments' && req.method === 'POST') {
         if (!checkWrite(req, res)) return
         const reportId = parts[4]
@@ -342,7 +348,59 @@ const server = http.createServer(async (req, res) => {
         const dir = path.join(DATA_ROOT, 'sites', siteId, 'brigadier-blobs', reportId)
         await fs.mkdir(dir, { recursive: true })
         await fs.writeFile(path.join(dir, attId), buf)
-        sendJson(res, 201, { ok: true })
+
+        // Опциональное обновление метаданных. Старый клиент шлёт
+        // только {id, dataBase64} — для него ничего не меняется.
+        // Импортный скрипт шлёт все поля — добавляем/обновляем
+        // запись в JSON отчёта.
+        let metadataUpdated = false
+        const kind = b.kind === 'photo' || b.kind === 'video' ? b.kind : null
+        if (kind) {
+          const list = await readJsonArray(file)
+          let touched = false
+          const next = list.map((row) => {
+            if (!isBrigadierReportRow(row)) return row
+            const r = /** @type {{ id: string; attachments: Array<Record<string, unknown>> }} */ (row)
+            if (r.id !== reportId) return row
+            const existing = r.attachments.findIndex(
+              (a) => /** @type {{ id?: unknown }} */ (a).id === attId,
+            )
+            const meta = {
+              id: attId,
+              kind,
+              name: typeof b.name === 'string' && b.name ? b.name : attId,
+              previewUrl: '',
+              registeredAtIso:
+                typeof b.registeredAtIso === 'string' && b.registeredAtIso
+                  ? b.registeredAtIso
+                  : new Date().toISOString(),
+              fileModifiedIso:
+                typeof b.fileModifiedIso === 'string' && b.fileModifiedIso
+                  ? b.fileModifiedIso
+                  : new Date().toISOString(),
+              mime:
+                typeof b.mime === 'string' && b.mime
+                  ? b.mime
+                  : kind === 'photo'
+                    ? 'image/jpeg'
+                    : 'video/mp4',
+              sizeBytes:
+                typeof b.sizeBytes === 'number' && Number.isFinite(b.sizeBytes)
+                  ? b.sizeBytes
+                  : buf.length,
+            }
+            const nextAtt = [...r.attachments]
+            if (existing >= 0) nextAtt[existing] = meta
+            else nextAtt.push(meta)
+            touched = true
+            return { ...r, attachments: nextAtt }
+          })
+          if (touched) {
+            await writeJsonArray(file, next)
+            metadataUpdated = true
+          }
+        }
+        sendJson(res, 201, { ok: true, metadataUpdated })
         return
       }
 

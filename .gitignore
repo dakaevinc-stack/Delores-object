@@ -12,6 +12,10 @@ node_modules
 
 # JSON заявок и отчётов (server/site-forms.mjs)
 data/site-forms/
+
+# Локальные фото/видео для импорта в отчёты бригадира — крупные
+# бинарники, в репо не нужны (см. scripts/attach-report-media.mjs).
+scripts/data/photo-imports/
 dist
 dist-ssr
 *.local
