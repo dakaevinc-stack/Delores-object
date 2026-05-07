@@ -9,8 +9,6 @@ import type {
   SiteDetailMeta,
   SiteDetailReporting,
   SiteDetailSchedule,
-  SiteRiskCategory,
-  SiteRiskRow,
   WorkCriterionKind,
 } from '../domain/siteDetailDashboard'
 import type { ConstructionSite, SiteStatus } from '../types/constructionSite'
@@ -78,45 +76,6 @@ function deadlineLabel(status: SiteStatus, onTrack: boolean): string {
   if (status === 'critical') return 'Критично по срокам'
   if (status === 'attention') return onTrack ? 'На контроле' : 'Риск срыва графика'
   return onTrack ? 'В графике' : 'Лёгкое отставание'
-}
-
-function buildRisks(site: ConstructionSite, status: SiteStatus): SiteRiskRow[] {
-  const h = hashId(site.id)
-  // На свежем пользовательском объекте рисков ещё нет.
-  const base = site.isUserCreated
-    ? 0
-    : status === 'critical'
-      ? 5
-      : status === 'attention'
-        ? 3
-        : site.executive.hasOpenRisks
-          ? 2
-          : h % 2
-
-  const templates: { category: SiteRiskCategory; title: string }[] = [
-    { category: 'critical_notice', title: 'Критические замечания технадзора' },
-    { category: 'equipment', title: 'Нехватка асфальтоукладчика на смену' },
-    { category: 'materials', title: 'Задержка поставки люков и решёток' },
-    { category: 'idle', title: 'Простой бригады из‑за переноса поставки' },
-    { category: 'weather', title: 'Погодное окно: осадки по прогнозу' },
-    { category: 'breakdown_org', title: 'Согласование выезда спецтехники' },
-  ]
-
-  return templates.map((t, i) => {
-    const active = i < base
-    const severity: SiteStatus = !active
-      ? 'normal'
-      : t.category === 'critical_notice' && status === 'critical'
-        ? 'critical'
-        : 'attention'
-    return {
-      id: `${site.id}-risk-${i}`,
-      category: t.category,
-      title: t.title,
-      active,
-      severity,
-    }
-  })
 }
 
 function buildCriteria(site: ConstructionSite): SiteDetailCriterion[] {
@@ -304,6 +263,5 @@ export function getSiteDetailDashboard(site: ConstructionSite): SiteDetailDashbo
     criteria: buildCriteria(site),
     schedule,
     reporting: buildReporting(site, status),
-    risks: buildRisks(site, status),
   }
 }

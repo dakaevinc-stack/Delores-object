@@ -36,7 +36,6 @@ import { SiteProcurementRequestsSection } from '../features/site-detail/SiteProc
 import { SiteDetailHeader } from '../features/site-detail/SiteDetailHeader'
 import { SiteDetailKpiGrid } from '../features/site-detail/SiteDetailKpiGrid'
 import { SiteReportingSection } from '../features/site-detail/SiteReportingSection'
-import { SiteRisksSection } from '../features/site-detail/SiteRisksSection'
 import { SiteScheduleSection } from '../features/site-detail/SiteScheduleSection'
 import { SiteWorkPlanSection } from '../features/site-detail/SiteWorkPlanSection'
 import styles from './ObjectDetailPage.module.css'
@@ -295,8 +294,6 @@ export function ObjectDetailPage() {
           })
         }}
       />
-      <SiteRisksSection risks={dashboard.risks} />
-
       <footer className={styles.footer}>
         <p className={styles.footerNote}>
           Показаны демонстрационные показатели. После подключения учётных систем те же блоки

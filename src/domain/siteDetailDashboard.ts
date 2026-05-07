@@ -71,22 +71,6 @@ export type SiteDetailReporting = {
   problemFlagsCount: number
 }
 
-export type SiteRiskCategory =
-  | 'critical_notice'
-  | 'equipment'
-  | 'materials'
-  | 'idle'
-  | 'weather'
-  | 'breakdown_org'
-
-export type SiteRiskRow = {
-  id: string
-  category: SiteRiskCategory
-  title: string
-  active: boolean
-  severity: SiteStatus
-}
-
 export type SiteDetailMeta = {
   objectCode: string
   addressNote?: string
@@ -100,5 +84,4 @@ export type SiteDetailDashboard = {
   criteria: readonly SiteDetailCriterion[]
   schedule: SiteDetailSchedule
   reporting: SiteDetailReporting
-  risks: readonly SiteRiskRow[]
 }
