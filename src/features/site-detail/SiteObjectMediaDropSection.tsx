@@ -34,6 +34,9 @@ type DayGroup = {
   key: string
   label: string
   items: SiteObjectMediaItem[]
+  photoCount: number
+  videoCount: number
+  lastUploadedAtIso: string
 }
 
 function newId(): string {
@@ -78,15 +81,28 @@ function formatDayHeading(key: string): string {
   const today = startOfLocalDay(new Date())
   const dayStart = startOfLocalDay(d)
   const diffDays = Math.round((today.getTime() - dayStart.getTime()) / 86_400_000)
-
-  const long = d.toLocaleDateString('ru-RU', {
+  if (diffDays === 0) return 'Сегодня'
+  if (diffDays === 1) return 'Вчера'
+  const sameYear = d.getFullYear() === today.getFullYear()
+  return d.toLocaleDateString('ru-RU', {
     day: 'numeric',
     month: 'long',
-    weekday: 'short',
+    ...(sameYear ? {} : { year: 'numeric' }),
   })
-  if (diffDays === 0) return `Сегодня · ${long}`
-  if (diffDays === 1) return `Вчера · ${long}`
-  return long
+}
+
+/**
+ * Аккуратная пара «короткий день недели + число месяца» для бейджа в
+ * шапке свёрнутого дня — двухстрочная плашка слева в заголовке группы.
+ */
+function dayBadgeParts(key: string): { weekday: string; day: string } {
+  const d = new Date(`${key}T00:00:00`)
+  const weekday = d
+    .toLocaleDateString('ru-RU', { weekday: 'short' })
+    .replace(/\.$/, '')
+    .toUpperCase()
+  const day = String(d.getDate())
+  return { weekday, day }
 }
 
 function formatTime(iso: string): string {
@@ -640,15 +656,69 @@ export function SiteObjectMediaDropSection({
       else map.set(key, [m])
     }
     const keys = [...map.keys()].sort((a, b) => (a < b ? 1 : a > b ? -1 : 0))
-    return keys.map((key) => ({
-      key,
-      label: formatDayHeading(key),
-      items: (map.get(key) ?? []).sort(
+    return keys.map((key) => {
+      const items = (map.get(key) ?? []).sort(
         (a, b) =>
           new Date(b.capturedAtIso).getTime() - new Date(a.capturedAtIso).getTime(),
-      ),
-    }))
+      )
+      let photoCount = 0
+      let videoCount = 0
+      let lastUploadedAtIso = items[0]?.uploadedAtIso ?? ''
+      for (const m of items) {
+        if (m.kind === 'photo') photoCount += 1
+        else videoCount += 1
+        if (
+          !lastUploadedAtIso ||
+          new Date(m.uploadedAtIso).getTime() > new Date(lastUploadedAtIso).getTime()
+        ) {
+          lastUploadedAtIso = m.uploadedAtIso
+        }
+      }
+      return {
+        key,
+        label: formatDayHeading(key),
+        items,
+        photoCount,
+        videoCount,
+        lastUploadedAtIso,
+      }
+    })
   }, [filtered])
+
+  /**
+   * Раскрытость каждой даты в галерее. По умолчанию открыта только самая
+   * свежая дата (первая в `groups`) — это даёт фокус на свежих кадрах и
+   * не даёт ленте распухнуть, когда в архиве десятки папок. Для каждой
+   * даты пользователь явно решает «развернуть/свернуть»; решение
+   * запоминается до перезагрузки страницы.
+   *
+   * Хранится `Record<string, boolean>` (а не `Set`), чтобы при добавлении
+   * новых дат «дефолтная» логика «открыть только самый верх» оставалась
+   * чистой: если у даты ещё не задано значение — берём `key === groups[0].key`.
+   */
+  const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({})
+
+  const isDayExpanded = (key: string): boolean => {
+    const explicit = expandedDays[key]
+    if (typeof explicit === 'boolean') return explicit
+    return groups[0]?.key === key
+  }
+
+  const toggleDay = (key: string) => {
+    setExpandedDays((prev) => {
+      const cur = prev[key]
+      const next = typeof cur === 'boolean' ? !cur : !(groups[0]?.key === key)
+      return { ...prev, [key]: next }
+    })
+  }
+
+  const setAllDays = (open: boolean) => {
+    const next: Record<string, boolean> = {}
+    for (const g of groups) next[g.key] = open
+    setExpandedDays(next)
+  }
+
+  const allOpen = groups.length > 0 && groups.every((g) => isDayExpanded(g.key))
 
   const resetFilters = () => {
     setTypeFilter('all')
@@ -1038,11 +1108,23 @@ export function SiteObjectMediaDropSection({
               <span className={styles.counter}>
                 Показано {filtered.length} из {items.length}
               </span>
-              {hasActiveFilters ? (
-                <button type="button" className={styles.resetBtn} onClick={resetFilters}>
-                  Сбросить фильтры
-                </button>
-              ) : null}
+              <div className={styles.counterActions}>
+                {groups.length > 1 ? (
+                  <button
+                    type="button"
+                    className={styles.bulkBtn}
+                    onClick={() => setAllDays(!allOpen)}
+                    title={allOpen ? 'Свернуть все даты' : 'Раскрыть все даты'}
+                  >
+                    {allOpen ? 'Свернуть всё' : 'Развернуть всё'}
+                  </button>
+                ) : null}
+                {hasActiveFilters ? (
+                  <button type="button" className={styles.resetBtn} onClick={resetFilters}>
+                    Сбросить фильтры
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
 
@@ -1052,14 +1134,93 @@ export function SiteObjectMediaDropSection({
             </p>
           ) : (
             <div className={styles.groups}>
-              {groups.map((group) => (
-                <section key={group.key} className={styles.dayGroup} aria-label={group.label}>
-                  <header className={styles.dayHead}>
-                    <h3 className={styles.dayTitle}>{group.label}</h3>
-                    <span className={styles.dayCount}>{formatFilesCount(group.items.length)}</span>
-                  </header>
-                  <ul className={styles.grid}>
-                    {group.items.map((m) => (
+              {groups.map((group) => {
+                const expanded = isDayExpanded(group.key)
+                const badge = dayBadgeParts(group.key)
+                const previewItems = group.items.slice(0, 3)
+                const restCount = Math.max(0, group.items.length - previewItems.length)
+                const sublineParts: string[] = []
+                if (group.photoCount > 0) sublineParts.push(`${group.photoCount} фото`)
+                if (group.videoCount > 0) sublineParts.push(`${group.videoCount} видео`)
+                if (group.lastUploadedAtIso) {
+                  sublineParts.push(`обновлено · ${formatUploadedStamp(group.lastUploadedAtIso)}`)
+                }
+                const subline = sublineParts.join(' · ')
+                const gridId = `${uid}-day-${group.key}`
+                return (
+                  <section
+                    key={group.key}
+                    className={`${styles.dayGroup} ${expanded ? styles.dayGroupOpen : ''}`}
+                    aria-label={`${group.label}, ${formatFilesCount(group.items.length)}`}
+                  >
+                    <button
+                      type="button"
+                      className={`${styles.dayHead} ${expanded ? styles.dayHeadOpen : ''}`}
+                      aria-expanded={expanded}
+                      aria-controls={gridId}
+                      onClick={() => toggleDay(group.key)}
+                    >
+                      <span className={styles.dayBadge} aria-hidden>
+                        <span className={styles.dayBadgeWeekday}>{badge.weekday}</span>
+                        <span className={styles.dayBadgeDay}>{badge.day}</span>
+                      </span>
+                      <span className={styles.dayInfo}>
+                        <span className={styles.dayTitle}>{group.label}</span>
+                        {subline ? (
+                          <span className={styles.daySubline}>{subline}</span>
+                        ) : null}
+                      </span>
+                      {!expanded && previewItems.length > 0 ? (
+                        <span className={styles.dayPreview} aria-hidden>
+                          {previewItems.map((p) => (
+                            <span key={p.id} className={styles.dayPreviewSlot}>
+                              {p.kind === 'photo' ? (
+                                <img src={p.previewUrl} alt="" loading="lazy" />
+                              ) : (
+                                <span className={styles.dayPreviewVideo}>
+                                  <svg
+                                    width="12"
+                                    height="12"
+                                    viewBox="0 0 12 12"
+                                    fill="currentColor"
+                                    aria-hidden="true"
+                                    focusable="false"
+                                  >
+                                    <path d="M3.5 2.5v7l6-3.5-6-3.5z" />
+                                  </svg>
+                                </span>
+                              )}
+                            </span>
+                          ))}
+                          {restCount > 0 ? (
+                            <span className={styles.dayPreviewMore}>+{restCount}</span>
+                          ) : null}
+                        </span>
+                      ) : null}
+                      <span className={styles.dayCount}>
+                        {formatFilesCount(group.items.length)}
+                      </span>
+                      <span
+                        className={`${styles.dayChevron} ${expanded ? styles.dayChevronOpen : ''}`}
+                        aria-hidden
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="14"
+                          height="14"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="m6 9 6 6 6-6" />
+                        </svg>
+                      </span>
+                    </button>
+                    {expanded ? (
+                      <ul className={styles.grid} id={gridId}>
+                        {group.items.map((m) => (
                       <li key={m.id} className={styles.tile}>
                         <figure className={styles.figure}>
                           {m.kind === 'photo' ? (
@@ -1201,10 +1362,12 @@ export function SiteObjectMediaDropSection({
                           Убрать
                         </button>
                       </li>
-                    ))}
-                  </ul>
-                </section>
-              ))}
+                        ))}
+                      </ul>
+                    ) : null}
+                  </section>
+                )
+              })}
             </div>
           )}
         </>

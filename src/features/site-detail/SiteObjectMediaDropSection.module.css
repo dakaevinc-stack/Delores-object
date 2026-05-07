@@ -671,38 +671,281 @@
   margin-top: 18px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
 }
 
 .dayGroup {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
+}
+
+.dayGroupOpen {
+  gap: 16px;
 }
 
 .dayHead {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px 12px 18px;
+  border: 1px solid rgba(13, 23, 48, 0.07);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #ffffff 0%, #fafbfd 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 1px 2px rgba(13, 23, 48, 0.04),
+    0 6px 14px -10px rgba(13, 23, 48, 0.18);
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease,
+    background 0.18s ease;
+}
+
+.dayHead::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--brand-navy, #142142), #1c2c54);
+  opacity: 0.85;
+  transition: opacity 0.18s ease;
+}
+
+.dayHead:hover {
+  border-color: rgba(13, 23, 48, 0.14);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 2px 4px rgba(13, 23, 48, 0.06),
+    0 12px 22px -14px rgba(13, 23, 48, 0.28);
+  transform: translateY(-1px);
+}
+
+.dayHead:focus-visible {
+  outline: none;
+  border-color: rgba(28, 75, 130, 0.45);
+  box-shadow:
+    0 0 0 3px var(--accent-ring, rgba(28, 75, 130, 0.18)),
+    0 12px 22px -14px rgba(13, 23, 48, 0.28);
+}
+
+.dayHeadOpen {
+  background: linear-gradient(180deg, #ffffff 0%, #f4f7fc 100%);
+  border-color: rgba(28, 75, 130, 0.22);
+}
+
+.dayHeadOpen::before {
+  background: linear-gradient(180deg, var(--brand-red, #d93a3a), #b62a2a);
+  opacity: 1;
+}
+
+.dayBadge {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 4px 6px;
-  border-bottom: 1px solid var(--border);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #1c2c54 0%, #0f1a35 100%);
+  color: #f4f7fc;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 4px 10px -6px rgba(13, 23, 48, 0.45);
+  flex-shrink: 0;
+}
+
+.dayBadgeWeekday {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  opacity: 0.66;
+  margin-bottom: 2px;
+}
+
+.dayBadgeDay {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.dayInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .dayTitle {
-  margin: 0;
-  font-size: 14px;
+  display: block;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.daySubline {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dayPreview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.dayPreviewSlot {
+  position: relative;
+  display: block;
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  overflow: hidden;
+  background: #e8edf5;
+  border: 1px solid rgba(13, 23, 48, 0.08);
+  box-shadow: 0 1px 2px rgba(13, 23, 48, 0.06);
+  flex-shrink: 0;
+}
+
+.dayPreviewSlot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.dayPreviewVideo {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #1c2c54, #0f1a35);
+  color: #f4f7fc;
+}
+
+.dayPreviewMore {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: rgba(13, 23, 48, 0.06);
+  color: var(--text-strong);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
 }
 
 .dayCount {
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.dayChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(13, 23, 48, 0.06);
+  color: var(--text-strong);
+  transition:
+    transform 0.22s cubic-bezier(0.4, 0.05, 0.2, 1),
+    background 0.18s ease,
+    color 0.18s ease;
+  flex-shrink: 0;
+}
+
+.dayHead:hover .dayChevron {
+  background: var(--brand-red, #d93a3a);
+  color: #fff;
+}
+
+.dayChevronOpen {
+  transform: rotate(180deg);
+  background: var(--brand-red, #d93a3a);
+  color: #fff;
+}
+
+@media (max-width: 640px) {
+  .dayHead {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 12px 12px 12px 14px;
+  }
+  .dayPreview,
+  .dayCount {
+    display: none;
+  }
+  .dayBadge {
+    width: 40px;
+    height: 40px;
+  }
+  .dayBadgeDay {
+    font-size: 16px;
+  }
+}
+
+.counterActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.bulkBtn {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--accent);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.bulkBtn:hover {
+  background: rgba(28, 75, 130, 0.08);
+  border-color: rgba(28, 75, 130, 0.2);
 }
 
 .grid {
