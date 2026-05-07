@@ -40,14 +40,6 @@ function resolveAttachment(
   return a
 }
 
-function reportsWord(n: number): string {
-  const m10 = n % 10
-  const m100 = n % 100
-  if (m10 === 1 && m100 !== 11) return 'отчёт'
-  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'отчёта'
-  return 'отчётов'
-}
-
 function formatPeriod(reports: readonly BrigadierStoredReport[]): string | null {
   const ts = reports
     .map((r) => r.reportedAtIso)
@@ -220,7 +212,7 @@ export function SiteBrigadierSubmittedReportsSection({
                 onToggle={() => setSectionExpanded((v) => !v)}
                 ariaControls="brigadier-submitted-list"
                 expandedLabel="Свернуть журнал"
-                collapsedLabel={`Открыть ${total} ${reportsWord(total)}`}
+                collapsedLabel="Открыть журнал"
                 className={styles.headToggle}
               />
             ) : null}
