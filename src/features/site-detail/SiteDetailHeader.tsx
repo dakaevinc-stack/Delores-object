@@ -44,17 +44,6 @@ export function SiteDetailHeader({ site, dashboard }: Props) {
           </span>
           <span className={styles.backLabel}>Назад</span>
         </Link>
-        <div className={styles.meta}>
-          <span className={styles.code}>{dashboard.meta.objectCode}</span>
-          {dashboard.meta.addressNote ? (
-            <>
-              <span className={styles.metaSep} aria-hidden>
-                ·
-              </span>
-              <span className={styles.metaNote}>{dashboard.meta.addressNote}</span>
-            </>
-          ) : null}
-        </div>
       </div>
 
       <div className={styles.hero}>

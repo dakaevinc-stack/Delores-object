@@ -71,13 +71,7 @@ export type SiteDetailReporting = {
   problemFlagsCount: number
 }
 
-export type SiteDetailMeta = {
-  objectCode: string
-  addressNote?: string
-}
-
 export type SiteDetailDashboard = {
-  meta: SiteDetailMeta
   /** Краткая причина текущего общего статуса (для шапки) */
   statusReason: string
   kpis: SiteDetailKpis

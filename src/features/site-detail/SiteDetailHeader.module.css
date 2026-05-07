@@ -91,29 +91,6 @@
   padding-right: 2px;
 }
 
-.meta {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.code {
-  color: var(--text);
-}
-
-.metaSep {
-  margin: 0 6px;
-  opacity: 0.55;
-}
-
-.metaNote {
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: none;
-}
-
 .hero {
   position: relative;
   display: grid;
@@ -245,14 +222,6 @@
 
   .back {
     align-self: flex-start;
-  }
-
-  .meta {
-    min-width: 0;
-    font-size: 11px;
-    line-height: 1.45;
-    letter-spacing: 0.05em;
-    overflow-wrap: break-word;
   }
 
   .hero {

@@ -6,7 +6,6 @@ import type {
   SiteDetailCriterion,
   SiteDetailDashboard,
   SiteDetailKpis,
-  SiteDetailMeta,
   SiteDetailReporting,
   SiteDetailSchedule,
   WorkCriterionKind,
@@ -168,16 +167,6 @@ function buildReporting(site: ConstructionSite, status: SiteStatus): SiteDetailR
   }
 }
 
-function buildMeta(site: ConstructionSite): SiteDetailMeta {
-  const code = `DR-${site.id.slice(0, 4).toUpperCase()}-${(hashId(site.id) % 900) + 100}`
-  return {
-    objectCode: code,
-    addressNote: site.address?.trim()
-      ? site.address.trim()
-      : 'Учётный участок · управленческий срез',
-  }
-}
-
 function buildKpis(site: ConstructionSite): SiteDetailKpis {
   const status = resolveSiteStatus(site)
   const gap = planFactGapPoints(site)
@@ -257,7 +246,6 @@ export function getSiteDetailDashboard(site: ConstructionSite): SiteDetailDashbo
   }
 
   return {
-    meta: buildMeta(site),
     statusReason: site.executive.summaryLine,
     kpis: buildKpis(site),
     criteria: buildCriteria(site),
