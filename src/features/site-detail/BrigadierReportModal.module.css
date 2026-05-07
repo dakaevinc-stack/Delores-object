@@ -1205,30 +1205,172 @@
   opacity: 0;
 }
 
-.mediaBtn {
-  min-height: 44px;
-  padding: 0 18px;
-  border-radius: 12px;
-  border: 1px solid rgba(28, 75, 130, 0.28);
-  background: linear-gradient(180deg, rgba(28, 75, 130, 0.09) 0%, rgba(28, 75, 130, 0.04) 100%);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--accent);
+/* ────────────────────────────────────────────────────────────────
+   Premium-CTA «Прикрепить фото или видео» — компактный вариант для
+   модалки. Один input на оба типа (определяется по MIME). Внутри
+   формы он не должен «давить» как primary submit, но обязан читаться
+   с одного взгляда — отсюда: иконка-плитка слева, текст по центру,
+   плюс-индикатор справа, фирменный градиент только на hover.
+   ──────────────────────────────────────────────────────────────── */
+.attachCta {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 14px 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(28, 75, 130, 0.22);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(28, 75, 130, 0.05) 100%
+  );
+  text-align: left;
   cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
   transition:
+    transform 0.15s ease,
     border-color 0.15s ease,
-    background 0.15s ease;
+    box-shadow 0.2s ease,
+    background 0.2s ease;
 }
 
-.mediaBtn:hover {
-  border-color: rgba(28, 75, 130, 0.45);
-  background: rgba(28, 75, 130, 0.1);
+.attachCta::after {
+  content: '';
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 4px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--brand-navy, #0f2850) 0%,
+    var(--brand-red, #ee2d3a) 100%
+  );
+  opacity: 0;
+  transform: scaleX(0.55);
+  transform-origin: left;
+  transition:
+    opacity 0.18s ease,
+    transform 0.25s ease;
+  pointer-events: none;
 }
 
-.mediaBtn:focus-visible {
+.attachCta:hover {
+  transform: translateY(-1px);
+  border-color: rgba(15, 40, 80, 0.45);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 10px 22px rgba(15, 28, 54, 0.12);
+}
+
+.attachCta:hover::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.attachCta:active {
+  transform: translateY(0);
+}
+
+.attachCta:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--accent-ring);
+  border-color: rgba(15, 40, 80, 0.55);
+  box-shadow:
+    0 0 0 3px var(--accent-ring),
+    0 8px 16px rgba(15, 28, 54, 0.1);
+}
+
+.attachCta:focus-visible::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.attachCtaIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #f6f8fc;
+  background:
+    radial-gradient(120% 120% at 30% 20%, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 55%),
+    linear-gradient(180deg, #1a3a72 0%, #0e2451 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 6px 14px rgba(15, 28, 54, 0.22);
+  flex-shrink: 0;
+  transition: transform 0.18s ease;
+}
+
+.attachCtaIcon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.attachCta:hover .attachCtaIcon {
+  transform: scale(1.04);
+}
+
+.attachCtaBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.attachCtaLabel {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--text-strong, #0f1d36);
+  line-height: 1.2;
+}
+
+.attachCtaHint {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.attachCtaArrow {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand-navy, #0f2850);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(15, 40, 80, 0.18);
+  flex-shrink: 0;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.attachCtaArrow svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.attachCta:hover .attachCtaArrow {
+  background: var(--brand-red, #ee2d3a);
+  border-color: var(--brand-red, #ee2d3a);
+  color: #fff;
+  transform: rotate(90deg);
 }
 
 .attachList {

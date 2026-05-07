@@ -66,8 +66,7 @@ function parseDateTimeLocal(s: string): string {
 
 export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit }: Props) {
   const uid = useId()
-  const photoRef = useRef<HTMLInputElement>(null)
-  const videoRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const [reportedAtLocal, setReportedAtLocal] = useState(() => toDateTimeLocalValue(new Date()))
   // Подставляем последнее введённое ФИО, если бригадир уже отправлял
@@ -276,12 +275,19 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
     setProblems((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)))
   }
 
-  const addFiles = (files: FileList | null, kind: 'photo' | 'video') => {
+  /**
+   * Тип вложения определяется автоматически по MIME — пикер один на
+   * фото и видео, бригадиру не нужно угадывать «у меня сейчас фото
+   * или видео» перед нажатием. iOS/Android в этом режиме показывают
+   * нативный выбор «Камера / Видео / Медиатека».
+   */
+  const addFiles = (files: FileList | null) => {
     if (!files?.length) return
     const next: BrigadierAttachmentDraft[] = []
     for (let i = 0; i < files.length; i += 1) {
       const file = files.item(i)
       if (!file) continue
+      const kind: 'photo' | 'video' = file.type.startsWith('video/') ? 'video' : 'photo'
       const registeredAtIso = new Date().toISOString()
       const fileModifiedIso = new Date(file.lastModified).toISOString()
       const previewUrl = URL.createObjectURL(file)
@@ -886,43 +892,40 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
             <div className={styles.mediaActions}>
               <div className={styles.fileSink} aria-hidden>
                 <input
-                  ref={photoRef}
+                  ref={fileRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/*"
                   multiple
                   tabIndex={-1}
                   className={styles.hiddenFile}
                   onChange={(e) => {
-                    addFiles(e.target.files, 'photo')
-                    e.target.value = ''
-                  }}
-                />
-                <input
-                  ref={videoRef}
-                  type="file"
-                  accept="video/*"
-                  multiple
-                  tabIndex={-1}
-                  className={styles.hiddenFile}
-                  onChange={(e) => {
-                    addFiles(e.target.files, 'video')
+                    addFiles(e.target.files)
                     e.target.value = ''
                   }}
                 />
               </div>
               <button
                 type="button"
-                className={styles.mediaBtn}
-                onClick={() => photoRef.current?.click()}
+                className={styles.attachCta}
+                onClick={() => fileRef.current?.click()}
               >
-                Фото
-              </button>
-              <button
-                type="button"
-                className={styles.mediaBtn}
-                onClick={() => videoRef.current?.click()}
-              >
-                Видео
+                <span className={styles.attachCtaIcon} aria-hidden>
+                  <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 9.5A2.5 2.5 0 0 1 6.5 7h2.1c.55 0 1.05-.3 1.32-.78l.66-1.18A2 2 0 0 1 12.32 4h3.36a2 2 0 0 1 1.74 1.04l.66 1.18c.27.48.77.78 1.32.78H21.5A2.5 2.5 0 0 1 24 9.5v9.7A2.8 2.8 0 0 1 21.2 22H6.8A2.8 2.8 0 0 1 4 19.2V9.5Z" />
+                    <circle cx="14" cy="14" r="3.6" />
+                    <path d="m12.6 12.7 2.9 1.5-2.9 1.5v-3Z" fill="currentColor" stroke="none" />
+                  </svg>
+                </span>
+                <span className={styles.attachCtaBody}>
+                  <span className={styles.attachCtaLabel}>Прикрепить фото или видео</span>
+                  <span className={styles.attachCtaHint}>с камеры или из галереи</span>
+                </span>
+                <span className={styles.attachCtaArrow} aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 5v14" />
+                    <path d="M5 12h14" />
+                  </svg>
+                </span>
               </button>
             </div>
             {attachments.length > 0 ? (
