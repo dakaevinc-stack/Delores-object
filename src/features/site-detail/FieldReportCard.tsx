@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { formatReportDateTime, formatReportDateTimeFull } from '../../domain/reportFormatting'
 import type { DailyTelegramWorkLine } from '../../domain/dailyTelegramReport'
 import type { BrigadierCommentSections } from './brigadierCommentSections'
@@ -68,6 +68,13 @@ type Props = {
   /** Кнопка удалить — встраивается в подвал карточки. */
   onRemove?: () => void
   removeLabel?: string
+  /**
+   * Карточку можно сворачивать в шапку: тело прячется до клика по
+   * кнопке-шеврону. В свёрнутом состоянии показываем компактную
+   * сводку (пункты журнала / уложено / медиа / проблемы).
+   */
+  collapsible?: boolean
+  defaultExpanded?: boolean
 }
 
 const ACCENT_CLASS: Record<FieldReportAccent, string> = {
@@ -406,6 +413,33 @@ function PersonIcon({ className }: { className?: string }) {
   )
 }
 
+function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  )
+}
+
+function pluralRu(n: number, [one, few, many]: [string, string, string]): string {
+  const m10 = n % 10
+  const m100 = n % 100
+  if (m10 === 1 && m100 !== 11) return one
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few
+  return many
+}
+
 function workWord(n: number): string {
   const m10 = n % 10
   const m100 = n % 100
@@ -472,7 +506,18 @@ export function FieldReportCard({
   metaChips,
   onRemove,
   removeLabel = 'Удалить',
+  collapsible,
+  defaultExpanded,
 }: Props) {
+  const isCollapsible = Boolean(collapsible)
+  const [expanded, setExpanded] = useState(
+    isCollapsible ? Boolean(defaultExpanded) : true,
+  )
+  useEffect(() => {
+    if (!isCollapsible) setExpanded(true)
+  }, [isCollapsible])
+  const showBody = !isCollapsible || expanded
+
   const initials = responsibleName ? getInitials(responsibleName) : ''
   const trimmedComment = narrativeComment?.trim() ?? ''
   const useStructured = Boolean(narrativeStructured?.hasStructure)
@@ -484,8 +529,50 @@ export function FieldReportCard({
   const showFooter =
     (metaChips && metaChips.length > 0) || Boolean(onRemove) || (chips && chips.length > 0)
 
+  const previewChips: { id: string; icon: ReactElement; label: string }[] = []
+  if (narrativeStructured?.works.length) {
+    const n = narrativeStructured.works.length
+    previewChips.push({
+      id: 'works',
+      icon: <ScrollIcon className={styles.metaChipIcon} />,
+      label: `${n} ${pluralRu(n, ['пункт', 'пункта', 'пунктов'])} журнала`,
+    })
+  }
+  if (narrativeStructured?.laid.length) {
+    const n = narrativeStructured.laid.length
+    previewChips.push({
+      id: 'laid',
+      icon: <PipesIcon className={styles.metaChipIcon} />,
+      label: `${n} ${pluralRu(n, ['материал', 'материала', 'материалов'])} уложено`,
+    })
+  }
+  if (narrativeStructured?.crew?.workers != null) {
+    previewChips.push({
+      id: 'crew',
+      icon: <HelmetIcon className={styles.metaChipIcon} />,
+      label: `${narrativeStructured.crew.workers} ${pluralRu(narrativeStructured.crew.workers, [
+        'рабочий',
+        'рабочих',
+        'рабочих',
+      ])}`,
+    })
+  }
+  const showPreview = isCollapsible && !expanded && (previewChips.length > 0 || (metaChips && metaChips.length > 0))
+
+  const cardClass = [
+    styles.card,
+    ACCENT_CLASS[accent],
+    isCollapsible && !expanded ? styles.cardCollapsed : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const handleCardClick = () => {
+    if (isCollapsible && !expanded) setExpanded(true)
+  }
+
   return (
-    <article className={`${styles.card} ${ACCENT_CLASS[accent]}`}>
+    <article className={cardClass} onClick={handleCardClick}>
       <span className={styles.rail} aria-hidden />
       <span className={styles.topShimmer} aria-hidden />
 
@@ -530,10 +617,50 @@ export function FieldReportCard({
           ) : (
             <span className={styles.dateMuted}>без даты в источнике</span>
           )}
+          {isCollapsible ? (
+            <button
+              type="button"
+              className={`${styles.toggle} ${expanded ? styles.toggleOpen : ''}`}
+              onClick={(e) => {
+                e.stopPropagation()
+                setExpanded((v) => !v)
+              }}
+              aria-expanded={expanded}
+              aria-label={expanded ? 'Свернуть отчёт' : 'Раскрыть отчёт'}
+              title={expanded ? 'Свернуть отчёт' : 'Раскрыть отчёт'}
+            >
+              <ChevronDownIcon className={styles.toggleIcon} />
+            </button>
+          ) : null}
         </div>
       </header>
 
-      {showStructured && narrativeStructured ? (
+      {showPreview ? (
+        <div className={styles.preview}>
+          {previewChips.map((c) => (
+            <span
+              key={c.id}
+              className={`${styles.metaChip} ${styles.metaChip_neutral}`}
+            >
+              {c.icon}
+              <span className={styles.metaChipLabel}>{c.label}</span>
+            </span>
+          ))}
+          {metaChips?.map((c) => (
+            <span
+              key={`meta-${c.id}`}
+              className={`${styles.metaChip} ${
+                c.tone === 'warning' ? styles.metaChip_warn : styles.metaChip_neutral
+              }`}
+            >
+              <MetaIcon kind={c.icon} />
+              <span className={styles.metaChipLabel}>{c.label}</span>
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {showBody && showStructured && narrativeStructured ? (
         <div className={styles.narrative}>
           <p className={styles.narrativeKicker}>
             <ScrollIcon className={styles.narrativeKickerIcon} />
@@ -602,7 +729,7 @@ export function FieldReportCard({
             </div>
           ) : null}
         </div>
-      ) : trimmedComment ? (
+      ) : showBody && trimmedComment ? (
         <div className={styles.narrative}>
           <p className={styles.narrativeKicker}>
             <ScrollIcon className={styles.narrativeKickerIcon} />
@@ -612,7 +739,7 @@ export function FieldReportCard({
         </div>
       ) : null}
 
-      {lines.length > 0 ? (
+      {showBody && lines.length > 0 ? (
         <ol className={styles.lines}>
           {lines.map((line) => (
             <li key={line.index} className={styles.line}>
@@ -623,7 +750,7 @@ export function FieldReportCard({
         </ol>
       ) : null}
 
-      {problems && problems.length > 0 ? (
+      {showBody && problems && problems.length > 0 ? (
         <div className={styles.problemsWrap}>
           <p className={styles.problemsKicker}>Проблемы для бригадира</p>
           <ul className={styles.problemsList}>
@@ -637,7 +764,7 @@ export function FieldReportCard({
         </div>
       ) : null}
 
-      {attachments && attachments.length > 0 ? (
+      {showBody && attachments && attachments.length > 0 ? (
         <div className={styles.media}>
           {attachments.map((a) => (
             <figure key={a.id} className={styles.figure}>
@@ -673,7 +800,7 @@ export function FieldReportCard({
         </div>
       ) : null}
 
-      {metrics && metrics.length > 0 ? (
+      {showBody && metrics && metrics.length > 0 ? (
         <ul className={styles.metricStrip}>
           {metrics.map((m) => (
             <li
@@ -687,7 +814,7 @@ export function FieldReportCard({
         </ul>
       ) : null}
 
-      {showFooter ? (
+      {showBody && showFooter ? (
         <footer className={styles.footer}>
           <div className={styles.footerStats}>
             {metaChips?.map((c) => (

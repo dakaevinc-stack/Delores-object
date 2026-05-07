@@ -256,7 +256,7 @@ export function SiteBrigadierSubmittedReportsSection({
         </div>
       ) : (
         <div className={styles.list}>
-          {sorted.map((r) => {
+          {sorted.map((r, idx) => {
             const photos = r.attachments.filter((a) => a.kind === 'photo').length
             const videos = r.attachments.filter((a) => a.kind === 'video').length
             const problems = r.problems.length
@@ -307,6 +307,8 @@ export function SiteBrigadierSubmittedReportsSection({
                 lines={r.lines}
                 narrativeComment={r.comment}
                 narrativeStructured={parseBrigadierComment(r.comment)}
+                collapsible={total > 1}
+                defaultExpanded={idx === 0}
                 problems={r.problems.map((p) => ({
                   kindLabel: brigadierProblemKindLabel(p.kindId),
                   details: p.details,

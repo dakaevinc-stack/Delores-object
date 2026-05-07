@@ -475,6 +475,83 @@
   font-style: italic;
 }
 
+/* ─── Кнопка-шеврон «свернуть/раскрыть» ──────────────────────────── */
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--brand-navy, #172a4d);
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.15s ease, background-color 0.15s ease,
+    box-shadow 0.15s ease, color 0.15s ease;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 4px 10px rgba(15, 23, 42, 0.04);
+  backdrop-filter: blur(4px);
+  flex-shrink: 0;
+}
+
+.toggle:hover {
+  border-color: rgba(238, 45, 58, 0.42);
+  color: var(--brand-red, #ee2d3a);
+  background: rgba(238, 45, 58, 0.06);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 6px 14px rgba(238, 45, 58, 0.15);
+}
+
+.toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(23, 42, 77, 0.25);
+}
+
+.toggleIcon {
+  transition: transform 0.22s ease;
+}
+
+.toggleOpen .toggleIcon,
+.toggleOpen.toggle .toggleIcon {
+  transform: rotate(180deg);
+}
+
+/* ─── Превью-полоса (видна только в свёрнутом состоянии) ─────────── */
+
+.preview {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(23, 42, 77, 0.04) 0%, rgba(23, 42, 77, 0.012) 100%),
+    rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(23, 42, 77, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+}
+
+/* ─── Свёрнутая карточка: убираем ненужные отступы ──────────────── */
+
+.cardCollapsed {
+  padding-bottom: 14px;
+  cursor: pointer;
+}
+
+.cardCollapsed:hover .toggle {
+  border-color: rgba(238, 45, 58, 0.42);
+  color: var(--brand-red, #ee2d3a);
+  background: rgba(238, 45, 58, 0.06);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 6px 14px rgba(238, 45, 58, 0.15);
+}
+
+.cardCollapsed .head {
+  margin-bottom: 0;
+}
+
 /* ─── Комментарий — структурированный «журнал смены» ─────────────── */
 
 .narrative {
