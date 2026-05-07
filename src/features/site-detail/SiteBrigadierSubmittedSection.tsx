@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   brigadierProblemKindLabel,
   type BrigadierStoredReport,
@@ -45,13 +45,6 @@ function reportsWord(n: number): string {
   if (m10 === 1 && m100 !== 11) return 'отчёт'
   if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'отчёта'
   return 'отчётов'
-}
-
-function formatShortDate(iso?: string): string | null {
-  if (!iso) return null
-  const d = new Date(iso)
-  if (!Number.isFinite(d.getTime())) return null
-  return d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })
 }
 
 function formatPeriod(reports: readonly BrigadierStoredReport[]): string | null {
@@ -125,6 +118,27 @@ function pluralRu(n: number, [one, few, many]: [string, string, string]): string
   return many
 }
 
+/**
+ * «сегодня в 14:30», «вчера в 21:06», «6 мая, 21:06» — короткий
+ * человеческий вид свежести записи для одной строки лида.
+ */
+function formatLatestEntryRu(iso: string | undefined, now: Date = new Date()): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (!Number.isFinite(d.getTime())) return null
+  const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  const dayMs = 86_400_000
+  const startOfDay = (x: Date) => {
+    const t = new Date(x)
+    t.setHours(0, 0, 0, 0)
+    return t.getTime()
+  }
+  const days = Math.round((startOfDay(now) - startOfDay(d)) / dayMs)
+  if (days === 0) return `сегодня в ${time}`
+  if (days === 1) return `вчера в ${time}`
+  return `${d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}, ${time}`
+}
+
 export function SiteBrigadierSubmittedReportsSection({
   siteId,
   siteName,
@@ -142,7 +156,7 @@ export function SiteBrigadierSubmittedReportsSection({
 
   const total = sorted.length
   const latest = sorted[0]
-  const latestDate = formatShortDate(latest?.reportedAtIso)
+  const latestEntry = formatLatestEntryRu(latest?.reportedAtIso)
   const period = formatPeriod(sorted)
   const totalProblems = sorted.reduce((acc, r) => acc + (r.problems?.length ?? 0), 0)
   const totalAttachments = sorted.reduce(
@@ -150,6 +164,9 @@ export function SiteBrigadierSubmittedReportsSection({
     0,
   )
   const responsibles = pickActiveResponsibles(sorted)
+
+  const [sectionExpanded, setSectionExpanded] = useState(false)
+  const canCollapse = total > 0
 
   return (
     <section className={styles.section} aria-labelledby="brigadier-submitted-heading">
@@ -196,25 +213,46 @@ export function SiteBrigadierSubmittedReportsSection({
               </svg>
               {serverBacked ? 'Источник · Сервер' : 'Источник · Это устройство'}
             </span>
+            {canCollapse ? (
+              <button
+                type="button"
+                className={`${styles.sectionToggle} ${
+                  sectionExpanded ? styles.sectionToggleOpen : ''
+                }`}
+                onClick={() => setSectionExpanded((v) => !v)}
+                aria-expanded={sectionExpanded}
+                aria-controls="brigadier-submitted-list"
+                title={sectionExpanded ? 'Свернуть журнал' : 'Открыть журнал'}
+              >
+                <span className={styles.sectionToggleLabel}>
+                  {sectionExpanded
+                    ? 'Свернуть журнал'
+                    : `Открыть ${total} ${reportsWord(total)}`}
+                </span>
+                <svg
+                  className={styles.sectionToggleIcon}
+                  viewBox="0 0 24 24"
+                  width="16"
+                  height="16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </button>
+            ) : null}
           </div>
 
           <p className={styles.lead}>
-            Объект «{siteName}» —{' '}
-            {total > 0 ? (
-              <>
-                {total} {reportsWord(total)} за журналируемый период.{' '}
-                {serverBacked
-                  ? 'Фото, видео и проблемы хранятся на сервере, в браузере остаётся копия для просмотра без сети.'
-                  : 'Записи сохранены на этом устройстве. После подключения API они синхронизируются между сотрудниками.'}
-                {latestDate ? <> Свежая запись — {latestDate}.</> : null}
-              </>
-            ) : (
-              <>
-                Здесь появятся ежедневные отчёты бригадира с этого объекта: работы, проблемы,
-                фото и комментарии. Нажмите «Ввод отчёта» выше — можно отправить только текст и
-                вложения, без таблицы работ.
-              </>
-            )}
+            {total > 0
+              ? latestEntry
+                ? `Сменный журнал ведётся регулярно. Свежая запись — ${latestEntry}.`
+                : 'Сменный журнал ведётся регулярно.'
+              : 'Журнал смен пока пуст — добавьте первую запись кнопкой «Ввод отчёта» выше.'}
           </p>
 
           {total > 0 ? (
@@ -254,8 +292,8 @@ export function SiteBrigadierSubmittedReportsSection({
             вложения, без таблицы работ.
           </p>
         </div>
-      ) : (
-        <div className={styles.list}>
+      ) : sectionExpanded ? (
+        <div className={styles.list} id="brigadier-submitted-list">
           {sorted.map((r, idx) => {
             const photos = r.attachments.filter((a) => a.kind === 'photo').length
             const videos = r.attachments.filter((a) => a.kind === 'video').length
@@ -323,7 +361,7 @@ export function SiteBrigadierSubmittedReportsSection({
             )
           })}
         </div>
-      )}
+      ) : null}
     </section>
   )
 }
