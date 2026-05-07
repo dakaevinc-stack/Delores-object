@@ -9,6 +9,7 @@ import {
   type FieldReportAttachment,
   type FieldReportMetaChip,
 } from './FieldReportCard'
+import { parseBrigadierComment } from './brigadierCommentSections'
 import styles from './SiteBrigadierSubmittedSection.module.css'
 
 type Props = {
@@ -305,6 +306,7 @@ export function SiteBrigadierSubmittedReportsSection({
                 responsibleName={r.responsible}
                 lines={r.lines}
                 narrativeComment={r.comment}
+                narrativeStructured={parseBrigadierComment(r.comment)}
                 problems={r.problems.map((p) => ({
                   kindLabel: brigadierProblemKindLabel(p.kindId),
                   details: p.details,

@@ -475,40 +475,39 @@
   font-style: italic;
 }
 
-/* ─── Комментарий-«цитата» ───────────────────────────────────────── */
+/* ─── Комментарий — структурированный «журнал смены» ─────────────── */
 
 .narrative {
   position: relative;
   z-index: 1;
   margin: 0 0 16px;
-  padding: 18px 20px 16px 26px;
+  padding: 16px 18px 14px;
   border-radius: 16px;
   background:
-    linear-gradient(180deg, rgba(23, 42, 77, 0.05) 0%, rgba(23, 42, 77, 0.02) 100%),
-    rgba(255, 255, 255, 0.45);
+    linear-gradient(180deg, rgba(23, 42, 77, 0.04) 0%, rgba(23, 42, 77, 0.012) 100%),
+    rgba(255, 255, 255, 0.5);
   border: 1px solid rgba(23, 42, 77, 0.10);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
-}
-
-.narrativeQuote {
-  position: absolute;
-  left: 9px;
-  top: 6px;
-  font-size: 36px;
-  line-height: 1;
-  color: var(--brand-red, #ee2d3a);
-  opacity: 0.55;
-  pointer-events: none;
-  font-family: 'Times New Roman', Georgia, serif;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .narrativeKicker {
-  margin: 0 0 6px;
-  font-size: 10.5px;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--brand-navy, #172a4d);
+}
+
+.narrativeKickerIcon {
+  flex-shrink: 0;
+  opacity: 0.7;
 }
 
 .narrativeBody {
@@ -518,6 +517,209 @@
   color: var(--text-strong);
   white-space: pre-wrap;
   letter-spacing: -0.005em;
+}
+
+/* ─── Список работ за смену ──────────────────────────────────────── */
+
+.workList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.workItem {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.workIdx {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  font-size: 10.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--brand-navy, #172a4d);
+  background: linear-gradient(180deg, rgba(23, 42, 77, 0.10) 0%, rgba(23, 42, 77, 0.04) 100%);
+  border: 1px solid rgba(23, 42, 77, 0.22);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  margin-top: 1px;
+}
+
+.workBody {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
+.workActivity {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-strong);
+  letter-spacing: -0.005em;
+}
+
+.workQuantity {
+  font-size: 11.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.005em;
+  color: var(--brand-navy, #172a4d);
+  background: linear-gradient(180deg, rgba(23, 42, 77, 0.10) 0%, rgba(23, 42, 77, 0.04) 100%);
+  border: 1px solid rgba(23, 42, 77, 0.22);
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+}
+
+/* ─── Подсекции (уложено / бригада) ──────────────────────────────── */
+
+.subKicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brand-navy, #172a4d);
+}
+
+.subKickerRed {
+  color: var(--brand-red, #ee2d3a);
+}
+
+.subKickerIcon {
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+/* ─── «Уложено за смену» — чипы материалов ──────────────────────── */
+
+.laidBlock {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(23, 42, 77, 0.04);
+  border: 1px solid rgba(23, 42, 77, 0.10);
+}
+
+.laidList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+
+.laidChip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 11px 5px 11px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid rgba(23, 42, 77, 0.16);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.95) inset, 0 4px 10px rgba(15, 23, 42, 0.04);
+}
+
+.laidChipName {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--text-strong);
+}
+
+.laidChipQty {
+  font-size: 11.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--brand-navy, #172a4d);
+  letter-spacing: -0.005em;
+}
+
+.laidChipQty::before {
+  content: '·';
+  margin-right: 6px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* ─── Бригада на смене ───────────────────────────────────────────── */
+
+.crewBlock {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(238, 45, 58, 0.05) 0%, rgba(238, 45, 58, 0.012) 100%);
+  border: 1px solid rgba(238, 45, 58, 0.16);
+}
+
+.crewMetrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.crewMetric {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid rgba(23, 42, 77, 0.10);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 4px 10px rgba(15, 23, 42, 0.04);
+}
+
+.crewMetricIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(23, 42, 77, 0.10) 0%, rgba(23, 42, 77, 0.04) 100%);
+  color: var(--brand-navy, #172a4d);
+  border: 1px solid rgba(23, 42, 77, 0.18);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  flex-shrink: 0;
+}
+
+.crewMetricBody {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1;
+}
+
+.crewMetricValue {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-strong);
+}
+
+.crewMetricLabel {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 /* ─── Пропавший медиафайл ────────────────────────────────────────── */

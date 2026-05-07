@@ -1,5 +1,7 @@
+import type { ReactElement } from 'react'
 import { formatReportDateTime, formatReportDateTimeFull } from '../../domain/reportFormatting'
 import type { DailyTelegramWorkLine } from '../../domain/dailyTelegramReport'
+import type { BrigadierCommentSections } from './brigadierCommentSections'
 import styles from './FieldReportCard.module.css'
 
 export type FieldReportAttachment = {
@@ -53,6 +55,12 @@ type Props = {
   attachments?: readonly FieldReportAttachment[]
   /** Свободный комментарий (отдельно от строк «работ»). */
   narrativeComment?: string
+  /**
+   * Структурированная разметка комментария бригадира: работы, что
+   * уложено, состав бригады. Если задана и `hasStructure`, рендерится
+   * списком с иконками вместо плоского `narrativeComment`.
+   */
+  narrativeStructured?: BrigadierCommentSections | null
   /** ФИО ответственного: показывается аватар-кругом с инициалами в шапке. */
   responsibleName?: string
   /** Краткие чипы статистики в подвале (📎 N вложений / ⚠ M проблем). */
@@ -247,6 +255,206 @@ function BadgeIconFor({ accent }: { accent: FieldReportAccent }) {
   return null
 }
 
+function ScrollIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      width="13"
+      height="13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 4h11a3 3 0 0 1 3 3v10" />
+      <path d="M5 4a3 3 0 0 0-3 3v0a3 3 0 0 0 3 3h12" />
+      <path d="M19 17a3 3 0 0 0 3 3v0a3 3 0 0 0-3-3" />
+      <path d="M9 14h6M9 18h4" />
+    </svg>
+  )
+}
+
+function PipesIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      width="13"
+      height="13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="2.5" y="6" width="19" height="6" rx="1.5" />
+      <rect x="2.5" y="14" width="19" height="6" rx="1.5" />
+      <path d="M2.5 9h19M2.5 17h19" />
+    </svg>
+  )
+}
+
+function UsersIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      width="13"
+      height="13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="9" cy="8" r="3.5" />
+      <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
+      <circle cx="17" cy="9" r="2.7" />
+      <path d="M21.5 20a4.5 4.5 0 0 0-7-3.7" />
+    </svg>
+  )
+}
+
+function HelmetIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 17h18" />
+      <path d="M4 17a8 8 0 0 1 16 0" />
+      <path d="M10 9V6a2 2 0 0 1 4 0v3" />
+      <path d="M8 12.5h8" />
+    </svg>
+  )
+}
+
+function BadgeIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="4.5" y="6" width="15" height="14" rx="2.5" />
+      <path d="M9 6V4.5h6V6" />
+      <path d="M12 11.5v3.5" />
+      <circle cx="12" cy="10" r="0.6" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+function TruckIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="2.5" y="7" width="11.5" height="9" rx="1.6" />
+      <path d="M14 10h4l3.5 3v3H14z" />
+      <circle cx="6.5" cy="17.5" r="1.7" />
+      <circle cx="17.5" cy="17.5" r="1.7" />
+    </svg>
+  )
+}
+
+function PersonIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="8" r="3.6" />
+      <path d="M4 20a8 8 0 0 1 16 0" />
+    </svg>
+  )
+}
+
+function workWord(n: number): string {
+  const m10 = n % 10
+  const m100 = n % 100
+  if (m10 === 1 && m100 !== 11) return 'рабочий'
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'рабочих'
+  return 'рабочих'
+}
+
+type CrewSlot = {
+  id: string
+  value: number
+  label: string
+  icon: (props: { className?: string }) => ReactElement
+}
+
+function buildCrewSlots(
+  crew: NonNullable<BrigadierCommentSections['crew']>,
+): CrewSlot[] {
+  const slots: CrewSlot[] = []
+  if (typeof crew.workers === 'number') {
+    slots.push({
+      id: 'workers',
+      value: crew.workers,
+      label: workWord(crew.workers),
+      icon: HelmetIcon,
+    })
+  }
+  if (typeof crew.itr === 'number') {
+    slots.push({ id: 'itr', value: crew.itr, label: 'ИТР', icon: BadgeIcon })
+  }
+  if (typeof crew.equipment === 'number') {
+    slots.push({
+      id: 'equipment',
+      value: crew.equipment,
+      label: 'ед. техники',
+      icon: TruckIcon,
+    })
+  }
+  if (typeof crew.people === 'number') {
+    slots.push({
+      id: 'people',
+      value: crew.people,
+      label: 'человек',
+      icon: PersonIcon,
+    })
+  }
+  return slots
+}
+
 export function FieldReportCard({
   badge,
   badgeKicker,
@@ -259,6 +467,7 @@ export function FieldReportCard({
   problems,
   attachments,
   narrativeComment,
+  narrativeStructured,
   responsibleName,
   metaChips,
   onRemove,
@@ -266,6 +475,12 @@ export function FieldReportCard({
 }: Props) {
   const initials = responsibleName ? getInitials(responsibleName) : ''
   const trimmedComment = narrativeComment?.trim() ?? ''
+  const useStructured = Boolean(narrativeStructured?.hasStructure)
+  const crewSlots =
+    useStructured && narrativeStructured?.crew
+      ? buildCrewSlots(narrativeStructured.crew)
+      : []
+  const showStructured = useStructured && narrativeStructured !== undefined
   const showFooter =
     (metaChips && metaChips.length > 0) || Boolean(onRemove) || (chips && chips.length > 0)
 
@@ -318,12 +533,81 @@ export function FieldReportCard({
         </div>
       </header>
 
-      {trimmedComment ? (
+      {showStructured && narrativeStructured ? (
         <div className={styles.narrative}>
-          <span className={styles.narrativeQuote} aria-hidden>
-            ❝
-          </span>
-          <p className={styles.narrativeKicker}>Комментарий смены</p>
+          <p className={styles.narrativeKicker}>
+            <ScrollIcon className={styles.narrativeKickerIcon} />
+            <span>Журнал смены</span>
+          </p>
+
+          {narrativeStructured.works.length > 0 ? (
+            <ol className={styles.workList}>
+              {narrativeStructured.works.map((w, i) => (
+                <li key={`${i}-${w.activity}`} className={styles.workItem}>
+                  <span className={styles.workIdx} aria-hidden>
+                    {i + 1}
+                  </span>
+                  <span className={styles.workBody}>
+                    <span className={styles.workActivity}>{w.activity}</span>
+                    {w.quantity ? (
+                      <span className={styles.workQuantity}>{w.quantity}</span>
+                    ) : null}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          ) : null}
+
+          {narrativeStructured.laid.length > 0 ? (
+            <div className={styles.laidBlock}>
+              <p className={styles.subKicker}>
+                <PipesIcon className={styles.subKickerIcon} />
+                <span>Уложено за смену</span>
+              </p>
+              <ul className={styles.laidList}>
+                {narrativeStructured.laid.map((item, i) => (
+                  <li key={`${i}-${item.name}`} className={styles.laidChip}>
+                    <span className={styles.laidChipName}>{item.name}</span>
+                    {item.quantity ? (
+                      <span className={styles.laidChipQty}>{item.quantity}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {crewSlots.length > 0 ? (
+            <div className={styles.crewBlock}>
+              <p className={`${styles.subKicker} ${styles.subKickerRed}`}>
+                <UsersIcon className={styles.subKickerIcon} />
+                <span>Бригада на смене</span>
+              </p>
+              <div className={styles.crewMetrics}>
+                {crewSlots.map((slot) => {
+                  const Icon = slot.icon
+                  return (
+                    <div key={slot.id} className={styles.crewMetric}>
+                      <span className={styles.crewMetricIcon} aria-hidden>
+                        <Icon />
+                      </span>
+                      <span className={styles.crewMetricBody}>
+                        <span className={styles.crewMetricValue}>{slot.value}</span>
+                        <span className={styles.crewMetricLabel}>{slot.label}</span>
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : trimmedComment ? (
+        <div className={styles.narrative}>
+          <p className={styles.narrativeKicker}>
+            <ScrollIcon className={styles.narrativeKickerIcon} />
+            <span>Комментарий смены</span>
+          </p>
           <p className={styles.narrativeBody}>{trimmedComment}</p>
         </div>
       ) : null}
