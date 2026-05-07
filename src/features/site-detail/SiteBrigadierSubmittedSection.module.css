@@ -179,34 +179,6 @@
   color: var(--text);
 }
 
-.reportBlock {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.removeBtn {
-  align-self: flex-start;
-  min-height: 40px;
-  padding: 0 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(198, 40, 40, 0.35);
-  background: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--status-bad);
-  cursor: pointer;
-}
-
-.removeBtn:hover {
-  background: rgba(198, 40, 40, 0.06);
-}
-
-.removeBtn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(198, 40, 40, 0.25);
-}
-
 @media (max-width: 640px) {
   .head {
     padding: 16px max(14px, env(safe-area-inset-right, 0px)) 14px

@@ -4,7 +4,11 @@ import {
   type BrigadierStoredReport,
 } from '../../domain/brigadierReport'
 import { brigadierAttachmentBlobUrl } from '../../lib/siteFormsApi'
-import { FieldReportCard, type FieldReportAttachment } from './FieldReportCard'
+import {
+  FieldReportCard,
+  type FieldReportAttachment,
+  type FieldReportMetaChip,
+} from './FieldReportCard'
 import styles from './SiteBrigadierSubmittedSection.module.css'
 
 type Props = {
@@ -83,6 +87,41 @@ function pickActiveResponsibles(
   }
   if (seen.length === 0) return '—'
   return seen.join(', ')
+}
+
+/**
+ * Короткая «человеческая» отметка относительной даты для пилюли в карточке:
+ * «Сегодня», «Вчера», «3 дн. назад», «2 нед. назад». Если запись далеко в
+ * прошлом или будущем — возвращаем `null`, чтобы шапка не путала.
+ */
+function relativeDayLabelRu(iso: string | undefined, now: Date = new Date()): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (!Number.isFinite(d.getTime())) return null
+  const dayMs = 86_400_000
+  const startOfDay = (x: Date) => {
+    const t = new Date(x)
+    t.setHours(0, 0, 0, 0)
+    return t.getTime()
+  }
+  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / dayMs)
+  if (diffDays === 0) return 'Сегодня'
+  if (diffDays === 1) return 'Вчера'
+  if (diffDays === -1) return 'Завтра'
+  if (diffDays >= 2 && diffDays < 7) return `${diffDays} дн. назад`
+  if (diffDays >= 7 && diffDays < 31) {
+    const weeks = Math.floor(diffDays / 7)
+    return `${weeks} нед. назад`
+  }
+  return null
+}
+
+function pluralRu(n: number, [one, few, many]: [string, string, string]): string {
+  const m10 = n % 10
+  const m100 = n % 100
+  if (m10 === 1 && m100 !== 11) return one
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few
+  return many
 }
 
 export function SiteBrigadierSubmittedReportsSection({
@@ -216,16 +255,56 @@ export function SiteBrigadierSubmittedReportsSection({
         </div>
       ) : (
         <div className={styles.list}>
-          {sorted.map((r) => (
-            <div key={r.id} className={styles.reportBlock}>
+          {sorted.map((r) => {
+            const photos = r.attachments.filter((a) => a.kind === 'photo').length
+            const videos = r.attachments.filter((a) => a.kind === 'video').length
+            const problems = r.problems.length
+
+            const meta: FieldReportMetaChip[] = []
+            if (photos > 0) {
+              meta.push({
+                id: 'photos',
+                icon: 'photo',
+                label: `${photos} ${pluralRu(photos, ['фото', 'фото', 'фото'])}`,
+                tone: 'neutral',
+              })
+            }
+            if (videos > 0) {
+              meta.push({
+                id: 'videos',
+                icon: 'video',
+                label: `${videos} ${pluralRu(videos, ['видео', 'видео', 'видео'])}`,
+                tone: 'neutral',
+              })
+            }
+            if (photos === 0 && videos === 0) {
+              meta.push({
+                id: 'no-media',
+                icon: 'attach',
+                label: 'Без вложений',
+                tone: 'neutral',
+              })
+            }
+            if (problems > 0) {
+              meta.push({
+                id: 'problems',
+                icon: 'warn',
+                label: `${problems} ${pluralRu(problems, ['проблема', 'проблемы', 'проблем'])}`,
+                tone: 'warning',
+              })
+            }
+
+            return (
               <FieldReportCard
+                key={r.id}
                 accent="brigadier"
                 badgeKicker="Отчёт"
                 badge="Бригадир"
                 dateTimeIso={r.reportedAtIso}
+                relativeTimeLabel={relativeDayLabelRu(r.reportedAtIso) ?? undefined}
+                responsibleName={r.responsible}
                 lines={r.lines}
                 narrativeComment={r.comment}
-                chips={[{ id: 'p', text: `Ответственный: ${r.responsible}`, tone: 'muted' }]}
                 problems={r.problems.map((p) => ({
                   kindLabel: brigadierProblemKindLabel(p.kindId),
                   details: p.details,
@@ -233,16 +312,12 @@ export function SiteBrigadierSubmittedReportsSection({
                 attachments={r.attachments.map((a) =>
                   resolveAttachment(siteId, r.id, a, serverBacked),
                 )}
+                metaChips={meta}
+                onRemove={() => onRemoveReport(r.id)}
+                removeLabel="Скрыть на этом устройстве"
               />
-              <button
-                type="button"
-                className={styles.removeBtn}
-                onClick={() => onRemoveReport(r.id)}
-              >
-                Удалить с этого устройства
-              </button>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </section>

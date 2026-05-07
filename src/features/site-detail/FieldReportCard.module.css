@@ -1,16 +1,38 @@
+/*
+ * Премиум-карточка отчёта (бригадир / Telegram-сводка / др.).
+ *
+ * Брикадирский акцент — главный потребитель: журнал «как из приложения»
+ * с аватаром ответственного, относительной датой, отдельным блоком
+ * комментария-«цитатой» и подвалом со статистикой + удалением.
+ *
+ * Дизайн-язык совпадает с DashboardCard и с премиум-секциями страницы
+ * объекта: вертикальный navy→red rail слева, тонкий glass-shimmer
+ * по верхнему краю, мягкие радиальные градиенты, glassy подложка.
+ */
+
 .card {
   position: relative;
-  border-radius: 20px;
-  border: 1px solid rgba(15, 17, 20, 0.07);
+  border-radius: 22px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
   background:
-    radial-gradient(120% 80% at 0% 0%, rgba(23, 42, 77, 0.045) 0%, rgba(23, 42, 77, 0) 55%),
+    radial-gradient(140% 100% at 100% 0%, rgba(238, 45, 58, 0.05) 0%, rgba(238, 45, 58, 0) 55%),
+    radial-gradient(120% 80% at 0% 0%, rgba(23, 42, 77, 0.05) 0%, rgba(23, 42, 77, 0) 55%),
     linear-gradient(180deg, #ffffff 0%, #fafbfd 100%);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
     0 1px 2px rgba(15, 17, 20, 0.04),
     0 22px 48px rgba(15, 23, 42, 0.07);
-  padding: 22px 22px 18px 30px;
+  padding: 22px 22px 16px 30px;
   overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.card:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 1px 2px rgba(15, 17, 20, 0.04),
+    0 26px 56px rgba(15, 23, 42, 0.10);
 }
 
 .card::after {
@@ -19,8 +41,8 @@
   inset: 0;
   pointer-events: none;
   border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 30%);
-  opacity: 0.6;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 32%);
+  opacity: 0.55;
 }
 
 .rail {
@@ -32,9 +54,28 @@
   border-radius: 999px;
   background: linear-gradient(180deg, var(--brand-navy, #172a4d) 0%, var(--brand-red, #ee2d3a) 100%);
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 8px 16px rgba(23, 42, 77, 0.18);
+  z-index: 1;
 }
 
-/* Telegram-сводки: компактная премиум-плитка — меньше высоты, плотная сетка, «дорогой» штрих */
+/* Тонкая «зеркальная» полоска по самой верхней кромке — премиум-подсветка. */
+.topShimmer {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.85) 30%,
+    rgba(238, 45, 58, 0.45) 65%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  pointer-events: none;
+}
+
+/* ─── Telegram-акцент — компактная сводка (без аватара/футера) ──────── */
+
 .accentTelegram.card {
   padding: 11px 12px 9px 21px;
   border-radius: 14px;
@@ -48,12 +89,15 @@
   opacity: 0.32;
 }
 
+.accentTelegram .topShimmer {
+  display: none;
+}
+
 .accentTelegram .rail {
   top: 9px;
   bottom: 9px;
   left: 7px;
   width: 3px;
-  border-radius: 999px;
   background: linear-gradient(180deg, #2da7ec 0%, var(--brand-navy, #172a4d) 100%);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.88);
 }
@@ -67,6 +111,9 @@
   padding: 4px 9px 4px 7px;
   gap: 6px;
   border-radius: 9px;
+  background: linear-gradient(180deg, rgba(45, 167, 236, 0.12) 0%, rgba(45, 167, 236, 0.05) 100%);
+  border-color: rgba(45, 167, 236, 0.35);
+  color: #1f6fa3;
 }
 
 .accentTelegram .badgeKicker {
@@ -95,7 +142,6 @@
   gap: 5px;
 }
 
-/* От 6 пунктов: первая половина слева, вторая (6–10…) справа — ниже по высоте, аккуратный штрих */
 .accentTelegram .lines:has(> .line:nth-child(6)) {
   display: block;
   column-count: 2;
@@ -142,6 +188,9 @@
   font-size: 9.5px;
   border-radius: 6px;
   margin-top: 0;
+  color: #1f6fa3;
+  background: linear-gradient(180deg, rgba(45, 167, 236, 0.14) 0%, rgba(45, 167, 236, 0.06) 100%);
+  border-color: rgba(45, 167, 236, 0.32);
 }
 
 .accentTelegram .txt {
@@ -222,18 +271,31 @@
   gap: 8px;
 }
 
+/* ─── Brigadier-акцент — премиум-журнальная карточка ─────────────── */
+
 .accentBrigadier .rail {
   background: linear-gradient(180deg, var(--brand-navy, #172a4d) 0%, var(--brand-red, #ee2d3a) 100%);
 }
 
+/* ─── Шапка: badge + responsible | дата ──────────────────────────── */
+
 .head {
   position: relative;
+  z-index: 2;
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px 16px;
+  gap: 14px 18px;
   margin-bottom: 18px;
+}
+
+.headLeft {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 14px;
+  min-width: 0;
 }
 
 .badge {
@@ -246,12 +308,6 @@
   border: 1px solid rgba(23, 42, 77, 0.16);
   color: var(--brand-navy, #172a4d);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
-}
-
-.accentTelegram .badge {
-  background: linear-gradient(180deg, rgba(45, 167, 236, 0.12) 0%, rgba(45, 167, 236, 0.05) 100%);
-  border-color: rgba(45, 167, 236, 0.35);
-  color: #1f6fa3;
 }
 
 .badgeIcon {
@@ -279,6 +335,119 @@
   letter-spacing: 0.04em;
 }
 
+/* ─── Ответственный — аватар + имя ───────────────────────────────── */
+
+.responsible {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: linear-gradient(
+    140deg,
+    var(--brand-navy, #172a4d) 0%,
+    #1c4b82 50%,
+    var(--brand-red, #ee2d3a) 100%
+  );
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 4px 10px rgba(15, 23, 42, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.avatar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 55%);
+  pointer-events: none;
+}
+
+.avatarInitials {
+  position: relative;
+  z-index: 1;
+}
+
+.responsibleText {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.responsibleKicker {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.responsibleName {
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+/* ─── Дата + относительная пилюля ─────────────────────────────────── */
+
+.dateBlock {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.relativePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--brand-red, #ee2d3a);
+  background: linear-gradient(
+    180deg,
+    rgba(238, 45, 58, 0.12) 0%,
+    rgba(238, 45, 58, 0.04) 100%
+  );
+  border: 1px solid rgba(238, 45, 58, 0.32);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+}
+
+.relativePill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--brand-red, #ee2d3a);
+  box-shadow: 0 0 6px rgba(238, 45, 58, 0.6);
+}
+
 .date {
   display: inline-flex;
   align-items: center;
@@ -291,6 +460,7 @@
   border-radius: 10px;
   background: rgba(15, 23, 42, 0.04);
   border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
 }
 
 .dateIcon {
@@ -305,31 +475,52 @@
   font-style: italic;
 }
 
+/* ─── Комментарий-«цитата» ───────────────────────────────────────── */
+
 .narrative {
   position: relative;
-  margin: 0 0 14px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: rgba(23, 42, 77, 0.05);
-  border: 1px solid rgba(23, 42, 77, 0.08);
+  z-index: 1;
+  margin: 0 0 16px;
+  padding: 18px 20px 16px 26px;
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(23, 42, 77, 0.05) 0%, rgba(23, 42, 77, 0.02) 100%),
+    rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(23, 42, 77, 0.10);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+}
+
+.narrativeQuote {
+  position: absolute;
+  left: 9px;
+  top: 6px;
+  font-size: 36px;
+  line-height: 1;
+  color: var(--brand-red, #ee2d3a);
+  opacity: 0.55;
+  pointer-events: none;
+  font-family: 'Times New Roman', Georgia, serif;
 }
 
 .narrativeKicker {
   margin: 0 0 6px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--brand-navy, #172a4d);
 }
 
 .narrativeBody {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.55;
+  font-size: 14.5px;
+  line-height: 1.65;
   color: var(--text-strong);
   white-space: pre-wrap;
+  letter-spacing: -0.005em;
 }
+
+/* ─── Пропавший медиафайл ────────────────────────────────────────── */
 
 .mediaMissing {
   display: flex;
@@ -356,6 +547,8 @@
   line-height: 1.45;
   color: var(--text);
 }
+
+/* ─── Список работ (legacy lines) ────────────────────────────────── */
 
 .lines {
   position: relative;
@@ -395,24 +588,19 @@
   margin-top: 1px;
 }
 
-.accentTelegram .idx {
-  color: #1f6fa3;
-  background: linear-gradient(180deg, rgba(45, 167, 236, 0.14) 0%, rgba(45, 167, 236, 0.06) 100%);
-  border-color: rgba(45, 167, 236, 0.32);
-}
-
 .txt {
   color: var(--text);
   padding-top: 2px;
 }
+
+/* ─── Проблемы ───────────────────────────────────────────────────── */
 
 .problemsWrap {
   margin-top: 16px;
   padding: 14px 16px;
   border-radius: 14px;
   border: 1px solid rgba(198, 120, 40, 0.28);
-  background:
-    linear-gradient(180deg, rgba(198, 120, 40, 0.09) 0%, rgba(198, 120, 40, 0.04) 100%);
+  background: linear-gradient(180deg, rgba(198, 120, 40, 0.09) 0%, rgba(198, 120, 40, 0.04) 100%);
 }
 
 .problemsKicker {
@@ -450,6 +638,8 @@
   color: var(--text);
   white-space: pre-wrap;
 }
+
+/* ─── Медиа ──────────────────────────────────────────────────────── */
 
 .media {
   display: grid;
@@ -502,6 +692,8 @@
   color: var(--muted);
 }
 
+/* ─── Метрики (используются в Telegram-аккенте) ─────────────────── */
+
 .metricStrip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
@@ -510,8 +702,7 @@
   padding: 14px;
   list-style: none;
   border-radius: 14px;
-  background:
-    linear-gradient(180deg, rgba(15, 23, 42, 0.035) 0%, rgba(15, 23, 42, 0.015) 100%);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.035) 0%, rgba(15, 23, 42, 0.015) 100%);
   border: 1px solid rgba(15, 23, 42, 0.06);
 }
 
@@ -556,33 +747,102 @@
   color: var(--muted);
 }
 
-.metricNavy {
-  color: var(--brand-navy, #172a4d);
-}
-.metricRed {
-  color: var(--brand-red, #ee2d3a);
-}
-.metricNeutral {
-  color: rgba(15, 23, 42, 0.55);
-}
-.metricSuccess {
-  color: #1f7a45;
-}
-.metricWarning {
-  color: #b06a18;
-}
-.metricDanger {
-  color: #a8232f;
-}
+.metricNavy { color: var(--brand-navy, #172a4d); }
+.metricRed { color: var(--brand-red, #ee2d3a); }
+.metricNeutral { color: rgba(15, 23, 42, 0.55); }
+.metricSuccess { color: #1f7a45; }
+.metricWarning { color: #b06a18; }
+.metricDanger { color: #a8232f; }
+
+/* ─── Подвал: статистика + кнопка удалить ────────────────────────── */
 
 .footer {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 10px;
-  margin-top: 14px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
   padding-top: 14px;
   border-top: 1px dashed rgba(15, 23, 42, 0.1);
 }
+
+.footerStats {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.metaChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px 5px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.metaChipIcon {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.metaChip_neutral {
+  color: var(--muted);
+}
+
+.metaChip_warn {
+  color: #8a5a18;
+  background: linear-gradient(180deg, rgba(198, 120, 40, 0.12) 0%, rgba(198, 120, 40, 0.04) 100%);
+  border-color: rgba(198, 120, 40, 0.32);
+}
+
+.removeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.55);
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease,
+    box-shadow 0.15s ease;
+  backdrop-filter: blur(4px);
+}
+
+.removeBtn:hover {
+  color: var(--brand-red, #ee2d3a);
+  border-color: rgba(238, 45, 58, 0.42);
+  background: rgba(238, 45, 58, 0.06);
+  box-shadow: 0 6px 14px rgba(238, 45, 58, 0.15);
+}
+
+.removeBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(238, 45, 58, 0.25);
+}
+
+.removeIcon {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.removeBtnLabel {
+  white-space: nowrap;
+}
+
+/* ─── Старые универсальные чипы (на случай чипов из props) ─────── */
 
 .chip {
   font-size: 12px;
@@ -607,7 +867,7 @@
   .card {
     padding-top: 16px;
     padding-right: max(14px, env(safe-area-inset-right, 0px));
-    padding-bottom: 14px;
+    padding-bottom: 12px;
     padding-left: max(22px, calc(18px + env(safe-area-inset-left, 0px)));
   }
 
@@ -619,7 +879,32 @@
   }
 
   .head {
-    gap: 8px 12px;
+    gap: 10px 12px;
+    margin-bottom: 14px;
+  }
+
+  .responsibleName {
+    max-width: 160px;
+  }
+
+  .narrative {
+    padding: 16px 16px 14px 22px;
+  }
+
+  .narrativeQuote {
+    font-size: 30px;
+    left: 6px;
+    top: 4px;
+  }
+
+  .narrativeBody {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .footer {
+    margin-top: 12px;
+    padding-top: 10px;
   }
 
   .accentTelegram .lines:has(> .line:nth-child(6)) {
