@@ -238,7 +238,13 @@
   font-weight: 800;
   letter-spacing: -0.05em;
   line-height: 1;
-  color: var(--text-strong);
+  /* Единый фирменный navy-цвет для всех KPI-цифр.
+   * Совпадает с premium-CTA «Добавить фото или видео» и кикерами
+   * страницы. Статус карточки уже считывается боковой полоской
+   * `::before` и шкалой ниже — раскрашивать саму цифру в красный
+   * /амбер/зелёный мы сознательно не хотим: это даёт ровный,
+   * «дорогой» ритм по всему ряду KPI. */
+  color: var(--brand-navy, #172a4d);
   font-variant-numeric: tabular-nums;
 }
 
@@ -256,27 +262,12 @@
   letter-spacing: -0.005em;
 }
 
-.tone_normal .figureValue {
-  color: #16a34a;
-}
-.tone_attention .figureValue {
-  color: #b45309;
-}
-.tone_critical .figureValue {
-  color: var(--brand-red, #ee2d3a);
-}
-
-/* В карточке «Срок» цифру делаем фирменным градиентом navy→red. */
-.cardSchedule .figureValue {
-  background: linear-gradient(
-    180deg,
-    var(--brand-navy, #172a4d) 0%,
-    var(--brand-red, #ee2d3a) 100%
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
+/*
+ * Цифры карточек принципиально НЕ красятся по тону статуса —
+ * единый brand-navy задан в `.figureValue`. Статус остаётся в
+ * боковой полоске `::before` и в шкале ниже. См. комментарий
+ * в `.figureValue`.
+ */
 
 /* ─── Шкала прогресса ────────────────────────────────────────────── */
 
@@ -398,26 +389,9 @@
   background: linear-gradient(180deg, var(--brand-navy, #172a4d) 0%, var(--brand-red, #ee2d3a) 100%);
 }
 
-.devTone_normal .figureValue {
-  color: #16a34a;
-}
-.devTone_ahead .figureValue {
-  color: #16a34a;
-}
-.devTone_attention .figureValue {
-  color: #b45309;
-}
-.devTone_critical .figureValue {
-  color: var(--brand-red, #ee2d3a);
-}
-
-/* Карточка отклонения переопределяет figureValue (она не использует
-   цвет от tone_*). Никаких градиентов, чистый цвет. */
-.cardDeviation .figureValue {
-  background: none;
-  -webkit-background-clip: initial;
-  background-clip: initial;
-}
+/* То же правило для карточки «Отклонение» — цифра остаётся в едином
+ * brand-navy. Знак (+/−) и контекст красят соседние пиллы и шкала,
+ * сама цифра — нейтральный фирменный navy. */
 
 .compareRow {
   display: grid;
