@@ -165,7 +165,9 @@
 @media (min-width: 720px) {
   .panel {
     flex-direction: row;
-    align-items: flex-start;
+    /* stretch — чтобы premium-CTA «вытягивался» по высоте author-колонки
+       и в карточке не оставалось пустого вертикального пространства. */
+    align-items: stretch;
     justify-content: space-between;
     gap: 28px;
   }
@@ -178,7 +180,7 @@
 
   .dropActions {
     flex-shrink: 0;
-    width: min(100%, 280px);
+    width: min(100%, 320px);
   }
 }
 
@@ -257,6 +259,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  /* На десктопе колонка тянется по высоте author — premium-CTA внутри
+     получит flex: 1 и заполнит её без пустот. */
 }
 
 .fileSink {
@@ -274,213 +278,216 @@
 }
 
 /* ============================================================
-   Премиум-кнопки «Добавить фото» / «Добавить видео».
-   Карточная компоновка: иконка в плитке слева, заголовок и
-   подсказка по центру, тонкая стрелка-плюс справа. Низ кнопки
-   подчёркивает фирменный градиент navy → red, который
-   проступает на hover/focus.
+   Premium-CTA «Добавить фото или видео».
+   Один большой drop-zone-блок: тёмный navy-градиент с тёплым red
+   highlight в правом верхнем углу, иконка-плитка камеры/play,
+   крупный заголовок, подсказка, мини-чип с поддерживаемыми
+   расширениями и плюс-кнопка в правом верхнем углу для
+   мгновенного считывания «это кнопка добавления».
+   На hover проезжает диагональный shimmer + тонкое поднятие.
+   `flex: 1` нужно, чтобы кнопка вытягивалась по высоте author-
+   колонки на десктопе и в карточке не оставалось пустот.
    ============================================================ */
 
-.dropBtn {
-  --tone: var(--brand-navy, #0f2850);
-  --tone-soft: rgba(15, 40, 80, 0.06);
-  --tone-stroke: rgba(15, 40, 80, 0.18);
-  --tone-glow: rgba(15, 40, 80, 0.22);
-
+.uploadCta {
   position: relative;
   isolation: isolate;
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 14px;
+  justify-content: center;
+  gap: 10px;
   width: 100%;
-  min-height: 68px;
-  padding: 12px 14px 12px 12px;
-  border-radius: 16px;
-  border: 1px solid var(--tone-stroke);
-  background:
-    linear-gradient(180deg, #ffffff 0%, var(--tone-soft) 100%);
+  min-height: 220px;
+  padding: 26px 22px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: #f6f8fc;
+  text-align: center;
   cursor: pointer;
-  text-align: left;
   overflow: hidden;
+  background:
+    radial-gradient(140% 100% at 80% 0%, rgba(238, 45, 58, 0.42) 0%, rgba(238, 45, 58, 0) 60%),
+    radial-gradient(140% 120% at 10% 100%, rgba(20, 50, 96, 0.7) 0%, rgba(20, 50, 96, 0) 60%),
+    linear-gradient(180deg, #102a55 0%, #08172f 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 16px 40px rgba(15, 28, 54, 0.36);
   transition:
-    transform 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+    transform 0.18s ease,
+    box-shadow 0.22s ease,
+    border-color 0.18s ease;
 }
 
-/* Тонкая нижняя черта в фирменных цветах: видна на hover/focus */
-.dropBtn::after {
+/* Тонкая нижняя черта в фирменных navy → red */
+.uploadCta::after {
   content: '';
   position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 6px;
+  left: 22px;
+  right: 22px;
+  bottom: 12px;
   height: 2px;
   border-radius: 2px;
   background: linear-gradient(
     90deg,
-    var(--brand-navy, #0f2850) 0%,
-    var(--brand-red, #ee2d3a) 100%
+    rgba(255, 255, 255, 0.0) 0%,
+    rgba(255, 255, 255, 0.5) 50%,
+    rgba(238, 45, 58, 0.95) 100%
   );
-  opacity: 0;
-  transform: scaleX(0.6);
-  transform-origin: left;
-  transition:
-    opacity 0.18s ease,
-    transform 0.25s ease;
+  opacity: 0.7;
   pointer-events: none;
 }
 
-.dropBtn:hover {
-  border-color: var(--tone);
+.uploadCtaShine {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    120deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 70%
+  );
+  transform: translateX(-110%);
+  transition: transform 0.7s ease;
+}
+
+.uploadCta:hover .uploadCtaShine {
+  transform: translateX(110%);
+}
+
+.uploadCta:hover {
   transform: translateY(-2px);
+  border-color: rgba(238, 45, 58, 0.45);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.7) inset,
-    0 12px 28px var(--tone-glow);
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 22px 50px rgba(238, 45, 58, 0.30);
 }
 
-.dropBtn:hover::after {
-  opacity: 1;
-  transform: scaleX(1);
-}
-
-.dropBtn:active {
+.uploadCta:active {
   transform: translateY(-1px);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.6) inset,
-    0 6px 14px var(--tone-glow);
 }
 
-.dropBtn:focus-visible {
+.uploadCta:focus-visible {
   outline: none;
-  border-color: var(--tone);
   box-shadow:
-    0 0 0 3px var(--accent-ring),
-    0 12px 28px var(--tone-glow);
+    0 0 0 3px rgba(238, 45, 58, 0.4),
+    0 16px 40px rgba(15, 28, 54, 0.36);
 }
 
-.dropBtn:focus-visible::after {
-  opacity: 1;
-  transform: scaleX(1);
-}
-
-/* Тон фото — фирменный navy */
-.dropBtnPhoto {
-  --tone: #0f2850;
-  --tone-soft: rgba(15, 40, 80, 0.06);
-  --tone-stroke: rgba(15, 40, 80, 0.2);
-  --tone-glow: rgba(15, 40, 80, 0.22);
-}
-
-/* Тон видео — фирменный red, чтобы кнопки читались мгновенно */
-.dropBtnVideo {
-  --tone: #b9202c;
-  --tone-soft: rgba(238, 45, 58, 0.07);
-  --tone-stroke: rgba(238, 45, 58, 0.22);
-  --tone-glow: rgba(238, 45, 58, 0.22);
-}
-
-.dropBtnIcon {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+.uploadCtaIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #f6f8fc;
+  color: #fff;
   background:
-    radial-gradient(120% 120% at 30% 20%, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 55%),
-    linear-gradient(180deg, var(--tone) 0%, color-mix(in srgb, var(--tone) 78%, #000 22%) 100%);
+    radial-gradient(120% 120% at 30% 20%, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 55%),
+    linear-gradient(180deg, #1a3a72 0%, #0e2451 100%);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.18) inset,
-    0 8px 16px color-mix(in srgb, var(--tone) 35%, transparent);
+    0 1px 0 rgba(255, 255, 255, 0.2) inset,
+    0 8px 18px rgba(0, 0, 0, 0.22);
+  margin-bottom: 4px;
   flex-shrink: 0;
-  transition: transform 0.18s ease;
+  transition: transform 0.2s ease;
 }
 
-.dropBtnIcon svg {
-  width: 22px;
-  height: 22px;
+.uploadCtaIcon svg {
+  width: 28px;
+  height: 28px;
   display: block;
 }
 
-.dropBtn:hover .dropBtnIcon {
-  transform: scale(1.04);
+.uploadCta:hover .uploadCtaIcon {
+  transform: scale(1.05);
 }
 
-.dropBtnBody {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.dropBtnLabel {
-  font-size: 15px;
+.uploadCtaTitle {
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: -0.01em;
-  color: var(--text-strong, #0f1d36);
+  color: #fff;
   line-height: 1.2;
 }
 
-.dropBtnHint {
-  font-size: 12px;
+.uploadCtaHint {
+  max-width: 30ch;
+  font-size: 12.5px;
   font-weight: 500;
-  letter-spacing: 0.005em;
-  color: var(--muted);
-  line-height: 1.3;
+  color: rgba(246, 248, 252, 0.74);
+  line-height: 1.4;
+  text-wrap: pretty;
 }
 
-.dropBtnArrow {
-  width: 30px;
-  height: 30px;
+.uploadCtaTypes {
+  margin-top: 4px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(246, 248, 252, 0.78);
+}
+
+/* Маленький плюсик-индикатор в правом верхнем углу — за счёт него
+   кнопка мгновенно «читается» как добавление. */
+.uploadCtaArrow {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--tone);
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid var(--tone-stroke);
-  flex-shrink: 0;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  pointer-events: none;
   transition:
     transform 0.18s ease,
     background 0.18s ease,
-    color 0.18s ease,
     border-color 0.18s ease;
 }
 
-.dropBtnArrow svg {
+.uploadCtaArrow svg {
   width: 14px;
   height: 14px;
   display: block;
 }
 
-.dropBtn:hover .dropBtnArrow {
-  background: var(--tone);
-  border-color: var(--tone);
-  color: #fff;
-  transform: rotate(90deg);
+.uploadCta:hover .uploadCtaArrow {
+  background: var(--brand-red, #ee2d3a);
+  border-color: var(--brand-red, #ee2d3a);
+  transform: rotate(90deg) scale(1.05);
 }
 
-@media (max-width: 560px) {
-  .dropBtn {
-    grid-template-columns: 44px minmax(0, 1fr) auto;
-    min-height: 64px;
-    padding: 11px 12px 11px 11px;
+@media (max-width: 720px) {
+  .uploadCta {
+    min-height: 200px;
+    padding: 22px 18px;
   }
 
-  .dropBtnIcon {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+  .uploadCtaIcon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
   }
 
-  .dropBtnIcon svg {
-    width: 20px;
-    height: 20px;
+  .uploadCtaIcon svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .uploadCtaTitle {
+    font-size: 15px;
   }
 }
 

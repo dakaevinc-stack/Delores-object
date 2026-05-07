@@ -179,8 +179,7 @@ export function SiteObjectMediaDropSection({
   onRemoteSyncError,
 }: Props) {
   const uid = useId()
-  const photoRef = useRef<HTMLInputElement>(null)
-  const videoRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const [items, setItems] = useState<SiteObjectMediaItem[]>([])
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -420,14 +419,16 @@ export function SiteObjectMediaDropSection({
   /**
    * Кладёт выбранные файлы в очередь подготовки. Никаких I/O —
    * пользователь подтверждает отправку отдельной кнопкой.
+   * Тип (фото/видео) определяется по MIME — пикер один на оба типа.
    */
-  const stageFiles = (files: FileList | null, kind: 'photo' | 'video') => {
+  const stageFiles = (files: FileList | null) => {
     if (!files?.length) return
     setAuthorError(null)
     const next: StagedFile[] = []
     for (let i = 0; i < files.length; i += 1) {
       const file = files.item(i)
       if (!file) continue
+      const kind: 'photo' | 'video' = file.type.startsWith('video/') ? 'video' : 'photo'
       next.push({
         id: newId(),
         file,
@@ -704,10 +705,6 @@ export function SiteObjectMediaDropSection({
             </li>
             <li className={styles.featureChip}>
               <span className={styles.featureDot} aria-hidden />
-              Автор запоминается
-            </li>
-            <li className={styles.featureChip}>
-              <span className={styles.featureDot} aria-hidden />
               Привязано к объекту
             </li>
           </ul>
@@ -798,69 +795,38 @@ export function SiteObjectMediaDropSection({
         <div className={styles.dropActions}>
           <div className={styles.fileSink} aria-hidden>
             <input
-              ref={photoRef}
+              ref={fileRef}
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               multiple
               tabIndex={-1}
               className={styles.hiddenFile}
               onChange={(e) => {
-                stageFiles(e.target.files, 'photo')
-                e.target.value = ''
-              }}
-            />
-            <input
-              ref={videoRef}
-              type="file"
-              accept="video/*"
-              multiple
-              tabIndex={-1}
-              className={styles.hiddenFile}
-              onChange={(e) => {
-                stageFiles(e.target.files, 'video')
+                stageFiles(e.target.files)
                 e.target.value = ''
               }}
             />
           </div>
           <button
             type="button"
-            className={`${styles.dropBtn} ${styles.dropBtnPhoto}`}
-            onClick={() => photoRef.current?.click()}
+            className={styles.uploadCta}
+            onClick={() => fileRef.current?.click()}
           >
-            <span className={styles.dropBtnIcon} aria-hidden>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.7c.5 0 .96-.27 1.2-.7l.6-1.05A2 2 0 0 1 11.74 3h.52a2 2 0 0 1 1.74 1.25l.6 1.05c.24.43.7.7 1.2.7h1.7A2.5 2.5 0 0 1 20 8.5V17a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V8.5Z" />
-                <circle cx="12" cy="13" r="3.6" />
+            <span className={styles.uploadCtaShine} aria-hidden />
+            <span className={styles.uploadCtaIcon} aria-hidden>
+              <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 9.5A2.5 2.5 0 0 1 6.5 7h2.1c.55 0 1.05-.3 1.32-.78l.66-1.18A2 2 0 0 1 12.32 4h3.36a2 2 0 0 1 1.74 1.04l.66 1.18c.27.48.77.78 1.32.78H21.5A2.5 2.5 0 0 1 24 9.5v9.7A2.8 2.8 0 0 1 21.2 22H6.8A2.8 2.8 0 0 1 4 19.2V9.5Z" />
+                <circle cx="14" cy="14" r="3.6" />
+                <path d="m12.6 12.7 2.9 1.5-2.9 1.5v-3Z" fill="currentColor" stroke="none" />
               </svg>
             </span>
-            <span className={styles.dropBtnBody}>
-              <span className={styles.dropBtnLabel}>Добавить фото</span>
-              <span className={styles.dropBtnHint}>с камеры или галереи</span>
+            <span className={styles.uploadCtaTitle}>Добавить фото или видео</span>
+            <span className={styles.uploadCtaHint}>
+              Камера или галерея — в один клик. Можно выбрать сразу несколько файлов.
             </span>
-            <span className={styles.dropBtnArrow} aria-hidden>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 5v14" />
-                <path d="M5 12h14" />
-              </svg>
-            </span>
-          </button>
-          <button
-            type="button"
-            className={`${styles.dropBtn} ${styles.dropBtnVideo}`}
-            onClick={() => videoRef.current?.click()}
-          >
-            <span className={styles.dropBtnIcon} aria-hidden>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="6" width="13" height="12" rx="2.4" />
-                <path d="m16 10.5 4.4-2.6c.4-.24.9.05.9.52v7.16c0 .47-.5.76-.9.52L16 13.5" />
-              </svg>
-            </span>
-            <span className={styles.dropBtnBody}>
-              <span className={styles.dropBtnLabel}>Добавить видео</span>
-              <span className={styles.dropBtnHint}>ролик с площадки</span>
-            </span>
-            <span className={styles.dropBtnArrow} aria-hidden>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <span className={styles.uploadCtaTypes}>JPG · PNG · HEIC · MP4 · MOV</span>
+            <span className={styles.uploadCtaArrow} aria-hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 5v14" />
                 <path d="M5 12h14" />
               </svg>
