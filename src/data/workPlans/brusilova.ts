@@ -9,8 +9,9 @@ import type { WorkPlan } from '../../domain/workPlan'
  * утверждён, — здесь это null. Объёмы 0 = позиция в реестре, но не
  * планируется в текущем сезоне (например, «Кустарники»).
  *
- * Структура повторяет нумерацию из справки 1:1 (1.1, 1.2 … 11.8) —
+ * Структура повторяет нумерацию из справки (1.1, 1.2 …) —
  * чтобы при сверке с офисом строки совпадали по номеру.
+ * Разделы 6–8, 10–11 и ряд позиций вырезаны — не ведутся на объекте.
  */
 export const BRUSILOVA_WORK_PLAN: WorkPlan = {
   siteId: 'brusilova',
@@ -57,40 +58,6 @@ export const BRUSILOVA_WORK_PLAN: WorkPlan = {
       items: [
         { number: '5.1', title: 'Газоны — планировка', unit: 'm2', total: 36828, done: 0, startIso: '2026-06-02', endIso: '2026-07-30' },
         { number: '5.2', title: 'Газоны — посев', unit: 'm2', total: 36828, done: 0, startIso: '2026-07-17', endIso: '2026-08-13' },
-        { number: '5.3', title: 'Кустарники', unit: 'pcs', total: 0, done: 0, startIso: null, endIso: null },
-        { number: '5.4', title: 'Деревья', unit: 'pcs', total: 0, done: 0, startIso: null, endIso: null },
-      ],
-    },
-    {
-      number: '6',
-      title: 'МАФ (малые архитектурные формы)',
-      items: [
-        { number: '6.1', title: 'Скамейки', unit: 'pcs', total: 3, done: 0, startIso: '2026-07-27', endIso: '2026-07-30' },
-        { number: '6.2', title: 'Урны', unit: 'pcs', total: 39, done: 0, startIso: '2026-07-27', endIso: '2026-07-30' },
-        { number: '6.3', title: 'Игровые комплексы', unit: 'pcs', total: 0, done: 0, startIso: null, endIso: null },
-        { number: '6.4', title: 'Велопарковки', unit: 'pcs', total: 23, done: 0, startIso: null, endIso: null },
-      ],
-    },
-    {
-      number: '7',
-      title: 'МГН (маломобильные группы населения)',
-      items: [
-        { number: '7.1', title: 'Тактильные плитки / ОТТ', unit: 'pcs', total: 9, done: 0, startIso: '2026-07-30', endIso: '2026-08-03' },
-        { number: '7.2', title: 'Пандусы', unit: 'pcs', total: 0, done: 0, startIso: null, endIso: null },
-        { number: '7.3', title: 'Стелы', unit: 'pcs', total: 0, done: 0, startIso: null, endIso: null },
-      ],
-    },
-    {
-      number: '8',
-      title: 'Наружное и комплексное освещение (НО + КО)',
-      items: [
-        { number: '8.1', title: 'Опоры НО', unit: 'pcs', total: 186, done: 0, startIso: '2026-05-12', endIso: '2026-07-27' },
-        { number: '8.2', title: 'Кронштейны НО', unit: 'pcs', total: 170, done: 0, startIso: '2026-05-12', endIso: '2026-07-27' },
-        { number: '8.3', title: 'Светильники НО', unit: 'pcs', total: 346, done: 0, startIso: '2026-05-12', endIso: '2026-07-27' },
-        { number: '8.4', title: 'Опоры КО', unit: 'pcs', total: 49, done: 0, startIso: '2026-05-12', endIso: '2026-07-27' },
-        { number: '8.5', title: 'Кронштейны КО', unit: 'pcs', total: 0, done: 0, startIso: null, endIso: null },
-        { number: '8.6', title: 'Светильники КО', unit: 'pcs', total: 0, done: 0, startIso: null, endIso: null },
-        { number: '8.7', title: 'Демонтаж старых опор', unit: 'pcs', total: 152, done: 0, startIso: '2026-05-22', endIso: '2026-05-27' },
       ],
     },
     {
@@ -99,30 +66,6 @@ export const BRUSILOVA_WORK_PLAN: WorkPlan = {
       items: [
         { number: '9.1', title: 'Кабельная канализация (КК)', unit: 'm', total: 8734, done: 0, startIso: '2026-04-17', endIso: '2026-07-06' },
         { number: '9.2', title: 'Прокладка кабеля', unit: 'm', total: 17045, done: 0, startIso: '2026-05-08', endIso: '2026-07-20' },
-        { number: '9.3', title: 'ВРЩ (вводно-распределительные щиты)', unit: 'pcs', total: 4, done: 0, startIso: '2026-08-03', endIso: '2026-08-03' },
-        { number: '9.4', title: 'Техническая документация', unit: 'pcs', total: 0, done: 0, startIso: null, endIso: null },
-      ],
-    },
-    {
-      number: '10',
-      title: 'Организация дорожного движения (ОДД)',
-      items: [
-        { number: '10.1', title: 'Дорожная разметка', unit: 'm2', total: 1934, done: 0, startIso: null, endIso: null },
-        { number: '10.2', title: 'Дорожные знаки', unit: 'pcs', total: 510, done: 0, startIso: null, endIso: null },
-      ],
-    },
-    {
-      number: '11',
-      title: 'Прочие',
-      items: [
-        { number: '11.1', title: 'Гранитные парковочные ограничители', unit: 'pcs', total: 2, done: 0, startIso: '2026-08-03', endIso: '2026-08-03' },
-        { number: '11.2', title: 'Контейнерные площадки', unit: 'pcs', total: 5, done: 0, startIso: '2026-08-03', endIso: '2026-08-06' },
-        { number: '11.3', title: 'Пешеходные ограждения', unit: 'm', total: 34, done: 0, startIso: '2026-08-03', endIso: '2026-08-06' },
-        { number: '11.4', title: 'Кабель ЛЭТ', unit: 'm', total: 0, done: 0, startIso: null, endIso: null },
-        { number: '11.5', title: 'Ограждение остановок', unit: 'm', total: 0, done: 0, startIso: null, endIso: null },
-        { number: '11.6', title: 'Перильные ограждения', unit: 'm', total: 0, done: 0, startIso: null, endIso: null },
-        { number: '11.7', title: 'Приствольные решётки', unit: 'pcs', total: 0, done: 0, startIso: null, endIso: null },
-        { number: '11.8', title: 'Вентиляционные кожухи', unit: 'pcs', total: 40, done: 0, startIso: '2026-08-10', endIso: '2026-08-13' },
       ],
     },
   ],
