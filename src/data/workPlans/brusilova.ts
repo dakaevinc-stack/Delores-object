@@ -33,7 +33,7 @@ export const BRUSILOVA_WORK_PLAN: WorkPlan = {
     },
     {
       number: '3',
-      title: 'Асфальтирование и фрезерование',
+      title: 'Асфальтирование / Фрезерование',
       items: [
         { number: '3.1', title: 'Фрезерование / разборка покрытия', unit: 'm2', total: 43774, done: 0, startIso: '2026-07-03', endIso: '2026-07-13' },
         { number: '3.2', title: 'Устройство нижнего слоя покрытия', unit: 'm2', total: 43774, done: 0, startIso: '2026-07-06', endIso: '2026-07-24' },
