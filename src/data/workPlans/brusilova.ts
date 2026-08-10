@@ -33,7 +33,7 @@ export const BRUSILOVA_WORK_PLAN: WorkPlan = {
     },
     {
       number: '2',
-      title: 'Тротуары, детские площадки',
+      title: 'Тротуары',
       items: [
         { number: '2.1', title: 'Разборка покрытия тротуаров', unit: 'm2', total: 28637, done: 0, startIso: '2026-05-01', endIso: '2026-06-22' },
         { number: '2.2', title: 'Устройство песчаного основания', unit: 'm2', total: 28641, done: 0, startIso: '2026-05-15', endIso: '2026-07-13' },
