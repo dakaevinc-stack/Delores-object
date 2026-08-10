@@ -152,19 +152,27 @@ describe('summarizeWorkPlan', () => {
 })
 
 describe('Брусиловский план: целостность данных', () => {
-  it('11 разделов — как в исходной справке', () => {
-    expect(BRUSILOVA_WORK_PLAN.sections).toHaveLength(11)
+  it('5 разделов — после вычистки неведущихся', () => {
+    expect(BRUSILOVA_WORK_PLAN.sections).toHaveLength(5)
   })
 
-  it('номера разделов и строк уникальны', () => {
+  it('номера разделов и строк уникальны и идут подряд', () => {
     const seen = new Set<string>()
+    expect(BRUSILOVA_WORK_PLAN.sections.map((s) => s.number)).toEqual([
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+    ])
     for (const section of BRUSILOVA_WORK_PLAN.sections) {
       for (const item of section.items) {
         expect(seen.has(item.number), `дубль ${item.number}`).toBe(false)
         seen.add(item.number)
+        expect(item.number.startsWith(`${section.number}.`)).toBe(true)
       }
     }
-    expect(seen.size).toBeGreaterThan(40)
+    expect(seen.size).toBe(13)
   })
 
   it('у активных позиций даты в правильном порядке (start ≤ end)', () => {
@@ -180,12 +188,12 @@ describe('Брусиловский план: целостность данных
     }
   })
 
-  it('сводка: ровно один раздел с «без срока»+0 объёмов в МАФ?', () => {
-    const summary = summarizeWorkPlanSection(BRUSILOVA_WORK_PLAN.sections[5]!) // МАФ
-    // Скамейки + Урны активные, Игровые комплексы и Велопарковки — отложенные
-    expect(summary.itemsCount).toBe(4)
+  it('сводка: благоустройство — две позиции газонов со сроками', () => {
+    const landscaping = BRUSILOVA_WORK_PLAN.sections.find((s) => s.number === '4')!
+    const summary = summarizeWorkPlanSection(landscaping)
+    expect(summary.itemsCount).toBe(2)
     expect(summary.scheduledCount).toBe(2)
-    expect(summary.deferredCount).toBe(2)
+    expect(summary.deferredCount).toBe(0)
   })
 
   it('конкретная строка: 1.1 Бетон — план 15 461 м, без факта', () => {
@@ -199,9 +207,9 @@ describe('Брусиловский план: целостность данных
     expect(beton.endIso).toBe('2026-07-03')
   })
 
-  it('конкретная строка: 9.2 Прокладка кабеля — 17 045 м', () => {
-    const electrical = BRUSILOVA_WORK_PLAN.sections.find((s) => s.number === '9')
-    const cable = electrical?.items.find((i) => i.number === '9.2')
+  it('конкретная строка: 5.2 Прокладка кабеля — 17 045 м', () => {
+    const electrical = BRUSILOVA_WORK_PLAN.sections.find((s) => s.number === '5')
+    const cable = electrical?.items.find((i) => i.number === '5.2')
     expect(cable?.title).toMatch(/Прокладка/i)
     expect(cable?.total).toBe(17045)
   })

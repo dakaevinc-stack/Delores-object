@@ -9,7 +9,7 @@
     "problems": [],
     "attachments": [],
     "workEntries": [
-      { "id": "tg-brusilova-2026-04-29-9-1", "planNumber": "9.1", "planTitle": "Кабельная канализация (КК)", "qty": 200, "unit": "m" }
+      { "id": "tg-brusilova-2026-04-29-5-1", "planNumber": "5.1", "planTitle": "Кабельная канализация (КК)", "qty": 200, "unit": "m" }
     ]
   },
   {
@@ -22,8 +22,8 @@
     "problems": [],
     "attachments": [],
     "workEntries": [
-      { "id": "tg-brusilova-2026-04-30-1-4", "planNumber": "1.4", "planTitle": "Демонтаж бортового камня", "qty": 220, "unit": "m" },
-      { "id": "tg-brusilova-2026-04-30-9-1", "planNumber": "9.1", "planTitle": "Кабельная канализация (КК)", "qty": 110, "unit": "m" }
+      { "id": "tg-brusilova-2026-04-30-1-3", "planNumber": "1.3", "planTitle": "Демонтаж бортового камня", "qty": 220, "unit": "m" },
+      { "id": "tg-brusilova-2026-04-30-5-1", "planNumber": "5.1", "planTitle": "Кабельная канализация (КК)", "qty": 110, "unit": "m" }
     ]
   },
   {
@@ -36,8 +36,8 @@
     "problems": [],
     "attachments": [],
     "workEntries": [
-      { "id": "tg-brusilova-2026-05-01-1-4", "planNumber": "1.4", "planTitle": "Демонтаж бортового камня", "qty": 250, "unit": "m" },
-      { "id": "tg-brusilova-2026-05-01-9-1", "planNumber": "9.1", "planTitle": "Кабельная канализация (КК)", "qty": 153, "unit": "m" }
+      { "id": "tg-brusilova-2026-05-01-1-3", "planNumber": "1.3", "planTitle": "Демонтаж бортового камня", "qty": 250, "unit": "m" },
+      { "id": "tg-brusilova-2026-05-01-5-1", "planNumber": "5.1", "planTitle": "Кабельная канализация (КК)", "qty": 153, "unit": "m" }
     ]
   },
   {
@@ -51,7 +51,7 @@
     "attachments": [],
     "workEntries": [
       { "id": "tg-brusilova-2026-05-02-2-1", "planNumber": "2.1", "planTitle": "Разборка покрытия тротуаров", "qty": 250, "unit": "m2" },
-      { "id": "tg-brusilova-2026-05-02-9-1", "planNumber": "9.1", "planTitle": "Кабельная канализация (КК)", "qty": 195, "unit": "m" }
+      { "id": "tg-brusilova-2026-05-02-5-1", "planNumber": "5.1", "planTitle": "Кабельная канализация (КК)", "qty": 195, "unit": "m" }
     ]
   },
   {
@@ -65,7 +65,7 @@
     "attachments": [],
     "workEntries": [
       { "id": "tg-brusilova-2026-05-03-2-1", "planNumber": "2.1", "planTitle": "Разборка покрытия тротуаров", "qty": 350, "unit": "m2" },
-      { "id": "tg-brusilova-2026-05-03-9-1", "planNumber": "9.1", "planTitle": "Кабельная канализация (КК)", "qty": 450, "unit": "m" }
+      { "id": "tg-brusilova-2026-05-03-5-1", "planNumber": "5.1", "planTitle": "Кабельная канализация (КК)", "qty": 450, "unit": "m" }
     ]
   },
   {
@@ -79,7 +79,7 @@
     "attachments": [],
     "workEntries": [
       { "id": "tg-brusilova-2026-05-04-2-1", "planNumber": "2.1", "planTitle": "Разборка покрытия тротуаров", "qty": 150, "unit": "m2" },
-      { "id": "tg-brusilova-2026-05-04-9-1", "planNumber": "9.1", "planTitle": "Кабельная канализация (КК)", "qty": 130, "unit": "m" }
+      { "id": "tg-brusilova-2026-05-04-5-1", "planNumber": "5.1", "planTitle": "Кабельная канализация (КК)", "qty": 130, "unit": "m" }
     ]
   },
   {
@@ -93,7 +93,7 @@
     "attachments": [],
     "workEntries": [
       { "id": "tg-brusilova-2026-05-05-2-1", "planNumber": "2.1", "planTitle": "Разборка покрытия тротуаров", "qty": 100, "unit": "m2" },
-      { "id": "tg-brusilova-2026-05-05-9-1", "planNumber": "9.1", "planTitle": "Кабельная канализация (КК)", "qty": 200, "unit": "m" }
+      { "id": "tg-brusilova-2026-05-05-5-1", "planNumber": "5.1", "planTitle": "Кабельная канализация (КК)", "qty": 200, "unit": "m" }
     ]
   },
   {
@@ -107,7 +107,7 @@
     "attachments": [],
     "workEntries": [
       { "id": "tg-brusilova-2026-05-06-2-1", "planNumber": "2.1", "planTitle": "Разборка покрытия тротуаров", "qty": 600, "unit": "m2" },
-      { "id": "tg-brusilova-2026-05-06-9-1", "planNumber": "9.1", "planTitle": "Кабельная канализация (КК)", "qty": 200, "unit": "m" }
+      { "id": "tg-brusilova-2026-05-06-5-1", "planNumber": "5.1", "planTitle": "Кабельная канализация (КК)", "qty": 200, "unit": "m" }
     ]
   }
 ]
