@@ -23,7 +23,6 @@ export const BRUSILOVA_WORK_PLAN: WorkPlan = {
       items: [
         { number: '1.1', title: 'Бетон', unit: 'm', total: 15461, done: 0, startIso: '2026-05-01', endIso: '2026-07-03' },
         { number: '1.2', title: 'Гранит', unit: 'm', total: 4654, done: 0, startIso: '2026-06-02', endIso: '2026-07-10' },
-        { number: '1.3', title: 'Металл', unit: 'm', total: 0, done: 0, startIso: '2026-06-20', endIso: '2026-07-06' },
         // 1.4 — демонтаж старого борта; в исходной справке не было,
         // добавлено по итогам ежедневных отчётов бригадира (Минасян А.Л.,
         // апрель–май 2026). Объём ориентировочный: равен общему плану
@@ -39,9 +38,6 @@ export const BRUSILOVA_WORK_PLAN: WorkPlan = {
         { number: '2.1', title: 'Разборка покрытия тротуаров', unit: 'm2', total: 28637, done: 0, startIso: '2026-05-01', endIso: '2026-06-22' },
         { number: '2.2', title: 'Устройство песчаного основания', unit: 'm2', total: 28641, done: 0, startIso: '2026-05-15', endIso: '2026-07-13' },
         { number: '2.3', title: 'Устройство основания из щебня / бетона / ЩПС', unit: 'm2', total: 28641, done: 0, startIso: '2026-05-22', endIso: '2026-07-20' },
-        { number: '2.4', title: 'Устройство нижнего слоя покрытия', unit: 'm2', total: 30342, done: 0, startIso: '2026-06-02', endIso: '2026-07-24' },
-        { number: '2.5', title: 'Устройство верхнего слоя покрытия', unit: 'm2', total: 30342, done: 0, startIso: '2026-07-20', endIso: '2026-07-30' },
-        { number: '2.6', title: 'Устройство спецпокрытия', unit: 'm2', total: 20, done: 0, startIso: '2026-07-17', endIso: '2026-07-24' },
       ],
     },
     {
