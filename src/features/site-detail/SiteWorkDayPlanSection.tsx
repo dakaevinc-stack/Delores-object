@@ -33,6 +33,11 @@ type CalendarView = 'day' | 'week' | 'month'
 type Props = {
   siteId: string
   siteName: string
+  /**
+   * Без внешней шапки секции — для встраивания в общий «План работ».
+   * Роль и календарь остаются, дублирующий title убирается.
+   */
+  embedded?: boolean
 }
 
 function newStageDraft(): Omit<WorkDayStage, 'id' | 'status' | 'media' | 'actualQty' | 'submittedAtIso' | 'reviewedAtIso'> {
@@ -44,7 +49,7 @@ function newStageDraft(): Omit<WorkDayStage, 'id' | 'status' | 'media' | 'actual
   }
 }
 
-export function SiteWorkDayPlanSection({ siteId, siteName }: Props) {
+export function SiteWorkDayPlanSection({ siteId, siteName, embedded = false }: Props) {
   const [role, setRole] = useState<WorkDayRole>('brigadier')
   const [view, setView] = useState<CalendarView>('day')
   const [cursor, setCursor] = useState(() => new Date())
@@ -125,40 +130,72 @@ export function SiteWorkDayPlanSection({ siteId, siteName }: Props) {
   }
 
   return (
-    <section className={styles.section} aria-labelledby="work-day-plan-heading">
-      <header className={styles.head}>
-        <div className={styles.headInner}>
-          <p className={styles.kicker}>
-            <img className={styles.kickerMark} alt="" aria-hidden src="/brand-chevron.svg" />
-            Ежедневный план
-          </p>
-          <div className={styles.titleRow}>
-            <h2 className={styles.title} id="work-day-plan-heading">
-              План работ
-            </h2>
-            <div className={styles.roleSwitch} role="group" aria-label="Роль">
-              <button
-                type="button"
-                className={`${styles.roleBtn} ${role === 'brigadier' ? styles.roleOn : ''}`}
-                onClick={() => setRole('brigadier')}
-              >
-                Бригадир
-              </button>
-              <button
-                type="button"
-                className={`${styles.roleBtn} ${role === 'manager' ? styles.roleOn : ''}`}
-                onClick={() => setRole('manager')}
-              >
-                Руководитель
-              </button>
+    <section
+      className={embedded ? styles.embedded : styles.section}
+      aria-labelledby={embedded ? undefined : 'work-day-plan-heading'}
+    >
+      {embedded ? null : (
+        <header className={styles.head}>
+          <div className={styles.headInner}>
+            <p className={styles.kicker}>
+              <img className={styles.kickerMark} alt="" aria-hidden src="/brand-chevron.svg" />
+              Ежедневный план
+            </p>
+            <div className={styles.titleRow}>
+              <h2 className={styles.title} id="work-day-plan-heading">
+                План работ
+              </h2>
+              <div className={styles.roleSwitch} role="group" aria-label="Роль">
+                <button
+                  type="button"
+                  className={`${styles.roleBtn} ${role === 'brigadier' ? styles.roleOn : ''}`}
+                  onClick={() => setRole('brigadier')}
+                >
+                  Бригадир
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.roleBtn} ${role === 'manager' ? styles.roleOn : ''}`}
+                  onClick={() => setRole('manager')}
+                >
+                  Руководитель
+                </button>
+              </div>
             </div>
+            <p className={styles.lead}>
+              {siteName}: задачи по дням. Без фото или видео этап не закрыть. После проверки —
+              зелёная галочка, следующий этап открывается сам.
+            </p>
           </div>
-          <p className={styles.lead}>
-            {siteName}: задачи по дням. Без фото или видео этап не закрыть. После проверки —
-            зелёная галочка, следующий этап открывается сам.
-          </p>
+        </header>
+      )}
+
+      {embedded ? (
+        <div className={styles.embeddedIntro}>
+          <div className={styles.embeddedIntroText}>
+            <h3 className={styles.embeddedTitle}>Задачи по дням</h3>
+            <p className={styles.embeddedLead}>
+              Назначение бригадиру, факт с фото/видео, приёмка и прогресс по строкам общего плана.
+            </p>
+          </div>
+          <div className={styles.roleSwitch} role="group" aria-label="Роль">
+            <button
+              type="button"
+              className={`${styles.roleBtn} ${role === 'brigadier' ? styles.roleOn : ''}`}
+              onClick={() => setRole('brigadier')}
+            >
+              Бригадир
+            </button>
+            <button
+              type="button"
+              className={`${styles.roleBtn} ${role === 'manager' ? styles.roleOn : ''}`}
+              onClick={() => setRole('manager')}
+            >
+              Руководитель
+            </button>
+          </div>
         </div>
-      </header>
+      ) : null}
 
       <div className={styles.toolbar}>
         <div className={styles.viewSwitch} role="radiogroup" aria-label="Период">

@@ -16,10 +16,13 @@ import {
   type WorkPlanSection,
 } from '../../domain/workPlan'
 import { CollapseToggle } from './CollapseToggle'
+import { SiteWorkDayPlanSection } from './SiteWorkDayPlanSection'
 import styles from './SiteWorkPlanSection.module.css'
 
 type Props = {
   plan: WorkPlan
+  siteId: string
+  siteName: string
   /**
    * Календарные сроки объекта (старт/завершение по контракту).
    * Если переданы — берём их как «период» в шапке плана, иначе
@@ -95,7 +98,13 @@ function fmtSigned(n: number): string {
   return `−${NUM_FMT.format(Math.abs(n))}`
 }
 
-export function SiteWorkPlanSection({ plan, windowStartIso, windowEndIso }: Props) {
+export function SiteWorkPlanSection({
+  plan,
+  siteId,
+  siteName,
+  windowStartIso,
+  windowEndIso,
+}: Props) {
   const summary = useMemo(() => summarizeWorkPlan(plan), [plan])
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), [])
 
@@ -156,24 +165,25 @@ export function SiteWorkPlanSection({ plan, windowStartIso, windowEndIso }: Prop
           </p>
           <div className={styles.titleRow}>
             <h2 className={styles.title} id="work-plan-heading">
-              План работ по объекту
+              План работ
             </h2>
             <CollapseToggle
               expanded={planExpanded}
               onToggle={() => setPlanExpanded((v) => !v)}
               ariaControls="work-plan-sections"
-              expandedLabel="Свернуть план"
-              collapsedLabel="Открыть план"
+              expandedLabel="Свернуть справку"
+              collapsedLabel="Открыть справку"
               className={styles.headToggle}
             />
           </div>
 
           <p className={styles.lead}>
-            {summary.itemsCount}{' '}
+            Справка по объекту ({summary.itemsCount}{' '}
             {pluralize(summary.itemsCount, ['позиция', 'позиции', 'позиций'])} в{' '}
             {summary.sectionsCount}{' '}
-            {pluralize(summary.sectionsCount, ['разделе', 'разделах', 'разделах'])}. Факт
-            пересчитывается из отчётов бригадира.
+            {pluralize(summary.sectionsCount, ['разделе', 'разделах', 'разделах'])}
+            ) и задачи по дням для бригадира. Факт в справке — из отчётов; по дням —
+            после приёмки этапов с фото/видео.
           </p>
 
           <dl className={styles.summary}>
@@ -248,18 +258,28 @@ export function SiteWorkPlanSection({ plan, windowStartIso, windowEndIso }: Prop
       </div>
 
       {planExpanded ? (
-        <ol className={styles.sections} id="work-plan-sections">
-          {plan.sections.map((section) => (
-            <SectionCard
-              key={section.number}
-              section={section}
-              health={healthByNumber.get(section.number)}
-              open={openSections.has(section.number)}
-              onToggle={() => toggleSection(section.number)}
-            />
-          ))}
-        </ol>
+        <div className={styles.registryBlock}>
+          <div className={styles.blockLabelRow}>
+            <h3 className={styles.blockLabel}>Справка по объекту</h3>
+            <p className={styles.blockHint}>Разделы и объёмы из производственного плана</p>
+          </div>
+          <ol className={styles.sections} id="work-plan-sections">
+            {plan.sections.map((section) => (
+              <SectionCard
+                key={section.number}
+                section={section}
+                health={healthByNumber.get(section.number)}
+                open={openSections.has(section.number)}
+                onToggle={() => toggleSection(section.number)}
+              />
+            ))}
+          </ol>
+        </div>
       ) : null}
+
+      <div className={styles.dayBlock}>
+        <SiteWorkDayPlanSection embedded siteId={siteId} siteName={siteName} />
+      </div>
     </section>
   )
 }

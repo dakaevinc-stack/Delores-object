@@ -250,6 +250,40 @@
   gap: 10px;
 }
 
+.registryBlock {
+  margin-bottom: 22px;
+}
+
+.blockLabelRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 14px;
+  margin: 0 0 12px;
+  padding: 0 2px;
+}
+
+.blockLabel {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-navy, #172a4d);
+}
+
+.blockHint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.dayBlock {
+  margin-top: 4px;
+  padding-top: 18px;
+  border-top: 1px dashed rgba(15, 23, 42, 0.12);
+}
+
 /*
  * Карточка раздела плана. В шапке несёт всю аналитику:
  * статус относительно дневного графика, % выполнения, тонкую
