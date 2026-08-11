@@ -25,6 +25,8 @@ type Props = {
   /** Манифест с сервера (из fetchSiteFormsFromServer); подтягиваем отсутствующие в IndexedDB. */
   serverManifest?: StoredSiteMedia[]
   onRemoteSyncError?: (message: string) => void
+  /** Внутри журнала бригадира — без отдельной шапки секции. */
+  embedded?: boolean
 }
 
 type TypeFilter = 'all' | 'photo' | 'video'
@@ -193,6 +195,7 @@ export function SiteObjectMediaDropSection({
   serverBacked = false,
   serverManifest = [],
   onRemoteSyncError,
+  embedded = false,
 }: Props) {
   const uid = useId()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -729,10 +732,20 @@ export function SiteObjectMediaDropSection({
 
   return (
     <section
-      className={styles.section}
+      className={embedded ? styles.embedded : styles.section}
       id="site-object-media"
       aria-labelledby={`${uid}-heading`}
     >
+      {embedded ? (
+        <div className={styles.embeddedHead}>
+          <h3 className={styles.embeddedTitle} id={`${uid}-heading`}>
+            Фото и видео по дням
+          </h3>
+          <p className={styles.embeddedLead}>
+            Материалы объекта. По дате съёмки они же видны во вложениях отчётов журнала.
+          </p>
+        </div>
+      ) : (
       <header className={styles.head}>
         <span className={styles.headIcon} aria-hidden>
           {/* Камера + мини-бейдж «play» в углу — читается и как фото, и как видео */}
@@ -772,6 +785,7 @@ export function SiteObjectMediaDropSection({
           </ul>
         </div>
       </header>
+      )}
 
       <div className={styles.panel}>
         <div className={styles.author}>

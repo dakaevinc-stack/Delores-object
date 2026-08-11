@@ -1,16 +1,22 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   brigadierProblemKindLabel,
   type BrigadierStoredReport,
 } from '../../domain/brigadierReport'
-import { brigadierAttachmentBlobUrl } from '../../lib/siteFormsApi'
+import {
+  brigadierAttachmentBlobUrl,
+  objectMediaBlobUrl,
+} from '../../lib/siteFormsApi'
+import { listMediaBySite, type StoredSiteMedia } from '../../lib/mediaRepository'
 import { CollapseToggle } from './CollapseToggle'
+import { enrichReportsWithObjectMedia } from './enrichReportsWithObjectMedia'
 import {
   FieldReportCard,
   type FieldReportAttachment,
   type FieldReportMetaChip,
 } from './FieldReportCard'
 import { parseBrigadierComment } from './brigadierCommentSections'
+import { SiteObjectMediaDropSection } from './SiteObjectMediaDropSection'
 import styles from './SiteBrigadierSubmittedSection.module.css'
 
 type Props = {
@@ -18,6 +24,9 @@ type Props = {
   siteName: string
   reports: readonly BrigadierStoredReport[]
   serverBacked?: boolean
+  objectMediaManifest?: StoredSiteMedia[]
+  objectMediaServerBacked?: boolean
+  onObjectMediaSyncError?: (message: string) => void
   onRemoveReport: (id: string) => void | Promise<void>
 }
 
@@ -32,8 +41,16 @@ function resolveAttachment(
   reportId: string,
   a: BrigadierStoredReport['attachments'][number],
   serverBacked: boolean,
+  objectMediaServerBacked: boolean,
 ): FieldReportAttachment {
   if (a.previewUrl) return a
+  if (a.id.startsWith('objmedia:')) {
+    const mediaId = a.id.slice('objmedia:'.length)
+    if (objectMediaServerBacked) {
+      return { ...a, previewUrl: objectMediaBlobUrl(siteId, mediaId) }
+    }
+    return a
+  }
   if (serverBacked && !a.notPersisted) {
     return { ...a, previewUrl: brigadierAttachmentBlobUrl(siteId, reportId, a.id) }
   }
@@ -137,14 +154,48 @@ export function SiteBrigadierSubmittedReportsSection({
   siteName,
   reports,
   serverBacked = false,
+  objectMediaManifest = [],
+  objectMediaServerBacked = false,
+  onObjectMediaSyncError,
   onRemoveReport,
 }: Props) {
+  const [localMedia, setLocalMedia] = useState<StoredSiteMedia[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    void listMediaBySite(siteId)
+      .then((rows) => {
+        if (!cancelled) setLocalMedia(rows)
+      })
+      .catch(() => {
+        if (!cancelled) setLocalMedia([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [siteId, objectMediaManifest])
+
+  const mediaPool = useMemo(() => {
+    const map = new Map<string, StoredSiteMedia>()
+    for (const m of objectMediaManifest) map.set(m.id, m)
+    for (const m of localMedia) map.set(m.id, m)
+    return [...map.values()]
+  }, [objectMediaManifest, localMedia])
+
+  const enriched = useMemo(
+    () =>
+      enrichReportsWithObjectMedia(reports, mediaPool, (mediaId) =>
+        objectMediaServerBacked ? objectMediaBlobUrl(siteId, mediaId) : '',
+      ),
+    [reports, mediaPool, objectMediaServerBacked, siteId],
+  )
+
   const sorted = useMemo(
     () =>
-      [...reports].sort((a, b) =>
+      [...enriched].sort((a, b) =>
         (b.reportedAtIso ?? '').localeCompare(a.reportedAtIso ?? ''),
       ),
-    [reports],
+    [enriched],
   )
 
   const total = sorted.length
@@ -159,7 +210,7 @@ export function SiteBrigadierSubmittedReportsSection({
   const responsibles = pickActiveResponsibles(sorted)
 
   const [sectionExpanded, setSectionExpanded] = useState(false)
-  const canCollapse = total > 0
+  const canCollapse = total > 0 || mediaPool.length > 0
 
   return (
     <section className={styles.section} aria-labelledby="brigadier-submitted-heading">
@@ -223,7 +274,8 @@ export function SiteBrigadierSubmittedReportsSection({
               ? latestEntry
                 ? `Сменный журнал ведётся регулярно. Свежая запись — ${latestEntry}.`
                 : 'Сменный журнал ведётся регулярно.'
-              : 'Журнал смен пока пуст — добавьте первую запись кнопкой «Ввод отчёта» выше.'}
+              : 'Журнал смен пока пуст — добавьте первую запись кнопкой «Ввод отчёта» выше.'}{' '}
+            Фото и видео с объекта по дате привязаны к отчётам.
           </p>
 
           {total > 0 ? (
@@ -255,7 +307,7 @@ export function SiteBrigadierSubmittedReportsSection({
         </div>
       </div>
 
-      {total === 0 ? (
+      {total === 0 && mediaPool.length === 0 ? (
         <div className={styles.empty}>
           <p className={styles.emptyTitle}>Пока нет отчётов</p>
           <p className={styles.emptyText}>
@@ -263,7 +315,7 @@ export function SiteBrigadierSubmittedReportsSection({
             вложения, без таблицы работ.
           </p>
         </div>
-      ) : sectionExpanded ? (
+      ) : sectionExpanded || !canCollapse ? (
         <div className={styles.list} id="brigadier-submitted-list">
           {sorted.map((r, idx) => {
             const photos = r.attachments.filter((a) => a.kind === 'photo').length
@@ -323,7 +375,13 @@ export function SiteBrigadierSubmittedReportsSection({
                   details: p.details,
                 }))}
                 attachments={r.attachments.map((a) =>
-                  resolveAttachment(siteId, r.id, a, serverBacked),
+                  resolveAttachment(
+                    siteId,
+                    r.id,
+                    a,
+                    serverBacked,
+                    objectMediaServerBacked,
+                  ),
                 )}
                 metaChips={meta}
                 onRemove={() => onRemoveReport(r.id)}
@@ -331,6 +389,14 @@ export function SiteBrigadierSubmittedReportsSection({
               />
             )
           })}
+
+          <SiteObjectMediaDropSection
+            embedded
+            siteId={siteId}
+            serverBacked={objectMediaServerBacked}
+            serverManifest={objectMediaManifest}
+            onRemoteSyncError={onObjectMediaSyncError}
+          />
         </div>
       ) : null}
     </section>

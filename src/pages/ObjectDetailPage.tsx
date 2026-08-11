@@ -32,7 +32,6 @@ import { useAllSites } from '../lib/useAllSites'
 import { BrigadierReportModal } from '../features/site-detail/BrigadierReportModal'
 import { ProcurementRequestModal } from '../features/site-detail/ProcurementRequestModal'
 import { SiteBrigadierSubmittedReportsSection } from '../features/site-detail/SiteBrigadierSubmittedSection'
-import { SiteObjectMediaDropSection } from '../features/site-detail/SiteObjectMediaDropSection'
 import { SiteProcurementRequestsSection } from '../features/site-detail/SiteProcurementRequestsSection'
 import { SiteDetailHeader } from '../features/site-detail/SiteDetailHeader'
 import { SiteDetailKpiGrid } from '../features/site-detail/SiteDetailKpiGrid'
@@ -221,6 +220,9 @@ export function ObjectDetailPage() {
         siteName={site.name}
         reports={brigadierReports}
         serverBacked={remoteFormsActive}
+        objectMediaManifest={objectMediaManifest}
+        objectMediaServerBacked={remoteObjectMediaActive}
+        onObjectMediaSyncError={(msg) => setFormsApiMessage(msg)}
         onRemoveReport={async (id) => {
           if (remoteFormsRef.current) {
             const ok = await deleteBrigadierReportRemote(site.id, id)
@@ -242,15 +244,16 @@ export function ObjectDetailPage() {
         }}
       />
 
-      <SiteObjectMediaDropSection
-        key={site.id}
-        siteId={site.id}
-        serverBacked={remoteObjectMediaActive}
-        serverManifest={objectMediaManifest}
-        onRemoteSyncError={(msg) => setFormsApiMessage(msg)}
-      />
-
       <SiteDetailKpiGrid kpis={liveKpis} />
+
+      <div className={styles.midGrid}>
+        <SiteScheduleSection
+          kpis={liveKpis}
+          basePlan={basePlan}
+          reports={brigadierReports}
+        />
+        <SiteReportingSection reports={brigadierReports} todayIso={liveKpis.todayIso} />
+      </div>
 
       {workPlan ? (
         <SiteWorkPlanSection
@@ -262,15 +265,6 @@ export function ObjectDetailPage() {
           onDayPlanChange={() => setDayPlanRevision((n) => n + 1)}
         />
       ) : null}
-
-      <div className={styles.midGrid}>
-        <SiteScheduleSection
-          kpis={liveKpis}
-          basePlan={basePlan}
-          reports={brigadierReports}
-        />
-        <SiteReportingSection reports={brigadierReports} todayIso={liveKpis.todayIso} />
-      </div>
 
       <SiteProcurementRequestsSection
         requests={procurementRequests}

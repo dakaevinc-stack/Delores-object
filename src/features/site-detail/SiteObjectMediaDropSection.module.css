@@ -3,6 +3,35 @@
   scroll-margin-top: 20px;
 }
 
+.embedded {
+  margin: 18px 0 8px;
+  padding-top: 16px;
+  border-top: 1px dashed rgba(15, 23, 42, 0.12);
+  scroll-margin-top: 20px;
+}
+
+.embeddedHead {
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.embeddedTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--text-strong, #0f172a);
+}
+
+.embeddedLead {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted, #64748b);
+}
+
 /* ============================================================
    Премиум-шапка раздела: якорная иконка + смысловая иерархия
    ============================================================ */

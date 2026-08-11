@@ -316,3 +316,9 @@ export function brigadierAttachmentBlobUrl(
     reportId,
   )}/attachments/${encodeURIComponent(attachmentId)}/blob`
 }
+
+/** Прямой URL blob фото/видео с объекта (галерея). */
+export function objectMediaBlobUrl(siteId: string, mediaId: string): string {
+  const b = apiBase()
+  return `${b}/api/sites/${encodeURIComponent(siteId)}/object-media/${encodeURIComponent(mediaId)}/blob`
+}
