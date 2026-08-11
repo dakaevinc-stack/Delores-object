@@ -38,6 +38,7 @@ import { SiteDetailKpiGrid } from '../features/site-detail/SiteDetailKpiGrid'
 import { SiteReportingSection } from '../features/site-detail/SiteReportingSection'
 import { SiteScheduleSection } from '../features/site-detail/SiteScheduleSection'
 import { SiteWorkPlanSection } from '../features/site-detail/SiteWorkPlanSection'
+import { SiteWorkDayPlanSection } from '../features/site-detail/SiteWorkDayPlanSection'
 import styles from './ObjectDetailPage.module.css'
 
 export function ObjectDetailPage() {
@@ -227,6 +228,8 @@ export function ObjectDetailPage() {
           windowEndIso={liveKpis.endIso}
         />
       ) : null}
+
+      <SiteWorkDayPlanSection key={`day-plan-${site.id}`} siteId={site.id} siteName={site.name} />
 
       <div className={styles.midGrid}>
         <SiteScheduleSection
