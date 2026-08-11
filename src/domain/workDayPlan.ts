@@ -82,6 +82,21 @@ export function acceptedQtyForPlanItem(
   return sum
 }
 
+/** Принятые объёмы по всем строкам плана (для сводки план/факт). */
+export function acceptedQtyByPlanItemMap(
+  assignments: readonly WorkDayAssignment[],
+): Map<string, number> {
+  const map = new Map<string, number>()
+  for (const a of assignments) {
+    for (const s of a.stages) {
+      if (s.status !== 'done' || s.actualQty == null) continue
+      const prev = map.get(a.planItemNumber) ?? 0
+      map.set(a.planItemNumber, prev + s.actualQty)
+    }
+  }
+  return map
+}
+
 export function assignmentProgress(a: WorkDayAssignment): {
   doneStages: number
   totalStages: number

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  acceptedQtyByPlanItemMap,
   acceptedQtyForPlanItem,
   approveStage,
   canSubmitStage,
@@ -80,5 +81,15 @@ describe('workDayPlan', () => {
     ])
     expect(next.stages[0]!.status).toBe('submitted')
     expect(next.stages[0]!.actualQty).toBe(80)
+  })
+
+  it('acceptedQtyByPlanItemMap суммирует только принятые этапы', () => {
+    const a = assignment([
+      stage({ id: 's1', status: 'done', actualQty: 40 }),
+      stage({ id: 's2', status: 'done', actualQty: 10 }),
+      stage({ id: 's3', status: 'open', actualQty: 99 }),
+    ])
+    const map = acceptedQtyByPlanItemMap([a])
+    expect(map.get('2.2')).toBe(50)
   })
 })

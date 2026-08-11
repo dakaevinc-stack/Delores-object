@@ -23,13 +23,10 @@ type Props = {
   plan: WorkPlan
   siteId: string
   siteName: string
-  /**
-   * Календарные сроки объекта (старт/завершение по контракту).
-   * Если переданы — берём их как «период» в шапке плана, иначе
-   * деградируем к самым ранним/поздним датам позиций.
-   */
   windowStartIso?: string
   windowEndIso?: string
+  /** После приёмки дневных этапов — пересчитать план/факт на странице. */
+  onDayPlanChange?: () => void
 }
 
 function pluralize(n: number, [one, few, many]: readonly [string, string, string]): string {
@@ -104,6 +101,7 @@ export function SiteWorkPlanSection({
   siteName,
   windowStartIso,
   windowEndIso,
+  onDayPlanChange,
 }: Props) {
   const summary = useMemo(() => summarizeWorkPlan(plan), [plan])
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), [])
@@ -132,7 +130,8 @@ export function SiteWorkPlanSection({
   }, [healthByNumber])
 
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set())
-  const [planExpanded, setPlanExpanded] = useState(false)
+  // Развёрнуто по умолчанию: сводка + задачи + справка план/факт в одном блоке.
+  const [expanded, setExpanded] = useState(true)
 
   const toggleSection = (number: string) => {
     setOpenSections((prev) => {
@@ -168,118 +167,127 @@ export function SiteWorkPlanSection({
               План работ
             </h2>
             <CollapseToggle
-              expanded={planExpanded}
-              onToggle={() => setPlanExpanded((v) => !v)}
-              ariaControls="work-plan-sections"
-              expandedLabel="Свернуть справку"
-              collapsedLabel="Открыть справку"
+              expanded={expanded}
+              onToggle={() => setExpanded((v) => !v)}
+              ariaControls="work-plan-body"
+              expandedLabel="Свернуть план"
+              collapsedLabel="Открыть план"
               className={styles.headToggle}
             />
           </div>
 
-          <p className={styles.lead}>
-            Справка по объекту ({summary.itemsCount}{' '}
-            {pluralize(summary.itemsCount, ['позиция', 'позиции', 'позиций'])} в{' '}
-            {summary.sectionsCount}{' '}
-            {pluralize(summary.sectionsCount, ['разделе', 'разделах', 'разделах'])}
-            ) и задачи по дням для бригадира. Факт в справке — из отчётов; по дням —
-            после приёмки этапов с фото/видео.
-          </p>
-
-          <dl className={styles.summary}>
-            <div className={styles.summaryItem}>
-              <dt className={styles.summaryLabel}>Активных</dt>
-              <dd className={styles.summaryValue}>
-                {summary.scheduledCount}
-                <span className={styles.summaryDelta}>
-                  /{summary.itemsCount}
-                </span>
-              </dd>
-            </div>
-            <div className={styles.summaryItem}>
-              <dt className={styles.summaryLabel}>Завершено</dt>
-              <dd className={styles.summaryValue}>{summary.completedCount}</dd>
-            </div>
-            <div className={styles.summaryItem}>
-              <dt className={styles.summaryLabel}>Без срока</dt>
-              <dd className={styles.summaryValue}>{summary.deferredCount}</dd>
-            </div>
-            <div className={styles.summaryItem}>
-              <dt className={styles.summaryLabel}>Прогресс</dt>
-              <dd className={styles.summaryValue}>
-                {summary.averagePercent.toFixed(1).replace('.', ',')}%
-              </dd>
-            </div>
-            {period ? (
-              <div className={`${styles.summaryItem} ${styles.summaryItemWide}`}>
-                <dt className={styles.summaryLabel}>Период</dt>
-                <dd className={styles.summaryValue}>{period}</dd>
-              </div>
-            ) : null}
-          </dl>
-
-          {/*
-           * Светофор по разделам относительно дневного графика. Это
-           * главный индикатор «здоровья объекта» одной строкой —
-           * раньше жил в отдельной секции «Критерии выполнения работ»,
-           * сейчас живёт прямо здесь, чтобы не дублировать данные.
-           */}
-          <div className={styles.healthRow}>
-            {healthBuckets.critical > 0 ? (
-              <span className={`${styles.healthPill} ${styles.healthPillCritical}`}>
-                <span className={styles.healthPillDot} aria-hidden />
-                <span className={styles.healthPillCount}>{healthBuckets.critical}</span>
-                <span className={styles.healthPillLabel}>отстают</span>
-              </span>
-            ) : null}
-            {healthBuckets.attention > 0 ? (
-              <span className={`${styles.healthPill} ${styles.healthPillAttention}`}>
-                <span className={styles.healthPillDot} aria-hidden />
-                <span className={styles.healthPillCount}>{healthBuckets.attention}</span>
-                <span className={styles.healthPillLabel}>под вниманием</span>
-              </span>
-            ) : null}
-            {healthBuckets.normal > 0 ? (
-              <span className={`${styles.healthPill} ${styles.healthPillNormal}`}>
-                <span className={styles.healthPillDot} aria-hidden />
-                <span className={styles.healthPillCount}>{healthBuckets.normal}</span>
-                <span className={styles.healthPillLabel}>в графике</span>
-              </span>
-            ) : null}
-            {healthBuckets.not_scheduled > 0 ? (
-              <span className={`${styles.healthPill} ${styles.healthPillMuted}`}>
-                <span className={styles.healthPillDot} aria-hidden />
-                <span className={styles.healthPillCount}>{healthBuckets.not_scheduled}</span>
-                <span className={styles.healthPillLabel}>без графика</span>
-              </span>
-            ) : null}
-          </div>
+          {!expanded ? (
+            <p className={styles.lead}>
+              {summary.itemsCount}{' '}
+              {pluralize(summary.itemsCount, ['позиция', 'позиции', 'позиций'])}, прогресс{' '}
+              {summary.averagePercent.toFixed(1).replace('.', ',')}%. Откройте — задачи
+              бригадиру, сводка и справка план/факт.
+            </p>
+          ) : null}
         </div>
       </div>
 
-      {planExpanded ? (
-        <div className={styles.registryBlock}>
-          <div className={styles.blockLabelRow}>
-            <h3 className={styles.blockLabel}>Справка по объекту</h3>
-            <p className={styles.blockHint}>Разделы и объёмы из производственного плана</p>
+      {expanded ? (
+        <div id="work-plan-body" className={styles.expandedBody}>
+          <div className={styles.summaryPanel}>
+            <p className={styles.lead}>
+              Сводка, ежедневные задания бригадиру и справка по строкам. Факт — из принятых
+              этапов дня и отчётов бригадира.
+            </p>
+
+            <dl className={styles.summary}>
+              <div className={styles.summaryItem}>
+                <dt className={styles.summaryLabel}>Активных</dt>
+                <dd className={styles.summaryValue}>
+                  {summary.scheduledCount}
+                  <span className={styles.summaryDelta}>/{summary.itemsCount}</span>
+                </dd>
+              </div>
+              <div className={styles.summaryItem}>
+                <dt className={styles.summaryLabel}>Завершено</dt>
+                <dd className={styles.summaryValue}>{summary.completedCount}</dd>
+              </div>
+              <div className={styles.summaryItem}>
+                <dt className={styles.summaryLabel}>Без срока</dt>
+                <dd className={styles.summaryValue}>{summary.deferredCount}</dd>
+              </div>
+              <div className={styles.summaryItem}>
+                <dt className={styles.summaryLabel}>Прогресс</dt>
+                <dd className={styles.summaryValue}>
+                  {summary.averagePercent.toFixed(1).replace('.', ',')}%
+                </dd>
+              </div>
+              {period ? (
+                <div className={`${styles.summaryItem} ${styles.summaryItemWide}`}>
+                  <dt className={styles.summaryLabel}>Период</dt>
+                  <dd className={styles.summaryValue}>{period}</dd>
+                </div>
+              ) : null}
+            </dl>
+
+            <div className={styles.healthRow}>
+              {healthBuckets.critical > 0 ? (
+                <span className={`${styles.healthPill} ${styles.healthPillCritical}`}>
+                  <span className={styles.healthPillDot} aria-hidden />
+                  <span className={styles.healthPillCount}>{healthBuckets.critical}</span>
+                  <span className={styles.healthPillLabel}>отстают</span>
+                </span>
+              ) : null}
+              {healthBuckets.attention > 0 ? (
+                <span className={`${styles.healthPill} ${styles.healthPillAttention}`}>
+                  <span className={styles.healthPillDot} aria-hidden />
+                  <span className={styles.healthPillCount}>{healthBuckets.attention}</span>
+                  <span className={styles.healthPillLabel}>под вниманием</span>
+                </span>
+              ) : null}
+              {healthBuckets.normal > 0 ? (
+                <span className={`${styles.healthPill} ${styles.healthPillNormal}`}>
+                  <span className={styles.healthPillDot} aria-hidden />
+                  <span className={styles.healthPillCount}>{healthBuckets.normal}</span>
+                  <span className={styles.healthPillLabel}>в графике</span>
+                </span>
+              ) : null}
+              {healthBuckets.not_scheduled > 0 ? (
+                <span className={`${styles.healthPill} ${styles.healthPillMuted}`}>
+                  <span className={styles.healthPillDot} aria-hidden />
+                  <span className={styles.healthPillCount}>{healthBuckets.not_scheduled}</span>
+                  <span className={styles.healthPillLabel}>без графика</span>
+                </span>
+              ) : null}
+            </div>
           </div>
-          <ol className={styles.sections} id="work-plan-sections">
-            {plan.sections.map((section) => (
-              <SectionCard
-                key={section.number}
-                section={section}
-                health={healthByNumber.get(section.number)}
-                open={openSections.has(section.number)}
-                onToggle={() => toggleSection(section.number)}
-              />
-            ))}
-          </ol>
+
+          <div className={styles.dayBlock}>
+            <SiteWorkDayPlanSection
+              embedded
+              siteId={siteId}
+              siteName={siteName}
+              workPlan={plan}
+              onAssignmentsChange={() => onDayPlanChange?.()}
+            />
+          </div>
+
+          <div className={styles.registryBlock}>
+            <div className={styles.blockLabelRow}>
+              <h3 className={styles.blockLabel}>Справка — план и факт</h3>
+              <p className={styles.blockHint}>
+                Факт по строкам обновляется после приёмки этапов дня и из журнала бригадира
+              </p>
+            </div>
+            <ol className={styles.sections} id="work-plan-sections">
+              {plan.sections.map((section) => (
+                <SectionCard
+                  key={section.number}
+                  section={section}
+                  health={healthByNumber.get(section.number)}
+                  open={openSections.has(section.number)}
+                  onToggle={() => toggleSection(section.number)}
+                />
+              ))}
+            </ol>
+          </div>
         </div>
       ) : null}
-
-      <div className={styles.dayBlock}>
-        <SiteWorkDayPlanSection embedded siteId={siteId} siteName={siteName} />
-      </div>
     </section>
   )
 }

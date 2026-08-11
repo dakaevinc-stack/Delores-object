@@ -6,7 +6,8 @@ import {
   type WorkDayStage,
 } from '../domain/workDayPlan'
 
-const storageKey = (siteId: string) => `deloresh.work-day-plan.v1.${siteId}`
+/** v2 — обновлённый демо-календарь (логичная последовательность по плану). */
+const storageKey = (siteId: string) => `deloresh.work-day-plan.v2.${siteId}`
 
 function readRaw(siteId: string): WorkDayPlanBundle | null {
   try {
@@ -26,82 +27,223 @@ function writeRaw(bundle: WorkDayPlanBundle): void {
   localStorage.setItem(storageKey(bundle.siteId), JSON.stringify(bundle))
 }
 
+function stage(
+  partial: Omit<WorkDayStage, 'id' | 'media' | 'actualQty' | 'submittedAtIso' | 'reviewedAtIso'> &
+    Partial<Pick<WorkDayStage, 'actualQty' | 'submittedAtIso' | 'reviewedAtIso' | 'media'>>,
+): WorkDayStage {
+  return {
+    id: newId('stage'),
+    media: partial.media ?? [],
+    actualQty: partial.actualQty ?? null,
+    submittedAtIso: partial.submittedAtIso ?? null,
+    reviewedAtIso: partial.reviewedAtIso ?? null,
+    title: partial.title,
+    requirements: partial.requirements,
+    plannedQty: partial.plannedQty,
+    unit: partial.unit,
+    status: partial.status,
+  }
+}
+
 /**
- * Демо-цепочка «песок → щебень» на сегодня и завтра для кликабельного
- * прототипа. Первый этап открыт, второй заблокирован.
+ * Демо-неделя для Брусилово: порядок работ как на объекте.
+ * 1) демонтаж бордюра → 2) разборка тротуара → 3) песок (цепочка этапов)
+ * → 4) щебень → параллельно КК на другом участке.
  */
 function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
-  const today = toDateKey(new Date())
-  const tomorrowDate = new Date()
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
-  const tomorrow = toDateKey(tomorrowDate)
-
-  const sandThenCrushed = (dateKey: string, area: string): WorkDayAssignment => {
-    const stages: WorkDayStage[] = [
-      {
-        id: newId('stage'),
-        title: 'Песчаное основание 300 мм',
-        requirements: 'Песок карьерный, уплотнение послойно. Толщина 300 мм.',
-        plannedQty: 100,
-        unit: 'м',
-        actualQty: null,
-        status: 'open',
-        media: [],
-        submittedAtIso: null,
-        reviewedAtIso: null,
-      },
-      {
-        id: newId('stage'),
-        title: 'Щебень 20–40, толщина 200 мм',
-        requirements: 'Фракция 20–40. Толщина 200 мм. Доступен после приёмки песка.',
-        plannedQty: 100,
-        unit: 'м',
-        actualQty: null,
-        status: 'locked',
-        media: [],
-        submittedAtIso: null,
-        reviewedAtIso: null,
-      },
-    ]
-    return {
-      id: newId('asg'),
-      siteId,
-      dateKey,
-      area,
-      brigadierName: 'Минасян А.Л.',
-      planItemNumber: '2.2',
-      planItemTitle: 'Устройство песчаного основания',
-      planTotalQty: 28641,
-      planUnit: 'м²',
-      stages,
-      createdAtIso: new Date().toISOString(),
-    }
+  const today = new Date()
+  const key = (offset: number) => {
+    const d = new Date(today)
+    d.setDate(d.getDate() + offset)
+    return toDateKey(d)
   }
+  const nowIso = () => new Date().toISOString()
 
-  return [
-    sandThenCrushed(today, 'Участок А — тротуар, чётная сторона'),
-    {
-      ...sandThenCrushed(tomorrow, 'Участок Б — тротуар у подъезда 3'),
-      planItemNumber: '2.3',
-      planItemTitle: 'Устройство основания из щебня / бетона / ЩПС',
-      planTotalQty: 28641,
-      planUnit: 'м²',
-      stages: [
-        {
-          id: newId('stage'),
-          title: 'Щебень 20–40, толщина 200 мм',
-          requirements: 'Подготовка основания. Фракция 20–40.',
-          plannedQty: 80,
-          unit: 'м',
-          actualQty: null,
-          status: 'open',
-          media: [],
-          submittedAtIso: null,
-          reviewedAtIso: null,
-        },
-      ],
+  const base = (
+    dateKey: string,
+    area: string,
+    plan: {
+      number: string
+      title: string
+      total: number
+      unit: string
     },
-  ]
+    stages: WorkDayStage[],
+  ): WorkDayAssignment => ({
+    id: newId('asg'),
+    siteId,
+    dateKey,
+    area,
+    brigadierName: 'Минасян А.Л.',
+    planItemNumber: plan.number,
+    planItemTitle: plan.title,
+    planTotalQty: plan.total,
+    planUnit: plan.unit,
+    stages,
+    createdAtIso: nowIso(),
+  })
+
+  // Вчера: демонтаж бордюра — уже сдан, ждёт приёмки (для роли руководителя).
+  const yesterdayCurb = base(
+    key(-1),
+    'Участок А — чётная сторона, пикет 12–18',
+    {
+      number: '1.3',
+      title: 'Демонтаж бортового камня',
+      total: 15461,
+      unit: 'м',
+    },
+    [
+      stage({
+        title: 'Демонтаж бортового камня',
+        requirements: 'Аккуратный демонтаж без повреждения соседних элементов. Складирование.',
+        plannedQty: 42,
+        unit: 'м',
+        status: 'submitted',
+        actualQty: 42,
+        submittedAtIso: nowIso(),
+        media: [],
+      }),
+    ],
+  )
+
+  // Позавчера: разборка тротуара — выполнено.
+  const twoDaysAgoSidewalk = base(
+    key(-2),
+    'Участок А — тротуар, чётная сторона',
+    {
+      number: '2.1',
+      title: 'Разборка покрытия тротуаров',
+      total: 28637,
+      unit: 'м²',
+    },
+    [
+      stage({
+        title: 'Разборка покрытия',
+        requirements: 'Срезка покрытия, вывоз боя. Основание под песок ровное.',
+        plannedQty: 120,
+        unit: 'м²',
+        status: 'done',
+        actualQty: 118,
+        submittedAtIso: nowIso(),
+        reviewedAtIso: nowIso(),
+      }),
+    ],
+  )
+
+  // Сегодня: песчаное основание — 3 этапа (технологическая цепочка).
+  const todaySand = base(
+    key(0),
+    'Участок А — тротуар, чётная сторона',
+    {
+      number: '2.2',
+      title: 'Устройство песчаного основания',
+      total: 28641,
+      unit: 'м²',
+    },
+    [
+      stage({
+        title: 'Планировка корыта',
+        requirements: 'Геодезия отметок, уплотнение грунта основания.',
+        plannedQty: 100,
+        unit: 'м²',
+        status: 'open',
+      }),
+      stage({
+        title: 'Отсыпка песка 300 мм',
+        requirements: 'Песок карьерный. Толщина 300 мм, послойно.',
+        plannedQty: 100,
+        unit: 'м²',
+        status: 'locked',
+      }),
+      stage({
+        title: 'Уплотнение песка',
+        requirements: 'Коэф. уплотнения по проекту. Контроль толщины.',
+        plannedQty: 100,
+        unit: 'м²',
+        status: 'locked',
+      }),
+    ],
+  )
+
+  // Сегодня параллельно: кабельная канализация на другом участке.
+  const todayCable = base(
+    key(0),
+    'Участок В — вдоль проезжей части',
+    {
+      number: '5.1',
+      title: 'Кабельная канализация (КК)',
+      total: 8734,
+      unit: 'м',
+    },
+    [
+      stage({
+        title: 'Рытьё траншеи под КК',
+        requirements: 'Глубина и ширина по проекту. Крепление стенок при необходимости.',
+        plannedQty: 35,
+        unit: 'м',
+        status: 'open',
+      }),
+      stage({
+        title: 'Укладка труб КК',
+        requirements: 'Стыковка, песчаная подсыпка, маркировка.',
+        plannedQty: 35,
+        unit: 'м',
+        status: 'locked',
+      }),
+    ],
+  )
+
+  // Завтра: щебень — только после песка (отдельная строка плана 2.3).
+  const tomorrowCrushed = base(
+    key(1),
+    'Участок А — тротуар, чётная сторона',
+    {
+      number: '2.3',
+      title: 'Устройство основания из щебня / бетона / ЩПС',
+      total: 28641,
+      unit: 'м²',
+    },
+    [
+      stage({
+        title: 'Щебень 20–40, толщина 200 мм',
+        requirements: 'Фракция 20–40. После приёмки песчаного основания на участке.',
+        plannedQty: 100,
+        unit: 'м²',
+        status: 'open',
+      }),
+      stage({
+        title: 'Уплотнение щебня',
+        requirements: 'Укатка, контроль отметок.',
+        plannedQty: 100,
+        unit: 'м²',
+        status: 'locked',
+      }),
+    ],
+  )
+
+  // Послезавтра: установка бетонного бордюра на месте демонтажа.
+  const dayAfterCurb = base(
+    key(2),
+    'Участок А — чётная сторона, пикет 12–18',
+    {
+      number: '1.1',
+      title: 'Бетон',
+      total: 15461,
+      unit: 'м',
+    },
+    [
+      stage({
+        title: 'Установка бортового камня бетонного',
+        requirements: 'По шнуру, бетонное основание, швы. Высота бровки по проекту.',
+        plannedQty: 42,
+        unit: 'м',
+        status: 'open',
+      }),
+    ],
+  )
+
+  return [todaySand, todayCable, tomorrowCrushed, dayAfterCurb, yesterdayCurb, twoDaysAgoSidewalk]
 }
 
 export function loadWorkDayPlan(siteId: string): WorkDayPlanBundle {

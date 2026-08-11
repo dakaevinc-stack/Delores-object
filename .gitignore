@@ -16,6 +16,9 @@ data/site-forms/
 # Локальные фото/видео для импорта в отчёты бригадира — крупные
 # бинарники, в репо не нужны (см. scripts/attach-report-media.mjs).
 scripts/data/photo-imports/
+
+# Резервные копии продовых данных (tar.gz с блобами медиа).
+backups/
 dist
 dist-ssr
 *.local

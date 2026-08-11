@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { unitLabel, type MeasurementUnitId } from '../../domain/brigadierReport'
 import {
   acceptedQtyForPlanItem,
   addDays,
@@ -21,6 +22,7 @@ import {
   type WorkDayRole,
   type WorkDayStage,
 } from '../../domain/workDayPlan'
+import type { WorkPlan } from '../../domain/workPlan'
 import {
   loadWorkDayPlan,
   removeAssignment,
@@ -33,23 +35,169 @@ type CalendarView = 'day' | 'week' | 'month'
 type Props = {
   siteId: string
   siteName: string
+  /** Производственный план — для выбора строки при назначении. */
+  workPlan?: WorkPlan
   /**
    * Без внешней шапки секции — для встраивания в общий «План работ».
    * Роль и календарь остаются, дублирующий title убирается.
    */
   embedded?: boolean
+  /** Вызывается после любого изменения назначений (для пересчёта план/факт). */
+  onAssignmentsChange?: (assignments: WorkDayAssignment[]) => void
 }
 
-function newStageDraft(): Omit<WorkDayStage, 'id' | 'status' | 'media' | 'actualQty' | 'submittedAtIso' | 'reviewedAtIso'> {
+type PlanPick = {
+  number: string
+  title: string
+  total: number
+  unitLabel: string
+  unitId: MeasurementUnitId
+}
+
+function flattenPlanItems(plan: WorkPlan | undefined): PlanPick[] {
+  if (!plan) return []
+  const out: PlanPick[] = []
+  for (const section of plan.sections) {
+    for (const item of section.items) {
+      out.push({
+        number: item.number,
+        title: item.title,
+        total: item.total,
+        unitLabel: unitLabel(item.unit),
+        unitId: item.unit,
+      })
+    }
+  }
+  return out
+}
+
+/** Типовые этапы по номеру строки плана — чтобы назначение было техн. грамотным. */
+function defaultStagesForItem(item: PlanPick | null): Array<ReturnType<typeof newStageDraft>> {
+  const u = item?.unitLabel ?? 'м²'
+  const n = item?.number ?? ''
+  if (n === '2.2') {
+    return [
+      {
+        title: 'Планировка корыта',
+        requirements: 'Геодезия отметок, уплотнение грунта основания.',
+        plannedQty: 100,
+        unit: u,
+      },
+      {
+        title: 'Отсыпка песка 300 мм',
+        requirements: 'Песок карьерный. Толщина 300 мм, послойно.',
+        plannedQty: 100,
+        unit: u,
+      },
+      {
+        title: 'Уплотнение песка',
+        requirements: 'Коэф. уплотнения по проекту. Контроль толщины.',
+        plannedQty: 100,
+        unit: u,
+      },
+    ]
+  }
+  if (n === '2.3') {
+    return [
+      {
+        title: 'Щебень 20–40, толщина 200 мм',
+        requirements: 'Фракция 20–40. После приёмки песчаного основания.',
+        plannedQty: 100,
+        unit: u,
+      },
+      {
+        title: 'Уплотнение щебня',
+        requirements: 'Укатка, контроль отметок.',
+        plannedQty: 100,
+        unit: u,
+      },
+    ]
+  }
+  if (n === '1.3') {
+    return [
+      {
+        title: 'Демонтаж бортового камня',
+        requirements: 'Аккуратный демонтаж, складирование, вывоз боя.',
+        plannedQty: 40,
+        unit: u,
+      },
+    ]
+  }
+  if (n === '1.1' || n === '1.2') {
+    return [
+      {
+        title: 'Установка бортового камня',
+        requirements: 'По шнуру, бетонное основание, швы. Высота бровки по проекту.',
+        plannedQty: 40,
+        unit: u,
+      },
+    ]
+  }
+  if (n === '2.1') {
+    return [
+      {
+        title: 'Разборка покрытия тротуара',
+        requirements: 'Срезка покрытия, вывоз боя. Основание ровное.',
+        plannedQty: 100,
+        unit: u,
+      },
+    ]
+  }
+  if (n === '5.1') {
+    return [
+      {
+        title: 'Рытьё траншеи под КК',
+        requirements: 'Глубина и ширина по проекту.',
+        plannedQty: 30,
+        unit: u,
+      },
+      {
+        title: 'Укладка труб КК',
+        requirements: 'Стыковка, песчаная подсыпка, маркировка.',
+        plannedQty: 30,
+        unit: u,
+      },
+    ]
+  }
+  if (n.startsWith('3.')) {
+    return [
+      {
+        title: item?.title ?? 'Асфальтовые работы',
+        requirements: 'Температура смеси, уплотнение, контроль толщины.',
+        plannedQty: 200,
+        unit: u,
+      },
+    ]
+  }
+  return [
+    {
+      title: item?.title ?? 'Этап работ',
+      requirements: '',
+      plannedQty: 50,
+      unit: u,
+    },
+  ]
+}
+
+function newStageDraft(): Omit<
+  WorkDayStage,
+  'id' | 'status' | 'media' | 'actualQty' | 'submittedAtIso' | 'reviewedAtIso'
+> {
   return {
     title: '',
     requirements: '',
     plannedQty: 0,
-    unit: 'м',
+    unit: 'м²',
   }
 }
 
-export function SiteWorkDayPlanSection({ siteId, siteName, embedded = false }: Props) {
+export function SiteWorkDayPlanSection({
+  siteId,
+  siteName,
+  workPlan,
+  embedded = false,
+  onAssignmentsChange,
+}: Props) {
   const [role, setRole] = useState<WorkDayRole>('brigadier')
   const [view, setView] = useState<CalendarView>('day')
   const [cursor, setCursor] = useState(() => new Date())
@@ -59,7 +207,13 @@ export function SiteWorkDayPlanSection({ siteId, siteName, embedded = false }: P
   const [assignOpen, setAssignOpen] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
 
+  const planItems = useMemo(() => flattenPlanItems(workPlan), [workPlan])
   const selectedKey = toDateKey(cursor)
+
+  const replaceAssignments = (next: WorkDayAssignment[]) => {
+    setAssignments(next)
+    onAssignmentsChange?.(next)
+  }
 
   useEffect(() => {
     setAssignments(loadWorkDayPlan(siteId).assignments)
@@ -92,8 +246,8 @@ export function SiteWorkDayPlanSection({ siteId, siteName, embedded = false }: P
 
   const updateAssignment = (next: WorkDayAssignment) => {
     const list = assignments.map((a) => (a.id === next.id ? next : a))
-    setAssignments(list)
     upsertAssignment(siteId, next)
+    replaceAssignments(list)
   }
 
   const handleApprove = (assignmentId: string, stageId: string) => {
@@ -173,9 +327,10 @@ export function SiteWorkDayPlanSection({ siteId, siteName, embedded = false }: P
       {embedded ? (
         <div className={styles.embeddedIntro}>
           <div className={styles.embeddedIntroText}>
-            <h3 className={styles.embeddedTitle}>Задачи по дням</h3>
+            <h3 className={styles.embeddedTitle}>Календарь заданий</h3>
             <p className={styles.embeddedLead}>
-              Назначение бригадиру, факт с фото/видео, приёмка и прогресс по строкам общего плана.
+              Порядок работ по строкам плана: этапы дня, факт с фото/видео, приёмка
+              руководителем. Следующий этап открывается только после «Выполнено».
             </p>
           </div>
           <div className={styles.roleSwitch} role="group" aria-label="Роль">
@@ -337,10 +492,11 @@ export function SiteWorkDayPlanSection({ siteId, siteName, embedded = false }: P
         <AssignModal
           siteId={siteId}
           defaultDateKey={selectedKey}
+          planItems={planItems}
           onClose={() => setAssignOpen(false)}
           onSave={(a) => {
             upsertAssignment(siteId, a)
-            setAssignments(loadWorkDayPlan(siteId).assignments)
+            replaceAssignments(loadWorkDayPlan(siteId).assignments)
             setAssignOpen(false)
             setCursor(parseDateKey(a.dateKey))
             setView('day')
@@ -358,7 +514,7 @@ export function SiteWorkDayPlanSection({ siteId, siteName, embedded = false }: P
           onApprove={handleApprove}
           onDelete={() => {
             removeAssignment(siteId, active.id)
-            setAssignments(loadWorkDayPlan(siteId).assignments)
+            replaceAssignments(loadWorkDayPlan(siteId).assignments)
             setActiveId(null)
           }}
         />
@@ -651,37 +807,37 @@ function TaskDetailModal({
 function AssignModal({
   siteId,
   defaultDateKey,
+  planItems,
   onClose,
   onSave,
 }: {
   siteId: string
   defaultDateKey: string
+  planItems: PlanPick[]
   onClose: () => void
   onSave: (a: WorkDayAssignment) => void
 }) {
+  const initial =
+    planItems.find((p) => p.number === '2.2') ?? planItems[0] ?? null
   const [dateKey, setDateKey] = useState(defaultDateKey)
   const [area, setArea] = useState('Участок А')
   const [brigadierName, setBrigadierName] = useState('Минасян А.Л.')
-  const [planItemNumber, setPlanItemNumber] = useState('2.2')
-  const [planItemTitle, setPlanItemTitle] = useState('Устройство песчаного основания')
-  const [planTotalQty, setPlanTotalQty] = useState('28641')
-  const [planUnit, setPlanUnit] = useState('м²')
-  const [stages, setStages] = useState([
-    {
-      ...newStageDraft(),
-      title: 'Песчаное основание 300 мм',
-      requirements: 'Песок карьерный, уплотнение. Толщина 300 мм.',
-      plannedQty: 100,
-      unit: 'м',
-    },
-    {
-      ...newStageDraft(),
-      title: 'Щебень 20–40, толщина 200 мм',
-      requirements: 'Фракция 20–40. Толщина 200 мм.',
-      plannedQty: 100,
-      unit: 'м',
-    },
-  ])
+  const [selectedNumber, setSelectedNumber] = useState(initial?.number ?? '')
+  const selected = planItems.find((p) => p.number === selectedNumber) ?? null
+  const [planItemTitle, setPlanItemTitle] = useState(initial?.title ?? '')
+  const [planTotalQty, setPlanTotalQty] = useState(String(initial?.total ?? 0))
+  const [planUnit, setPlanUnit] = useState(initial?.unitLabel ?? 'м²')
+  const [stages, setStages] = useState(() => defaultStagesForItem(initial))
+
+  const applyPlanItem = (number: string) => {
+    setSelectedNumber(number)
+    const item = planItems.find((p) => p.number === number) ?? null
+    if (!item) return
+    setPlanItemTitle(item.title)
+    setPlanTotalQty(String(item.total))
+    setPlanUnit(item.unitLabel)
+    setStages(defaultStagesForItem(item))
+  }
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -702,7 +858,7 @@ function AssignModal({
     <div className={styles.backdrop} role="dialog" aria-modal="true" onClick={onClose}>
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         <header className={styles.dialogHead}>
-          <h3 className={styles.dialogTitle}>Назначить задачу</h3>
+          <h3 className={styles.dialogTitle}>Назначить задачу бригадиру</h3>
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Закрыть">
             ×
           </button>
@@ -721,16 +877,30 @@ function AssignModal({
             <span>Бригадир</span>
             <input value={brigadierName} onChange={(e) => setBrigadierName(e.target.value)} />
           </label>
-          <label className={styles.field}>
-            <span>№ строки плана</span>
-            <input value={planItemNumber} onChange={(e) => setPlanItemNumber(e.target.value)} />
+          <label className={`${styles.field} ${styles.fieldFull}`}>
+            <span>Строка производственного плана</span>
+            {planItems.length > 0 ? (
+              <select value={selectedNumber} onChange={(e) => applyPlanItem(e.target.value)}>
+                {planItems.map((p) => (
+                  <option key={p.number} value={p.number}>
+                    {p.number} — {p.title} ({formatQtyRu(p.total)} {p.unitLabel})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                value={selectedNumber}
+                onChange={(e) => setSelectedNumber(e.target.value)}
+                placeholder="№ строки"
+              />
+            )}
           </label>
           <label className={`${styles.field} ${styles.fieldFull}`}>
-            <span>Вид работ (из общего плана)</span>
+            <span>Вид работ</span>
             <input value={planItemTitle} onChange={(e) => setPlanItemTitle(e.target.value)} />
           </label>
           <label className={styles.field}>
-            <span>Общий план</span>
+            <span>Общий план по строке</span>
             <input
               type="number"
               value={planTotalQty}
@@ -738,12 +908,14 @@ function AssignModal({
             />
           </label>
           <label className={styles.field}>
-            <span>Ед. изм. плана</span>
+            <span>Ед. изм.</span>
             <input value={planUnit} onChange={(e) => setPlanUnit(e.target.value)} />
           </label>
         </div>
 
-        <h4 className={styles.stagesHeading}>Этапы (по порядку)</h4>
+        <h4 className={styles.stagesHeading}>
+          Этапы дня (по порядку — следующий открывается после приёмки)
+        </h4>
         {stages.map((s, i) => (
           <div key={i} className={styles.stageEdit}>
             <p className={styles.stageIndex}>Этап {i + 1}</p>
@@ -773,7 +945,7 @@ function AssignModal({
             </label>
             <div className={styles.row2}>
               <label className={styles.field}>
-                <span>Объём</span>
+                <span>Объём на день</span>
                 <input
                   type="number"
                   value={s.plannedQty || ''}
@@ -803,7 +975,15 @@ function AssignModal({
         <button
           type="button"
           className={styles.secondaryBtn}
-          onClick={() => setStages((p) => [...p, newStageDraft()])}
+          onClick={() =>
+            setStages((p) => [
+              ...p,
+              {
+                ...newStageDraft(),
+                unit: selected?.unitLabel ?? (planUnit || 'м²'),
+              },
+            ])
+          }
         >
           + Добавить этап
         </button>
@@ -818,7 +998,7 @@ function AssignModal({
               title: s.title.trim(),
               requirements: s.requirements.trim(),
               plannedQty: s.plannedQty,
-              unit: s.unit.trim() || 'м',
+              unit: s.unit.trim() || planUnit || 'м²',
               actualQty: null,
               status: i === 0 ? 'open' : 'locked',
               media: [],
@@ -831,10 +1011,10 @@ function AssignModal({
               dateKey,
               area: area.trim(),
               brigadierName: brigadierName.trim(),
-              planItemNumber: planItemNumber.trim() || '—',
+              planItemNumber: (selectedNumber || selected?.number || '—').trim(),
               planItemTitle: planItemTitle.trim(),
               planTotalQty: Number(planTotalQty) || 0,
-              planUnit: planUnit.trim() || 'м',
+              planUnit: planUnit.trim() || 'м²',
               stages: builtStages,
               createdAtIso: new Date().toISOString(),
             })

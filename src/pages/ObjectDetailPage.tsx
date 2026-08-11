@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { BrigadierStoredReport } from '../domain/brigadierReport'
 import type { ProcurementRequest } from '../domain/procurementRequest'
-import { applyWorkEntriesToPlan } from '../domain/workPlan'
+import { applyAcceptedQuantitiesToPlan, applyWorkEntriesToPlan } from '../domain/workPlan'
+import { acceptedQtyByPlanItemMap } from '../domain/workDayPlan'
 import { computeSiteLiveKpis, todayIsoMsk } from '../domain/siteKpis'
 import { getSiteDetailDashboard } from '../data/siteDetail.mock'
 import { getWorkPlanForSite } from '../data/workPlans'
@@ -38,6 +39,7 @@ import { SiteDetailKpiGrid } from '../features/site-detail/SiteDetailKpiGrid'
 import { SiteReportingSection } from '../features/site-detail/SiteReportingSection'
 import { SiteScheduleSection } from '../features/site-detail/SiteScheduleSection'
 import { SiteWorkPlanSection } from '../features/site-detail/SiteWorkPlanSection'
+import { loadWorkDayPlan } from '../lib/workDayPlanRepository'
 import styles from './ObjectDetailPage.module.css'
 
 export function ObjectDetailPage() {
@@ -138,10 +140,14 @@ export function ObjectDetailPage() {
   }, [])
 
   const basePlan = site ? getWorkPlanForSite(site.id) : null
-  const workPlan = useMemo(
-    () => (basePlan ? applyWorkEntriesToPlan(basePlan, brigadierReports) : null),
-    [basePlan, brigadierReports],
-  )
+  // Пересчёт при приёмке дневных этапов (localStorage → факт в плане).
+  const [dayPlanRevision, setDayPlanRevision] = useState(0)
+  const workPlan = useMemo(() => {
+    if (!basePlan || !site) return null
+    const withReports = applyWorkEntriesToPlan(basePlan, brigadierReports)
+    const dayQty = acceptedQtyByPlanItemMap(loadWorkDayPlan(site.id).assignments)
+    return applyAcceptedQuantitiesToPlan(withReports, dayQty)
+  }, [basePlan, brigadierReports, site, dayPlanRevision])
 
   if (!site) {
     return (
@@ -210,6 +216,32 @@ export function ObjectDetailPage() {
         </button>
       </div>
 
+      <SiteBrigadierSubmittedReportsSection
+        siteId={site.id}
+        siteName={site.name}
+        reports={brigadierReports}
+        serverBacked={remoteFormsActive}
+        onRemoveReport={async (id) => {
+          if (remoteFormsRef.current) {
+            const ok = await deleteBrigadierReportRemote(site.id, id)
+            if (!ok) {
+              setFormsApiMessage('Не удалось удалить отчёт на сервере.')
+              void resyncFormsFromServer()
+              return
+            }
+          }
+          setBrigadierReports((prev) => {
+            const row = prev.find((r) => r.id === id)
+            if (row) {
+              for (const a of row.attachments) {
+                if (a.previewUrl.startsWith('blob:')) URL.revokeObjectURL(a.previewUrl)
+              }
+            }
+            return prev.filter((r) => r.id !== id)
+          })
+        }}
+      />
+
       <SiteObjectMediaDropSection
         key={site.id}
         siteId={site.id}
@@ -227,6 +259,7 @@ export function ObjectDetailPage() {
           siteName={site.name}
           windowStartIso={liveKpis.startIso}
           windowEndIso={liveKpis.endIso}
+          onDayPlanChange={() => setDayPlanRevision((n) => n + 1)}
         />
       ) : null}
 
@@ -271,31 +304,6 @@ export function ObjectDetailPage() {
         }}
       />
 
-      <SiteBrigadierSubmittedReportsSection
-        siteId={site.id}
-        siteName={site.name}
-        reports={brigadierReports}
-        serverBacked={remoteFormsActive}
-        onRemoveReport={async (id) => {
-          if (remoteFormsRef.current) {
-            const ok = await deleteBrigadierReportRemote(site.id, id)
-            if (!ok) {
-              setFormsApiMessage('Не удалось удалить отчёт на сервере.')
-              void resyncFormsFromServer()
-              return
-            }
-          }
-          setBrigadierReports((prev) => {
-            const row = prev.find((r) => r.id === id)
-            if (row) {
-              for (const a of row.attachments) {
-                if (a.previewUrl.startsWith('blob:')) URL.revokeObjectURL(a.previewUrl)
-              }
-            }
-            return prev.filter((r) => r.id !== id)
-          })
-        }}
-      />
       <footer className={styles.footer}>
         <p className={styles.footerNote}>
           Показаны демонстрационные показатели. После подключения учётных систем те же блоки

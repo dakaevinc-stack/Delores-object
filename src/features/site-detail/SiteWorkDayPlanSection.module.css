@@ -708,7 +708,8 @@
   color: var(--muted);
 }
 
-.field input {
+.field input,
+.field select {
   min-height: 42px;
   border-radius: 10px;
   border: 1px solid var(--border);

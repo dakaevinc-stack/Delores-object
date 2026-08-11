@@ -85,6 +85,32 @@
   margin-left: auto;
 }
 
+.expandedBody {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 0 0 8px;
+}
+
+.summaryPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 4px 4px;
+}
+
+.dayBlock {
+  margin-top: 0;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(15, 23, 42, 0.12);
+}
+
+.registryBlock {
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px dashed rgba(15, 23, 42, 0.12);
+}
+
 .lead {
   margin: 0;
   max-width: 60ch;
@@ -276,12 +302,6 @@
   margin: 0;
   font-size: 13px;
   color: var(--muted);
-}
-
-.dayBlock {
-  margin-top: 4px;
-  padding-top: 18px;
-  border-top: 1px dashed rgba(15, 23, 42, 0.12);
 }
 
 /*

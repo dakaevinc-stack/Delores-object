@@ -455,18 +455,33 @@ export function applyWorkEntriesToPlan(
 ): WorkPlan {
   const factByNumber = computePlanFactFromReports(plan, reports)
   if (factByNumber.size === 0) return plan
-  return {
-    ...plan,
-    sections: plan.sections.map((section) => ({
-      ...section,
-      items: section.items.map((item) => {
-        const fact = factByNumber.get(item.number)
-        if (!fact) return item
-        return {
-          ...item,
-          done: item.done + fact.qtyAdded,
-        }
-      }),
-    })),
-  }
+  return applyAcceptedQuantitiesToPlan(
+    plan,
+    new Map([...factByNumber].map(([k, v]) => [k, v.qtyAdded])),
+  )
+}
+
+/**
+ * Прибавляет к `done` принятые объёмы (отчёты, дневные задачи и т.п.).
+ * Исходный снимок плана не мутируется.
+ */
+export function applyAcceptedQuantitiesToPlan(
+  plan: WorkPlan,
+  qtyByNumber: ReadonlyMap<string, number>,
+): WorkPlan {
+  if (qtyByNumber.size === 0) return plan
+  let changed = false
+  const sections = plan.sections.map((section) => ({
+    ...section,
+    items: section.items.map((item) => {
+      const add = qtyByNumber.get(item.number)
+      if (!add) return item
+      changed = true
+      return {
+        ...item,
+        done: item.done + add,
+      }
+    }),
+  }))
+  return changed ? { ...plan, sections } : plan
 }
