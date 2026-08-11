@@ -3,13 +3,11 @@ import { unitLabel, type MeasurementUnitId } from '../../domain/brigadierReport'
 import {
   acceptedQtyForPlanItem,
   addDays,
-  approveStage,
   assignmentProgress,
   canSubmitStage,
   formatDayHeadingRu,
   formatProgressLine,
   formatQtyRu,
-  formatShortDayRu,
   newId,
   parseDateKey,
   startOfMonth,
@@ -250,12 +248,6 @@ export function SiteWorkDayPlanSection({
     replaceAssignments(list)
   }
 
-  const handleApprove = (assignmentId: string, stageId: string) => {
-    const cur = assignments.find((a) => a.id === assignmentId)
-    if (!cur) return
-    updateAssignment(approveStage(cur, stageId))
-  }
-
   const handleSubmit = (
     assignmentId: string,
     stageId: string,
@@ -317,8 +309,8 @@ export function SiteWorkDayPlanSection({
               </div>
             </div>
             <p className={styles.lead}>
-              {siteName}: задачи по дням. Без фото или видео этап не закрыть. После проверки —
-              зелёная галочка, следующий этап открывается сам.
+              {siteName}: задания по дням. Бригадир отмечает этапы сам: объём + фото/видео →
+              сразу «Выполнено». Согласование не нужно — можно закрывать этапы в любом порядке.
             </p>
           </div>
         </header>
@@ -333,8 +325,8 @@ export function SiteWorkDayPlanSection({
             </p>
             <h3 className={styles.embeddedTitle}>Календарь заданий</h3>
             <p className={styles.embeddedLead}>
-              Этапы по строкам плана: факт с фото/видео, приёмка руководителем. Следующий этап —
-              только после «Выполнено».
+              Укажите объём, приложите фото/видео и нажмите «Отметить выполненным». Этап сразу
+              закрывается — ждать никого не нужно. Остальные этапы можно делать в любом порядке.
             </p>
           </div>
           <div className={styles.roleSwitch} role="group" aria-label="Роль">
@@ -405,18 +397,11 @@ export function SiteWorkDayPlanSection({
           {dayList.length === 0 ? (
             <p className={styles.empty}>На этот день задач нет.</p>
           ) : (
-            <ul className={styles.cardList}>
-              {dayList.map((a) => (
-                <li key={a.id}>
-                  <AssignmentCard
-                    assignment={a}
-                    role={role}
-                    onOpen={() => setActiveId(a.id)}
-                    allAssignments={assignments}
-                  />
-                </li>
-              ))}
-            </ul>
+            <DayBriefingSheet
+              dateKey={selectedKey}
+              assignments={dayList}
+              onOpen={(id) => setActiveId(id)}
+            />
           )}
         </div>
       ) : null}
@@ -515,7 +500,6 @@ export function SiteWorkDayPlanSection({
           allAssignments={assignments}
           onClose={() => setActiveId(null)}
           onSubmit={handleSubmit}
-          onApprove={handleApprove}
           onDelete={() => {
             removeAssignment(siteId, active.id)
             replaceAssignments(loadWorkDayPlan(siteId).assignments)
@@ -527,109 +511,123 @@ export function SiteWorkDayPlanSection({
   )
 }
 
-function AssignmentCard({
-  assignment,
-  role,
-  onOpen,
-  allAssignments,
-}: {
-  assignment: WorkDayAssignment
-  role: WorkDayRole
-  onOpen: () => void
-  allAssignments: WorkDayAssignment[]
-}) {
-  const prog = assignmentProgress(assignment)
-  const accepted = acceptedQtyForPlanItem(allAssignments, assignment.planItemNumber)
-  const waiting = assignment.stages.some((s) => s.status === 'submitted')
-  const left = Math.max(0, assignment.planTotalQty - accepted)
-  const pct =
-    assignment.planTotalQty > 0
-      ? Math.min(100, Math.round((accepted / assignment.planTotalQty) * 1000) / 10)
-      : 0
-  const initials = assignment.brigadierName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]!.toUpperCase())
-    .join('')
+function taskRowStatus(a: WorkDayAssignment): {
+  tone: 'done' | 'open'
+  label: string
+} {
+  const prog = assignmentProgress(a)
+  if (prog.allDone) return { tone: 'done', label: 'Готово' }
+  return { tone: 'open', label: 'Сделать' }
+}
 
-  const statusTone = prog.allDone ? 'done' : waiting ? 'wait' : 'open'
-  const statusLabel = prog.allDone
-    ? 'Выполнено'
-    : waiting
-      ? 'На проверке'
-      : `Этап ${prog.doneStages + 1} из ${prog.totalStages}`
+/** Краткое описание шага для списка заданий. */
+function formatStageBrief(s: WorkDayStage): string {
+  return s.title.trim()
+}
+
+/** Одна ячейка дня: все задания бригадиру списком внутри. */
+function DayBriefingSheet({
+  dateKey,
+  assignments,
+  onOpen,
+}: {
+  dateKey: string
+  assignments: WorkDayAssignment[]
+  onOpen: (id: string) => void
+}) {
+  const brigadiers = [
+    ...new Set(assignments.map((a) => a.brigadierName.trim()).filter(Boolean)),
+  ]
+  const doneCount = assignments.filter((a) => assignmentProgress(a).allDone).length
+  const openCount = assignments.length - doneCount
+
+  const dayTone = doneCount === assignments.length ? 'done' : 'open'
+  const dayLabel =
+    doneCount === assignments.length
+      ? 'Все задания дня закрыты'
+      : `В работе: ${openCount}`
 
   return (
-    <button type="button" className={styles.card} onClick={onOpen}>
+    <article className={styles.daySheet}>
       <span className={styles.cardRail} aria-hidden />
       <span className={styles.cardShimmer} aria-hidden />
 
-      <div className={styles.cardHead}>
-        <span className={styles.cardBadge}>
-          <span className={styles.cardBadgeKicker}>План</span>
-          <span className={styles.cardBadgeTitle}>{assignment.planItemNumber}</span>
+      <header className={styles.daySheetHead}>
+        <div className={styles.daySheetHeadText}>
+          <p className={styles.daySheetKicker}>Задания на день</p>
+          <h3 className={styles.daySheetTitle}>{formatDayHeadingRu(dateKey)}</h3>
+          <p className={styles.daySheetLead}>
+            {assignments.length}{' '}
+            {assignments.length === 1
+              ? 'задание'
+              : assignments.length < 5
+                ? 'задания'
+                : 'заданий'}
+            {brigadiers.length
+              ? ` · бригадир: ${brigadiers.join(', ')}`
+              : null}
+          </p>
+        </div>
+        <span className={`${styles.statusPill} ${styles[`status_${dayTone}`]}`}>
+          {dayTone === 'done' ? <CheckIcon /> : null}
+          {dayLabel}
         </span>
-        <span className={`${styles.statusPill} ${styles[`status_${statusTone}`]}`}>
-          {prog.allDone ? <CheckIcon /> : null}
-          {statusLabel}
-        </span>
-      </div>
+      </header>
 
-      <p className={styles.cardArea}>{assignment.area}</p>
-      <h4 className={styles.cardTitle}>{assignment.planItemTitle}</h4>
+      <ol className={styles.taskList}>
+        {assignments.map((a, index) => {
+          const row = taskRowStatus(a)
+          const currentId = a.stages.find((s) => s.status === 'open')?.id ?? null
 
-      <div className={styles.cardPerson}>
-        <span className={styles.cardAvatar} aria-hidden>
-          {initials || 'Б'}
-        </span>
-        <div className={styles.cardPersonText}>
-          <span className={styles.cardPersonLabel}>Бригадир</span>
-          <span className={styles.cardPersonName}>{assignment.brigadierName}</span>
-        </div>
-        {role === 'manager' ? (
-          <span className={styles.cardDate}>{formatShortDayRu(assignment.dateKey)}</span>
-        ) : null}
-      </div>
-
-      <div className={styles.metricStrip} aria-label="Прогресс по строке плана">
-        <div className={styles.metric}>
-          <span className={styles.metricLabel}>Факт</span>
-          <span className={styles.metricValue}>
-            {formatQtyRu(accepted)} {assignment.planUnit}
-          </span>
-        </div>
-        <div className={styles.metric}>
-          <span className={styles.metricLabel}>План</span>
-          <span className={styles.metricValue}>
-            {formatQtyRu(assignment.planTotalQty)} {assignment.planUnit}
-          </span>
-        </div>
-        <div className={styles.metric}>
-          <span className={styles.metricLabel}>Осталось</span>
-          <span className={styles.metricValue}>
-            {formatQtyRu(left)} {assignment.planUnit}
-          </span>
-        </div>
-      </div>
-
-      <div className={styles.progressTrack} aria-hidden>
-        <span className={styles.progressFill} style={{ width: `${pct}%` }} />
-      </div>
-
-      <div className={styles.stageRail}>
-        {assignment.stages.map((s, i) => (
-          <span
-            key={s.id}
-            className={`${styles.stageChip} ${styles[`st_${s.status}`]}`}
-            title={s.title}
-          >
-            <span className={styles.stageChipIdx}>{i + 1}</span>
-            <span className={styles.stageChipLabel}>{s.title}</span>
-          </span>
-        ))}
-      </div>
-    </button>
+          return (
+            <li key={a.id}>
+              <button
+                type="button"
+                className={`${styles.taskRow} ${styles[`taskRow_${row.tone}`]}`}
+                onClick={() => onOpen(a.id)}
+              >
+                <span className={styles.taskRowNum} aria-hidden>
+                  {index + 1}
+                </span>
+                <div className={styles.taskRowBody}>
+                  <div className={styles.taskRowTop}>
+                    <p className={styles.taskRowArea}>{a.area}</p>
+                    <span className={`${styles.taskRowStatus} ${styles[`tr_${row.tone}`]}`}>
+                      {row.label}
+                    </span>
+                  </div>
+                  <ol className={styles.taskSteps}>
+                    {a.stages.map((s, i) => {
+                      const isActive = s.id === currentId
+                      const isDone = s.status === 'done' || s.status === 'submitted'
+                      const isMuted = isDone
+                      return (
+                        <li
+                          key={s.id}
+                          className={`${styles.taskStep} ${
+                            isActive ? styles.taskStepActive : ''
+                          } ${isMuted ? styles.taskStepMuted : ''} ${
+                            isDone ? styles.taskStepDone : ''
+                          }`}
+                        >
+                          <span className={styles.taskStepIndex} aria-hidden>
+                            {isDone ? '✓' : i + 1}
+                          </span>
+                          <span className={styles.taskStepText}>{formatStageBrief(s)}</span>
+                        </li>
+                      )
+                    })}
+                  </ol>
+                </div>
+                <span className={styles.taskRowArrow} aria-hidden>
+                  →
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ol>
+    </article>
   )
 }
 
@@ -639,7 +637,6 @@ function TaskDetailModal({
   allAssignments,
   onClose,
   onSubmit,
-  onApprove,
   onDelete,
 }: {
   assignment: WorkDayAssignment
@@ -647,13 +644,14 @@ function TaskDetailModal({
   allAssignments: WorkDayAssignment[]
   onClose: () => void
   onSubmit: (assignmentId: string, stageId: string, qty: number, media: WorkDayMedia[]) => void
-  onApprove: (assignmentId: string, stageId: string) => void
   onDelete: () => void
 }) {
   const accepted = acceptedQtyForPlanItem(allAssignments, assignment.planItemNumber)
+  const prog = assignmentProgress(assignment)
   const [qtyByStage, setQtyByStage] = useState<Record<string, string>>({})
   const [mediaByStage, setMediaByStage] = useState<Record<string, WorkDayMedia[]>>({})
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const stageRefs = useRef<Record<string, HTMLLIElement | null>>({})
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -688,6 +686,37 @@ function TaskDetailModal({
     }))
   }
 
+  const focusNextOpen = (completedStageId: string) => {
+    const idx = assignment.stages.findIndex((s) => s.id === completedStageId)
+    const remaining = assignment.stages.filter(
+      (s, i) =>
+        s.id !== completedStageId &&
+        (s.status === 'open' || s.status === 'locked') &&
+        // предпочитаем следующий по списку
+        (idx < 0 || i > idx),
+    )
+    const fallback = assignment.stages.find(
+      (s) => s.id !== completedStageId && (s.status === 'open' || s.status === 'locked'),
+    )
+    const nextOpen = remaining[0] ?? fallback
+    if (!nextOpen) return
+    requestAnimationFrame(() => {
+      stageRefs.current[nextOpen.id]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    })
+  }
+
+  const handleMarkDone = (stageId: string, qty: number, media: WorkDayMedia[]) => {
+    onSubmit(assignment.id, stageId, qty, media)
+    setMediaByStage((prev) => {
+      const copy = { ...prev }
+      delete copy[stageId]
+      return copy
+    })
+    focusNextOpen(stageId)
+  }
+
+  const nextHint = prog.openStage?.title ?? null
+
   return (
     <div className={styles.backdrop} role="dialog" aria-modal="true" onClick={onClose}>
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
@@ -705,50 +734,67 @@ function TaskDetailModal({
         </header>
 
         <p className={styles.dialogProgress}>
+          Этапы: {prog.doneStages} из {prog.totalStages} закрыты
+          {nextHint && !prog.allDone ? ` · дальше: ${nextHint}` : null}
+          {prog.allDone ? ' · задание закрыто' : null}
+        </p>
+        <p className={styles.dialogProgressSub}>
           {formatProgressLine(accepted, assignment.planTotalQty, assignment.planUnit)}
         </p>
         <div className={styles.progressBar} aria-hidden>
           <span
             className={styles.progressFill}
             style={{
-              width: `${Math.min(100, (accepted / Math.max(1, assignment.planTotalQty)) * 100)}%`,
+              width: `${Math.min(
+                100,
+                (prog.doneStages / Math.max(1, prog.totalStages)) * 100,
+              )}%`,
             }}
           />
         </div>
 
         <ol className={styles.stageList}>
           {assignment.stages.map((stage, index) => {
+            const isDone = stage.status === 'done' || stage.status === 'submitted'
+            const canWork =
+              role === 'brigadier' && (stage.status === 'open' || stage.status === 'locked')
             const draftMedia = mediaByStage[stage.id] ?? []
             const combinedMedia = stage.media.length ? stage.media : draftMedia
-            const qtyStr = qtyByStage[stage.id] ?? (stage.actualQty != null ? String(stage.actualQty) : '')
+            const qtyStr =
+              qtyByStage[stage.id] ?? (stage.actualQty != null ? String(stage.actualQty) : '')
             const qtyNum = Number(qtyStr.replace(',', '.'))
             const canSend = canSubmitStage(
               { ...stage, media: combinedMedia },
               Number.isFinite(qtyNum) ? qtyNum : 0,
             )
+            const isFocus = prog.openStage?.id === stage.id
 
             return (
-              <li key={stage.id} className={`${styles.stageCard} ${styles[`stage_${stage.status}`]}`}>
+              <li
+                key={stage.id}
+                ref={(el) => {
+                  stageRefs.current[stage.id] = el
+                }}
+                className={`${styles.stageCard} ${
+                  isDone ? styles.stage_done : styles.stage_open
+                } ${isFocus && !isDone ? styles.stage_focus : ''}`}
+              >
                 <div className={styles.stageHead}>
                   <span className={styles.stageIndex}>Этап {index + 1}</span>
-                  {stage.status === 'done' ? (
+                  {isDone ? (
                     <span className={styles.badgeDone}>
                       <CheckIcon /> Выполнено
                     </span>
-                  ) : stage.status === 'locked' ? (
-                    <span className={styles.badgeLocked}>Закрыт</span>
-                  ) : stage.status === 'submitted' ? (
-                    <span className={styles.badgeWait}>На проверке</span>
-                  ) : (
-                    <span className={styles.badgeOpen}>В работе</span>
-                  )}
+                  ) : null}
                 </div>
                 <h4 className={styles.stageTitle}>{stage.title}</h4>
-                <p className={styles.stageReq}>{stage.requirements}</p>
+                {stage.requirements ? (
+                  <p className={styles.stageReq}>{stage.requirements}</p>
+                ) : null}
                 <p className={styles.stagePlan}>
-                  План: {formatQtyRu(stage.plannedQty)} {stage.unit}
-                  {stage.actualQty != null
-                    ? ` · Факт: ${formatQtyRu(stage.actualQty)} ${stage.unit}`
+                  План на этап: {formatQtyRu(stage.plannedQty)} {stage.unit}
+                  {isDone && stage.actualQty != null
+                    ? ` · сдано: ${formatQtyRu(stage.actualQty)} ${stage.unit}`
                     : null}
                 </p>
 
@@ -766,10 +812,10 @@ function TaskDetailModal({
                   </ul>
                 ) : null}
 
-                {role === 'brigadier' && stage.status === 'open' ? (
+                {canWork ? (
                   <div className={styles.brigadierActions}>
                     <label className={styles.field}>
-                      <span>Фактический объём ({stage.unit})</span>
+                      <span>Сколько сделали ({stage.unit})</span>
                       <input
                         type="number"
                         inputMode="decimal"
@@ -803,46 +849,25 @@ function TaskDetailModal({
                       Прикрепить фото или видео
                     </button>
                     <p className={styles.hint}>
-                      Без фото или видео сдать этап нельзя.
-                      {draftMedia.length === 0 ? ' Файлы ещё не выбраны.' : ` Выбрано: ${draftMedia.length}.`}
+                      {draftMedia.length === 0
+                        ? 'Чтобы закрыть этап: объём + хотя бы одно фото или видео.'
+                        : `Файлов: ${draftMedia.length}. Можно закрывать этап.`}
                     </p>
                     <button
                       type="button"
                       className={styles.primaryBtn}
                       disabled={!canSend}
                       onClick={() =>
-                        onSubmit(
-                          assignment.id,
+                        handleMarkDone(
                           stage.id,
                           qtyNum,
                           draftMedia.length ? draftMedia : [...stage.media],
                         )
                       }
                     >
-                      Сдать этап
+                      Отметить выполненным
                     </button>
                   </div>
-                ) : null}
-
-                {role === 'manager' && stage.status === 'submitted' ? (
-                  <div className={styles.managerActions}>
-                    <p className={styles.hint}>
-                      Проверьте объём и материалы съёмки, затем подтвердите.
-                    </p>
-                    <button
-                      type="button"
-                      className={styles.primaryBtn}
-                      onClick={() => onApprove(assignment.id, stage.id)}
-                    >
-                      Принять — Выполнено
-                    </button>
-                  </div>
-                ) : null}
-
-                {stage.status === 'locked' ? (
-                  <p className={styles.lockedNote}>
-                    Откроется после приёмки предыдущего этапа.
-                  </p>
                 ) : null}
               </li>
             )
@@ -1055,7 +1080,7 @@ function AssignModal({
               plannedQty: s.plannedQty,
               unit: s.unit.trim() || planUnit || 'м²',
               actualQty: null,
-              status: i === 0 ? 'open' : 'locked',
+              status: 'open',
               media: [],
               submittedAtIso: null,
               reviewedAtIso: null,

@@ -1,13 +1,14 @@
 import {
   newId,
+  settleAssignment,
   toDateKey,
   type WorkDayAssignment,
   type WorkDayPlanBundle,
   type WorkDayStage,
 } from '../domain/workDayPlan'
 
-/** v2 — обновлённый демо-календарь (логичная последовательность по плану). */
-const storageKey = (siteId: string) => `deloresh.work-day-plan.v2.${siteId}`
+/** v5 — все этапы сразу доступны, без очереди и проверки. */
+const storageKey = (siteId: string) => `deloresh.work-day-plan.v5.${siteId}`
 
 function readRaw(siteId: string): WorkDayPlanBundle | null {
   try {
@@ -83,7 +84,7 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
     createdAtIso: nowIso(),
   })
 
-  // Вчера: демонтаж бордюра — уже сдан, ждёт приёмки (для роли руководителя).
+  // Вчера: демонтаж бордюра — выполнено.
   const yesterdayCurb = base(
     key(-1),
     'Участок А — чётная сторона, пикет 12–18',
@@ -95,13 +96,14 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
     },
     [
       stage({
-        title: 'Демонтаж бортового камня',
-        requirements: 'Аккуратный демонтаж без повреждения соседних элементов. Складирование.',
+        title: 'Демонтировать бортовой камень на участке 42 м',
+        requirements: 'Аккуратный демонтаж, складирование.',
         plannedQty: 42,
         unit: 'м',
-        status: 'submitted',
+        status: 'done',
         actualQty: 42,
         submittedAtIso: nowIso(),
+        reviewedAtIso: nowIso(),
         media: [],
       }),
     ],
@@ -119,8 +121,8 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
     },
     [
       stage({
-        title: 'Разборка покрытия',
-        requirements: 'Срезка покрытия, вывоз боя. Основание под песок ровное.',
+        title: 'Разобрать покрытие тротуара на участке ~120 м²',
+        requirements: 'Срезка покрытия, вывоз боя.',
         plannedQty: 120,
         unit: 'м²',
         status: 'done',
@@ -131,7 +133,7 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
     ],
   )
 
-  // Сегодня: песчаное основание — 3 этапа (технологическая цепочка).
+  // Сегодня: песчаное основание — короткие шаги.
   const todaySand = base(
     key(0),
     'Участок А — тротуар, чётная сторона',
@@ -143,25 +145,26 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
     },
     [
       stage({
-        title: 'Планировка корыта',
-        requirements: 'Геодезия отметок, уплотнение грунта основания.',
+        title: 'Спланировать корыто на участке длиной 100 м и шириной 3 м',
+        requirements: 'Геодезия отметок, уплотнение грунта.',
         plannedQty: 100,
         unit: 'м²',
         status: 'open',
       }),
       stage({
-        title: 'Отсыпка песка 300 мм',
-        requirements: 'Песок карьерный. Толщина 300 мм, послойно.',
+        title:
+          'Устроить песчаное основание толщиной 30 см на длине 100 м и ширине 3 м',
+        requirements: 'Песок карьерный, послойно.',
         plannedQty: 100,
         unit: 'м²',
-        status: 'locked',
+        status: 'open',
       }),
       stage({
-        title: 'Уплотнение песка',
-        requirements: 'Коэф. уплотнения по проекту. Контроль толщины.',
+        title: 'Уплотнить песчаное основание',
+        requirements: 'Коэффициент уплотнения по проекту.',
         plannedQty: 100,
         unit: 'м²',
-        status: 'locked',
+        status: 'open',
       }),
     ],
   )
@@ -178,23 +181,23 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
     },
     [
       stage({
-        title: 'Рытьё траншеи под КК',
-        requirements: 'Глубина и ширина по проекту. Крепление стенок при необходимости.',
+        title: 'Вырыть траншею под КК длиной 35 м',
+        requirements: 'Глубина и ширина по проекту.',
         plannedQty: 35,
         unit: 'м',
         status: 'open',
       }),
       stage({
-        title: 'Укладка труб КК',
-        requirements: 'Стыковка, песчаная подсыпка, маркировка.',
+        title: 'Уложить трубы КК на длине 35 м',
+        requirements: 'Стыковка, песчаная подсыпка.',
         plannedQty: 35,
         unit: 'м',
-        status: 'locked',
+        status: 'open',
       }),
     ],
   )
 
-  // Завтра: щебень — только после песка (отдельная строка плана 2.3).
+  // Завтра: щебень.
   const tomorrowCrushed = base(
     key(1),
     'Участок А — тротуар, чётная сторона',
@@ -206,18 +209,19 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
     },
     [
       stage({
-        title: 'Щебень 20–40, толщина 200 мм',
-        requirements: 'Фракция 20–40. После приёмки песчаного основания на участке.',
+        title:
+          'Устроить основание из щебня фракции 20–40 толщиной 20 см на участке длиной 100 м и шириной 3 м',
+        requirements: 'Фракция 20–40, послойно.',
         plannedQty: 100,
         unit: 'м²',
         status: 'open',
       }),
       stage({
-        title: 'Уплотнение щебня',
+        title: 'Уплотнить щебёночное основание',
         requirements: 'Укатка, контроль отметок.',
         plannedQty: 100,
         unit: 'м²',
-        status: 'locked',
+        status: 'open',
       }),
     ],
   )
@@ -234,8 +238,8 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
     },
     [
       stage({
-        title: 'Установка бортового камня бетонного',
-        requirements: 'По шнуру, бетонное основание, швы. Высота бровки по проекту.',
+        title: 'Установить бортовой камень бетонный на участке 42 м',
+        requirements: 'По шнуру, бетонное основание, швы.',
         plannedQty: 42,
         unit: 'м',
         status: 'open',
@@ -248,7 +252,17 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
 
 export function loadWorkDayPlan(siteId: string): WorkDayPlanBundle {
   const existing = readRaw(siteId)
-  if (existing) return existing
+  if (existing) {
+    const settled = {
+      ...existing,
+      assignments: existing.assignments.map(settleAssignment),
+    }
+    const changed = settled.assignments.some(
+      (a, i) => a !== existing.assignments[i],
+    )
+    if (changed) writeRaw(settled)
+    return settled
+  }
   const seed: WorkDayPlanBundle = {
     siteId,
     assignments: siteId === 'brusilova' ? buildDemoAssignments(siteId) : [],

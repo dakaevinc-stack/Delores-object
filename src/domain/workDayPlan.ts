@@ -1,10 +1,10 @@
 /**
  * Ежедневный план работ (прототип).
  *
- * Руководитель назначает бригадиру цепочку этапов на дату.
- * Бригадир сдаёт факт только с фото/видео. После проверки этап
- * «Выполнено», следующий открывается, принятый объём вычитается
- * из общего плана объекта.
+ * Руководитель назначает бригадиру этапы на дату.
+ * Все этапы доступны сразу — без очереди и без согласования.
+ * Бригадир сдаёт факт с фото/видео → сразу «Выполнено», объём
+ * идёт в план/факт объекта.
  */
 
 export type WorkDayRole = 'manager' | 'brigadier'
@@ -105,8 +105,7 @@ export function assignmentProgress(a: WorkDayAssignment): {
 } {
   const totalStages = a.stages.length
   const doneStages = a.stages.filter((s) => s.status === 'done').length
-  const openStage =
-    a.stages.find((s) => s.status === 'open' || s.status === 'submitted') ?? null
+  const openStage = a.stages.find((s) => s.status === 'open') ?? null
   return {
     doneStages,
     totalStages,
@@ -116,14 +115,45 @@ export function assignmentProgress(a: WorkDayAssignment): {
 }
 
 export function canSubmitStage(stage: WorkDayStage, actualQty: number): boolean {
-  if (stage.status !== 'open') return false
+  if (stage.status !== 'open' && stage.status !== 'locked') return false
   if (!(actualQty > 0)) return false
   return stage.media.length > 0
 }
 
 /**
- * После принятия этапа: статус done, следующий locked→open.
- * Возвращает новую копию assignment.
+ * Сдача этапа бригадиром: сразу «Выполнено».
+ * Согласование не требуется; объём сразу учитывается в план/факт.
+ */
+export function submitStage(
+  assignment: WorkDayAssignment,
+  stageId: string,
+  actualQty: number,
+  media: readonly WorkDayMedia[],
+  submittedAtIso = new Date().toISOString(),
+): WorkDayAssignment {
+  if (!(actualQty > 0) || media.length === 0) return assignment
+  const idx = assignment.stages.findIndex((s) => s.id === stageId)
+  if (idx < 0) return assignment
+  const cur = assignment.stages[idx]!
+  // open или устаревший locked — можно закрыть без очереди.
+  if (cur.status !== 'open' && cur.status !== 'locked') return assignment
+
+  const nextStages = assignment.stages.map((s, i) => {
+    if (i !== idx) return s
+    return {
+      ...s,
+      actualQty,
+      media: [...media],
+      status: 'done' as const,
+      submittedAtIso,
+      reviewedAtIso: submittedAtIso,
+    }
+  })
+  return { ...assignment, stages: nextStages }
+}
+
+/**
+ * Миграция старых данных: этап «на проверке» → выполнено.
  */
 export function approveStage(
   assignment: WorkDayAssignment,
@@ -135,40 +165,27 @@ export function approveStage(
   const stage = assignment.stages[idx]!
   if (stage.status !== 'submitted') return assignment
 
-  const nextStages = assignment.stages.map((s, i) => {
-    if (i === idx) {
-      return { ...s, status: 'done' as const, reviewedAtIso }
-    }
-    if (i === idx + 1 && s.status === 'locked') {
-      return { ...s, status: 'open' as const }
-    }
-    return s
-  })
-  return { ...assignment, stages: nextStages }
-}
-
-export function submitStage(
-  assignment: WorkDayAssignment,
-  stageId: string,
-  actualQty: number,
-  media: readonly WorkDayMedia[],
-  submittedAtIso = new Date().toISOString(),
-): WorkDayAssignment {
-  if (!(actualQty > 0) || media.length === 0) return assignment
   return {
     ...assignment,
-    stages: assignment.stages.map((s) =>
-      s.id === stageId && s.status === 'open'
-        ? {
-            ...s,
-            actualQty,
-            media: [...media],
-            status: 'submitted' as const,
-            submittedAtIso,
-          }
-        : s,
+    stages: assignment.stages.map((s, i) =>
+      i === idx ? { ...s, status: 'done' as const, reviewedAtIso } : s,
     ),
   }
+}
+
+/** Убирает очередь и проверку: submitted→done, locked→open. */
+export function settleAssignment(assignment: WorkDayAssignment): WorkDayAssignment {
+  let next = assignment
+  for (const s of assignment.stages) {
+    if (s.status === 'submitted') {
+      next = approveStage(next, s.id, s.submittedAtIso ?? new Date().toISOString())
+    }
+  }
+  const unlocked = next.stages.map((s) =>
+    s.status === 'locked' ? { ...s, status: 'open' as const } : s,
+  )
+  if (unlocked.every((s, i) => s === next.stages[i])) return next
+  return { ...next, stages: unlocked }
 }
 
 export function toDateKey(d: Date): string {

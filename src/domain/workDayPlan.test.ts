@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   acceptedQtyByPlanItemMap,
   acceptedQtyForPlanItem,
-  approveStage,
   canSubmitStage,
   formatProgressLine,
+  settleAssignment,
   submitStage,
   type WorkDayAssignment,
   type WorkDayStage,
@@ -55,32 +55,53 @@ describe('workDayPlan', () => {
     ).toBe(true)
   })
 
-  it('после приёмки открывается следующий этап и копится прогресс', () => {
-    let a = assignment([
-      stage({
-        id: 's1',
-        status: 'submitted',
-        actualQty: 100,
-        media: [{ id: 'm1', kind: 'photo', name: 'a.jpg', previewUrl: 'blob:x' }],
-      }),
-      stage({ id: 's2', status: 'locked', title: 'Щебень 20–40' }),
+  it('submitStage сразу помечает этап выполненным', () => {
+    const a = assignment([
+      stage({ id: 's1', status: 'open' }),
+      stage({ id: 's2', status: 'open', title: 'Щебень 20–40' }),
     ])
-    a = approveStage(a, 's1', '2026-08-11T12:00:00.000Z')
-    expect(a.stages[0]!.status).toBe('done')
-    expect(a.stages[1]!.status).toBe('open')
-    expect(acceptedQtyForPlanItem([a], '2.2')).toBe(100)
-    expect(formatProgressLine(100, 2000, 'м')).toMatch(
-      /Выполнено 100 из 2\s?000 м — осталось 1\s?900 м/,
-    )
-  })
-
-  it('submitStage пишет факт и статус submitted', () => {
-    const a = assignment([stage({ id: 's1', status: 'open' })])
     const next = submitStage(a, 's1', 80, [
       { id: 'm1', kind: 'photo', name: 'a.jpg', previewUrl: 'blob:x' },
     ])
-    expect(next.stages[0]!.status).toBe('submitted')
+    expect(next.stages[0]!.status).toBe('done')
     expect(next.stages[0]!.actualQty).toBe(80)
+    expect(next.stages[1]!.status).toBe('open')
+    expect(acceptedQtyForPlanItem([next], '2.2')).toBe(80)
+    expect(formatProgressLine(80, 2000, 'м')).toMatch(
+      /Выполнено 80 из 2\s?000 м — осталось 1\s?920 м/,
+    )
+  })
+
+  it('можно закрыть любой этап, в том числе второй раньше первого', () => {
+    let a = assignment([
+      stage({ id: 's1', status: 'open' }),
+      stage({ id: 's2', status: 'open' }),
+    ])
+    const media = [{ id: 'm1', kind: 'photo' as const, name: 'a.jpg', previewUrl: 'blob:x' }]
+    a = submitStage(a, 's2', 40, media)
+    expect(a.stages[0]!.status).toBe('open')
+    expect(a.stages[1]!.status).toBe('done')
+    a = submitStage(a, 's1', 50, [{ ...media[0]!, id: 'm2' }])
+    expect(a.stages[0]!.status).toBe('done')
+    expect(acceptedQtyForPlanItem([a], '2.2')).toBe(90)
+  })
+
+  it('settleAssignment снимает locked и переводит submitted в done', () => {
+    const a = settleAssignment(
+      assignment([
+        stage({
+          id: 's1',
+          status: 'submitted',
+          actualQty: 42,
+          submittedAtIso: '2026-08-11T11:00:00.000Z',
+          media: [{ id: 'm1', kind: 'photo', name: 'a.jpg', previewUrl: 'blob:x' }],
+        }),
+        stage({ id: 's2', status: 'locked' }),
+      ]),
+    )
+    expect(a.stages[0]!.status).toBe('done')
+    expect(a.stages[1]!.status).toBe('open')
+    expect(acceptedQtyForPlanItem([a], '2.2')).toBe(42)
   })
 
   it('acceptedQtyByPlanItemMap суммирует только принятые этапы', () => {
