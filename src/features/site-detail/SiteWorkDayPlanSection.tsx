@@ -327,10 +327,14 @@ export function SiteWorkDayPlanSection({
       {embedded ? (
         <div className={styles.embeddedIntro}>
           <div className={styles.embeddedIntroText}>
+            <p className={styles.kicker}>
+              <img className={styles.kickerMark} alt="" aria-hidden src="/brand-chevron.svg" />
+              Задания дня
+            </p>
             <h3 className={styles.embeddedTitle}>Календарь заданий</h3>
             <p className={styles.embeddedLead}>
-              Порядок работ по строкам плана: этапы дня, факт с фото/видео, приёмка
-              руководителем. Следующий этап открывается только после «Выполнено».
+              Этапы по строкам плана: факт с фото/видео, приёмка руководителем. Следующий этап —
+              только после «Выполнено».
             </p>
           </div>
           <div className={styles.roleSwitch} role="group" aria-label="Роль">
@@ -537,39 +541,90 @@ function AssignmentCard({
   const prog = assignmentProgress(assignment)
   const accepted = acceptedQtyForPlanItem(allAssignments, assignment.planItemNumber)
   const waiting = assignment.stages.some((s) => s.status === 'submitted')
+  const left = Math.max(0, assignment.planTotalQty - accepted)
+  const pct =
+    assignment.planTotalQty > 0
+      ? Math.min(100, Math.round((accepted / assignment.planTotalQty) * 1000) / 10)
+      : 0
+  const initials = assignment.brigadierName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join('')
+
+  const statusTone = prog.allDone ? 'done' : waiting ? 'wait' : 'open'
+  const statusLabel = prog.allDone
+    ? 'Выполнено'
+    : waiting
+      ? 'На проверке'
+      : `Этап ${prog.doneStages + 1} из ${prog.totalStages}`
 
   return (
     <button type="button" className={styles.card} onClick={onOpen}>
-      <div className={styles.cardTop}>
-        <span className={styles.cardArea}>{assignment.area}</span>
-        {prog.allDone ? (
-          <span className={styles.badgeDone}>
-            <CheckIcon /> Выполнено
-          </span>
-        ) : waiting ? (
-          <span className={styles.badgeWait}>На проверке</span>
-        ) : (
-          <span className={styles.badgeOpen}>
-            Этап {prog.doneStages + 1} из {prog.totalStages}
-          </span>
-        )}
+      <span className={styles.cardRail} aria-hidden />
+      <span className={styles.cardShimmer} aria-hidden />
+
+      <div className={styles.cardHead}>
+        <span className={styles.cardBadge}>
+          <span className={styles.cardBadgeKicker}>План</span>
+          <span className={styles.cardBadgeTitle}>{assignment.planItemNumber}</span>
+        </span>
+        <span className={`${styles.statusPill} ${styles[`status_${statusTone}`]}`}>
+          {prog.allDone ? <CheckIcon /> : null}
+          {statusLabel}
+        </span>
       </div>
-      <p className={styles.cardTitle}>{assignment.planItemTitle}</p>
-      <p className={styles.cardMeta}>
-        Бригадир: {assignment.brigadierName}
-        {role === 'manager' ? ` · ${formatShortDayRu(assignment.dateKey)}` : null}
-      </p>
-      <p className={styles.cardProgress}>
-        {formatProgressLine(accepted, assignment.planTotalQty, assignment.planUnit)}
-      </p>
+
+      <p className={styles.cardArea}>{assignment.area}</p>
+      <h4 className={styles.cardTitle}>{assignment.planItemTitle}</h4>
+
+      <div className={styles.cardPerson}>
+        <span className={styles.cardAvatar} aria-hidden>
+          {initials || 'Б'}
+        </span>
+        <div className={styles.cardPersonText}>
+          <span className={styles.cardPersonLabel}>Бригадир</span>
+          <span className={styles.cardPersonName}>{assignment.brigadierName}</span>
+        </div>
+        {role === 'manager' ? (
+          <span className={styles.cardDate}>{formatShortDayRu(assignment.dateKey)}</span>
+        ) : null}
+      </div>
+
+      <div className={styles.metricStrip} aria-label="Прогресс по строке плана">
+        <div className={styles.metric}>
+          <span className={styles.metricLabel}>Факт</span>
+          <span className={styles.metricValue}>
+            {formatQtyRu(accepted)} {assignment.planUnit}
+          </span>
+        </div>
+        <div className={styles.metric}>
+          <span className={styles.metricLabel}>План</span>
+          <span className={styles.metricValue}>
+            {formatQtyRu(assignment.planTotalQty)} {assignment.planUnit}
+          </span>
+        </div>
+        <div className={styles.metric}>
+          <span className={styles.metricLabel}>Осталось</span>
+          <span className={styles.metricValue}>
+            {formatQtyRu(left)} {assignment.planUnit}
+          </span>
+        </div>
+      </div>
+
+      <div className={styles.progressTrack} aria-hidden>
+        <span className={styles.progressFill} style={{ width: `${pct}%` }} />
+      </div>
+
       <div className={styles.stageRail}>
-        {assignment.stages.map((s) => (
+        {assignment.stages.map((s, i) => (
           <span
             key={s.id}
             className={`${styles.stageChip} ${styles[`st_${s.status}`]}`}
             title={s.title}
           >
-            {s.status === 'done' ? '✓' : s.status === 'submitted' ? '●' : s.status === 'open' ? '○' : '·'}
+            <span className={styles.stageChipIdx}>{i + 1}</span>
             <span className={styles.stageChipLabel}>{s.title}</span>
           </span>
         ))}
