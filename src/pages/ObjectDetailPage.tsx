@@ -39,6 +39,7 @@ import { SiteReportingSection } from '../features/site-detail/SiteReportingSecti
 import { SiteScheduleSection } from '../features/site-detail/SiteScheduleSection'
 import { SiteWorkPlanSection } from '../features/site-detail/SiteWorkPlanSection'
 import { SiteMaterialConsumptionSection } from '../features/site-detail/SiteMaterialConsumptionSection'
+import { TodayDeliveriesBoard } from '../features/deliveries/TodayDeliveriesBoard'
 import { getMaterialBudgetForSite } from '../data/materialBudgets'
 import { loadWorkDayPlan } from '../lib/workDayPlanRepository'
 import styles from './ObjectDetailPage.module.css'
@@ -217,6 +218,27 @@ export function ObjectDetailPage() {
           Ввод отчёта
         </button>
       </div>
+
+      <TodayDeliveriesBoard
+        requests={procurementRequests}
+        variant="site"
+        onAccept={(id) => {
+          void (async () => {
+            const previous = procurementRequestsRef.current
+            const next = previous.map((r) =>
+              r.id === id ? { ...r, status: 'accepted' as const } : r,
+            )
+            setProcurementRequests(next)
+            if (!remoteFormsRef.current) return
+            const ok = await patchProcurementRequestRemote(site.id, id, { status: 'accepted' })
+            if (!ok) {
+              setFormsApiMessage('Не удалось сохранить приёмку на сервере.')
+              setProcurementRequests(previous)
+              void resyncFormsFromServer()
+            }
+          })()
+        }}
+      />
 
       {workPlan ? (
         <SiteWorkPlanSection

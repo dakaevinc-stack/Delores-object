@@ -12,6 +12,8 @@ import {
 } from '../features/objects/ObjectStatusFilter'
 import { resolveSiteStatus } from '../domain/objectStatus'
 import { useFleetRegistry } from '../features/fleet/useFleetRegistry'
+import { TodayDeliveriesBoard } from '../features/deliveries/TodayDeliveriesBoard'
+import { loadProcurementRequestsForSites } from '../lib/procurementRequestsRepository'
 import styles from './HomePage.module.css'
 
 function pluralizeUnits(n: number): string {
@@ -145,6 +147,10 @@ export function HomePage() {
   const fleetClasses = fleetCategories.length
 
   const portfolioCounts = useMemo(() => countSitesByStatus(sites), [sites])
+  const deliveryRequests = useMemo(
+    () => loadProcurementRequestsForSites(sites.map((s) => s.id)),
+    [sites],
+  )
 
   const averageCompletion = useMemo(() => {
     if (sites.length === 0) return 0
@@ -324,6 +330,8 @@ export function HomePage() {
           </div>
         </div>
       </header>
+
+      <TodayDeliveriesBoard requests={deliveryRequests} variant="home" />
 
       <div className={styles.fleetHubRow}>
         <div className={styles.fleetHubMain}>

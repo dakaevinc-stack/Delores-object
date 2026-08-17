@@ -91,3 +91,10 @@ export function saveProcurementRequests(siteId: string, requests: ProcurementReq
   }
 }
 
+/** Все заявки по списку объектов — для кабинета бригадира на главной. */
+export function loadProcurementRequestsForSites(
+  siteIds: readonly string[],
+): ProcurementRequest[] {
+  return siteIds.flatMap((id) => loadProcurementRequests(id))
+}
+
