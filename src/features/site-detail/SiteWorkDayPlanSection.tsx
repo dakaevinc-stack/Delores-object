@@ -3,6 +3,7 @@ import { unitLabel, type MeasurementUnitId } from '../../domain/brigadierReport'
 import {
   acceptedQtyForPlanItem,
   addDays,
+  attachStageBrief,
   assignmentProgress,
   canSubmitStage,
   formatDayHeadingRu,
@@ -73,7 +74,7 @@ function flattenPlanItems(plan: WorkPlan | undefined): PlanPick[] {
 function defaultStagesForItem(item: PlanPick | null): Array<ReturnType<typeof newStageDraft>> {
   const u = item?.unitLabel ?? 'м²'
   const n = item?.number ?? ''
-  if (n === '2.2') {
+  if (n === '1.1' || n === '2.8' || n === '3.8') {
     return [
       {
         title: 'Планировка корыта',
@@ -95,7 +96,7 @@ function defaultStagesForItem(item: PlanPick | null): Array<ReturnType<typeof ne
       },
     ]
   }
-  if (n === '2.3') {
+  if (n === '1.2' || n === '2.9' || n === '3.9') {
     return [
       {
         title: 'Щебень 20–40, толщина 200 мм',
@@ -111,7 +112,7 @@ function defaultStagesForItem(item: PlanPick | null): Array<ReturnType<typeof ne
       },
     ]
   }
-  if (n === '1.3') {
+  if (n === '1.4') {
     return [
       {
         title: 'Демонтаж бортового камня',
@@ -121,7 +122,7 @@ function defaultStagesForItem(item: PlanPick | null): Array<ReturnType<typeof ne
       },
     ]
   }
-  if (n === '1.1' || n === '1.2') {
+  if (n === '1.3') {
     return [
       {
         title: 'Установка бортового камня',
@@ -131,27 +132,51 @@ function defaultStagesForItem(item: PlanPick | null): Array<ReturnType<typeof ne
       },
     ]
   }
+  if (n === '1.5') {
+    return [
+      {
+        title: 'Разработка грунта под бортовой камень',
+        requirements: 'Корыто по отметкам, вывоз грунта.',
+        plannedQty: 20,
+        unit: u,
+      },
+    ]
+  }
   if (n === '2.1') {
     return [
       {
-        title: 'Разборка покрытия тротуара',
+        title: 'Разборка асфальтобетонного покрытия',
         requirements: 'Срезка покрытия, вывоз боя. Основание ровное.',
         plannedQty: 100,
         unit: u,
       },
     ]
   }
-  if (n === '5.1') {
+  if (n === '5.2') {
     return [
       {
-        title: 'Рытьё траншеи под КК',
+        title: 'Разработка траншеи',
         requirements: 'Глубина и ширина по проекту.',
         plannedQty: 30,
         unit: u,
       },
+    ]
+  }
+  if (n === '5.4' || n === '5.5') {
+    return [
       {
-        title: 'Укладка труб КК',
-        requirements: 'Стыковка, песчаная подсыпка, маркировка.',
+        title: n === '5.4' ? 'Укладка трубы ПНД Ø63' : 'Укладка трубы ПНД Ø110',
+        requirements: 'Стыковка, песчаная подсыпка.',
+        plannedQty: 30,
+        unit: u,
+      },
+    ]
+  }
+  if (n === '5.7') {
+    return [
+      {
+        title: 'Прокладка кабеля',
+        requirements: 'Протяжка в трубах, маркировка.',
         plannedQty: 30,
         unit: u,
       },
@@ -179,7 +204,7 @@ function defaultStagesForItem(item: PlanPick | null): Array<ReturnType<typeof ne
 
 function newStageDraft(): Omit<
   WorkDayStage,
-  'id' | 'status' | 'media' | 'actualQty' | 'submittedAtIso' | 'reviewedAtIso'
+  'id' | 'status' | 'media' | 'briefMedia' | 'actualQty' | 'submittedAtIso' | 'reviewedAtIso'
 > {
   return {
     title: '',
@@ -215,7 +240,22 @@ export function SiteWorkDayPlanSection({
 
   useEffect(() => {
     setAssignments(loadWorkDayPlan(siteId).assignments)
-  }, [siteId])
+  }, [siteId, 'v11'])
+
+  const patchAssignment = (
+    assignmentId: string,
+    fn: (cur: WorkDayAssignment) => WorkDayAssignment,
+  ) => {
+    setAssignments((prev) => {
+      const cur = prev.find((a) => a.id === assignmentId)
+      if (!cur) return prev
+      const next = fn(cur)
+      upsertAssignment(siteId, next)
+      const list = prev.map((a) => (a.id === next.id ? next : a))
+      onAssignmentsChange?.(list)
+      return list
+    })
+  }
 
   const byDate = useMemo(() => {
     const map = new Map<string, WorkDayAssignment[]>()
@@ -242,21 +282,21 @@ export function SiteWorkDayPlanSection({
 
   const active = assignments.find((a) => a.id === activeId) ?? null
 
-  const updateAssignment = (next: WorkDayAssignment) => {
-    const list = assignments.map((a) => (a.id === next.id ? next : a))
-    upsertAssignment(siteId, next)
-    replaceAssignments(list)
-  }
-
   const handleSubmit = (
     assignmentId: string,
     stageId: string,
     qty: number,
     media: WorkDayMedia[],
   ) => {
-    const cur = assignments.find((a) => a.id === assignmentId)
-    if (!cur) return
-    updateAssignment(submitStage(cur, stageId, qty, media))
+    patchAssignment(assignmentId, (cur) => submitStage(cur, stageId, qty, media))
+  }
+
+  const handleAttachBrief = (
+    assignmentId: string,
+    stageId: string,
+    media: WorkDayMedia[],
+  ) => {
+    patchAssignment(assignmentId, (cur) => attachStageBrief(cur, stageId, media))
   }
 
   const navLabel = (() => {
@@ -309,8 +349,8 @@ export function SiteWorkDayPlanSection({
               </div>
             </div>
             <p className={styles.lead}>
-              {siteName}: задания по дням. Бригадир отмечает этапы сам: объём + фото/видео →
-              сразу «Выполнено». Согласование не нужно — можно закрывать этапы в любом порядке.
+              {siteName}: шаги на день. Начальник показывает фото места. Бригадир делает,
+              снимает своё фото и нажимает «Я сделал».
             </p>
           </div>
         </header>
@@ -325,8 +365,8 @@ export function SiteWorkDayPlanSection({
             </p>
             <h3 className={styles.embeddedTitle}>Календарь заданий</h3>
             <p className={styles.embeddedLead}>
-              Укажите объём, приложите фото/видео и нажмите «Отметить выполненным». Этап сразу
-              закрывается — ждать никого не нужно. Остальные этапы можно делать в любом порядке.
+              Шаг за шагом: что сделать. Начальник прикладывает фото или видео места.
+              Бригадир смотрит, делает, снимает своё фото и нажимает «Я сделал».
             </p>
           </div>
           <div className={styles.roleSwitch} role="group" aria-label="Роль">
@@ -387,7 +427,7 @@ export function SiteWorkDayPlanSection({
         <p className={styles.navLabel}>{navLabel}</p>
         {role === 'manager' ? (
           <button type="button" className={styles.assignCta} onClick={() => setAssignOpen(true)}>
-            + Назначить задачу
+            + Задание бригадиру
           </button>
         ) : null}
       </div>
@@ -500,6 +540,7 @@ export function SiteWorkDayPlanSection({
           allAssignments={assignments}
           onClose={() => setActiveId(null)}
           onSubmit={handleSubmit}
+          onAttachBrief={handleAttachBrief}
           onDelete={() => {
             removeAssignment(siteId, active.id)
             replaceAssignments(loadWorkDayPlan(siteId).assignments)
@@ -613,7 +654,21 @@ function DayBriefingSheet({
                           <span className={styles.taskStepIndex} aria-hidden>
                             {isDone ? '✓' : i + 1}
                           </span>
-                          <span className={styles.taskStepText}>{formatStageBrief(s)}</span>
+                          <span className={styles.taskStepText}>
+                            <span className={styles.taskStepLabel}>Шаг {i + 1}.</span>{' '}
+                            {formatStageBrief(s)}
+                          </span>
+                          {(s.briefMedia ?? []).length > 0 ? (
+                            <span className={styles.taskStepBrief} aria-label="фото места">
+                              {(s.briefMedia ?? []).slice(0, 3).map((m) =>
+                                m.kind === 'photo' ? (
+                                  <img key={m.id} src={m.previewUrl} alt="" />
+                                ) : (
+                                  <video key={m.id} src={m.previewUrl} muted />
+                                ),
+                              )}
+                            </span>
+                          ) : null}
                         </li>
                       )
                     })}
@@ -637,6 +692,7 @@ function TaskDetailModal({
   allAssignments,
   onClose,
   onSubmit,
+  onAttachBrief,
   onDelete,
 }: {
   assignment: WorkDayAssignment
@@ -644,6 +700,7 @@ function TaskDetailModal({
   allAssignments: WorkDayAssignment[]
   onClose: () => void
   onSubmit: (assignmentId: string, stageId: string, qty: number, media: WorkDayMedia[]) => void
+  onAttachBrief: (assignmentId: string, stageId: string, media: WorkDayMedia[]) => void
   onDelete: () => void
 }) {
   const accepted = acceptedQtyForPlanItem(allAssignments, assignment.planItemNumber)
@@ -651,6 +708,7 @@ function TaskDetailModal({
   const [qtyByStage, setQtyByStage] = useState<Record<string, string>>({})
   const [mediaByStage, setMediaByStage] = useState<Record<string, WorkDayMedia[]>>({})
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const briefFileRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const stageRefs = useRef<Record<string, HTMLLIElement | null>>({})
 
   useEffect(() => {
@@ -666,8 +724,8 @@ function TaskDetailModal({
     }
   }, [onClose])
 
-  const addFiles = (stageId: string, files: FileList | null) => {
-    if (!files?.length) return
+  const readFiles = (files: FileList | null): WorkDayMedia[] => {
+    if (!files?.length) return []
     const next: WorkDayMedia[] = []
     for (let i = 0; i < files.length; i += 1) {
       const file = files.item(i)
@@ -680,6 +738,12 @@ function TaskDetailModal({
         previewUrl: URL.createObjectURL(file),
       })
     }
+    return next
+  }
+
+  const addFactFiles = (stageId: string, files: FileList | null) => {
+    const next = readFiles(files)
+    if (!next.length) return
     setMediaByStage((prev) => ({
       ...prev,
       [stageId]: [...(prev[stageId] ?? []), ...next],
@@ -692,7 +756,6 @@ function TaskDetailModal({
       (s, i) =>
         s.id !== completedStageId &&
         (s.status === 'open' || s.status === 'locked') &&
-        // предпочитаем следующий по списку
         (idx < 0 || i > idx),
     )
     const fallback = assignment.stages.find(
@@ -715,17 +778,16 @@ function TaskDetailModal({
     focusNextOpen(stageId)
   }
 
-  const nextHint = prog.openStage?.title ?? null
-
   return (
     <div className={styles.backdrop} role="dialog" aria-modal="true" onClick={onClose}>
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         <header className={styles.dialogHead}>
           <div>
-            <p className={styles.dialogKicker}>{assignment.area}</p>
-            <h3 className={styles.dialogTitle}>{assignment.planItemTitle}</h3>
+            <p className={styles.dialogKicker}>Где работать</p>
+            <h3 className={styles.dialogTitle}>{assignment.area}</h3>
             <p className={styles.dialogMeta}>
-              {formatDayHeadingRu(assignment.dateKey)} · {assignment.brigadierName}
+              {formatDayHeadingRu(assignment.dateKey)}
+              {role === 'manager' ? ` · ${assignment.brigadierName}` : null}
             </p>
           </div>
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Закрыть">
@@ -733,14 +795,23 @@ function TaskDetailModal({
           </button>
         </header>
 
-        <p className={styles.dialogProgress}>
-          Этапы: {prog.doneStages} из {prog.totalStages} закрыты
-          {nextHint && !prog.allDone ? ` · дальше: ${nextHint}` : null}
-          {prog.allDone ? ' · задание закрыто' : null}
-        </p>
-        <p className={styles.dialogProgressSub}>
-          {formatProgressLine(accepted, assignment.planTotalQty, assignment.planUnit)}
-        </p>
+        {role === 'brigadier' ? (
+          <p className={styles.dialogProgress}>
+            {prog.allDone
+              ? 'Все шаги сделаны. Можно закрыть.'
+              : `Сделай шаги по порядку. Готово: ${prog.doneStages} из ${prog.totalStages}.`}
+          </p>
+        ) : (
+          <>
+            <p className={styles.dialogProgress}>
+              Шаги: {prog.doneStages} из {prog.totalStages}
+              {prog.allDone ? ' · задание закрыто' : null}
+            </p>
+            <p className={styles.dialogProgressSub}>
+              {formatProgressLine(accepted, assignment.planTotalQty, assignment.planUnit)}
+            </p>
+          </>
+        )}
         <div className={styles.progressBar} aria-hidden>
           <span
             className={styles.progressFill}
@@ -759,12 +830,16 @@ function TaskDetailModal({
             const canWork =
               role === 'brigadier' && (stage.status === 'open' || stage.status === 'locked')
             const draftMedia = mediaByStage[stage.id] ?? []
-            const combinedMedia = stage.media.length ? stage.media : draftMedia
+            const factMedia = stage.media.length ? stage.media : draftMedia
+            const brief = stage.briefMedia ?? []
             const qtyStr =
-              qtyByStage[stage.id] ?? (stage.actualQty != null ? String(stage.actualQty) : '')
+              qtyByStage[stage.id] ??
+              (stage.actualQty != null
+                ? String(stage.actualQty)
+                : String(stage.plannedQty))
             const qtyNum = Number(qtyStr.replace(',', '.'))
             const canSend = canSubmitStage(
-              { ...stage, media: combinedMedia },
+              { ...stage, media: factMedia },
               Number.isFinite(qtyNum) ? qtyNum : 0,
             )
             const isFocus = prog.openStage?.id === stage.id
@@ -780,42 +855,88 @@ function TaskDetailModal({
                 } ${isFocus && !isDone ? styles.stage_focus : ''}`}
               >
                 <div className={styles.stageHead}>
-                  <span className={styles.stageIndex}>Этап {index + 1}</span>
+                  <span className={styles.stageIndex}>Шаг {index + 1}</span>
                   {isDone ? (
                     <span className={styles.badgeDone}>
-                      <CheckIcon /> Выполнено
+                      <CheckIcon /> Сделано
                     </span>
                   ) : null}
                 </div>
                 <h4 className={styles.stageTitle}>{stage.title}</h4>
-                {stage.requirements ? (
-                  <p className={styles.stageReq}>{stage.requirements}</p>
-                ) : null}
-                <p className={styles.stagePlan}>
-                  План на этап: {formatQtyRu(stage.plannedQty)} {stage.unit}
-                  {isDone && stage.actualQty != null
-                    ? ` · сдано: ${formatQtyRu(stage.actualQty)} ${stage.unit}`
-                    : null}
-                </p>
 
-                {combinedMedia.length > 0 ? (
-                  <ul className={styles.mediaRow}>
-                    {combinedMedia.map((m) => (
-                      <li key={m.id} className={styles.mediaThumb}>
-                        {m.kind === 'photo' ? (
-                          <img src={m.previewUrl} alt={m.name} />
-                        ) : (
-                          <video src={m.previewUrl} muted />
-                        )}
-                      </li>
-                    ))}
-                  </ul>
+                {brief.length > 0 ? (
+                  <div className={styles.mediaBlock}>
+                    <p className={styles.mediaCaption}>
+                      Смотри: что делать и где
+                    </p>
+                    <ul className={styles.mediaRow}>
+                      {brief.map((m) => (
+                        <li key={m.id} className={styles.mediaThumbLg}>
+                          {m.kind === 'photo' ? (
+                            <img src={m.previewUrl} alt={m.name} />
+                          ) : (
+                            <video src={m.previewUrl} controls playsInline />
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : role === 'brigadier' && !isDone ? (
+                  <p className={styles.hint}>
+                    Начальник ещё не приложил фото места. Делай, как написано в шаге.
+                  </p>
+                ) : null}
+
+                {isDone && stage.media.length > 0 ? (
+                  <div className={styles.mediaBlock}>
+                    <p className={styles.mediaCaption}>Твоё фото — что сделал</p>
+                    <ul className={styles.mediaRow}>
+                      {stage.media.map((m) => (
+                        <li key={m.id} className={styles.mediaThumb}>
+                          {m.kind === 'photo' ? (
+                            <img src={m.previewUrl} alt={m.name} />
+                          ) : (
+                            <video src={m.previewUrl} muted />
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
+                {role === 'manager' ? (
+                  <div className={styles.managerActions}>
+                    <input
+                      ref={(el) => {
+                        briefFileRefs.current[stage.id] = el
+                      }}
+                      type="file"
+                      accept="image/*,video/*"
+                      multiple
+                      className={styles.hiddenFile}
+                      onChange={(e) => {
+                        const next = readFiles(e.target.files)
+                        if (next.length) onAttachBrief(assignment.id, stage.id, next)
+                        e.target.value = ''
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className={styles.mediaCta}
+                      onClick={() => briefFileRefs.current[stage.id]?.click()}
+                    >
+                      Фото или видео: что делать и где
+                    </button>
+                    <p className={styles.hint}>
+                      Бригадир увидит это в шаге. Покажи место и как должно выглядеть.
+                    </p>
+                  </div>
                 ) : null}
 
                 {canWork ? (
                   <div className={styles.brigadierActions}>
                     <label className={styles.field}>
-                      <span>Сколько сделали ({stage.unit})</span>
+                      <span>Сколько сделал ({stage.unit})</span>
                       <input
                         type="number"
                         inputMode="decimal"
@@ -825,7 +946,6 @@ function TaskDetailModal({
                         onChange={(e) =>
                           setQtyByStage((p) => ({ ...p, [stage.id]: e.target.value }))
                         }
-                        placeholder={`напр. ${stage.plannedQty}`}
                       />
                     </label>
                     <input
@@ -837,7 +957,7 @@ function TaskDetailModal({
                       multiple
                       className={styles.hiddenFile}
                       onChange={(e) => {
-                        addFiles(stage.id, e.target.files)
+                        addFactFiles(stage.id, e.target.files)
                         e.target.value = ''
                       }}
                     />
@@ -846,13 +966,23 @@ function TaskDetailModal({
                       className={styles.mediaCta}
                       onClick={() => fileRefs.current[stage.id]?.click()}
                     >
-                      Прикрепить фото или видео
+                      Сфотографируй, что сделал
                     </button>
-                    <p className={styles.hint}>
-                      {draftMedia.length === 0
-                        ? 'Чтобы закрыть этап: объём + хотя бы одно фото или видео.'
-                        : `Файлов: ${draftMedia.length}. Можно закрывать этап.`}
-                    </p>
+                    {draftMedia.length > 0 ? (
+                      <ul className={styles.mediaRow}>
+                        {draftMedia.map((m) => (
+                          <li key={m.id} className={styles.mediaThumb}>
+                            {m.kind === 'photo' ? (
+                              <img src={m.previewUrl} alt={m.name} />
+                            ) : (
+                              <video src={m.previewUrl} muted />
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className={styles.hint}>Нужно хотя бы одно своё фото или видео.</p>
+                    )}
                     <button
                       type="button"
                       className={styles.primaryBtn}
@@ -865,7 +995,7 @@ function TaskDetailModal({
                         )
                       }
                     >
-                      Отметить выполненным
+                      Я сделал
                     </button>
                   </div>
                 ) : null}
@@ -883,7 +1013,6 @@ function TaskDetailModal({
     </div>
   )
 }
-
 function AssignModal({
   siteId,
   defaultDateKey,
@@ -898,7 +1027,7 @@ function AssignModal({
   onSave: (a: WorkDayAssignment) => void
 }) {
   const initial =
-    planItems.find((p) => p.number === '2.2') ?? planItems[0] ?? null
+    planItems.find((p) => p.number === '2.8') ?? planItems[0] ?? null
   const [dateKey, setDateKey] = useState(defaultDateKey)
   const [area, setArea] = useState('Участок А')
   const [brigadierName, setBrigadierName] = useState('Минасян А.Л.')
@@ -908,6 +1037,8 @@ function AssignModal({
   const [planTotalQty, setPlanTotalQty] = useState(String(initial?.total ?? 0))
   const [planUnit, setPlanUnit] = useState(initial?.unitLabel ?? 'м²')
   const [stages, setStages] = useState(() => defaultStagesForItem(initial))
+  const [briefByIndex, setBriefByIndex] = useState<Record<number, WorkDayMedia[]>>({})
+  const briefCreateRefs = useRef<Record<number, HTMLInputElement | null>>({})
 
   const applyPlanItem = (number: string) => {
     setSelectedNumber(number)
@@ -917,6 +1048,7 @@ function AssignModal({
     setPlanTotalQty(String(item.total))
     setPlanUnit(item.unitLabel)
     setStages(defaultStagesForItem(item))
+    setBriefByIndex({})
   }
 
   useEffect(() => {
@@ -938,7 +1070,7 @@ function AssignModal({
     <div className={styles.backdrop} role="dialog" aria-modal="true" onClick={onClose}>
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         <header className={styles.dialogHead}>
-          <h3 className={styles.dialogTitle}>Назначить задачу бригадиру</h3>
+          <h3 className={styles.dialogTitle}>Задание бригадиру</h3>
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Закрыть">
             ×
           </button>
@@ -994,13 +1126,13 @@ function AssignModal({
         </div>
 
         <h4 className={styles.stagesHeading}>
-          Этапы дня (по порядку — следующий открывается после приёмки)
+          Шаги на день — напишите просто, что сделать
         </h4>
         {stages.map((s, i) => (
           <div key={i} className={styles.stageEdit}>
-            <p className={styles.stageIndex}>Этап {i + 1}</p>
+            <p className={styles.stageIndex}>Шаг {i + 1}</p>
             <label className={styles.field}>
-              <span>Название</span>
+              <span>Что сделать</span>
               <input
                 value={s.title}
                 onChange={(e) =>
@@ -1008,10 +1140,11 @@ function AssignModal({
                     prev.map((row, j) => (j === i ? { ...row, title: e.target.value } : row)),
                   )
                 }
+                placeholder="например: Уложить трубу 63 на 40 метров"
               />
             </label>
             <label className={styles.field}>
-              <span>Требования</span>
+              <span>Коротко, если нужно</span>
               <input
                 value={s.requirements}
                 onChange={(e) =>
@@ -1021,11 +1154,12 @@ function AssignModal({
                     ),
                   )
                 }
+                placeholder="не обязательно"
               />
             </label>
             <div className={styles.row2}>
               <label className={styles.field}>
-                <span>Объём на день</span>
+                <span>Сколько на сегодня</span>
                 <input
                   type="number"
                   value={s.plannedQty || ''}
@@ -1050,6 +1184,56 @@ function AssignModal({
                 />
               </label>
             </div>
+            <p className={styles.hint}>Приложи фото или видео места — бригадир увидит «что и где».</p>
+            <input
+              ref={(el) => {
+                briefCreateRefs.current[i] = el
+              }}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              className={styles.hiddenFile}
+              onChange={(e) => {
+                const files = e.target.files
+                if (!files?.length) return
+                const next: WorkDayMedia[] = []
+                for (let k = 0; k < files.length; k += 1) {
+                  const file = files.item(k)
+                  if (!file) continue
+                  next.push({
+                    id: newId('media'),
+                    kind: file.type.startsWith('video/') ? 'video' : 'photo',
+                    name: file.name,
+                    previewUrl: URL.createObjectURL(file),
+                  })
+                }
+                setBriefByIndex((prev) => ({
+                  ...prev,
+                  [i]: [...(prev[i] ?? []), ...next],
+                }))
+                e.target.value = ''
+              }}
+            />
+            <button
+              type="button"
+              className={styles.mediaCta}
+              onClick={() => briefCreateRefs.current[i]?.click()}
+            >
+              Фото или видео: что делать и где
+            </button>
+            {(briefByIndex[i] ?? []).length > 0 ? (
+              <ul className={styles.mediaRow}>
+                {(briefByIndex[i] ?? []).map((m) => (
+                  <li key={m.id} className={styles.mediaThumb}>
+                    {m.kind === 'photo' ? (
+                      <img src={m.previewUrl} alt={m.name} />
+                    ) : (
+                      <video src={m.previewUrl} muted />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
         ))}
         <button
@@ -1065,7 +1249,7 @@ function AssignModal({
             ])
           }
         >
-          + Добавить этап
+          + Добавить шаг
         </button>
 
         <button
@@ -1082,6 +1266,7 @@ function AssignModal({
               actualQty: null,
               status: 'open',
               media: [],
+              briefMedia: briefByIndex[i] ?? [],
               submittedAtIso: null,
               reviewedAtIso: null,
             }))

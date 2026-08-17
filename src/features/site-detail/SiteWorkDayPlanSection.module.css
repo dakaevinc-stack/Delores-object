@@ -556,6 +556,28 @@
   padding-top: 2px;
 }
 
+.taskStepLabel {
+  font-weight: 750;
+  color: var(--brand-navy, #172a4d);
+}
+
+.taskStepBrief {
+  grid-column: 2;
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.taskStepBrief img,
+.taskStepBrief video {
+  width: 56px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #e8edf5;
+}
+
 .taskStepActive {
   background: linear-gradient(
     90deg,
@@ -1435,6 +1457,36 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.mediaBlock {
+  margin-top: 12px;
+}
+
+.mediaCaption {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--brand-navy, #172a4d);
+}
+
+.mediaThumbLg {
+  width: 148px;
+  height: 110px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #e8edf5;
+  border: 1px solid var(--border);
+}
+
+.mediaThumbLg img,
+.mediaThumbLg video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .mediaThumb {

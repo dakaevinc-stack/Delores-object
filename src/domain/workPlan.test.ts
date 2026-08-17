@@ -152,8 +152,8 @@ describe('summarizeWorkPlan', () => {
 })
 
 describe('Брусиловский план: целостность данных', () => {
-  it('5 разделов — после вычистки неведущихся', () => {
-    expect(BRUSILOVA_WORK_PLAN.sections).toHaveLength(5)
+  it('7 разделов — включая наружное освещение и дождевую канализацию', () => {
+    expect(BRUSILOVA_WORK_PLAN.sections).toHaveLength(7)
   })
 
   it('номера разделов и строк уникальны и идут подряд', () => {
@@ -164,6 +164,8 @@ describe('Брусиловский план: целостность данных
       '3',
       '4',
       '5',
+      '6',
+      '7',
     ])
     for (const section of BRUSILOVA_WORK_PLAN.sections) {
       for (const item of section.items) {
@@ -172,7 +174,7 @@ describe('Брусиловский план: целостность данных
         expect(item.number.startsWith(`${section.number}.`)).toBe(true)
       }
     }
-    expect(seen.size).toBe(13)
+    expect(seen.size).toBe(58)
   })
 
   it('у активных позиций даты в правильном порядке (start ≤ end)', () => {
@@ -188,30 +190,98 @@ describe('Брусиловский план: целостность данных
     }
   })
 
-  it('сводка: благоустройство — две позиции газонов со сроками', () => {
-    const landscaping = BRUSILOVA_WORK_PLAN.sections.find((s) => s.number === '4')!
-    const summary = summarizeWorkPlanSection(landscaping)
-    expect(summary.itemsCount).toBe(2)
+  it('группа «Газоны»: разборка, растительный грунт и посев', () => {
+    const lawn = BRUSILOVA_WORK_PLAN.sections.find((s) => s.number === '4')!
+    expect(lawn.title).toBe('Газоны')
+    const summary = summarizeWorkPlanSection(lawn)
+    expect(summary.itemsCount).toBe(8)
     expect(summary.scheduledCount).toBe(2)
-    expect(summary.deferredCount).toBe(0)
+    expect(lawn.items.find((i) => i.number === '4.7')!.title).toBe(
+      'Подготовка растительного грунта',
+    )
+    expect(lawn.items.find((i) => i.number === '4.8')!.title).toBe('Посев трав')
+    expect(lawn.items.find((i) => i.number === '4.8')!.total).toBe(36828)
   })
 
-  it('конкретная строка: 1.1 Бетон — план 15 461 м, без факта', () => {
-    const beton = BRUSILOVA_WORK_PLAN.sections[0]!.items[0]!
-    expect(beton.number).toBe('1.1')
-    expect(beton.title).toBe('Бетон')
-    expect(beton.unit).toBe('m')
-    expect(beton.total).toBe(15461)
-    expect(beton.done).toBe(0)
-    expect(beton.startIso).toBe('2026-05-01')
-    expect(beton.endIso).toBe('2026-07-03')
+  it('группа «Проезжая часть»: фрезерование, разборка, основания и покрытие', () => {
+    const road = BRUSILOVA_WORK_PLAN.sections.find((s) => s.number === '3')!
+    expect(road.title).toBe('Проезжая часть')
+    expect(road.items).toHaveLength(12)
+    expect(road.items[0]!.title).toBe('Фрезерование')
+    expect(road.items[0]!.total).toBe(43774)
+    expect(road.items.find((i) => i.number === '3.7')!.title).toBe('Укладка геотекстиля')
+    expect(road.items.at(-1)!.title).toBe(
+      'Устройство верхнего слоя покрытия из асфальтобетона',
+    )
   })
 
-  it('конкретная строка: 5.2 Прокладка кабеля — 17 045 м', () => {
-    const electrical = BRUSILOVA_WORK_PLAN.sections.find((s) => s.number === '5')
-    const cable = electrical?.items.find((i) => i.number === '5.2')
-    expect(cable?.title).toMatch(/Прокладка/i)
-    expect(cable?.total).toBe(17045)
+  it('группа «Тротуар»: разборка, основания и покрытие', () => {
+    const walk = BRUSILOVA_WORK_PLAN.sections.find((s) => s.number === '2')!
+    expect(walk.title).toBe('Тротуар')
+    expect(walk.items).toHaveLength(13)
+    expect(walk.items[0]!.title).toBe('Разборка асфальтобетонного покрытия')
+    expect(walk.items.find((i) => i.number === '2.6')!.title).toBe(
+      'Разработка грунта под основание',
+    )
+    expect(walk.items.find((i) => i.number === '2.8')!.total).toBe(28641)
+    expect(walk.items.at(-1)!.title).toBe('Укладка плитки')
+  })
+
+  it('группа «Борт»: пять подгрупп, монтаж и демонтаж с объёмом', () => {
+    const curb = BRUSILOVA_WORK_PLAN.sections[0]!
+    expect(curb.title).toBe('Борт')
+    expect(curb.items.map((i) => i.number)).toEqual(['1.1', '1.2', '1.3', '1.4', '1.5'])
+    expect(curb.items.map((i) => i.title)).toEqual([
+      'Песчаное основание',
+      'Щебёночное основание',
+      'Монтаж бортового камня',
+      'Демонтаж бортового камня',
+      'Разработка грунта под бортовой камень',
+    ])
+    const install = curb.items.find((i) => i.number === '1.3')!
+    expect(install.unit).toBe('m')
+    expect(install.total).toBe(20115)
+    expect(install.done).toBe(0)
+    const dismantle = curb.items.find((i) => i.number === '1.4')!
+    expect(dismantle.total).toBe(15461)
+  })
+
+  it('группа «Наружное освещение»: опоры, фундаменты, светильники', () => {
+    const lighting = BRUSILOVA_WORK_PLAN.sections.find((s) => s.number === '6')!
+    expect(lighting.title).toBe('Наружное освещение')
+    expect(lighting.items.map((i) => i.title)).toEqual([
+      'Демонтаж опор освещения',
+      'Демонтаж светильников',
+      'Устройство фундаментов под опоры',
+      'Установка опор освещения',
+      'Установка светильников',
+      'Подключение светильников',
+    ])
+  })
+
+  it('группа «Электрические сети»: трубы 63/110, колодцы, кабель', () => {
+    const electric = BRUSILOVA_WORK_PLAN.sections.find((s) => s.number === '5')!
+    expect(electric.title).toBe('Электрические сети')
+    expect(electric.items).toHaveLength(8)
+    expect(electric.items.find((i) => i.number === '5.4')!.title).toBe(
+      'Укладка трубы ПНД Ø63',
+    )
+    expect(electric.items.find((i) => i.number === '5.5')!.title).toBe(
+      'Укладка трубы ПНД Ø110',
+    )
+    expect(electric.items.find((i) => i.number === '5.5')!.total).toBe(8734)
+    expect(electric.items.find((i) => i.number === '5.7')!.title).toBe('Прокладка кабеля')
+    expect(electric.items.find((i) => i.number === '5.7')!.total).toBe(17045)
+  })
+
+  it('группа «Дождевая канализация»: трубы, дождеприёмники, колодцы', () => {
+    const storm = BRUSILOVA_WORK_PLAN.sections.find((s) => s.number === '7')!
+    expect(storm.title).toBe('Дождевая канализация')
+    expect(storm.items).toHaveLength(6)
+    expect(storm.items[0]!.title).toBe('Разработка траншеи')
+    expect(storm.items.find((i) => i.number === '7.4')!.title).toBe(
+      'Установка дождеприёмников',
+    )
   })
 })
 

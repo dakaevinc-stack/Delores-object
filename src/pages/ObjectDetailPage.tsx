@@ -215,6 +215,17 @@ export function ObjectDetailPage() {
         </button>
       </div>
 
+      {workPlan ? (
+        <SiteWorkPlanSection
+          plan={workPlan}
+          siteId={site.id}
+          siteName={site.name}
+          windowStartIso={liveKpis.startIso}
+          windowEndIso={liveKpis.endIso}
+          onDayPlanChange={() => setDayPlanRevision((n) => n + 1)}
+        />
+      ) : null}
+
       <SiteBrigadierSubmittedReportsSection
         siteId={site.id}
         siteName={site.name}
@@ -254,17 +265,6 @@ export function ObjectDetailPage() {
         />
         <SiteReportingSection reports={brigadierReports} todayIso={liveKpis.todayIso} />
       </div>
-
-      {workPlan ? (
-        <SiteWorkPlanSection
-          plan={workPlan}
-          siteId={site.id}
-          siteName={site.name}
-          windowStartIso={liveKpis.startIso}
-          windowEndIso={liveKpis.endIso}
-          onDayPlanChange={() => setDayPlanRevision((n) => n + 1)}
-        />
-      ) : null}
 
       <SiteProcurementRequestsSection
         requests={procurementRequests}

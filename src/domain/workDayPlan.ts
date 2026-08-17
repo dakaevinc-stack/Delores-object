@@ -28,7 +28,13 @@ export type WorkDayStage = {
   /** Фактический объём, который сдал бригадир. */
   actualQty: number | null
   status: WorkDayStageStatus
+  /** Фото/видео факта от бригадира. */
   media: readonly WorkDayMedia[]
+  /**
+   * Пояснение начальника объекта: фото или видео «что сделать и где».
+   * Бригадир только смотрит, сдать это нельзя.
+   */
+  briefMedia: readonly WorkDayMedia[]
   submittedAtIso: string | null
   reviewedAtIso: string | null
 }
@@ -152,6 +158,23 @@ export function submitStage(
   return { ...assignment, stages: nextStages }
 }
 
+/** Начальник объекта прикладывает к шагу фото/видео: что делать и где. */
+export function attachStageBrief(
+  assignment: WorkDayAssignment,
+  stageId: string,
+  media: readonly WorkDayMedia[],
+): WorkDayAssignment {
+  if (media.length === 0) return assignment
+  return {
+    ...assignment,
+    stages: assignment.stages.map((s) =>
+      s.id === stageId
+        ? { ...s, briefMedia: [...(s.briefMedia ?? []), ...media] }
+        : s,
+    ),
+  }
+}
+
 /**
  * Миграция старых данных: этап «на проверке» → выполнено.
  */
@@ -181,9 +204,12 @@ export function settleAssignment(assignment: WorkDayAssignment): WorkDayAssignme
       next = approveStage(next, s.id, s.submittedAtIso ?? new Date().toISOString())
     }
   }
-  const unlocked = next.stages.map((s) =>
-    s.status === 'locked' ? { ...s, status: 'open' as const } : s,
-  )
+  const unlocked = next.stages.map((s) => {
+    const status = s.status === 'locked' ? ('open' as const) : s.status
+    const briefMedia = s.briefMedia ?? []
+    if (status === s.status && briefMedia === s.briefMedia) return s
+    return { ...s, status, briefMedia }
+  })
   if (unlocked.every((s, i) => s === next.stages[i])) return next
   return { ...next, stages: unlocked }
 }

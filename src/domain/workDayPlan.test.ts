@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  attachStageBrief,
   acceptedQtyByPlanItemMap,
   acceptedQtyForPlanItem,
   canSubmitStage,
@@ -18,6 +19,7 @@ function stage(partial: Partial<WorkDayStage> & Pick<WorkDayStage, 'id' | 'statu
     unit: 'м',
     actualQty: null,
     media: [],
+    briefMedia: [],
     submittedAtIso: null,
     reviewedAtIso: null,
     ...partial,
@@ -112,5 +114,15 @@ describe('workDayPlan', () => {
     ])
     const map = acceptedQtyByPlanItemMap([a])
     expect(map.get('2.2')).toBe(50)
+  })
+
+  it('attachStageBrief копит пояснение начальника и не закрывает шаг', () => {
+    const a = assignment([stage({ id: 's1', status: 'open' })])
+    const next = attachStageBrief(a, 's1', [
+      { id: 'm1', kind: 'photo', name: 'место.jpg', previewUrl: 'blob:x' },
+    ])
+    expect(next.stages[0]!.briefMedia).toHaveLength(1)
+    expect(next.stages[0]!.status).toBe('open')
+    expect(next.stages[0]!.media).toHaveLength(0)
   })
 })

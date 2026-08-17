@@ -3,12 +3,13 @@ import {
   settleAssignment,
   toDateKey,
   type WorkDayAssignment,
+  type WorkDayMedia,
   type WorkDayPlanBundle,
   type WorkDayStage,
 } from '../domain/workDayPlan'
 
-/** v5 — все этапы сразу доступны, без очереди и проверки. */
-const storageKey = (siteId: string) => `deloresh.work-day-plan.v5.${siteId}`
+/** v11 — в задании сразу видны фото «что и где». */
+const storageKey = (siteId: string) => `deloresh.work-day-plan.v11.${siteId}`
 
 function readRaw(siteId: string): WorkDayPlanBundle | null {
   try {
@@ -28,13 +29,30 @@ function writeRaw(bundle: WorkDayPlanBundle): void {
   localStorage.setItem(storageKey(bundle.siteId), JSON.stringify(bundle))
 }
 
+function briefPhoto(label: string, sub: string): WorkDayMedia {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520">
+    <rect fill="#172a4d" width="100%" height="100%"/>
+    <rect fill="#ee2d3a" x="0" y="0" width="12" height="520"/>
+    <text x="48" y="230" fill="#ffffff" font-size="36" font-family="Arial, sans-serif">${label}</text>
+    <text x="48" y="280" fill="#d7deea" font-size="22" font-family="Arial, sans-serif">${sub}</text>
+    <text x="48" y="430" fill="#9aa7bc" font-size="18" font-family="Arial, sans-serif">фото места · что делать и где</text>
+  </svg>`
+  return {
+    id: newId('media'),
+    kind: 'photo',
+    name: `${label}.svg`,
+    previewUrl: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+  }
+}
+
 function stage(
-  partial: Omit<WorkDayStage, 'id' | 'media' | 'actualQty' | 'submittedAtIso' | 'reviewedAtIso'> &
-    Partial<Pick<WorkDayStage, 'actualQty' | 'submittedAtIso' | 'reviewedAtIso' | 'media'>>,
+  partial: Omit<WorkDayStage, 'id' | 'media' | 'briefMedia' | 'actualQty' | 'submittedAtIso' | 'reviewedAtIso'> &
+    Partial<Pick<WorkDayStage, 'actualQty' | 'submittedAtIso' | 'reviewedAtIso' | 'media' | 'briefMedia'>>,
 ): WorkDayStage {
   return {
     id: newId('stage'),
     media: partial.media ?? [],
+    briefMedia: partial.briefMedia ?? [],
     actualQty: partial.actualQty ?? null,
     submittedAtIso: partial.submittedAtIso ?? null,
     reviewedAtIso: partial.reviewedAtIso ?? null,
@@ -89,7 +107,7 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
     key(-1),
     'Участок А — чётная сторона, пикет 12–18',
     {
-      number: '1.3',
+      number: '1.4',
       title: 'Демонтаж бортового камня',
       total: 15461,
       unit: 'м',
@@ -115,13 +133,13 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
     'Участок А — тротуар, чётная сторона',
     {
       number: '2.1',
-      title: 'Разборка покрытия тротуаров',
+      title: 'Разборка асфальтобетонного покрытия',
       total: 28637,
       unit: 'м²',
     },
     [
       stage({
-        title: 'Разобрать покрытие тротуара на участке ~120 м²',
+        title: 'Разобрать асфальтобетонное покрытие на участке ~120 м²',
         requirements: 'Срезка покрытия, вывоз боя.',
         plannedQty: 120,
         unit: 'м²',
@@ -133,66 +151,78 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
     ],
   )
 
-  // Сегодня: песчаное основание — короткие шаги.
+  // Сегодня: тротуар — песчаное основание на захватке 100 × 3 м.
   const todaySand = base(
     key(0),
     'Участок А — тротуар, чётная сторона',
     {
-      number: '2.2',
+      number: '2.8',
       title: 'Устройство песчаного основания',
       total: 28641,
       unit: 'м²',
     },
     [
       stage({
-        title: 'Спланировать корыто на участке длиной 100 м и шириной 3 м',
-        requirements: 'Геодезия отметок, уплотнение грунта.',
+        title: 'Разработать грунт под основание на участке 100 × 3 м',
+        requirements: 'Корыто по отметкам, вывоз грунта.',
         plannedQty: 100,
         unit: 'м²',
         status: 'open',
+        briefMedia: [briefPhoto('Участок А', 'снять грунт · 100 × 3 м')],
       }),
       stage({
-        title:
-          'Устроить песчаное основание толщиной 30 см на длине 100 м и ширине 3 м',
-        requirements: 'Песок карьерный, послойно.',
+        title: 'Уложить геотекстиль на участке 100 × 3 м',
+        requirements: 'Нахлёст полотен по проекту.',
         plannedQty: 100,
         unit: 'м²',
         status: 'open',
+        briefMedia: [briefPhoto('Геотекстиль', 'расстелить на корыте')],
       }),
       stage({
-        title: 'Уплотнить песчаное основание',
-        requirements: 'Коэффициент уплотнения по проекту.',
+        title: 'Устроить песчаное основание толщиной 30 см на участке 100 × 3 м',
+        requirements: 'Песок карьерный, послойно, уплотнить.',
         plannedQty: 100,
         unit: 'м²',
         status: 'open',
+        briefMedia: [briefPhoto('Песок 30 см', 'отсыпать и уплотнить')],
       }),
     ],
   )
 
-  // Сегодня параллельно: кабельная канализация на другом участке.
+  // Сегодня параллельно: электрические сети — труба 63 вдоль проезжей.
   const todayCable = base(
     key(0),
     'Участок В — вдоль проезжей части',
     {
-      number: '5.1',
-      title: 'Кабельная канализация (КК)',
-      total: 8734,
+      number: '5.4',
+      title: 'Укладка трубы ПНД Ø63',
+      total: 0,
       unit: 'м',
     },
     [
       stage({
-        title: 'Вырыть траншею под КК длиной 35 м',
+        title: 'Вырыть траншею длиной 40 м',
         requirements: 'Глубина и ширина по проекту.',
-        plannedQty: 35,
+        plannedQty: 40,
         unit: 'м',
         status: 'open',
+        briefMedia: [briefPhoto('Траншея 40 м', 'вдоль проезжей части')],
       }),
       stage({
-        title: 'Уложить трубы КК на длине 35 м',
+        title: 'Уложить трубу ПНД Ø63 на длине 40 м',
         requirements: 'Стыковка, песчаная подсыпка.',
-        plannedQty: 35,
+        plannedQty: 40,
         unit: 'м',
         status: 'open',
+        briefMedia: [briefPhoto('Труба 63', 'уложить в траншею')],
+      }),
+      stage({
+        title: 'Засыпать траншею на длине 40 м',
+        requirements: 'Послойно, без повреждения трубы.',
+        plannedQty: 40,
+        unit: 'м',
+        status: 'open',
+        briefMedia: [briefPhoto('Засыпка', 'закрыть траншею')],
       }),
     ],
   )
@@ -202,8 +232,8 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
     key(1),
     'Участок А — тротуар, чётная сторона',
     {
-      number: '2.3',
-      title: 'Устройство основания из щебня / бетона / ЩПС',
+      number: '2.9',
+      title: 'Устройство щебёночного основания',
       total: 28641,
       unit: 'м²',
     },
@@ -231,9 +261,9 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
     key(2),
     'Участок А — чётная сторона, пикет 12–18',
     {
-      number: '1.1',
-      title: 'Бетон',
-      total: 15461,
+      number: '1.3',
+      title: 'Монтаж бортового камня',
+      total: 20115,
       unit: 'м',
     },
     [
