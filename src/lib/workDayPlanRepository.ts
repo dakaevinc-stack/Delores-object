@@ -8,8 +8,8 @@ import {
   type WorkDayStage,
 } from '../domain/workDayPlan'
 
-/** v11 — в задании сразу видны фото «что и где». */
-const storageKey = (siteId: string) => `deloresh.work-day-plan.v11.${siteId}`
+/** v12 — один пункт справки = один шаг, без дублей одной работы. */
+const storageKey = (siteId: string) => `deloresh.work-day-plan.v12.${siteId}`
 
 function readRaw(siteId: string): WorkDayPlanBundle | null {
   try {
@@ -157,83 +157,95 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
     ],
   )
 
-  // Сегодня: тротуар — песчаное основание на захватке 100 × 3 м.
+  // Сегодня: тротуар — три разных пункта на одной захватке, без дублей.
   const todaySand = base(
     key(0),
     'Участок А — тротуар, чётная сторона',
     {
-      number: '2.8',
-      title: 'Устройство песчаного основания',
-      total: 28641,
-      unit: 'м²',
+      number: '2.6',
+      title: 'Разработка грунта под основание',
+      total: 0,
+      unit: 'м³',
     },
     [
       stage({
-        title: 'Разработать грунт под основание на участке 100 × 3 м',
-        requirements: 'Корыто по отметкам, вывоз грунта.',
-        plannedQty: 100,
-        unit: 'м²',
+        title: 'Разработка грунта под основание',
+        requirements: 'Корыто по отметкам, вывоз грунта. Захватка 100 × 3 м.',
+        plannedQty: 30,
+        unit: 'м³',
         status: 'open',
+        planItemNumber: '2.6',
+        planItemTitle: 'Разработка грунта под основание',
         briefMedia: [briefPhoto('Участок А', 'снять грунт · 100 × 3 м')],
       }),
       stage({
-        title: 'Уложить геотекстиль на участке 100 × 3 м',
+        title: 'Укладка геотекстиля',
         requirements: 'Нахлёст полотен по проекту.',
-        plannedQty: 100,
+        plannedQty: 300,
         unit: 'м²',
         status: 'open',
+        planItemNumber: '2.7',
+        planItemTitle: 'Укладка геотекстиля',
         briefMedia: [briefPhoto('Геотекстиль', 'расстелить на корыте')],
       }),
       stage({
-        title: 'Устроить песчаное основание толщиной 30 см на участке 100 × 3 м',
-        requirements: 'Песок карьерный, послойно, уплотнить.',
-        plannedQty: 100,
+        title: 'Устройство песчаного основания',
+        requirements: 'Песок карьерный, 30 см, послойно, уплотнить.',
+        plannedQty: 300,
         unit: 'м²',
         status: 'open',
+        planItemNumber: '2.8',
+        planItemTitle: 'Устройство песчаного основания',
         briefMedia: [briefPhoto('Песок 30 см', 'отсыпать и уплотнить')],
       }),
     ],
   )
 
-  // Сегодня параллельно: электрические сети — труба 63 вдоль проезжей.
+  // Сегодня параллельно: три разных пункта сетей, не одна труба трижды.
   const todayCable = base(
     key(0),
     'Участок В — вдоль проезжей части',
     {
-      number: '5.4',
-      title: 'Укладка трубы ПНД Ø63',
+      number: '5.2',
+      title: 'Разработка траншеи',
       total: 0,
       unit: 'м',
     },
     [
       stage({
-        title: 'Вырыть траншею длиной 40 м',
+        title: 'Разработка траншеи',
         requirements: 'Глубина и ширина по проекту.',
         plannedQty: 40,
         unit: 'м',
         status: 'open',
+        planItemNumber: '5.2',
+        planItemTitle: 'Разработка траншеи',
         briefMedia: [briefPhoto('Траншея 40 м', 'вдоль проезжей части')],
       }),
       stage({
-        title: 'Уложить трубу ПНД Ø63 на длине 40 м',
+        title: 'Укладка трубы ПНД Ø63',
         requirements: 'Стыковка, песчаная подсыпка.',
         plannedQty: 40,
         unit: 'м',
         status: 'open',
+        planItemNumber: '5.4',
+        planItemTitle: 'Укладка трубы ПНД Ø63',
         briefMedia: [briefPhoto('Труба 63', 'уложить в траншею')],
       }),
       stage({
-        title: 'Засыпать траншею на длине 40 м',
+        title: 'Обратная засыпка траншеи',
         requirements: 'Послойно, без повреждения трубы.',
         plannedQty: 40,
         unit: 'м',
         status: 'open',
+        planItemNumber: '5.8',
+        planItemTitle: 'Обратная засыпка траншеи',
         briefMedia: [briefPhoto('Засыпка', 'закрыть траншею')],
       }),
     ],
   )
 
-  // Завтра: щебень.
+  // Завтра: щебень — один пункт, уплотнение входит в ту же работу.
   const tomorrowCrushed = base(
     key(1),
     'Участок А — тротуар, чётная сторона',
@@ -245,17 +257,9 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
     },
     [
       stage({
-        title:
-          'Устроить основание из щебня фракции 20–40 толщиной 20 см на участке длиной 100 м и шириной 3 м',
-        requirements: 'Фракция 20–40, послойно.',
-        plannedQty: 100,
-        unit: 'м²',
-        status: 'open',
-      }),
-      stage({
-        title: 'Уплотнить щебёночное основание',
-        requirements: 'Укатка, контроль отметок.',
-        plannedQty: 100,
+        title: 'Устройство щебёночного основания',
+        requirements: 'Фракция 20–40, толщина 20 см, укатка, контроль отметок.',
+        plannedQty: 300,
         unit: 'м²',
         status: 'open',
       }),

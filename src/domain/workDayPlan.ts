@@ -182,6 +182,27 @@ export function formatWorkPointLine(
   return `${point}${title.trim()}${amount}`
 }
 
+export function uniqueStagesByPlanItem(
+  assignment: WorkDayAssignment,
+): WorkDayStage[] {
+  const seen = new Set<string>()
+  const out: WorkDayStage[] = []
+  for (const s of assignment.stages) {
+    const n = stagePlanNumber(assignment, s)
+    const key = n || s.id
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(s)
+  }
+  return out
+}
+
+function collapseDuplicatePlanStages(assignment: WorkDayAssignment): WorkDayAssignment {
+  const stages = uniqueStagesByPlanItem(assignment)
+  if (stages.length === assignment.stages.length) return assignment
+  return { ...assignment, stages }
+}
+
 export function assignmentProgress(a: WorkDayAssignment): {
   doneStages: number
   totalStages: number
@@ -298,8 +319,10 @@ export function settleAssignment(assignment: WorkDayAssignment): WorkDayAssignme
     }
     return { ...s, status, briefMedia, planItemNumber, planItemTitle }
   })
-  if (unlocked.every((s, i) => s === next.stages[i])) return next
-  return { ...next, stages: unlocked }
+  const withUnlocked = unlocked.every((s, i) => s === next.stages[i])
+    ? next
+    : { ...next, stages: unlocked }
+  return collapseDuplicatePlanStages(withUnlocked)
 }
 
 export function toDateKey(d: Date): string {

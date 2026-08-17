@@ -18,6 +18,7 @@ import {
   startOfWeekMon,
   submitStage,
   toDateKey,
+  uniqueStagesByPlanItem,
   weekdayShortRu,
   type WorkDayAssignment,
   type WorkDayMedia,
@@ -118,7 +119,7 @@ export function SiteWorkDayPlanSection({
 
   useEffect(() => {
     setAssignments(loadWorkDayPlan(siteId).assignments)
-  }, [siteId, 'v11'])
+  }, [siteId, 'v12'])
 
   const patchAssignment = (
     assignmentId: string,
@@ -523,13 +524,8 @@ function DayBriefingSheet({
                       {row.label}
                     </span>
                   </div>
-                  <p className={styles.taskRowPoints}>
-                    {uniquePlanPoints(a)
-                      .map((p) => `п. ${p.number} ${p.title}`)
-                      .join(' · ')}
-                  </p>
                   <ol className={styles.taskSteps}>
-                    {a.stages.map((s, i) => {
+                    {uniqueStagesByPlanItem(a).map((s, i) => {
                       const isActive = s.id === currentId
                       const isDone = s.status === 'done' || s.status === 'submitted'
                       const isMuted = isDone
@@ -546,7 +542,6 @@ function DayBriefingSheet({
                             {isDone ? '✓' : i + 1}
                           </span>
                           <span className={styles.taskStepText}>
-                            <span className={styles.taskStepLabel}>Шаг {i + 1}.</span>{' '}
                             {formatStageBrief(a, s)}
                           </span>
                           {(s.briefMedia ?? []).length > 0 ? (
@@ -738,7 +733,7 @@ function TaskDetailModal({
         </div>
 
         <ol className={styles.stageList}>
-          {assignment.stages.map((stage, index) => {
+          {uniqueStagesByPlanItem(assignment).map((stage, index) => {
             const isDone = stage.status === 'done' || stage.status === 'submitted'
             const canWork =
               role === 'brigadier' && (stage.status === 'open' || stage.status === 'locked')

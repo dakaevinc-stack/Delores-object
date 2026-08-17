@@ -95,15 +95,29 @@ describe('workDayPlan', () => {
           status: 'submitted',
           actualQty: 42,
           submittedAtIso: '2026-08-11T11:00:00.000Z',
+          planItemNumber: '2.2',
           media: [{ id: 'm1', kind: 'photo', name: 'a.jpg', previewUrl: 'blob:x' }],
         }),
-        stage({ id: 's2', status: 'locked' }),
+        stage({ id: 's2', status: 'locked', planItemNumber: '2.9', title: 'Щебень' }),
       ]),
     )
     expect(a.stages[0]!.status).toBe('done')
     expect(a.stages[1]!.status).toBe('open')
     expect(a.stages[0]!.planItemNumber).toBe('2.2')
-    expect(issuedQtyForPlanItem([a], '2.2')).toBe(100)
+    expect(issuedQtyForPlanItem([a], '2.2')).toBe(42)
+  })
+
+  it('settleAssignment схлопывает одинаковые пункты в один шаг', () => {
+    const a = settleAssignment(
+      assignment([
+        stage({ id: 's1', status: 'open', plannedQty: 100, planItemNumber: '5.4' }),
+        stage({ id: 's2', status: 'open', plannedQty: 100, planItemNumber: '5.4' }),
+        stage({ id: 's3', status: 'open', plannedQty: 40, planItemNumber: '5.8' }),
+      ]),
+    )
+    expect(a.stages).toHaveLength(2)
+    expect(a.stages[0]!.planItemNumber).toBe('5.4')
+    expect(a.stages[1]!.planItemNumber).toBe('5.8')
   })
 
   it('два задания по одной строке складываются, шаги одной работы — нет', () => {
