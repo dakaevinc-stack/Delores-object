@@ -131,8 +131,8 @@ export function SiteProcurementRequestsSection({
             {serverBacked
               ? 'Заявки сохраняются на сервере (копия дублируется в этом браузере). '
               : 'Заявки сохраняются на этом устройстве. '}
-            Статус (в обработке / принято / отказано) отмечает снабжение. Готовый текст — в TXT, CSV
-            или «Поделиться».
+            Когда бригадир нажимает «Принял груз», заявка зеленеет и объём сразу
+            списывается из расхода материалов.
           </p>
         </div>
         <button type="button" className={styles.createBtn} onClick={onCreate}>
@@ -234,6 +234,23 @@ export function SiteProcurementRequestsSection({
                   {req.note}
                 </p>
               ) : null}
+
+              {req.status === 'accepted' ? (
+                <p className={styles.acceptedMark}>
+                  <span className={styles.acceptedIcon} aria-hidden>
+                    ✓
+                  </span>
+                  Груз принят — объём списан в расход материалов
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.acceptBtn}
+                  onClick={() => onUpdateRequest(req.id, { status: 'accepted' })}
+                >
+                  Принял груз
+                </button>
+              )}
 
               <div className={styles.cardActions}>
                 <button

@@ -3,11 +3,9 @@ import type { MeasurementUnitId } from './brigadierReport'
 /**
  * Каталог материалов для заявок снабженцу.
  *
- * Сделан группированным: 11 категорий (песок, щебень, бордюр, асфальт,
- * трубы, ЖБИ, вывоз отходов, спецтехника, грунт, инструмент) с
- * 1–4 ходовыми позициями в каждой. Каждая позиция несёт короткую
- * подсказку (`subtitle`) — чтобы при выборе из списка снабженец сразу
- * понимал, о какой именно фракции/диаметре/марке речь.
+ * Группы: песок, щебень, бетон, бордюр, асфальт, трубы, ЖБИ,
+ * геосинтетика, вывоз, спецтехника, грунт, инструмент, бригада.
+ * У каждой позиции короткая подсказка (`subtitle`) — фракция, диаметр, марка.
  *
  * Дополнительно у позиции есть `aliases` — альтернативные написания,
  * по которым работает поиск в форме (например, «труба 110я» найдёт
@@ -21,11 +19,13 @@ import type { MeasurementUnitId } from './brigadierReport'
 export type ProcurementCategoryId =
   | 'sand'
   | 'crushed-stone'
+  | 'concrete'
   | 'curb'
   | 'granite-curb'
   | 'asphalt'
   | 'plastic-pipes'
   | 'rcc'
+  | 'geosynthetics'
   | 'waste-removal'
   | 'machinery'
   | 'topsoil'
@@ -70,14 +70,16 @@ export type ProcurementPreset = {
 export const PROCUREMENT_CATEGORIES: readonly ProcurementCategory[] = [
   { id: 'sand', title: 'Песок', hint: 'для бетона, подсыпок и обратной засыпки', accent: 'sand' },
   { id: 'crushed-stone', title: 'Щебень', hint: 'по фракции и породе', accent: 'stone' },
+  { id: 'concrete', title: 'Бетон', hint: 'товарный бетон по классу', accent: 'concrete' },
   { id: 'curb', title: 'Бордюр бетонный', hint: 'по ГОСТ 6665, длина 100 см', accent: 'concrete' },
   { id: 'granite-curb', title: 'Бордюр гранитный', hint: 'пилёный или колотый', accent: 'concrete' },
   { id: 'asphalt', title: 'Асфальт', hint: 'по слоям и типам смеси', accent: 'asphalt' },
   { id: 'plastic-pipes', title: 'Трубы пластиковые', hint: 'по диаметру и назначению', accent: 'pipe' },
   { id: 'rcc', title: 'ЖБИ-изделия', hint: 'колодцы, плиты, лотки', accent: 'concrete' },
+  { id: 'geosynthetics', title: 'Геосинтетика', hint: 'геотекстиль, геосетка', accent: 'soil' },
   { id: 'waste-removal', title: 'Вывоз отходов', hint: 'в бортах самосвала (≈10–12 м³)', accent: 'truck' },
   { id: 'machinery', title: 'Спецтехника', hint: 'все классы из реестра парка, аренда смен', accent: 'machinery' },
-  { id: 'topsoil', title: 'Грунт растительный', hint: 'для газонов и озеленения', accent: 'soil' },
+  { id: 'topsoil', title: 'Грунт', hint: 'растительный и для засыпки', accent: 'soil' },
   { id: 'tools', title: 'Инструмент', hint: 'малая механизация (бензорез, виброплита и пр.), в сменах', accent: 'tool' },
   { id: 'labor', title: 'Бригада', hint: 'дополнительные люди на объект — на смену или вахту', accent: 'people' },
 ] as const
@@ -135,6 +137,24 @@ export const PROCUREMENT_MATERIAL_PRESETS: readonly ProcurementPreset[] = [
     subtitle: 'подсыпки, дешёвый аналог гранита',
     defaultUnit: 't',
     aliases: ['гравий', 'гравийный'],
+  },
+
+  /* ── Бетон (м³) ── */
+  {
+    id: 'concrete-b25',
+    categoryId: 'concrete',
+    title: 'Бетон товарный B25 (М350)',
+    subtitle: 'фундаменты опор, монолит, лотки',
+    defaultUnit: 'm3',
+    aliases: ['бетон', 'b25', 'в25', 'м350', 'товарный'],
+  },
+  {
+    id: 'concrete-b15',
+    categoryId: 'concrete',
+    title: 'Бетон товарный B15 (М200)',
+    subtitle: 'подготовка, основание под бордюр',
+    defaultUnit: 'm3',
+    aliases: ['b15', 'в15', 'м200', 'подбетонка'],
   },
 
   /* ── Бордюр бетонный (шт.) ── */
@@ -257,6 +277,16 @@ export const PROCUREMENT_MATERIAL_PRESETS: readonly ProcurementPreset[] = [
     subtitle: 'временные дороги и площадки',
     defaultUnit: 'pcs',
     aliases: ['плита дорожная', 'пд'],
+  },
+
+  /* ── Геосинтетика ── */
+  {
+    id: 'geotextile-200',
+    categoryId: 'geosynthetics',
+    title: 'Геотекстиль 200 г/м²',
+    subtitle: 'разделение слоёв основания, тротуар и проезжая',
+    defaultUnit: 'm2',
+    aliases: ['геотекстиль', 'дорнит', 'гео'],
   },
 
   /* ── Вывоз отходов (борт) ── */
@@ -403,6 +433,14 @@ export const PROCUREMENT_MATERIAL_PRESETS: readonly ProcurementPreset[] = [
     subtitle: 'газоны, клумбы, озеленение',
     defaultUnit: 'm3',
     aliases: ['чернозем', 'растительный', 'газон'],
+  },
+  {
+    id: 'soil-fill',
+    categoryId: 'topsoil',
+    title: 'Грунт для обратной засыпки',
+    subtitle: 'траншеи, пазухи, планировка',
+    defaultUnit: 'm3',
+    aliases: ['засыпка', 'грунт засыпка', 'обратная засыпка'],
   },
 
   /* ── Машины и инструмент (смена) ── */

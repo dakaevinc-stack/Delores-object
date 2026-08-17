@@ -321,6 +321,51 @@
   color: var(--text-strong);
 }
 
+.acceptBtn {
+  margin-top: 14px;
+  width: 100%;
+  min-height: 46px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #1c2c54, #0f1a35);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.acceptBtn:hover {
+  filter: brightness(1.08);
+}
+
+.acceptedMark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(46, 160, 67, 0.12);
+  border: 1px solid rgba(46, 160, 67, 0.35);
+  color: #1b5e2a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.acceptedIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #2e9f43;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .cardActions {
   display: flex;
   flex-wrap: wrap;

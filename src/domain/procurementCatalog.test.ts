@@ -106,6 +106,11 @@ describe('Каталог: поиск', () => {
     expect(out.some((p) => p.id === 'labor-itr')).toBe(true)
   })
 
+  it('находит товарный бетон по «B25»', () => {
+    const out = searchProcurementPresets('B25')
+    expect(out.some((p) => p.id === 'concrete-b25')).toBe(true)
+  })
+
   it('игнорирует регистр и пунктуацию', () => {
     expect(searchProcurementPresets('ПЕСОК')[0]?.categoryId).toBe('sand')
     expect(searchProcurementPresets('песок!')[0]?.categoryId).toBe('sand')

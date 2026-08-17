@@ -38,6 +38,8 @@ import { SiteDetailKpiGrid } from '../features/site-detail/SiteDetailKpiGrid'
 import { SiteReportingSection } from '../features/site-detail/SiteReportingSection'
 import { SiteScheduleSection } from '../features/site-detail/SiteScheduleSection'
 import { SiteWorkPlanSection } from '../features/site-detail/SiteWorkPlanSection'
+import { SiteMaterialConsumptionSection } from '../features/site-detail/SiteMaterialConsumptionSection'
+import { getMaterialBudgetForSite } from '../data/materialBudgets'
 import { loadWorkDayPlan } from '../lib/workDayPlanRepository'
 import styles from './ObjectDetailPage.module.css'
 
@@ -165,6 +167,7 @@ export function ObjectDetailPage() {
   }
 
   const dashboard = getSiteDetailDashboard(site)
+  const materialBudget = getMaterialBudgetForSite(site.id)
 
   // Реальный KPI считаем по `workPlan` + срокам объекта, чтобы сетка
   // не показывала «синтетические» mock-проценты, а двигалась вместе
@@ -265,6 +268,13 @@ export function ObjectDetailPage() {
         />
         <SiteReportingSection reports={brigadierReports} todayIso={liveKpis.todayIso} />
       </div>
+
+      {materialBudget ? (
+        <SiteMaterialConsumptionSection
+          budget={materialBudget}
+          requests={procurementRequests}
+        />
+      ) : null}
 
       <SiteProcurementRequestsSection
         requests={procurementRequests}
