@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import type { BrigadierStoredReport } from '../domain/brigadierReport'
 import type { ProcurementRequest } from '../domain/procurementRequest'
 import { applyAcceptedQuantitiesToPlan, applyWorkEntriesToPlan } from '../domain/workPlan'
-import { acceptedQtyByPlanItemMap } from '../domain/workDayPlan'
+import { issuedQtyByPlanItemMap } from '../domain/workDayPlan'
 import { computeSiteLiveKpis, todayIsoMsk } from '../domain/siteKpis'
 import { getSiteDetailDashboard } from '../data/siteDetail.mock'
 import { getWorkPlanForSite } from '../data/workPlans'
@@ -139,12 +139,12 @@ export function ObjectDetailPage() {
   }, [])
 
   const basePlan = site ? getWorkPlanForSite(site.id) : null
-  // Пересчёт при приёмке дневных этапов (localStorage → факт в плане).
+  // Пересчёт, когда дневные задания занимают объём в справке.
   const [dayPlanRevision, setDayPlanRevision] = useState(0)
   const workPlan = useMemo(() => {
     if (!basePlan || !site) return null
     const withReports = applyWorkEntriesToPlan(basePlan, brigadierReports)
-    const dayQty = acceptedQtyByPlanItemMap(loadWorkDayPlan(site.id).assignments)
+    const dayQty = issuedQtyByPlanItemMap(loadWorkDayPlan(site.id).assignments)
     return applyAcceptedQuantitiesToPlan(withReports, dayQty)
   }, [basePlan, brigadierReports, site, dayPlanRevision])
 

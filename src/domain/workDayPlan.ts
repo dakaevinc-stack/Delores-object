@@ -1,10 +1,10 @@
 /**
  * Ежедневный план работ (прототип).
  *
- * Руководитель назначает бригадиру этапы на дату.
- * Все этапы доступны сразу — без очереди и без согласования.
- * Бригадир сдаёт факт с фото/видео → сразу «Выполнено», объём
- * идёт в план/факт объекта.
+ * Руководитель ставит бригадиру пункты справки и объём на дату.
+ * Этот объём сразу занимает строку плана и вычитается из остатка.
+ * Бригадир не выбирает работу: видит готовый пункт, пишет сколько сделал,
+ * прикладывает фото или видео и нажимает «Я сделал».
  */
 
 export type WorkDayRole = 'manager' | 'brigadier'
@@ -28,6 +28,13 @@ export type WorkDayStage = {
   /** Фактический объём, который сдал бригадир. */
   actualQty: number | null
   status: WorkDayStageStatus
+  /**
+   * Пункт справки план/факт. Если не задан — берём `planItemNumber` задания.
+   * Нужен, чтобы в одном задании были разные работы (траншея + труба),
+   * и бригадир не выбирал строку сам.
+   */
+  planItemNumber?: string
+  planItemTitle?: string
   /** Фото/видео факта от бригадира. */
   media: readonly WorkDayMedia[]
   /**
@@ -73,34 +80,106 @@ export function formatProgressLine(
   return `Выполнено ${formatQtyRu(done)} из ${formatQtyRu(total)} ${unit} — осталось ${formatQtyRu(left)} ${unit}`
 }
 
-/** Сумма принятых (done) объёмов по строке плана. */
-export function acceptedQtyForPlanItem(
+export function stagePlanNumber(
+  assignment: WorkDayAssignment,
+  stage: WorkDayStage,
+): string {
+  const n = stage.planItemNumber?.trim()
+  return n || assignment.planItemNumber.trim()
+}
+
+export function stagePlanTitle(
+  assignment: WorkDayAssignment,
+  stage: WorkDayStage,
+): string {
+  const t = stage.planItemTitle?.trim()
+  return t || assignment.planItemTitle.trim()
+}
+
+/** Сколько объёма шага занимает строку плана. */
+export function stageIssuedQty(stage: WorkDayStage): number {
+  if (stage.status === 'done' && stage.actualQty != null && stage.actualQty > 0) {
+    return stage.actualQty
+  }
+  return stage.plannedQty > 0 ? stage.plannedQty : 0
+}
+
+/**
+ * Объём задания по одной строке плана.
+ * Несколько шагов одной работы (траншея → труба → засыпка на той же захватке)
+ * не суммируются: берём максимум, иначе 3 шага по 100 м превратятся в 300.
+ */
+export function issuedQtyInAssignment(
+  assignment: WorkDayAssignment,
+  planItemNumber: string,
+): number {
+  const want = planItemNumber.trim()
+  if (!want) return 0
+  let max = 0
+  for (const s of assignment.stages) {
+    if (stagePlanNumber(assignment, s) !== want) continue
+    max = Math.max(max, stageIssuedQty(s))
+  }
+  return max
+}
+
+/** Объём, уже занятый заданиями по строке плана (вычитается сразу при постановке). */
+export function issuedQtyForPlanItem(
   assignments: readonly WorkDayAssignment[],
   planItemNumber: string,
 ): number {
   let sum = 0
   for (const a of assignments) {
-    if (a.planItemNumber !== planItemNumber) continue
-    for (const s of a.stages) {
-      if (s.status === 'done' && s.actualQty != null) sum += s.actualQty
-    }
+    sum += issuedQtyInAssignment(a, planItemNumber)
   }
   return sum
 }
 
-/** Принятые объёмы по всем строкам плана (для сводки план/факт). */
+/** Занятые объёмы по всем строкам плана — для справки план/факт. */
+export function issuedQtyByPlanItemMap(
+  assignments: readonly WorkDayAssignment[],
+): Map<string, number> {
+  const numbers = new Set<string>()
+  for (const a of assignments) {
+    const head = a.planItemNumber.trim()
+    if (head) numbers.add(head)
+    for (const s of a.stages) {
+      const n = stagePlanNumber(a, s)
+      if (n) numbers.add(n)
+    }
+  }
+  const map = new Map<string, number>()
+  for (const n of numbers) {
+    const qty = issuedQtyForPlanItem(assignments, n)
+    if (qty > 0) map.set(n, qty)
+  }
+  return map
+}
+
+/** @deprecated используйте issuedQtyForPlanItem — объём занимает план сразу. */
+export function acceptedQtyForPlanItem(
+  assignments: readonly WorkDayAssignment[],
+  planItemNumber: string,
+): number {
+  return issuedQtyForPlanItem(assignments, planItemNumber)
+}
+
+/** @deprecated используйте issuedQtyByPlanItemMap. */
 export function acceptedQtyByPlanItemMap(
   assignments: readonly WorkDayAssignment[],
 ): Map<string, number> {
-  const map = new Map<string, number>()
-  for (const a of assignments) {
-    for (const s of a.stages) {
-      if (s.status !== 'done' || s.actualQty == null) continue
-      const prev = map.get(a.planItemNumber) ?? 0
-      map.set(a.planItemNumber, prev + s.actualQty)
-    }
-  }
-  return map
+  return issuedQtyByPlanItemMap(assignments)
+}
+
+export function formatWorkPointLine(
+  number: string,
+  title: string,
+  qty: number,
+  unit: string,
+): string {
+  const point = number.trim() ? `Пункт ${number.trim()}. ` : ''
+  const amount = qty > 0 ? ` — ${formatQtyRu(qty)} ${unit}` : ''
+  return `${point}${title.trim()}${amount}`
 }
 
 export function assignmentProgress(a: WorkDayAssignment): {
@@ -207,8 +286,17 @@ export function settleAssignment(assignment: WorkDayAssignment): WorkDayAssignme
   const unlocked = next.stages.map((s) => {
     const status = s.status === 'locked' ? ('open' as const) : s.status
     const briefMedia = s.briefMedia ?? []
-    if (status === s.status && briefMedia === s.briefMedia) return s
-    return { ...s, status, briefMedia }
+    const planItemNumber = s.planItemNumber?.trim() || next.planItemNumber
+    const planItemTitle = s.planItemTitle?.trim() || next.planItemTitle
+    if (
+      status === s.status &&
+      briefMedia === s.briefMedia &&
+      planItemNumber === s.planItemNumber &&
+      planItemTitle === s.planItemTitle
+    ) {
+      return s
+    }
+    return { ...s, status, briefMedia, planItemNumber, planItemTitle }
   })
   if (unlocked.every((s, i) => s === next.stages[i])) return next
   return { ...next, stages: unlocked }

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { unitLabel, type MeasurementUnitId } from '../../domain/brigadierReport'
 import {
-  acceptedQtyForPlanItem,
   addDays,
   attachStageBrief,
   assignmentProgress,
@@ -9,8 +8,12 @@ import {
   formatDayHeadingRu,
   formatProgressLine,
   formatQtyRu,
+  formatWorkPointLine,
+  issuedQtyForPlanItem,
   newId,
   parseDateKey,
+  stagePlanNumber,
+  stagePlanTitle,
   startOfMonth,
   startOfWeekMon,
   submitStage,
@@ -48,7 +51,9 @@ type Props = {
 type PlanPick = {
   number: string
   title: string
+  sectionTitle: string
   total: number
+  remaining: number
   unitLabel: string
   unitId: MeasurementUnitId
 }
@@ -61,7 +66,9 @@ function flattenPlanItems(plan: WorkPlan | undefined): PlanPick[] {
       out.push({
         number: item.number,
         title: item.title,
+        sectionTitle: `${section.number}. ${section.title}`,
         total: item.total,
+        remaining: Math.max(0, item.total - item.done),
         unitLabel: unitLabel(item.unit),
         unitId: item.unit,
       })
@@ -70,148 +77,19 @@ function flattenPlanItems(plan: WorkPlan | undefined): PlanPick[] {
   return out
 }
 
-/** Типовые этапы по номеру строки плана — чтобы назначение было техн. грамотным. */
-function defaultStagesForItem(item: PlanPick | null): Array<ReturnType<typeof newStageDraft>> {
-  const u = item?.unitLabel ?? 'м²'
-  const n = item?.number ?? ''
-  if (n === '1.1' || n === '2.8' || n === '3.8') {
-    return [
-      {
-        title: 'Планировка корыта',
-        requirements: 'Геодезия отметок, уплотнение грунта основания.',
-        plannedQty: 100,
-        unit: u,
-      },
-      {
-        title: 'Отсыпка песка 300 мм',
-        requirements: 'Песок карьерный. Толщина 300 мм, послойно.',
-        plannedQty: 100,
-        unit: u,
-      },
-      {
-        title: 'Уплотнение песка',
-        requirements: 'Коэф. уплотнения по проекту. Контроль толщины.',
-        plannedQty: 100,
-        unit: u,
-      },
-    ]
+function uniquePlanPoints(a: WorkDayAssignment): Array<{ number: string; title: string }> {
+  const seen = new Set<string>()
+  const out: Array<{ number: string; title: string }> = []
+  for (const s of a.stages) {
+    const number = stagePlanNumber(a, s)
+    if (!number || seen.has(number)) continue
+    seen.add(number)
+    out.push({ number, title: stagePlanTitle(a, s) })
   }
-  if (n === '1.2' || n === '2.9' || n === '3.9') {
-    return [
-      {
-        title: 'Щебень 20–40, толщина 200 мм',
-        requirements: 'Фракция 20–40. После приёмки песчаного основания.',
-        plannedQty: 100,
-        unit: u,
-      },
-      {
-        title: 'Уплотнение щебня',
-        requirements: 'Укатка, контроль отметок.',
-        plannedQty: 100,
-        unit: u,
-      },
-    ]
+  if (out.length === 0 && a.planItemNumber) {
+    out.push({ number: a.planItemNumber, title: a.planItemTitle })
   }
-  if (n === '1.4') {
-    return [
-      {
-        title: 'Демонтаж бортового камня',
-        requirements: 'Аккуратный демонтаж, складирование, вывоз боя.',
-        plannedQty: 40,
-        unit: u,
-      },
-    ]
-  }
-  if (n === '1.3') {
-    return [
-      {
-        title: 'Установка бортового камня',
-        requirements: 'По шнуру, бетонное основание, швы. Высота бровки по проекту.',
-        plannedQty: 40,
-        unit: u,
-      },
-    ]
-  }
-  if (n === '1.5') {
-    return [
-      {
-        title: 'Разработка грунта под бортовой камень',
-        requirements: 'Корыто по отметкам, вывоз грунта.',
-        plannedQty: 20,
-        unit: u,
-      },
-    ]
-  }
-  if (n === '2.1') {
-    return [
-      {
-        title: 'Разборка асфальтобетонного покрытия',
-        requirements: 'Срезка покрытия, вывоз боя. Основание ровное.',
-        plannedQty: 100,
-        unit: u,
-      },
-    ]
-  }
-  if (n === '5.2') {
-    return [
-      {
-        title: 'Разработка траншеи',
-        requirements: 'Глубина и ширина по проекту.',
-        plannedQty: 30,
-        unit: u,
-      },
-    ]
-  }
-  if (n === '5.4' || n === '5.5') {
-    return [
-      {
-        title: n === '5.4' ? 'Укладка трубы ПНД Ø63' : 'Укладка трубы ПНД Ø110',
-        requirements: 'Стыковка, песчаная подсыпка.',
-        plannedQty: 30,
-        unit: u,
-      },
-    ]
-  }
-  if (n === '5.7') {
-    return [
-      {
-        title: 'Прокладка кабеля',
-        requirements: 'Протяжка в трубах, маркировка.',
-        plannedQty: 30,
-        unit: u,
-      },
-    ]
-  }
-  if (n.startsWith('3.')) {
-    return [
-      {
-        title: item?.title ?? 'Асфальтовые работы',
-        requirements: 'Температура смеси, уплотнение, контроль толщины.',
-        plannedQty: 200,
-        unit: u,
-      },
-    ]
-  }
-  return [
-    {
-      title: item?.title ?? 'Этап работ',
-      requirements: '',
-      plannedQty: 50,
-      unit: u,
-    },
-  ]
-}
-
-function newStageDraft(): Omit<
-  WorkDayStage,
-  'id' | 'status' | 'media' | 'briefMedia' | 'actualQty' | 'submittedAtIso' | 'reviewedAtIso'
-> {
-  return {
-    title: '',
-    requirements: '',
-    plannedQty: 0,
-    unit: 'м²',
-  }
+  return out
 }
 
 export function SiteWorkDayPlanSection({
@@ -349,8 +227,9 @@ export function SiteWorkDayPlanSection({
               </div>
             </div>
             <p className={styles.lead}>
-              {siteName}: шаги на день. Начальник показывает фото места. Бригадир делает,
-              снимает своё фото и нажимает «Я сделал».
+              {siteName}: начальник ставит пункт справки и объём — они сразу уходят из остатка.
+              Бригадир видит этот пункт, пишет сколько сделал, прикладывает фото или видео
+              и нажимает «Я сделал».
             </p>
           </div>
         </header>
@@ -365,8 +244,9 @@ export function SiteWorkDayPlanSection({
             </p>
             <h3 className={styles.embeddedTitle}>Календарь заданий</h3>
             <p className={styles.embeddedLead}>
-              Шаг за шагом: что сделать. Начальник прикладывает фото или видео места.
-              Бригадир смотрит, делает, снимает своё фото и нажимает «Я сделал».
+              Начальник выбирает пункт справки и сколько сделать сегодня — объём сразу
+              вычитается из остатка. Бригадир не выбирает работу: видит готовый пункт,
+              пишет сколько сделал, прикладывает фото или видео и нажимает «Я сделал».
             </p>
           </div>
           <div className={styles.roleSwitch} role="group" aria-label="Роль">
@@ -538,6 +418,7 @@ export function SiteWorkDayPlanSection({
           assignment={active}
           role={role}
           allAssignments={assignments}
+          planItems={planItems}
           onClose={() => setActiveId(null)}
           onSubmit={handleSubmit}
           onAttachBrief={handleAttachBrief}
@@ -562,8 +443,13 @@ function taskRowStatus(a: WorkDayAssignment): {
 }
 
 /** Краткое описание шага для списка заданий. */
-function formatStageBrief(s: WorkDayStage): string {
-  return s.title.trim()
+function formatStageBrief(a: WorkDayAssignment, s: WorkDayStage): string {
+  return formatWorkPointLine(
+    stagePlanNumber(a, s),
+    stagePlanTitle(a, s) || s.title,
+    s.plannedQty,
+    s.unit,
+  )
 }
 
 /** Одна ячейка дня: все задания бригадиру списком внутри. */
@@ -637,6 +523,11 @@ function DayBriefingSheet({
                       {row.label}
                     </span>
                   </div>
+                  <p className={styles.taskRowPoints}>
+                    {uniquePlanPoints(a)
+                      .map((p) => `п. ${p.number} ${p.title}`)
+                      .join(' · ')}
+                  </p>
                   <ol className={styles.taskSteps}>
                     {a.stages.map((s, i) => {
                       const isActive = s.id === currentId
@@ -656,7 +547,7 @@ function DayBriefingSheet({
                           </span>
                           <span className={styles.taskStepText}>
                             <span className={styles.taskStepLabel}>Шаг {i + 1}.</span>{' '}
-                            {formatStageBrief(s)}
+                            {formatStageBrief(a, s)}
                           </span>
                           {(s.briefMedia ?? []).length > 0 ? (
                             <span className={styles.taskStepBrief} aria-label="фото места">
@@ -690,6 +581,7 @@ function TaskDetailModal({
   assignment,
   role,
   allAssignments,
+  planItems,
   onClose,
   onSubmit,
   onAttachBrief,
@@ -698,12 +590,13 @@ function TaskDetailModal({
   assignment: WorkDayAssignment
   role: WorkDayRole
   allAssignments: WorkDayAssignment[]
+  planItems: PlanPick[]
   onClose: () => void
   onSubmit: (assignmentId: string, stageId: string, qty: number, media: WorkDayMedia[]) => void
   onAttachBrief: (assignmentId: string, stageId: string, media: WorkDayMedia[]) => void
   onDelete: () => void
 }) {
-  const accepted = acceptedQtyForPlanItem(allAssignments, assignment.planItemNumber)
+  const points = uniquePlanPoints(assignment)
   const prog = assignmentProgress(assignment)
   const [qtyByStage, setQtyByStage] = useState<Record<string, string>>({})
   const [mediaByStage, setMediaByStage] = useState<Record<string, WorkDayMedia[]>>({})
@@ -789,6 +682,14 @@ function TaskDetailModal({
               {formatDayHeadingRu(assignment.dateKey)}
               {role === 'manager' ? ` · ${assignment.brigadierName}` : null}
             </p>
+            <ul className={styles.pointList}>
+              {points.map((p) => (
+                <li key={p.number} className={styles.pointChip}>
+                  <span className={styles.pointNum}>п. {p.number}</span>
+                  {p.title}
+                </li>
+              ))}
+            </ul>
           </div>
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Закрыть">
             ×
@@ -798,8 +699,8 @@ function TaskDetailModal({
         {role === 'brigadier' ? (
           <p className={styles.dialogProgress}>
             {prog.allDone
-              ? 'Все шаги сделаны. Можно закрыть.'
-              : `Сделай шаги по порядку. Готово: ${prog.doneStages} из ${prog.totalStages}.`}
+              ? 'Все пункты сделаны. Можно закрыть.'
+              : 'Пункты уже выбраны за тебя. По каждому напиши, сколько сделал, и приложи фото или видео.'}
           </p>
         ) : (
           <>
@@ -807,9 +708,21 @@ function TaskDetailModal({
               Шаги: {prog.doneStages} из {prog.totalStages}
               {prog.allDone ? ' · задание закрыто' : null}
             </p>
-            <p className={styles.dialogProgressSub}>
-              {formatProgressLine(accepted, assignment.planTotalQty, assignment.planUnit)}
-            </p>
+            {points.map((p) => {
+              const item = planItems.find((it) => it.number === p.number)
+              const total = item?.total ?? assignment.planTotalQty
+              const unit = item?.unitLabel ?? assignment.planUnit
+              return (
+                <p key={p.number} className={styles.dialogProgressSub}>
+                  п. {p.number} {p.title}:{' '}
+                  {formatProgressLine(
+                    issuedQtyForPlanItem(allAssignments, p.number),
+                    total,
+                    unit,
+                  )}
+                </p>
+              )
+            })}
           </>
         )}
         <div className={styles.progressBar} aria-hidden>
@@ -832,17 +745,28 @@ function TaskDetailModal({
             const draftMedia = mediaByStage[stage.id] ?? []
             const factMedia = stage.media.length ? stage.media : draftMedia
             const brief = stage.briefMedia ?? []
+            const pointNumber = stagePlanNumber(assignment, stage)
+            const pointName = stagePlanTitle(assignment, stage) || stage.title
             const qtyStr =
               qtyByStage[stage.id] ??
               (stage.actualQty != null
                 ? String(stage.actualQty)
                 : String(stage.plannedQty))
-            const qtyNum = Number(qtyStr.replace(',', '.'))
+            const qtyNum = Number(String(qtyStr).replace(',', '.'))
+            const qtyOk = Number.isFinite(qtyNum) && qtyNum > 0
             const canSend = canSubmitStage(
               { ...stage, media: factMedia },
-              Number.isFinite(qtyNum) ? qtyNum : 0,
+              qtyOk ? qtyNum : 0,
             )
             const isFocus = prog.openStage?.id === stage.id
+            const pointTitle = formatWorkPointLine(
+              pointNumber,
+              pointName,
+              stage.plannedQty,
+              stage.unit,
+            )
+            const qtyDiffers =
+              qtyOk && Math.abs(qtyNum - stage.plannedQty) > 0.0001
 
             return (
               <li
@@ -855,14 +779,23 @@ function TaskDetailModal({
                 } ${isFocus && !isDone ? styles.stage_focus : ''}`}
               >
                 <div className={styles.stageHead}>
-                  <span className={styles.stageIndex}>Шаг {index + 1}</span>
+                  <span className={styles.stageIndex}>
+                    Пункт {pointNumber || index + 1}
+                  </span>
                   {isDone ? (
                     <span className={styles.badgeDone}>
                       <CheckIcon /> Сделано
                     </span>
-                  ) : null}
+                  ) : (
+                    <span className={styles.lockedQty}>
+                      задание {formatQtyRu(stage.plannedQty)} {stage.unit}
+                    </span>
+                  )}
                 </div>
-                <h4 className={styles.stageTitle}>{stage.title}</h4>
+                <h4 className={styles.stageTitle}>{pointTitle}</h4>
+                {stage.requirements.trim() ? (
+                  <p className={styles.stageReq}>{stage.requirements}</p>
+                ) : null}
 
                 {brief.length > 0 ? (
                   <div className={styles.mediaBlock}>
@@ -889,7 +822,7 @@ function TaskDetailModal({
 
                 {isDone && stage.media.length > 0 ? (
                   <div className={styles.mediaBlock}>
-                    <p className={styles.mediaCaption}>Твоё фото — что сделал</p>
+                    <p className={styles.mediaCaption}>Твоё фото или видео — что сделал</p>
                     <ul className={styles.mediaRow}>
                       {stage.media.map((m) => (
                         <li key={m.id} className={styles.mediaThumb}>
@@ -933,10 +866,28 @@ function TaskDetailModal({
                   </div>
                 ) : null}
 
+                {isDone && stage.actualQty != null ? (
+                  <p className={styles.stagePlan}>
+                    Сдал {formatQtyRu(stage.actualQty)} {stage.unit}
+                    {stage.actualQty !== stage.plannedQty
+                      ? ` · в задании было ${formatQtyRu(stage.plannedQty)} ${stage.unit}`
+                      : null}
+                  </p>
+                ) : null}
+
                 {canWork ? (
                   <div className={styles.brigadierActions}>
+                    <p className={styles.lockedFact}>
+                      Работа уже выбрана:{' '}
+                      <strong>
+                        п. {pointNumber} {pointName}
+                      </strong>
+                      . Другой пункт выбирать не нужно.
+                    </p>
                     <label className={styles.field}>
-                      <span>Сколько сделал ({stage.unit})</span>
+                      <span>
+                        Сколько сделал по пункту {pointNumber || ''} ({stage.unit})
+                      </span>
                       <input
                         type="number"
                         inputMode="decimal"
@@ -948,6 +899,17 @@ function TaskDetailModal({
                         }
                       />
                     </label>
+                    {qtyDiffers ? (
+                      <p className={styles.remainHint}>
+                        В задании было {formatQtyRu(stage.plannedQty)} {stage.unit}.
+                        Записываешь {formatQtyRu(qtyNum)} {stage.unit} — так и пойдёт в план.
+                      </p>
+                    ) : (
+                      <p className={styles.hint}>
+                        Если сделал не {formatQtyRu(stage.plannedQty)} {stage.unit} — исправь
+                        цифру. Например, вместо 100 напиши 80.
+                      </p>
+                    )}
                     <input
                       ref={(el) => {
                         fileRefs.current[stage.id] = el
@@ -966,7 +928,7 @@ function TaskDetailModal({
                       className={styles.mediaCta}
                       onClick={() => fileRefs.current[stage.id]?.click()}
                     >
-                      Сфотографируй, что сделал
+                      Фото или видео, что сделал
                     </button>
                     {draftMedia.length > 0 ? (
                       <ul className={styles.mediaRow}>
@@ -1026,30 +988,48 @@ function AssignModal({
   onClose: () => void
   onSave: (a: WorkDayAssignment) => void
 }) {
-  const initial =
-    planItems.find((p) => p.number === '2.8') ?? planItems[0] ?? null
+  type WorkLine = { planNumber: string; qty: string; requirements: string }
+
+  const firstPick =
+    planItems.find((p) => p.remaining > 0) ??
+    planItems.find((p) => p.total > 0) ??
+    planItems[0] ??
+    null
+
   const [dateKey, setDateKey] = useState(defaultDateKey)
   const [area, setArea] = useState('Участок А')
   const [brigadierName, setBrigadierName] = useState('Минасян А.Л.')
-  const [selectedNumber, setSelectedNumber] = useState(initial?.number ?? '')
-  const selected = planItems.find((p) => p.number === selectedNumber) ?? null
-  const [planItemTitle, setPlanItemTitle] = useState(initial?.title ?? '')
-  const [planTotalQty, setPlanTotalQty] = useState(String(initial?.total ?? 0))
-  const [planUnit, setPlanUnit] = useState(initial?.unitLabel ?? 'м²')
-  const [stages, setStages] = useState(() => defaultStagesForItem(initial))
+  const [lines, setLines] = useState<WorkLine[]>(() => [
+    { planNumber: firstPick?.number ?? '', qty: '', requirements: '' },
+  ])
   const [briefByIndex, setBriefByIndex] = useState<Record<number, WorkDayMedia[]>>({})
   const briefCreateRefs = useRef<Record<number, HTMLInputElement | null>>({})
 
-  const applyPlanItem = (number: string) => {
-    setSelectedNumber(number)
-    const item = planItems.find((p) => p.number === number) ?? null
-    if (!item) return
-    setPlanItemTitle(item.title)
-    setPlanTotalQty(String(item.total))
-    setPlanUnit(item.unitLabel)
-    setStages(defaultStagesForItem(item))
-    setBriefByIndex({})
-  }
+  const groups = useMemo(() => {
+    const map = new Map<string, PlanPick[]>()
+    for (const p of planItems) {
+      const list = map.get(p.sectionTitle) ?? []
+      list.push(p)
+      map.set(p.sectionTitle, list)
+    }
+    return [...map.entries()]
+  }, [planItems])
+
+  const taken = new Set(lines.map((l) => l.planNumber).filter(Boolean))
+
+  const parsedLines = lines.map((line) => {
+    const item = planItems.find((p) => p.number === line.planNumber) ?? null
+    const qty = Number(String(line.qty).replace(',', '.'))
+    const qtyOk = Number.isFinite(qty) && qty > 0
+    const over = Boolean(item && item.total > 0 && qtyOk && qty > item.remaining)
+    const left = item && item.total > 0 && qtyOk ? Math.max(0, item.remaining - qty) : null
+    return { line, item, qty: qtyOk ? qty : 0, qtyOk, over, left }
+  })
+
+  const valid =
+    Boolean(area.trim() && brigadierName.trim()) &&
+    parsedLines.length > 0 &&
+    parsedLines.every((row) => row.item && row.qtyOk && !row.over)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1059,22 +1039,42 @@ function AssignModal({
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const valid =
-    area.trim() &&
-    brigadierName.trim() &&
-    planItemTitle.trim() &&
-    stages.length > 0 &&
-    stages.every((s) => s.title.trim() && s.plannedQty > 0)
+  const patchLine = (index: number, patch: Partial<WorkLine>) => {
+    setLines((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)))
+  }
+
+  const readBriefFiles = (files: FileList | null): WorkDayMedia[] => {
+    if (!files?.length) return []
+    const next: WorkDayMedia[] = []
+    for (let k = 0; k < files.length; k += 1) {
+      const file = files.item(k)
+      if (!file) continue
+      next.push({
+        id: newId('media'),
+        kind: file.type.startsWith('video/') ? 'video' : 'photo',
+        name: file.name,
+        previewUrl: URL.createObjectURL(file),
+      })
+    }
+    return next
+  }
 
   return (
     <div className={styles.backdrop} role="dialog" aria-modal="true" onClick={onClose}>
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         <header className={styles.dialogHead}>
-          <h3 className={styles.dialogTitle}>Задание бригадиру</h3>
+          <div>
+            <p className={styles.dialogKicker}>Постановка в план</p>
+            <h3 className={styles.dialogTitle}>Задание бригадиру</h3>
+          </div>
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Закрыть">
             ×
           </button>
         </header>
+        <p className={styles.hint}>
+          Выберите пункты справки и сколько сделать сегодня. Этот объём сразу вычтется из
+          остатка. Бригадир увидит только эти пункты — перепутать работу не сможет.
+        </p>
 
         <div className={styles.formGrid}>
           <label className={styles.field}>
@@ -1085,105 +1085,108 @@ function AssignModal({
             <span>Участок</span>
             <input value={area} onChange={(e) => setArea(e.target.value)} />
           </label>
-          <label className={styles.field}>
+          <label className={`${styles.field} ${styles.fieldFull}`}>
             <span>Бригадир</span>
             <input value={brigadierName} onChange={(e) => setBrigadierName(e.target.value)} />
           </label>
-          <label className={`${styles.field} ${styles.fieldFull}`}>
-            <span>Строка производственного плана</span>
-            {planItems.length > 0 ? (
-              <select value={selectedNumber} onChange={(e) => applyPlanItem(e.target.value)}>
-                {planItems.map((p) => (
-                  <option key={p.number} value={p.number}>
-                    {p.number} — {p.title} ({formatQtyRu(p.total)} {p.unitLabel})
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                value={selectedNumber}
-                onChange={(e) => setSelectedNumber(e.target.value)}
-                placeholder="№ строки"
-              />
-            )}
-          </label>
-          <label className={`${styles.field} ${styles.fieldFull}`}>
-            <span>Вид работ</span>
-            <input value={planItemTitle} onChange={(e) => setPlanItemTitle(e.target.value)} />
-          </label>
-          <label className={styles.field}>
-            <span>Общий план по строке</span>
-            <input
-              type="number"
-              value={planTotalQty}
-              onChange={(e) => setPlanTotalQty(e.target.value)}
-            />
-          </label>
-          <label className={styles.field}>
-            <span>Ед. изм.</span>
-            <input value={planUnit} onChange={(e) => setPlanUnit(e.target.value)} />
-          </label>
         </div>
 
-        <h4 className={styles.stagesHeading}>
-          Шаги на день — напишите просто, что сделать
-        </h4>
-        {stages.map((s, i) => (
+        <h4 className={styles.stagesHeading}>Пункты работ на сегодня</h4>
+        {parsedLines.map((row, i) => (
           <div key={i} className={styles.stageEdit}>
-            <p className={styles.stageIndex}>Шаг {i + 1}</p>
+            <p className={styles.stageIndex}>Пункт {i + 1}</p>
             <label className={styles.field}>
-              <span>Что сделать</span>
+              <span>Строка справки — что делать</span>
+              {planItems.length > 0 ? (
+                <select
+                  value={row.line.planNumber}
+                  onChange={(e) => patchLine(i, { planNumber: e.target.value })}
+                >
+                  {groups.map(([section, items]) => (
+                    <optgroup key={section} label={section}>
+                      {items.map((p) => {
+                        const usedElsewhere = taken.has(p.number) && p.number !== row.line.planNumber
+                        const remainText =
+                          p.total > 0
+                            ? `осталось ${formatQtyRu(p.remaining)} из ${formatQtyRu(p.total)} ${p.unitLabel}`
+                            : 'объём не задан'
+                        return (
+                          <option key={p.number} value={p.number} disabled={usedElsewhere}>
+                            {p.number} — {p.title} ({remainText})
+                          </option>
+                        )
+                      })}
+                    </optgroup>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  value={row.line.planNumber}
+                  onChange={(e) => patchLine(i, { planNumber: e.target.value })}
+                  placeholder="№ строки, например 5.5"
+                />
+              )}
+            </label>
+
+            {row.item ? (
+              <p className={styles.remainHint}>
+                {row.item.total > 0 ? (
+                  <>
+                    В плане {formatQtyRu(row.item.total)} {row.item.unitLabel}, уже занято{' '}
+                    {formatQtyRu(Math.max(0, row.item.total - row.item.remaining))}{' '}
+                    {row.item.unitLabel}, свободно{' '}
+                    <strong>
+                      {formatQtyRu(row.item.remaining)} {row.item.unitLabel}
+                    </strong>
+                    .
+                  </>
+                ) : (
+                  <>Общий объём по этой строке ещё не внесён — задание всё равно можно поставить.</>
+                )}
+              </p>
+            ) : null}
+
+            <label className={styles.field}>
+              <span>Сколько на сегодня{row.item ? ` (${row.item.unitLabel})` : ''}</span>
               <input
-                value={s.title}
-                onChange={(e) =>
-                  setStages((prev) =>
-                    prev.map((row, j) => (j === i ? { ...row, title: e.target.value } : row)),
-                  )
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step="any"
+                value={row.line.qty}
+                onChange={(e) => patchLine(i, { qty: e.target.value })}
+                placeholder={
+                  row.item && row.item.remaining > 0
+                    ? `не больше ${formatQtyRu(row.item.remaining)}`
+                    : 'например 100'
                 }
-                placeholder="например: Уложить трубу 63 на 40 метров"
               />
             </label>
+
+            {row.over ? (
+              <p className={styles.overLimit}>
+                Нельзя поставить больше остатка ({formatQtyRu(row.item!.remaining)}{' '}
+                {row.item!.unitLabel}).
+              </p>
+            ) : null}
+            {row.left != null && !row.over ? (
+              <p className={styles.remainHint}>
+                После постановки в справке останется{' '}
+                <strong>
+                  {formatQtyRu(row.left)} {row.item?.unitLabel}
+                </strong>
+                .
+              </p>
+            ) : null}
+
             <label className={styles.field}>
-              <span>Коротко, если нужно</span>
+              <span>Коротко для бригадира, если нужно</span>
               <input
-                value={s.requirements}
-                onChange={(e) =>
-                  setStages((prev) =>
-                    prev.map((row, j) =>
-                      j === i ? { ...row, requirements: e.target.value } : row,
-                    ),
-                  )
-                }
-                placeholder="не обязательно"
+                value={row.line.requirements}
+                onChange={(e) => patchLine(i, { requirements: e.target.value })}
+                placeholder="не обязательно — пункт справки уже написан"
               />
             </label>
-            <div className={styles.row2}>
-              <label className={styles.field}>
-                <span>Сколько на сегодня</span>
-                <input
-                  type="number"
-                  value={s.plannedQty || ''}
-                  onChange={(e) =>
-                    setStages((prev) =>
-                      prev.map((row, j) =>
-                        j === i ? { ...row, plannedQty: Number(e.target.value) || 0 } : row,
-                      ),
-                    )
-                  }
-                />
-              </label>
-              <label className={styles.field}>
-                <span>Ед.</span>
-                <input
-                  value={s.unit}
-                  onChange={(e) =>
-                    setStages((prev) =>
-                      prev.map((row, j) => (j === i ? { ...row, unit: e.target.value } : row)),
-                    )
-                  }
-                />
-              </label>
-            </div>
             <p className={styles.hint}>Приложи фото или видео места — бригадир увидит «что и где».</p>
             <input
               ref={(el) => {
@@ -1194,19 +1197,8 @@ function AssignModal({
               multiple
               className={styles.hiddenFile}
               onChange={(e) => {
-                const files = e.target.files
-                if (!files?.length) return
-                const next: WorkDayMedia[] = []
-                for (let k = 0; k < files.length; k += 1) {
-                  const file = files.item(k)
-                  if (!file) continue
-                  next.push({
-                    id: newId('media'),
-                    kind: file.type.startsWith('video/') ? 'video' : 'photo',
-                    name: file.name,
-                    previewUrl: URL.createObjectURL(file),
-                  })
-                }
+                const next = readBriefFiles(e.target.files)
+                if (!next.length) return
                 setBriefByIndex((prev) => ({
                   ...prev,
                   [i]: [...(prev[i] ?? []), ...next],
@@ -1234,22 +1226,40 @@ function AssignModal({
                 ))}
               </ul>
             ) : null}
+            {lines.length > 1 ? (
+              <button
+                type="button"
+                className={styles.secondaryBtn}
+                onClick={() => {
+                  setLines((prev) => prev.filter((_, j) => j !== i))
+                  setBriefByIndex((prev) => {
+                    const next: Record<number, WorkDayMedia[]> = {}
+                    Object.keys(prev).forEach((key) => {
+                      const idx = Number(key)
+                      if (idx < i) next[idx] = prev[idx]!
+                      else if (idx > i) next[idx - 1] = prev[idx]!
+                    })
+                    return next
+                  })
+                }}
+              >
+                Убрать этот пункт
+              </button>
+            ) : null}
           </div>
         ))}
         <button
           type="button"
           className={styles.secondaryBtn}
-          onClick={() =>
-            setStages((p) => [
-              ...p,
-              {
-                ...newStageDraft(),
-                unit: selected?.unitLabel ?? (planUnit || 'м²'),
-              },
+          onClick={() => {
+            const nextItem = planItems.find((p) => !taken.has(p.number))
+            setLines((prev) => [
+              ...prev,
+              { planNumber: nextItem?.number ?? '', qty: '', requirements: '' },
             ])
-          }
+          }}
         >
-          + Добавить шаг
+          + Ещё пункт работ
         </button>
 
         <button
@@ -1257,35 +1267,41 @@ function AssignModal({
           className={styles.primaryBtn}
           disabled={!valid}
           onClick={() => {
-            const builtStages: WorkDayStage[] = stages.map((s, i) => ({
-              id: newId('stage'),
-              title: s.title.trim(),
-              requirements: s.requirements.trim(),
-              plannedQty: s.plannedQty,
-              unit: s.unit.trim() || planUnit || 'м²',
-              actualQty: null,
-              status: 'open',
-              media: [],
-              briefMedia: briefByIndex[i] ?? [],
-              submittedAtIso: null,
-              reviewedAtIso: null,
-            }))
+            const builtStages: WorkDayStage[] = parsedLines.map((row, i) => {
+              const item = row.item!
+              return {
+                id: newId('stage'),
+                title: formatWorkPointLine(item.number, item.title, row.qty, item.unitLabel),
+                requirements: row.line.requirements.trim(),
+                plannedQty: row.qty,
+                unit: item.unitLabel,
+                planItemNumber: item.number,
+                planItemTitle: item.title,
+                actualQty: null,
+                status: 'open',
+                media: [],
+                briefMedia: briefByIndex[i] ?? [],
+                submittedAtIso: null,
+                reviewedAtIso: null,
+              }
+            })
+            const first = parsedLines[0]!.item!
             onSave({
               id: newId('asg'),
               siteId,
               dateKey,
               area: area.trim(),
               brigadierName: brigadierName.trim(),
-              planItemNumber: (selectedNumber || selected?.number || '—').trim(),
-              planItemTitle: planItemTitle.trim(),
-              planTotalQty: Number(planTotalQty) || 0,
-              planUnit: planUnit.trim() || 'м²',
+              planItemNumber: first.number,
+              planItemTitle: first.title,
+              planTotalQty: first.total,
+              planUnit: first.unitLabel,
               stages: builtStages,
               createdAtIso: new Date().toISOString(),
             })
           }}
         >
-          Сохранить назначение
+          Поставить в план
         </button>
       </div>
     </div>

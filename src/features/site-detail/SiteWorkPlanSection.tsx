@@ -191,8 +191,8 @@ export function SiteWorkPlanSection({
         <div id="work-plan-body" className={styles.expandedBody}>
           <div className={styles.summaryPanel}>
             <p className={styles.lead}>
-              Сводка, ежедневные задания бригадиру и справка по строкам. Факт — из принятых
-              этапов дня и отчётов бригадира.
+              Сводка, ежедневные задания бригадиру и справка по строкам. Объём
+              задания сразу занимает строку плана и вычитается из остатка.
             </p>
 
             <dl className={styles.summary}>
@@ -271,7 +271,7 @@ export function SiteWorkPlanSection({
             <div className={styles.blockLabelRow}>
               <h3 className={styles.blockLabel}>Справка — план и факт</h3>
               <p className={styles.blockHint}>
-                Факт по строкам обновляется после приёмки этапов дня и из журнала бригадира
+                Факт по строкам появляется сразу, как поставили задание, и из журнала бригадира
               </p>
             </div>
             <ol className={styles.sections} id="work-plan-sections">

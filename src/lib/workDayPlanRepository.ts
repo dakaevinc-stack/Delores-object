@@ -47,7 +47,7 @@ function briefPhoto(label: string, sub: string): WorkDayMedia {
 
 function stage(
   partial: Omit<WorkDayStage, 'id' | 'media' | 'briefMedia' | 'actualQty' | 'submittedAtIso' | 'reviewedAtIso'> &
-    Partial<Pick<WorkDayStage, 'actualQty' | 'submittedAtIso' | 'reviewedAtIso' | 'media' | 'briefMedia'>>,
+    Partial<Pick<WorkDayStage, 'actualQty' | 'submittedAtIso' | 'reviewedAtIso' | 'media' | 'briefMedia' | 'planItemNumber' | 'planItemTitle'>>,
 ): WorkDayStage {
   return {
     id: newId('stage'),
@@ -61,6 +61,8 @@ function stage(
     plannedQty: partial.plannedQty,
     unit: partial.unit,
     status: partial.status,
+    planItemNumber: partial.planItemNumber,
+    planItemTitle: partial.planItemTitle,
   }
 }
 
@@ -98,7 +100,11 @@ function buildDemoAssignments(siteId: string): WorkDayAssignment[] {
     planItemTitle: plan.title,
     planTotalQty: plan.total,
     planUnit: plan.unit,
-    stages,
+    stages: stages.map((s) => ({
+      ...s,
+      planItemNumber: s.planItemNumber ?? plan.number,
+      planItemTitle: s.planItemTitle ?? plan.title,
+    })),
     createdAtIso: nowIso(),
   })
 

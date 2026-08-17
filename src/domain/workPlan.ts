@@ -462,7 +462,7 @@ export function applyWorkEntriesToPlan(
 }
 
 /**
- * Прибавляет к `done` принятые объёмы (отчёты, дневные задачи и т.п.).
+ * Прибавляет к `done` объёмы из дневных заданий и отчётов.
  * Исходный снимок плана не мутируется.
  */
 export function applyAcceptedQuantitiesToPlan(

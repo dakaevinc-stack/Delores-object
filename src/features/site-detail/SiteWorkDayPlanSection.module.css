@@ -473,6 +473,14 @@
   color: var(--text-strong, #12141a);
 }
 
+.taskRowPoints {
+  margin: 2px 0 6px;
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--brand-navy, #172a4d);
+}
+
 .taskRowStatus {
   display: inline-flex;
   align-items: center;
@@ -1427,6 +1435,78 @@
   font-size: 15px;
   font-weight: 700;
   color: var(--text-strong);
+}
+
+.pointList {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pointChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(23, 42, 77, 0.06);
+  border: 1px solid rgba(23, 42, 77, 0.12);
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--text-strong);
+}
+
+.pointNum {
+  font-weight: 800;
+  color: var(--brand-red, #ee2d3a);
+  white-space: nowrap;
+}
+
+.lockedQty {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--brand-navy, #172a4d);
+  font-variant-numeric: tabular-nums;
+}
+
+.lockedFact {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(23, 42, 77, 0.06);
+  border: 1px solid rgba(23, 42, 77, 0.1);
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.lockedFact strong {
+  font-weight: 800;
+  color: var(--text-strong);
+}
+
+.remainHint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.remainHint strong {
+  font-weight: 800;
+  color: var(--text-strong);
+}
+
+.overLimit {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--status-bad, #c62828);
 }
 
 .stageReq,

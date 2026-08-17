@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   attachStageBrief,
-  acceptedQtyByPlanItemMap,
-  acceptedQtyForPlanItem,
   canSubmitStage,
   formatProgressLine,
+  formatWorkPointLine,
+  issuedQtyByPlanItemMap,
+  issuedQtyForPlanItem,
   settleAssignment,
   submitStage,
   type WorkDayAssignment,
@@ -57,18 +58,16 @@ describe('workDayPlan', () => {
     ).toBe(true)
   })
 
-  it('submitStage сразу помечает этап выполненным', () => {
-    const a = assignment([
-      stage({ id: 's1', status: 'open' }),
-      stage({ id: 's2', status: 'open', title: 'Щебень 20–40' }),
-    ])
+  it('постановка сразу занимает объём; факт бригадира подменяет задание', () => {
+    const a = assignment([stage({ id: 's1', status: 'open', plannedQty: 100 })])
+    expect(issuedQtyForPlanItem([a], '2.2')).toBe(100)
+
     const next = submitStage(a, 's1', 80, [
       { id: 'm1', kind: 'photo', name: 'a.jpg', previewUrl: 'blob:x' },
     ])
     expect(next.stages[0]!.status).toBe('done')
     expect(next.stages[0]!.actualQty).toBe(80)
-    expect(next.stages[1]!.status).toBe('open')
-    expect(acceptedQtyForPlanItem([next], '2.2')).toBe(80)
+    expect(issuedQtyForPlanItem([next], '2.2')).toBe(80)
     expect(formatProgressLine(80, 2000, 'м')).toMatch(
       /Выполнено 80 из 2\s?000 м — осталось 1\s?920 м/,
     )
@@ -85,7 +84,7 @@ describe('workDayPlan', () => {
     expect(a.stages[1]!.status).toBe('done')
     a = submitStage(a, 's1', 50, [{ ...media[0]!, id: 'm2' }])
     expect(a.stages[0]!.status).toBe('done')
-    expect(acceptedQtyForPlanItem([a], '2.2')).toBe(90)
+    expect(issuedQtyForPlanItem([a], '2.2')).toBe(50)
   })
 
   it('settleAssignment снимает locked и переводит submitted в done', () => {
@@ -103,17 +102,49 @@ describe('workDayPlan', () => {
     )
     expect(a.stages[0]!.status).toBe('done')
     expect(a.stages[1]!.status).toBe('open')
-    expect(acceptedQtyForPlanItem([a], '2.2')).toBe(42)
+    expect(a.stages[0]!.planItemNumber).toBe('2.2')
+    expect(issuedQtyForPlanItem([a], '2.2')).toBe(100)
   })
 
-  it('acceptedQtyByPlanItemMap суммирует только принятые этапы', () => {
+  it('два задания по одной строке складываются, шаги одной работы — нет', () => {
     const a = assignment([
-      stage({ id: 's1', status: 'done', actualQty: 40 }),
-      stage({ id: 's2', status: 'done', actualQty: 10 }),
-      stage({ id: 's3', status: 'open', actualQty: 99 }),
+      stage({ id: 's1', status: 'open', plannedQty: 100 }),
+      stage({ id: 's2', status: 'open', plannedQty: 100 }),
     ])
-    const map = acceptedQtyByPlanItemMap([a])
-    expect(map.get('2.2')).toBe(50)
+    const b: WorkDayAssignment = {
+      ...assignment([stage({ id: 't1', status: 'open', plannedQty: 40 })]),
+      id: 'a2',
+    }
+    const map = issuedQtyByPlanItemMap([a, b])
+    expect(map.get('2.2')).toBe(140)
+  })
+
+  it('разные пункты в одном задании занимают каждая свою строку', () => {
+    const a = assignment([
+      stage({
+        id: 's1',
+        status: 'open',
+        plannedQty: 40,
+        planItemNumber: '5.2',
+        planItemTitle: 'Разработка траншеи',
+      }),
+      stage({
+        id: 's2',
+        status: 'open',
+        plannedQty: 40,
+        planItemNumber: '5.4',
+        planItemTitle: 'Укладка трубы ПНД Ø63',
+      }),
+    ])
+    expect(issuedQtyForPlanItem([a], '5.2')).toBe(40)
+    expect(issuedQtyForPlanItem([a], '5.4')).toBe(40)
+    expect(issuedQtyForPlanItem([a], '2.2')).toBe(0)
+  })
+
+  it('formatWorkPointLine собирает пункт, название и объём', () => {
+    expect(formatWorkPointLine('5.4', 'Укладка трубы ПНД Ø63', 100, 'м')).toBe(
+      'Пункт 5.4. Укладка трубы ПНД Ø63 — 100 м',
+    )
   })
 
   it('attachStageBrief копит пояснение начальника и не закрывает шаг', () => {
