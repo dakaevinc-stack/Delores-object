@@ -16,17 +16,12 @@ import {
   type WorkPlanSection,
 } from '../../domain/workPlan'
 import { CollapseToggle } from './CollapseToggle'
-import { SiteWorkDayPlanSection } from './SiteWorkDayPlanSection'
 import styles from './SiteWorkPlanSection.module.css'
 
 type Props = {
   plan: WorkPlan
-  siteId: string
-  siteName: string
   windowStartIso?: string
   windowEndIso?: string
-  /** После приёмки дневных этапов — пересчитать план/факт на странице. */
-  onDayPlanChange?: () => void
 }
 
 function pluralize(n: number, [one, few, many]: readonly [string, string, string]): string {
@@ -97,11 +92,8 @@ function fmtSigned(n: number): string {
 
 export function SiteWorkPlanSection({
   plan,
-  siteId,
-  siteName,
   windowStartIso,
   windowEndIso,
-  onDayPlanChange,
 }: Props) {
   const summary = useMemo(() => summarizeWorkPlan(plan), [plan])
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), [])
@@ -180,8 +172,8 @@ export function SiteWorkPlanSection({
             <p className={styles.lead}>
               {summary.itemsCount}{' '}
               {pluralize(summary.itemsCount, ['позиция', 'позиции', 'позиций'])}, прогресс{' '}
-              {summary.averagePercent.toFixed(1).replace('.', ',')}%. Откройте — задачи
-              бригадиру, сводка и справка план/факт.
+              {summary.averagePercent.toFixed(1).replace('.', ',')}%. Откройте — сводка и
+              справка план/факт.
             </p>
           ) : null}
         </div>
@@ -191,8 +183,8 @@ export function SiteWorkPlanSection({
         <div id="work-plan-body" className={styles.expandedBody}>
           <div className={styles.summaryPanel}>
             <p className={styles.lead}>
-              Сводка, ежедневные задания бригадиру и справка по строкам. Объём
-              задания сразу занимает строку плана и вычитается из остатка.
+              Справка по строкам: план, факт и отставание от графика. Задания дня —
+              в зоне бригадира.
             </p>
 
             <dl className={styles.summary}>
@@ -255,16 +247,6 @@ export function SiteWorkPlanSection({
                 </span>
               ) : null}
             </div>
-          </div>
-
-          <div className={styles.dayBlock}>
-            <SiteWorkDayPlanSection
-              embedded
-              siteId={siteId}
-              siteName={siteName}
-              workPlan={plan}
-              onAssignmentsChange={() => onDayPlanChange?.()}
-            />
           </div>
 
           <div className={styles.registryBlock}>

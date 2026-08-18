@@ -13,24 +13,10 @@
     padding-left: max(16px, env(safe-area-inset-left, 0px));
   }
 
-  .toolbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .toolbarCta {
     width: 100%;
     justify-content: center;
   }
-}
-
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px 14px;
-  margin: -8px 0 28px;
 }
 
 .syncBanner {

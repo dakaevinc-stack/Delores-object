@@ -49,8 +49,10 @@ import { SiteDetailKpiGrid } from '../features/site-detail/SiteDetailKpiGrid'
 import { SiteReportingSection } from '../features/site-detail/SiteReportingSection'
 import { SiteScheduleSection } from '../features/site-detail/SiteScheduleSection'
 import { SiteWorkPlanSection } from '../features/site-detail/SiteWorkPlanSection'
+import { SiteWorkDayPlanSection } from '../features/site-detail/SiteWorkDayPlanSection'
 import { SiteMaterialConsumptionSection } from '../features/site-detail/SiteMaterialConsumptionSection'
 import { SiteDeliveryPointSection } from '../features/site-detail/SiteDeliveryPointSection'
+import { SiteRoleZone } from '../features/site-detail/SiteRoleZone'
 import { TodayDeliveriesBoard } from '../features/deliveries/TodayDeliveriesBoard'
 import { getMaterialBudgetForSite } from '../data/materialBudgets'
 import { loadWorkDayPlan } from '../lib/workDayPlanRepository'
@@ -316,140 +318,149 @@ export function ObjectDetailPage() {
         </div>
       ) : null}
 
-      <div className={styles.toolbar}>
-        <button
-          type="button"
-          className={styles.toolbarCta}
-          onClick={() => {
+      <SiteRoleZone zone="manager">
+        <SiteDetailKpiGrid kpis={liveKpis} />
+        <div className={styles.midGrid}>
+          <SiteScheduleSection
+            kpis={liveKpis}
+            basePlan={basePlan}
+            reports={brigadierReports}
+          />
+          <SiteReportingSection reports={brigadierReports} todayIso={liveKpis.todayIso} />
+        </div>
+        {workPlan ? (
+          <SiteWorkPlanSection
+            plan={workPlan}
+            windowStartIso={liveKpis.startIso}
+            windowEndIso={liveKpis.endIso}
+          />
+        ) : null}
+      </SiteRoleZone>
+
+      <SiteRoleZone
+        zone="brigadier"
+        actions={
+          <button
+            type="button"
+            className={styles.toolbarCta}
+            onClick={() => {
+              setComposerKey((k) => k + 1)
+              setComposerOpen(true)
+            }}
+          >
+            Ввод отчёта
+          </button>
+        }
+      >
+        {workPlan ? (
+          <SiteWorkDayPlanSection
+            siteId={site.id}
+            siteName={site.name}
+            workPlan={workPlan}
+            onAssignmentsChange={() => setDayPlanRevision((n) => n + 1)}
+          />
+        ) : null}
+        <TodayDeliveriesBoard
+          requests={procurementRequests}
+          variant="site"
+          deliveryPoints={deliveryPoint ? new Map([[site.id, deliveryPoint]]) : undefined}
+          onUpdateRequest={(id, patch) => {
+            void handleUpdateProcurementRequest(id, patch)
+          }}
+        />
+        <SiteBrigadierSubmittedReportsSection
+          siteId={site.id}
+          siteName={site.name}
+          reports={brigadierReports}
+          serverBacked={remoteFormsActive}
+          objectMediaManifest={objectMediaManifest}
+          objectMediaServerBacked={remoteObjectMediaActive}
+          onObjectMediaSyncError={(msg) => setFormsApiMessage(msg)}
+          onRemoveReport={async (id) => {
+            if (remoteFormsRef.current) {
+              const ok = await deleteBrigadierReportRemote(site.id, id)
+              if (!ok) {
+                setFormsApiMessage('Не удалось удалить отчёт на сервере.')
+                void resyncFormsFromServer()
+                return
+              }
+            }
+            setBrigadierReports((prev) => {
+              const row = prev.find((r) => r.id === id)
+              if (row) {
+                for (const a of row.attachments) {
+                  if (a.previewUrl.startsWith('blob:')) URL.revokeObjectURL(a.previewUrl)
+                }
+              }
+              return prev.filter((r) => r.id !== id)
+            })
+          }}
+        />
+      </SiteRoleZone>
+
+      <SiteRoleZone
+        zone="supply"
+        actions={
+          <button
+            type="button"
+            className={styles.toolbarCta}
+            onClick={() => {
+              setEditingRequest(null)
+              setProcurementKey((k) => k + 1)
+              setProcurementOpen(true)
+            }}
+          >
+            Заявка снабженцу
+          </button>
+        }
+      >
+        <SiteProcurementRequestsSection
+          requests={procurementRequests}
+          serverBacked={remoteFormsActive}
+          deliveryPoint={deliveryPoint}
+          onCreate={() => {
             setEditingRequest(null)
             setProcurementKey((k) => k + 1)
             setProcurementOpen(true)
           }}
-        >
-          Заявка снабженцу
-        </button>
-        <button
-          type="button"
-          className={styles.toolbarCta}
-          onClick={() => {
-            setComposerKey((k) => k + 1)
-            setComposerOpen(true)
+          onEdit={(req) => {
+            setEditingRequest(req)
+            setProcurementKey((k) => k + 1)
+            setProcurementOpen(true)
           }}
-        >
-          Ввод отчёта
-        </button>
-      </div>
-
-      <SiteDeliveryPointSection
-        key={site.id}
-        siteId={site.id}
-        siteName={site.name}
-        address={site.address}
-        point={deliveryPoint}
-        serverBacked={deliveryPointRemoteActive}
-        onSave={handleSaveDeliveryPoint}
-        onAssignTrip={handleAssignTrip}
-        cargoChoices={cargoChoices}
-      />
-
-      <TodayDeliveriesBoard
-        requests={procurementRequests}
-        variant="site"
-        deliveryPoints={
-          deliveryPoint ? new Map([[site.id, deliveryPoint]]) : undefined
-        }
-        onUpdateRequest={(id, patch) => {
-          void handleUpdateProcurementRequest(id, patch)
-        }}
-      />
-
-      {workPlan ? (
-        <SiteWorkPlanSection
-          plan={workPlan}
-          siteId={site.id}
-          siteName={site.name}
-          windowStartIso={liveKpis.startIso}
-          windowEndIso={liveKpis.endIso}
-          onDayPlanChange={() => setDayPlanRevision((n) => n + 1)}
-        />
-      ) : null}
-
-      <SiteBrigadierSubmittedReportsSection
-        siteId={site.id}
-        siteName={site.name}
-        reports={brigadierReports}
-        serverBacked={remoteFormsActive}
-        objectMediaManifest={objectMediaManifest}
-        objectMediaServerBacked={remoteObjectMediaActive}
-        onObjectMediaSyncError={(msg) => setFormsApiMessage(msg)}
-        onRemoveReport={async (id) => {
-          if (remoteFormsRef.current) {
-            const ok = await deleteBrigadierReportRemote(site.id, id)
-            if (!ok) {
-              setFormsApiMessage('Не удалось удалить отчёт на сервере.')
-              void resyncFormsFromServer()
-              return
-            }
-          }
-          setBrigadierReports((prev) => {
-            const row = prev.find((r) => r.id === id)
-            if (row) {
-              for (const a of row.attachments) {
-                if (a.previewUrl.startsWith('blob:')) URL.revokeObjectURL(a.previewUrl)
+          onRemove={async (id) => {
+            if (remoteFormsRef.current) {
+              const ok = await deleteProcurementRequestRemote(site.id, id)
+              if (!ok) {
+                setFormsApiMessage('Не удалось удалить заявку на сервере. Проверьте сеть или права.')
+                void resyncFormsFromServer()
+                return
               }
             }
-            return prev.filter((r) => r.id !== id)
-          })
-        }}
-      />
-
-      <SiteDetailKpiGrid kpis={liveKpis} />
-
-      <div className={styles.midGrid}>
-        <SiteScheduleSection
-          kpis={liveKpis}
-          basePlan={basePlan}
-          reports={brigadierReports}
+            setProcurementRequests((prev) => prev.filter((r) => r.id !== id))
+          }}
+          onUpdateRequest={(id, patch) => {
+            void handleUpdateProcurementRequest(id, patch)
+          }}
         />
-        <SiteReportingSection reports={brigadierReports} todayIso={liveKpis.todayIso} />
-      </div>
+        {materialBudget ? (
+          <SiteMaterialConsumptionSection budget={materialBudget} requests={procurementRequests} />
+        ) : null}
+      </SiteRoleZone>
 
-      {materialBudget ? (
-        <SiteMaterialConsumptionSection
-          budget={materialBudget}
-          requests={procurementRequests}
+      <SiteRoleZone zone="dispatcher">
+        <SiteDeliveryPointSection
+          key={site.id}
+          siteId={site.id}
+          siteName={site.name}
+          address={site.address}
+          point={deliveryPoint}
+          serverBacked={deliveryPointRemoteActive}
+          onSave={handleSaveDeliveryPoint}
+          onAssignTrip={handleAssignTrip}
+          cargoChoices={cargoChoices}
         />
-      ) : null}
-
-      <SiteProcurementRequestsSection
-        requests={procurementRequests}
-        serverBacked={remoteFormsActive}
-        deliveryPoint={deliveryPoint}
-        onCreate={() => {
-          setEditingRequest(null)
-          setProcurementKey((k) => k + 1)
-          setProcurementOpen(true)
-        }}
-        onEdit={(req) => {
-          setEditingRequest(req)
-          setProcurementKey((k) => k + 1)
-          setProcurementOpen(true)
-        }}
-        onRemove={async (id) => {
-          if (remoteFormsRef.current) {
-            const ok = await deleteProcurementRequestRemote(site.id, id)
-            if (!ok) {
-              setFormsApiMessage('Не удалось удалить заявку на сервере. Проверьте сеть или права.')
-              void resyncFormsFromServer()
-              return
-            }
-          }
-          setProcurementRequests((prev) => prev.filter((r) => r.id !== id))
-        }}
-        onUpdateRequest={(id, patch) => {
-          void handleUpdateProcurementRequest(id, patch)
-        }}
-      />
+      </SiteRoleZone>
 
       <footer className={styles.footer}>
         <p className={styles.footerNote}>
