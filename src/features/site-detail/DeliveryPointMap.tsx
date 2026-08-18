@@ -9,10 +9,11 @@ type Props = {
   lng: number | null
   /** Если false — только смотрим, пин не двигаем. */
   editable?: boolean
+  compact?: boolean
   onPick?: (lat: number, lng: number) => void
 }
 
-export function DeliveryPointMap({ lat, lng, editable = true, onPick }: Props) {
+export function DeliveryPointMap({ lat, lng, editable = true, compact = false, onPick }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const markerRef = useRef<L.Marker | null>(null)
@@ -99,7 +100,7 @@ export function DeliveryPointMap({ lat, lng, editable = true, onPick }: Props) {
   }, [lat, lng, editable])
 
   return (
-    <div className={styles.frame}>
+    <div className={`${styles.frame} ${compact ? styles.compact : ''}`}>
       <div ref={rootRef} className={styles.map} role="application" aria-label="Карта точки разгрузки" />
     </div>
   )

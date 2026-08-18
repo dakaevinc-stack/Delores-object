@@ -23,6 +23,7 @@ function req(): ProcurementRequest {
     urgent: false,
     neededByIso: null,
     receipt: null,
+    unloadPoint: null,
   }
 }
 

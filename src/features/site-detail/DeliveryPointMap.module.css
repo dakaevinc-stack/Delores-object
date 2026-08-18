@@ -14,6 +14,11 @@
   font: inherit;
 }
 
+.compact .map {
+  height: 220px;
+  min-height: 200px;
+}
+
 .pinWrap {
   background: none;
   border: 0;

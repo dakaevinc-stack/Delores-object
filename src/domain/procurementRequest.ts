@@ -109,6 +109,8 @@ export type ProcurementRequest = {
   neededByIso: string | null
   /** Факт приёмки/отказа на объекте: время ставится само, к отказу — фото. */
   receipt: CargoReceipt | null
+  /** Куда разгружать именно эту заявку. Если null — общая точка объекта или не указано. */
+  unloadPoint: SiteDeliveryPoint | null
 }
 
 const STORAGE_KEY_AUTHORS = 'deloresh-procurement-authors'
@@ -239,8 +241,9 @@ export function renderProcurementRequestPlainText(
 
   const tableLines = [fmtRow(head), sep, ...rows.map(fmtRow)]
   const noteLine = req.note.trim() ? `\nКомментарий: ${req.note.trim()}` : ''
-  const pointBlock = deliveryPoint
-    ? `\n\n${renderDriverDirections(req.siteName, deliveryPoint)}`
+  const point = req.unloadPoint ?? deliveryPoint
+  const pointBlock = point
+    ? `\n\n${renderDriverDirections(req.siteName, point)}`
     : ''
 
   return `${header}\n\n${tableLines.join('\n')}${noteLine}${pointBlock}\n`
@@ -276,11 +279,12 @@ export function renderProcurementRequestCsv(
     )
     if (req.receipt.reason) lines.push(`Причина отказа;${escape(req.receipt.reason)}`)
   }
-  if (deliveryPoint) {
-    lines.push(`Точка разгрузки;${escape(`${deliveryPoint.lat.toFixed(6)}, ${deliveryPoint.lng.toFixed(6)}`)}`)
-    if (deliveryPoint.address) lines.push(`Адрес;${escape(deliveryPoint.address)}`)
-    if (deliveryPoint.hint) lines.push(`Как подъехать;${escape(deliveryPoint.hint)}`)
-    lines.push(`Маршрут;${escape(yandexMapsRouteUrl(deliveryPoint))}`)
+  const point = req.unloadPoint ?? deliveryPoint
+  if (point) {
+    lines.push(`Точка разгрузки;${escape(`${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}`)}`)
+    if (point.address) lines.push(`Адрес;${escape(point.address)}`)
+    if (point.hint) lines.push(`Как подъехать;${escape(point.hint)}`)
+    lines.push(`Маршрут;${escape(yandexMapsRouteUrl(point))}`)
   }
   if (req.note.trim()) lines.push(`Комментарий;${escape(req.note.trim())}`)
   lines.push('')

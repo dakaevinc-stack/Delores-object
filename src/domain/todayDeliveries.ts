@@ -1,5 +1,6 @@
 import { toDateKey } from './workDayPlan'
 import type { MeasurementUnitId } from './brigadierReport'
+import type { SiteDeliveryPoint } from './siteDeliveryPoint'
 import type { CargoReceipt } from './cargoReceipt'
 import { isVisibleToMaterialReceiver, type ProcurementRequest } from './procurementRequest'
 
@@ -18,6 +19,7 @@ export type TodayDeliveryCard = {
   readonly status: TodayDeliveryCardStatus
   readonly urgent: boolean
   readonly receipt: CargoReceipt | null
+  readonly unloadPoint: SiteDeliveryPoint | null
   readonly items: readonly {
     readonly title: string
     readonly quantity: number
@@ -46,6 +48,7 @@ function toCard(req: ProcurementRequest): TodayDeliveryCard {
     status: cardStatus(req),
     urgent: req.urgent,
     receipt: req.receipt,
+    unloadPoint: req.unloadPoint,
     items: req.items.map((it) => ({
       title: it.title,
       quantity: it.quantity,

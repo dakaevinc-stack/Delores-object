@@ -1,12 +1,12 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import {
   formatLatLng,
-  renderDriverDirections,
   yandexMapsRouteUrl,
   yandexNaviUrl,
   type SiteDeliveryPoint,
 } from '../../domain/siteDeliveryPoint'
 import type { AddressHit } from '../../domain/addressSearch'
+import { driverCabinetUrl, renderDriverShareText } from '../../domain/driverShare'
 import {
   DRIVER_TRIP_ROLE_LABELS,
   type DriverTrip,
@@ -16,6 +16,7 @@ import { formatQty, unitLabel } from '../../domain/procurementRequest'
 import type { MeasurementUnitId } from '../../domain/brigadierReport'
 import { toDateKey } from '../../domain/workDayPlan'
 import { reverseGeocodeRemote, searchAddressRemote } from '../../lib/siteFormsApi'
+import { DriverMessengerShare } from '../driver/DriverMessengerShare'
 import { useFleetRegistry } from '../fleet/useFleetRegistry'
 import { DeliveryPointMap } from './DeliveryPointMap'
 import styles from './SiteDeliveryPointSection.module.css'
@@ -40,33 +41,6 @@ type Props = {
   ) => void | Promise<void | { telegramNotified?: boolean }>
 }
 
-async function copyText(text: string): Promise<boolean> {
-  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text)
-      return true
-    } catch {
-      /* fallback */
-    }
-  }
-  if (typeof document === 'undefined') return false
-  const ta = document.createElement('textarea')
-  ta.value = text
-  ta.setAttribute('readonly', '')
-  ta.style.position = 'fixed'
-  ta.style.opacity = '0'
-  document.body.appendChild(ta)
-  ta.select()
-  let ok = false
-  try {
-    ok = document.execCommand('copy')
-  } catch {
-    ok = false
-  }
-  document.body.removeChild(ta)
-  return ok
-}
-
 function newId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
@@ -89,10 +63,10 @@ export function SiteDeliveryPointSection({
   const [hits, setHits] = useState<AddressHit[]>([])
   const [searching, setSearching] = useState(false)
   const [hint, setHint] = useState(point?.hint ?? '')
-  const [copied, setCopied] = useState(false)
   const [geoError, setGeoError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [driverName, setDriverName] = useState('')
+  const [lastTrip, setLastTrip] = useState<DriverTrip | null>(null)
   const [assignRole, setAssignRole] = useState<DriverTripAssignerRole>('brigadier')
   const [assignedOk, setAssignedOk] = useState<'off' | 'saved' | 'telegram'>('off')
   const [pickupAddress, setPickupAddress] = useState('')
@@ -207,37 +181,6 @@ export function SiteDeliveryPointSection({
     )
   }
 
-  const handleShare = async () => {
-    if (!point) return
-    const text = renderDriverDirections(siteName, { ...point, hint: hint.trim() || point.hint })
-    try {
-      if (typeof navigator !== 'undefined' && 'share' in navigator) {
-        await navigator.share({
-          title: `Куда везти — ${siteName}`,
-          text,
-          url: yandexMapsRouteUrl(point),
-        })
-        return
-      }
-    } catch {
-      /* copy */
-    }
-    const ok = await copyText(text)
-    if (ok) {
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1800)
-    }
-  }
-
-  const handleCopy = async () => {
-    if (!point) return
-    const ok = await copyText(renderDriverDirections(siteName, { ...point, hint: hint.trim() || point.hint }))
-    if (ok) {
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1800)
-    }
-  }
-
   const saveHint = () => {
     if (!point) return
     if (hint.trim() === point.hint) return
@@ -255,7 +198,7 @@ export function SiteDeliveryPointSection({
         quantity: c.quantity,
         unitLabel: unitLabel(c.unitId),
       }))
-    const result = await onAssignTrip({
+    const trip: DriverTrip = {
       id: newId(),
       dateKey: toDateKey(new Date()),
       driverName: driverName.trim(),
@@ -272,12 +215,21 @@ export function SiteDeliveryPointSection({
       assignedByRole: assignRole,
       createdAtIso: new Date().toISOString(),
       seenAtIso: null,
-    })
+    }
+    const result = await onAssignTrip(trip)
+    setLastTrip(trip)
     setAssignedOk(result && result.telegramNotified ? 'telegram' : 'saved')
     window.setTimeout(() => setAssignedOk('off'), 3200)
     setPickedCargo([])
     setCargoNote('')
   }
+
+  const sharePoint = point ? { ...point, hint: hint.trim() || point.hint } : null
+  const cabinetUrl =
+    typeof window !== 'undefined' ? driverCabinetUrl(window.location.origin) : '/driver'
+  const shareText = sharePoint
+    ? renderDriverShareText(siteName, sharePoint, lastTrip, cabinetUrl)
+    : ''
 
   return (
     <section className={styles.section} aria-labelledby={titleId}>
@@ -381,23 +333,14 @@ export function SiteDeliveryPointSection({
               <a className={styles.naviBtn} href={yandexNaviUrl(point)}>
                 Яндекс.Навигатор
               </a>
-              <a className={styles.mapsBtn} href={yandexMapsRouteUrl(point)} target="_blank" rel="noreferrer">
-                Маршрут на Яндекс.Картах
-              </a>
-              <button type="button" className={styles.copyBtn} onClick={() => void handleShare()}>
-                Отправить водителю
-              </button>
-              <button type="button" className={styles.copyBtn} onClick={() => void handleCopy()}>
-                {copied ? 'Скопировано' : 'Скопировать точку'}
-              </button>
             </div>
 
             {onAssignTrip ? (
               <div className={styles.assign}>
-                <p className={styles.assignTitle}>Поставить рейс водителю</p>
+                <p className={styles.assignTitle}>Отправить водителю</p>
                 <p className={styles.assignLead}>
-                  Он увидит шаги: что забрать и куда везти. Если кабинет открыт — маршрут всплывёт
-                  сразу.
+                  Рейс сразу появится в кабинете. Ниже — WhatsApp, Telegram, Max и Яндекс.Карты,
+                  чтобы кинуть ему туда же.
                 </p>
                 <div className={styles.assignRow}>
                   <input
@@ -475,13 +418,15 @@ export function SiteDeliveryPointSection({
                   onClick={() => void handleAssign()}
                 >
                   {assignedOk === 'telegram'
-                    ? 'Назначено · ушло в Telegram'
+                    ? 'В кабинете · бот написал'
                     : assignedOk === 'saved'
-                      ? 'Назначено'
-                      : 'Отправить маршрут водителю'}
+                      ? 'В кабинете — киньте ниже'
+                      : 'Отправить водителю'}
                 </button>
               </div>
             ) : null}
+
+            <DriverMessengerShare text={shareText} mapsUrl={yandexMapsRouteUrl(point)} />
           </>
         ) : (
           <p className={styles.empty}>

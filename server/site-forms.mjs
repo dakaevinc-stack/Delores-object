@@ -506,7 +506,7 @@ const server = http.createServer(async (req, res) => {
           return
         }
         const cur = /** @type {Record<string, unknown>} */ (list[idx])
-        const allowed = ['status', 'urgent', 'neededByIso', 'note', 'items', 'siteName', 'receipt']
+        const allowed = ['status', 'urgent', 'neededByIso', 'note', 'items', 'siteName', 'receipt', 'unloadPoint']
         const merged = { ...cur }
         for (const k of allowed) {
           if (k in patch) merged[k] = patch[k]

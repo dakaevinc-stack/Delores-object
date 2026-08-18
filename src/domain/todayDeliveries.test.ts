@@ -27,6 +27,7 @@ function req(
     urgent: false,
     neededByIso: '2026-08-17T12:00:00.000Z',
     receipt: null,
+    unloadPoint: null,
     ...patch,
   }
 }
@@ -75,6 +76,26 @@ describe('todayDeliveries', () => {
     expect(list.find((c) => c.requestId === 'ok')?.items[0]?.title).toBe('Песок карьерный')
     expect(list.find((c) => c.requestId === 'ok')?.status).toBe('pending')
     expect(list.find((c) => c.requestId === 'bad')?.status).toBe('refused')
+  })
+
+  it('точка разгрузки из заявки едет на карточку поставки', () => {
+    const list = collectTodayDeliveries(
+      [
+        req({
+          id: 'ok',
+          status: 'approved',
+          unloadPoint: {
+            lat: 55.5,
+            lng: 37.56,
+            address: 'ул. Вокзальная, 12',
+            hint: '',
+            updatedAtIso: '2026-08-18T12:00:00.000Z',
+          },
+        }),
+      ],
+      '2026-08-17',
+    )
+    expect(list[0]?.unloadPoint?.address).toBe('ул. Вокзальная, 12')
   })
 
   it('снятая снабжением заявка не видна приёмщику', () => {

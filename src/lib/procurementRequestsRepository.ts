@@ -1,4 +1,5 @@
 import type { CargoReceipt, CargoReceiptMedia } from '../domain/cargoReceipt'
+import { normalizeDeliveryPoint } from '../domain/siteDeliveryPoint'
 import type {
   ProcurementRequest,
   ProcurementRequestStatus,
@@ -93,12 +94,14 @@ export function normalizeProcurementRequest(row: unknown): ProcurementRequest {
   const receipt = normalizeCargoReceipt(r.receipt)
   if (receipt?.decision === 'accepted') status = 'accepted'
   if (receipt?.decision === 'refused') status = 'refused'
+  const unloadPoint = normalizeDeliveryPoint(r.unloadPoint)
   return {
     ...r,
     status,
     urgent: Boolean(r.urgent),
     neededByIso,
     receipt,
+    unloadPoint,
   }
 }
 

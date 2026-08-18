@@ -12,16 +12,13 @@ import {
   makeAcceptedReceipt,
   type CargoReceipt,
 } from '../../domain/cargoReceipt'
-import {
-  renderDriverDirections,
-  yandexMapsRouteUrl,
-  type SiteDeliveryPoint,
-} from '../../domain/siteDeliveryPoint'
+import { renderDriverDirections, yandexMapsRouteUrl, type SiteDeliveryPoint } from '../../domain/siteDeliveryPoint'
 import {
   formatQty,
   unitLabel,
   type ProcurementRequest,
 } from '../../domain/procurementRequest'
+import { DriverMessengerShare } from '../driver/DriverMessengerShare'
 import { CargoReceiptSheet } from './CargoReceiptSheet'
 import styles from './TodayDeliveriesBoard.module.css'
 
@@ -31,18 +28,6 @@ type Props = {
   variant: 'home' | 'site'
   onUpdateRequest?: (requestId: string, patch: Partial<ProcurementRequest>) => void
   deliveryPoints?: ReadonlyMap<string, SiteDeliveryPoint>
-}
-
-async function copyText(text: string): Promise<boolean> {
-  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text)
-      return true
-    } catch {
-      /* fallback */
-    }
-  }
-  return false
 }
 
 function CheckIcon() {
@@ -94,29 +79,6 @@ function DeliveryCard({
   const waiting = card.status === 'pending'
   const refused = card.status === 'refused'
   const receipt = card.receipt
-  const [copied, setCopied] = useState(false)
-
-  const sharePoint = async () => {
-    if (!point) return
-    const text = renderDriverDirections(card.siteName, point)
-    try {
-      if (typeof navigator !== 'undefined' && 'share' in navigator) {
-        await navigator.share({
-          title: `Куда везти — ${card.siteName}`,
-          text,
-          url: yandexMapsRouteUrl(point),
-        })
-        return
-      }
-    } catch {
-      /* copy */
-    }
-    const ok = await copyText(text)
-    if (ok) {
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1800)
-    }
-  }
 
   return (
     <article
@@ -168,14 +130,11 @@ function DeliveryCard({
           <p className={styles.driverLabel}>Куда ехать</p>
           {point.address ? <p className={styles.driverHint}>{point.address}</p> : null}
           {point.hint ? <p className={styles.driverHint}>{point.hint}</p> : null}
-          <div className={styles.driverRow}>
-            <a className={styles.driverLink} href={yandexMapsRouteUrl(point)} target="_blank" rel="noreferrer">
-              Маршрут
-            </a>
-            <button type="button" className={styles.driverCopy} onClick={() => void sharePoint()}>
-              {copied ? 'Скопировано' : 'Водителю'}
-            </button>
-          </div>
+          <DriverMessengerShare
+            compact
+            text={renderDriverDirections(card.siteName, point)}
+            mapsUrl={yandexMapsRouteUrl(point)}
+          />
         </div>
       ) : !showSite ? (
         <p className={styles.noPoint}>Точки разгрузки ещё нет — поставьте её на карте ниже.</p>
@@ -254,7 +213,7 @@ export function TodayDeliveriesBoard({
               key={card.requestId}
               card={card}
               showSite={showSite}
-              point={deliveryPoints?.get(card.siteId) ?? null}
+              point={card.unloadPoint ?? deliveryPoints?.get(card.siteId) ?? null}
               onAccept={handleAccept}
               onRefuse={setRefuseId}
             />
@@ -273,7 +232,7 @@ export function TodayDeliveriesBoard({
                 key={card.requestId}
                 card={card}
                 showSite={showSite}
-                point={deliveryPoints?.get(card.siteId) ?? null}
+                point={card.unloadPoint ?? deliveryPoints?.get(card.siteId) ?? null}
                 onAccept={handleAccept}
                 onRefuse={setRefuseId}
               />

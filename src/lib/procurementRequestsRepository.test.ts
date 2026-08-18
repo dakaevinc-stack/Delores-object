@@ -22,6 +22,7 @@ describe('procurementRequestsRepository', () => {
       urgent: true,
       neededByIso: new Date('2026-01-02T08:00:00Z').toISOString(),
       receipt: null,
+      unloadPoint: null,
     }
     saveProcurementRequests(siteId, [req])
     const out = loadProcurementRequests(siteId)
@@ -53,6 +54,7 @@ describe('procurementRequestsRepository', () => {
     expect(out[0]?.urgent).toBe(false)
     expect(out[0]?.neededByIso).toBeNull()
     expect(out[0]?.receipt).toBeNull()
+    expect(out[0]?.unloadPoint).toBeNull()
   })
 
   it('сохраняет отказ с фото и временем', () => {
@@ -75,12 +77,42 @@ describe('procurementRequestsRepository', () => {
         reason: 'Плохое качество',
         media: [{ id: 'm1', kind: 'photo', name: 'bad.jpg', previewUrl: 'data:image/jpeg;base64,xx' }],
       },
+      unloadPoint: null,
     }
     saveProcurementRequests(siteId, [req])
     const out = loadProcurementRequests(siteId)
     expect(out[0]?.status).toBe('refused')
     expect(out[0]?.receipt?.reason).toBe('Плохое качество')
     expect(out[0]?.receipt?.media).toHaveLength(1)
+  })
+
+  it('сохраняет точку разгрузки в заявке', () => {
+    const siteId = 's3'
+    const req: ProcurementRequest = {
+      id: 'r3',
+      shortCode: '20260818-1500',
+      siteId,
+      siteName: 'Тестовый объект',
+      createdAtIso: new Date('2026-08-18T12:00:00Z').toISOString(),
+      createdBy: 'Бригадир',
+      note: '',
+      items: [{ presetId: null, title: 'Песок', unitId: 'm3', quantity: 8 }],
+      status: 'pending',
+      urgent: false,
+      neededByIso: null,
+      receipt: null,
+      unloadPoint: {
+        lat: 55.5,
+        lng: 37.56,
+        address: 'ул. Вокзальная, 12',
+        hint: 'Западные ворота',
+        updatedAtIso: '2026-08-18T12:00:00.000Z',
+      },
+    }
+    saveProcurementRequests(siteId, [req])
+    const out = loadProcurementRequests(siteId)
+    expect(out[0]?.unloadPoint?.address).toBe('ул. Вокзальная, 12')
+    expect(out[0]?.unloadPoint?.lat).toBe(55.5)
   })
 })
 

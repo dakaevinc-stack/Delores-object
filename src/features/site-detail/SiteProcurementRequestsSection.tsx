@@ -258,6 +258,15 @@ export function SiteProcurementRequestsSection({
                 </p>
               ) : null}
 
+              {req.unloadPoint ? (
+                <p className={styles.cardNote}>
+                  <span className={styles.cardNoteLabel}>Разгрузка: </span>
+                  {req.unloadPoint.address ||
+                    `${req.unloadPoint.lat.toFixed(5)}, ${req.unloadPoint.lng.toFixed(5)}`}
+                  {req.unloadPoint.hint ? ` · ${req.unloadPoint.hint}` : ''}
+                </p>
+              ) : null}
+
               {req.status === 'accepted' ? (
                 <div className={styles.receiptBlock}>
                   <p className={styles.acceptedMark}>

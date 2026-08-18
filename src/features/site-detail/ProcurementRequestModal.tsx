@@ -17,6 +17,10 @@ import {
   type ProcurementRequest,
   type ProcurementRequestStatus,
 } from '../../domain/procurementRequest'
+import type { AddressHit } from '../../domain/addressSearch'
+import type { SiteDeliveryPoint } from '../../domain/siteDeliveryPoint'
+import { reverseGeocodeRemote, searchAddressRemote } from '../../lib/siteFormsApi'
+import { DeliveryPointMap } from './DeliveryPointMap'
 import styles from './ProcurementRequestModal.module.css'
 
 type Props = {
@@ -187,6 +191,13 @@ export function ProcurementRequestModal({
       : [],
   )
   const [note, setNote] = useState(() => initial?.note ?? '')
+  const [specifyUnload, setSpecifyUnload] = useState(() => Boolean(initial?.unloadPoint))
+  const [unloadPoint, setUnloadPoint] = useState<SiteDeliveryPoint | null>(
+    () => initial?.unloadPoint ?? null,
+  )
+  const [unloadQuery, setUnloadQuery] = useState(() => initial?.unloadPoint?.address ?? '')
+  const [unloadHits, setUnloadHits] = useState<AddressHit[]>([])
+  const [unloadSearching, setUnloadSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [openGroups, setOpenGroups] = useState<Set<ProcurementCategoryId>>(
@@ -284,6 +295,51 @@ export function ProcurementRequestModal({
     setItems((rows) => rows.filter((r) => r.id !== id))
   }
 
+  const placeUnload = (lat: number, lng: number, address: string) => {
+    setUnloadHits([])
+    if (address) setUnloadQuery(address)
+    setUnloadPoint({
+      lat,
+      lng,
+      address: address.trim(),
+      hint: unloadPoint?.hint ?? '',
+      updatedAtIso: new Date().toISOString(),
+    })
+  }
+
+  const searchUnload = async () => {
+    const q = unloadQuery.trim()
+    if (q.length < 3) {
+      setError('Напишите адрес — улицу и дом.')
+      return
+    }
+    setUnloadSearching(true)
+    setError(null)
+    try {
+      const found = await searchAddressRemote(q)
+      setUnloadHits(found)
+      if (found.length === 1) {
+        const hit = found[0]!
+        placeUnload(hit.lat, hit.lng, hit.label)
+      } else if (found.length === 0) {
+        setError('Адрес не нашёлся. Ткните точку на карте.')
+      }
+    } catch {
+      setError('Поиск адреса сейчас недоступен. Ткните карту.')
+    } finally {
+      setUnloadSearching(false)
+    }
+  }
+
+  const pickUnloadHit = (hit: AddressHit) => {
+    placeUnload(hit.lat, hit.lng, hit.label)
+  }
+
+  const handleUnloadMapPick = async (lat: number, lng: number) => {
+    const found = (await reverseGeocodeRemote(lat, lng)) ?? ''
+    placeUnload(lat, lng, found)
+  }
+
   /** Сколько позиций из этой категории уже выбрано — для бейджа в шапке. */
   const selectedCountByCategory = useMemo(() => {
     const map = new Map<string, number>()
@@ -325,6 +381,11 @@ export function ProcurementRequestModal({
       return
     }
 
+    if (specifyUnload && !unloadPoint) {
+      setError('Поставьте метку на карте или найдите адрес разгрузки.')
+      return
+    }
+
     const createdAtIso = initial?.createdAtIso ?? new Date().toISOString()
 
     rememberProcurementAuthor(fio)
@@ -345,6 +406,7 @@ export function ProcurementRequestModal({
       urgent,
       neededByIso,
       receipt: initial?.receipt ?? null,
+      unloadPoint: specifyUnload ? unloadPoint : null,
     }
 
     try {
@@ -724,6 +786,81 @@ export function ProcurementRequestModal({
               />
               <span>Срочная заявка</span>
             </label>
+          </div>
+
+          <div className={styles.block}>
+            <span className={styles.blockTitle}>Место разгрузки</span>
+            <label className={styles.checkRow}>
+              <input
+                type="checkbox"
+                className={styles.catalogCheck}
+                checked={specifyUnload}
+                onChange={(e) => {
+                  setSpecifyUnload(e.target.checked)
+                  if (!e.target.checked) setUnloadHits([])
+                }}
+              />
+              <span>Указать, куда разгружать</span>
+            </label>
+            {specifyUnload ? (
+              <div className={styles.unloadBox}>
+                <p className={styles.unloadLead}>
+                  Напишите адрес или ткните карту. Если место общее для объекта — галочку можно не
+                  ставить.
+                </p>
+                <div className={styles.unloadRow}>
+                  <input
+                    className={styles.input}
+                    type="search"
+                    autoComplete="street-address"
+                    value={unloadQuery}
+                    placeholder="Адрес разгрузки"
+                    onChange={(e) => setUnloadQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        if (unloadHits[0]) pickUnloadHit(unloadHits[0])
+                        else void searchUnload()
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className={styles.unloadFind}
+                    onClick={() => void searchUnload()}
+                    disabled={unloadSearching}
+                  >
+                    {unloadSearching ? 'Ищем…' : 'Найти'}
+                  </button>
+                </div>
+                {unloadHits.length > 0 ? (
+                  <ul className={styles.unloadHits}>
+                    {unloadHits.map((h) => (
+                      <li key={`${h.lat}-${h.lng}-${h.label}`}>
+                        <button type="button" className={styles.unloadHit} onClick={() => pickUnloadHit(h)}>
+                          {h.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                <DeliveryPointMap
+                  key="unload-map"
+                  compact
+                  lat={unloadPoint?.lat ?? null}
+                  lng={unloadPoint?.lng ?? null}
+                  onPick={(lat, lng) => void handleUnloadMapPick(lat, lng)}
+                />
+                {unloadPoint ? (
+                  <p className={styles.unloadOk}>
+                    {unloadPoint.address ||
+                      `${unloadPoint.lat.toFixed(5)}, ${unloadPoint.lng.toFixed(5)}`}
+                  </p>
+                ) : (
+                  <p className={styles.unloadHint}>Метки ещё нет — найдите адрес или ткните карту.</p>
+                )}
+              </div>
+            ) : null}
           </div>
 
           <div className={styles.block}>

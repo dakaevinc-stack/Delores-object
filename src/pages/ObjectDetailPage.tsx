@@ -554,6 +554,7 @@ export function ObjectDetailPage() {
                 urgent: req.urgent,
                 neededByIso: req.neededByIso,
                 createdBy: req.createdBy,
+                unloadPoint: req.unloadPoint,
               })
               if (!ok) {
                 throw new RemoteWriteFailure('Не удалось сохранить изменения заявки на сервере.')
