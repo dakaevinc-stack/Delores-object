@@ -6,6 +6,7 @@ type Props = {
   text: string
   mapsUrl: string
   compact?: boolean
+  disabled?: boolean
 }
 
 async function copyText(text: string): Promise<boolean> {
@@ -35,7 +36,7 @@ async function copyText(text: string): Promise<boolean> {
   return ok
 }
 
-export function DriverMessengerShare({ text, mapsUrl, compact = false }: Props) {
+export function DriverMessengerShare({ text, mapsUrl, compact = false, disabled = false }: Props) {
   const [copied, setCopied] = useState(false)
   const canSystemShare = typeof navigator !== 'undefined' && 'share' in navigator
 
@@ -45,16 +46,19 @@ export function DriverMessengerShare({ text, mapsUrl, compact = false }: Props) 
   }
 
   const handleCopy = async () => {
+    if (disabled) return
     if (await copyText(text)) markCopied()
   }
 
   const handleMax = async () => {
+    if (disabled) return
     await copyText(text)
     markCopied()
     window.open(maxShareUrl(text), '_blank', 'noopener,noreferrer')
   }
 
   const handleMore = async () => {
+    if (disabled) return
     try {
       await navigator.share({ title: 'Маршрут водителю', text, url: mapsUrl })
     } catch {
@@ -65,29 +69,66 @@ export function DriverMessengerShare({ text, mapsUrl, compact = false }: Props) 
   return (
     <div className={compact ? styles.wrapCompact : styles.wrap}>
       {compact ? null : <p className={styles.label}>Кинуть водителю</p>}
-      <div className={styles.grid}>
-        <a className={`${styles.btn} ${styles.wa}`} href={whatsappShareUrl(text)} target="_blank" rel="noreferrer">
+      <div className={styles.grid} aria-disabled={disabled}>
+        <a
+          className={`${styles.btn} ${styles.wa} ${disabled ? styles.btnOff : ''}`}
+          href={disabled ? undefined : whatsappShareUrl(text)}
+          target="_blank"
+          rel="noreferrer"
+          aria-disabled={disabled}
+          onClick={(e) => {
+            if (disabled) e.preventDefault()
+          }}
+        >
           WhatsApp
         </a>
         <a
-          className={`${styles.btn} ${styles.tg}`}
-          href={telegramShareUrl(text, mapsUrl)}
+          className={`${styles.btn} ${styles.tg} ${disabled ? styles.btnOff : ''}`}
+          href={disabled ? undefined : telegramShareUrl(text, mapsUrl)}
           target="_blank"
           rel="noreferrer"
+          aria-disabled={disabled}
+          onClick={(e) => {
+            if (disabled) e.preventDefault()
+          }}
         >
           Telegram
         </a>
-        <button type="button" className={`${styles.btn} ${styles.max}`} onClick={() => void handleMax()}>
+        <button
+          type="button"
+          className={`${styles.btn} ${styles.max} ${disabled ? styles.btnOff : ''}`}
+          disabled={disabled}
+          onClick={() => void handleMax()}
+        >
           Max
         </button>
-        <a className={`${styles.btn} ${styles.maps}`} href={mapsUrl} target="_blank" rel="noreferrer">
+        <a
+          className={`${styles.btn} ${styles.maps} ${disabled ? styles.btnOff : ''}`}
+          href={disabled ? undefined : mapsUrl}
+          target="_blank"
+          rel="noreferrer"
+          aria-disabled={disabled}
+          onClick={(e) => {
+            if (disabled) e.preventDefault()
+          }}
+        >
           Яндекс.Карты
         </a>
-        <button type="button" className={`${styles.btn} ${styles.copy}`} onClick={() => void handleCopy()}>
+        <button
+          type="button"
+          className={`${styles.btn} ${styles.copy} ${disabled ? styles.btnOff : ''}`}
+          disabled={disabled}
+          onClick={() => void handleCopy()}
+        >
           {copied ? 'Скопировано' : 'Скопировать'}
         </button>
         {canSystemShare ? (
-          <button type="button" className={`${styles.btn} ${styles.copy}`} onClick={() => void handleMore()}>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.copy} ${disabled ? styles.btnOff : ''}`}
+            disabled={disabled}
+            onClick={() => void handleMore()}
+          >
             Ещё…
           </button>
         ) : null}
@@ -95,3 +136,4 @@ export function DriverMessengerShare({ text, mapsUrl, compact = false }: Props) 
     </div>
   )
 }
+

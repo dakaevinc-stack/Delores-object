@@ -328,112 +328,116 @@ export function SiteDeliveryPointSection({
                 onBlur={saveHint}
               />
             </label>
-
             <div className={styles.driverBtns}>
               <a className={styles.naviBtn} href={yandexNaviUrl(point)}>
                 Яндекс.Навигатор
               </a>
             </div>
-
-            {onAssignTrip ? (
-              <div className={styles.assign}>
-                <p className={styles.assignTitle}>Отправить водителю</p>
-                <p className={styles.assignLead}>
-                  Рейс сразу появится в кабинете. Ниже — WhatsApp, Telegram, Max и Яндекс.Карты,
-                  чтобы кинуть ему туда же.
-                </p>
-                <div className={styles.assignRow}>
-                  <input
-                    className={styles.search}
-                    list="delivery-drivers"
-                    value={driverName}
-                    placeholder="Кому — фамилия водителя"
-                    onChange={(e) => setDriverName(e.target.value)}
-                  />
-                  <datalist id="delivery-drivers">
-                    {operators.map((n) => (
-                      <option key={n} value={n} />
-                    ))}
-                  </datalist>
-                </div>
-                {cargoChoices.length > 0 ? (
-                  <div className={styles.cargoChips} role="group" aria-label="Что грузить">
-                    {cargoChoices.map((c) => {
-                      const on = pickedCargo.includes(c.id)
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className={`${styles.roleBtn} ${on ? styles.roleOn : ''}`}
-                          onClick={() =>
-                            setPickedCargo((prev) =>
-                              prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id],
-                            )
-                          }
-                        >
-                          {c.title} · {formatQty(c.quantity)} {unitLabel(c.unitId)}
-                        </button>
-                      )
-                    })}
-                  </div>
-                ) : null}
-                <input
-                  className={styles.search}
-                  value={cargoNote}
-                  placeholder={cargoChoices.length ? 'Или напишите, что грузить' : 'Что грузить — своими словами'}
-                  onChange={(e) => setCargoNote(e.target.value)}
-                />
-                <label className={styles.check}>
-                  <input
-                    type="checkbox"
-                    checked={alreadyLoaded}
-                    onChange={(e) => setAlreadyLoaded(e.target.checked)}
-                  />
-                  Уже в кузове — сразу на объект
-                </label>
-                {alreadyLoaded ? null : (
-                  <input
-                    className={styles.search}
-                    value={pickupAddress}
-                    placeholder="Откуда грузить — база, карьер, адрес"
-                    onChange={(e) => setPickupAddress(e.target.value)}
-                  />
-                )}
-                <div className={styles.roleRow}>
-                  {(Object.keys(DRIVER_TRIP_ROLE_LABELS) as DriverTripAssignerRole[]).map((role) => (
-                    <button
-                      key={role}
-                      type="button"
-                      className={`${styles.roleBtn} ${assignRole === role ? styles.roleOn : ''}`}
-                      onClick={() => setAssignRole(role)}
-                    >
-                      {DRIVER_TRIP_ROLE_LABELS[role]}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className={styles.assignBtn}
-                  disabled={!driverName.trim() || busy}
-                  onClick={() => void handleAssign()}
-                >
-                  {assignedOk === 'telegram'
-                    ? 'В кабинете · бот написал'
-                    : assignedOk === 'saved'
-                      ? 'В кабинете — киньте ниже'
-                      : 'Отправить водителю'}
-                </button>
-              </div>
-            ) : null}
-
-            <DriverMessengerShare text={shareText} mapsUrl={yandexMapsRouteUrl(point)} />
           </>
         ) : (
           <p className={styles.empty}>
-            Напишите адрес сверху и нажмите «Найти» — или ткните карту. Пока точки нет, водителю
-            нечего открыть в навигаторе.
+            Напишите адрес сверху и нажмите «Найти» — или ткните карту. Пока точки нет, рейс и
+            мессенджеры не отправят водителя.
           </p>
         )}
+
+        {onAssignTrip ? (
+          <div className={styles.assign}>
+            <p className={styles.assignTitle}>Отправить водителю</p>
+            <p className={styles.assignLead}>
+              {point
+                ? 'Рейс сразу появится в кабинете. Ниже — WhatsApp, Telegram, Max и Яндекс.Карты, чтобы кинуть ему туда же.'
+                : 'Сначала поставьте точку на карте. Потом фамилия водителя — рейс уйдёт в кабинет и в мессенджеры.'}
+            </p>
+            <div className={styles.assignRow}>
+              <input
+                className={styles.search}
+                list="delivery-drivers"
+                value={driverName}
+                placeholder="Кому — фамилия водителя"
+                onChange={(e) => setDriverName(e.target.value)}
+              />
+              <datalist id="delivery-drivers">
+                {operators.map((n) => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
+            </div>
+            {cargoChoices.length > 0 ? (
+              <div className={styles.cargoChips} role="group" aria-label="Что грузить">
+                {cargoChoices.map((c) => {
+                  const on = pickedCargo.includes(c.id)
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`${styles.roleBtn} ${on ? styles.roleOn : ''}`}
+                      onClick={() =>
+                        setPickedCargo((prev) =>
+                          prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id],
+                        )
+                      }
+                    >
+                      {c.title} · {formatQty(c.quantity)} {unitLabel(c.unitId)}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : null}
+            <input
+              className={styles.search}
+              value={cargoNote}
+              placeholder={cargoChoices.length ? 'Или напишите, что грузить' : 'Что грузить — своими словами'}
+              onChange={(e) => setCargoNote(e.target.value)}
+            />
+            <label className={styles.check}>
+              <input
+                type="checkbox"
+                checked={alreadyLoaded}
+                onChange={(e) => setAlreadyLoaded(e.target.checked)}
+              />
+              Уже в кузове — сразу на объект
+            </label>
+            {alreadyLoaded ? null : (
+              <input
+                className={styles.search}
+                value={pickupAddress}
+                placeholder="Откуда грузить — база, карьер, адрес"
+                onChange={(e) => setPickupAddress(e.target.value)}
+              />
+            )}
+            <div className={styles.roleRow}>
+              {(Object.keys(DRIVER_TRIP_ROLE_LABELS) as DriverTripAssignerRole[]).map((role) => (
+                <button
+                  key={role}
+                  type="button"
+                  className={`${styles.roleBtn} ${assignRole === role ? styles.roleOn : ''}`}
+                  onClick={() => setAssignRole(role)}
+                >
+                  {DRIVER_TRIP_ROLE_LABELS[role]}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className={styles.assignBtn}
+              disabled={!point || !driverName.trim() || busy}
+              onClick={() => void handleAssign()}
+            >
+              {assignedOk === 'telegram'
+                ? 'В кабинете · бот написал'
+                : assignedOk === 'saved'
+                  ? 'В кабинете — киньте ниже'
+                  : 'Отправить водителю'}
+            </button>
+          </div>
+        ) : null}
+
+        <DriverMessengerShare
+          text={shareText}
+          mapsUrl={point ? yandexMapsRouteUrl(point) : ''}
+          disabled={!point}
+        />
       </div>
     </section>
   )

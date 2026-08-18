@@ -115,7 +115,10 @@ export function ObjectDetailPage() {
         } else {
           const local = loadSiteDeliveryPoint(site.id)
           setDeliveryPoint(local)
-          if (local) void putSiteDeliveryPointRemote(site.id, local)
+          if (local) {
+            const ok = await putSiteDeliveryPointRemote(site.id, local)
+            if (ok) setDeliveryPointRemoteActive(true)
+          }
         }
       }
     }
@@ -147,12 +150,17 @@ export function ObjectDetailPage() {
       const previous = deliveryPoint
       setDeliveryPoint(next)
       saveSiteDeliveryPoint(site.id, next)
-      if (!deliveryPointRemoteRef.current) return
       const ok = next
         ? await putSiteDeliveryPointRemote(site.id, next)
         : await deleteSiteDeliveryPointRemote(site.id)
-      if (!ok) {
-        setFormsApiMessage('Не удалось сохранить точку разгрузки на сервере.')
+      if (ok) {
+        setDeliveryPointRemoteActive(true)
+        return
+      }
+      setFormsApiMessage(
+        'Точка сохранена на этом устройстве, на сервер не ушла — на другом ноуте её не будет.',
+      )
+      if (deliveryPointRemoteRef.current) {
         setDeliveryPoint(previous)
         saveSiteDeliveryPoint(site.id, previous)
       }
@@ -209,7 +217,10 @@ export function ObjectDetailPage() {
         } else {
           const local = loadSiteDeliveryPoint(site.id)
           setDeliveryPoint(local)
-          if (local) void putSiteDeliveryPointRemote(site.id, local)
+          if (local) {
+            const ok = await putSiteDeliveryPointRemote(site.id, local)
+            if (ok) setDeliveryPointRemoteActive(true)
+          }
         }
       }
     })()
