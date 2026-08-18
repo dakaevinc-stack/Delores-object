@@ -194,6 +194,9 @@ export function AddObjectPage() {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
           />
+          <span className={styles.hint}>
+            Точку разгрузки для водителя поставите на карте в карточке объекта.
+          </span>
         </label>
 
         <div className={styles.row2}>

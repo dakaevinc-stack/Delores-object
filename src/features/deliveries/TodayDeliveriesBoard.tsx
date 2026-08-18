@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toDateKey } from '../../domain/workDayPlan'
 import {
@@ -6,17 +7,42 @@ import {
   type TodayDeliveryCard,
 } from '../../domain/todayDeliveries'
 import {
+  cargoReceiptPatch,
+  formatReceiptStampRu,
+  makeAcceptedReceipt,
+  type CargoReceipt,
+} from '../../domain/cargoReceipt'
+import {
+  renderDriverDirections,
+  yandexMapsRouteUrl,
+  type SiteDeliveryPoint,
+} from '../../domain/siteDeliveryPoint'
+import {
   formatQty,
   unitLabel,
   type ProcurementRequest,
 } from '../../domain/procurementRequest'
+import { CargoReceiptSheet } from './CargoReceiptSheet'
 import styles from './TodayDeliveriesBoard.module.css'
 
 type Props = {
   requests: readonly ProcurementRequest[]
-  /** На главной показываем объект и ссылку. На объекте — кнопку «Принял». */
+  /** На главной показываем объект и ссылку. На объекте — принять / отказать. */
   variant: 'home' | 'site'
-  onAccept?: (requestId: string) => void
+  onUpdateRequest?: (requestId: string, patch: Partial<ProcurementRequest>) => void
+  deliveryPoints?: ReadonlyMap<string, SiteDeliveryPoint>
+}
+
+async function copyText(text: string): Promise<boolean> {
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch {
+      /* fallback */
+    }
+  }
+  return false
 }
 
 function CheckIcon() {
@@ -33,33 +59,90 @@ function CheckIcon() {
   )
 }
 
+function ReceiptMedia({ receipt }: { receipt: CargoReceipt }) {
+  if (receipt.media.length === 0) return null
+  return (
+    <ul className={styles.receiptMedia}>
+      {receipt.media.map((m) => (
+        <li key={m.id}>
+          {m.kind === 'video' && m.previewUrl ? (
+            <video src={m.previewUrl} muted playsInline controls />
+          ) : m.previewUrl ? (
+            <img src={m.previewUrl} alt="" />
+          ) : (
+            <span className={styles.mediaFallback}>{m.kind === 'video' ? 'Видео' : 'Фото'}</span>
+          )}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function DeliveryCard({
   card,
   showSite,
+  point,
   onAccept,
+  onRefuse,
 }: {
   card: TodayDeliveryCard
   showSite: boolean
+  point: SiteDeliveryPoint | null
   onAccept?: (requestId: string) => void
+  onRefuse?: (requestId: string) => void
 }) {
   const waiting = card.status === 'pending'
+  const refused = card.status === 'refused'
+  const receipt = card.receipt
+  const [copied, setCopied] = useState(false)
+
+  const sharePoint = async () => {
+    if (!point) return
+    const text = renderDriverDirections(card.siteName, point)
+    try {
+      if (typeof navigator !== 'undefined' && 'share' in navigator) {
+        await navigator.share({
+          title: `Куда везти — ${card.siteName}`,
+          text,
+          url: yandexMapsRouteUrl(point),
+        })
+        return
+      }
+    } catch {
+      /* copy */
+    }
+    const ok = await copyText(text)
+    if (ok) {
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 1800)
+    }
+  }
+
   return (
     <article
-      className={`${styles.card} ${waiting ? styles.cardWait : styles.cardDone}`}
+      className={`${styles.card} ${
+        waiting ? styles.cardWait : refused ? styles.cardRefused : styles.cardDone
+      }`}
     >
       <header className={styles.cardHead}>
         <p className={styles.cardKicker}>Заявка № {card.shortCode}</p>
-        <span className={`${styles.badge} ${waiting ? styles.badgeWait : styles.badgeDone}`}>
-          {waiting ? 'Ждём сегодня' : (
+        <span
+          className={`${styles.badge} ${
+            waiting ? styles.badgeWait : refused ? styles.badgeRefused : styles.badgeDone
+          }`}
+        >
+          {waiting ? (
+            'Ожидаем'
+          ) : refused ? (
+            'Отказ'
+          ) : (
             <>
-              <CheckIcon /> Уже приняли
+              <CheckIcon /> Принято
             </>
           )}
         </span>
       </header>
-      {showSite ? (
-        <p className={styles.siteName}>{card.siteName}</p>
-      ) : null}
+      {showSite ? <p className={styles.siteName}>{card.siteName}</p> : null}
       {card.urgent ? <p className={styles.urgent}>Срочно</p> : null}
       <ul className={styles.items}>
         {card.items.map((it, i) => (
@@ -71,30 +154,85 @@ function DeliveryCard({
           </li>
         ))}
       </ul>
+      {receipt ? (
+        <div className={refused ? styles.stampBad : styles.stampOk}>
+          <p>
+            {refused ? 'Отказано в приёмке' : 'Принято'} {formatReceiptStampRu(receipt.atIso)}
+          </p>
+          {receipt.reason ? <p className={styles.reasonText}>{receipt.reason}</p> : null}
+        </div>
+      ) : null}
+      {receipt ? <ReceiptMedia receipt={receipt} /> : null}
+      {point ? (
+        <div className={styles.driverBox}>
+          <p className={styles.driverLabel}>Куда ехать</p>
+          {point.address ? <p className={styles.driverHint}>{point.address}</p> : null}
+          {point.hint ? <p className={styles.driverHint}>{point.hint}</p> : null}
+          <div className={styles.driverRow}>
+            <a className={styles.driverLink} href={yandexMapsRouteUrl(point)} target="_blank" rel="noreferrer">
+              Маршрут
+            </a>
+            <button type="button" className={styles.driverCopy} onClick={() => void sharePoint()}>
+              {copied ? 'Скопировано' : 'Водителю'}
+            </button>
+          </div>
+        </div>
+      ) : !showSite ? (
+        <p className={styles.noPoint}>Точки разгрузки ещё нет — поставьте её на карте ниже.</p>
+      ) : null}
       {showSite ? (
         <Link className={styles.siteLink} to={`/objects/${card.siteId}`}>
           Открыть объект
         </Link>
       ) : null}
-      {!showSite && waiting && onAccept ? (
-        <button
-          type="button"
-          className={styles.acceptBtn}
-          onClick={() => onAccept(card.requestId)}
-        >
-          Принял груз
-        </button>
+      {!showSite && waiting && onAccept && onRefuse ? (
+        <div className={styles.decide}>
+          <button type="button" className={styles.acceptBtn} onClick={() => onAccept(card.requestId)}>
+            Принять материал
+          </button>
+          <button type="button" className={styles.refuseBtn} onClick={() => onRefuse(card.requestId)}>
+            Отказать в приёмке
+          </button>
+        </div>
       ) : null}
     </article>
   )
 }
 
-export function TodayDeliveriesBoard({ requests, variant, onAccept }: Props) {
+export function TodayDeliveriesBoard({
+  requests,
+  variant,
+  onUpdateRequest,
+  deliveryPoints,
+}: Props) {
   const todayKey = toDateKey(new Date())
   const today = collectTodayDeliveries(requests, todayKey)
   const overdue = collectOverdueDeliveries(requests, todayKey)
   const waitingCount = today.filter((c) => c.status === 'pending').length
+  const refusedCount = today.filter((c) => c.status === 'refused').length
   const showSite = variant === 'home'
+  const [refuseId, setRefuseId] = useState<string | null>(null)
+  const refuseReq = refuseId ? requests.find((r) => r.id === refuseId) ?? null : null
+
+  const lead =
+    today.length === 0
+      ? 'На сегодня поставок нет. Они появляются здесь, когда снабжение согласует заявку.'
+      : waitingCount > 0
+        ? `Сегодня ждать ${waitingCount} ${waitingCount === 1 ? 'поставку' : waitingCount < 5 ? 'поставки' : 'поставок'}. Если материал нельзя принять — оформите отказ: причина, пояснение и фото или видео.`
+        : refusedCount > 0
+          ? 'На сегодня поставки разобраны: часть принята, по части оформлен отказ в приёмке.'
+          : 'На сегодня все поставки приняты.'
+
+  const handleAccept = (requestId: string) => {
+    if (!onUpdateRequest) return
+    onUpdateRequest(requestId, cargoReceiptPatch(makeAcceptedReceipt(new Date().toISOString())))
+  }
+
+  const handleRefuseSubmit = async (receipt: CargoReceipt) => {
+    if (!refuseId || !onUpdateRequest) return
+    onUpdateRequest(refuseId, cargoReceiptPatch(receipt))
+    setRefuseId(null)
+  }
 
   return (
     <section className={styles.section} aria-labelledby="today-deliveries-heading">
@@ -106,13 +244,7 @@ export function TodayDeliveriesBoard({ requests, variant, onAccept }: Props) {
         <h2 className={styles.title} id="today-deliveries-heading">
           Сегодня ждать
         </h2>
-        <p className={styles.lead}>
-          {today.length === 0
-            ? 'На сегодня поставок нет. Если машина едет — её не видно, пока снабжение не создаст заявку.'
-            : waitingCount > 0
-              ? `Сегодня ждать ${waitingCount} ${waitingCount === 1 ? 'поставку' : waitingCount < 5 ? 'поставки' : 'поставок'}: щебень, песок и остальное из заявок.`
-              : 'На сегодня всё уже принято.'}
-        </p>
+        <p className={styles.lead}>{lead}</p>
       </header>
 
       {today.length > 0 ? (
@@ -122,7 +254,9 @@ export function TodayDeliveriesBoard({ requests, variant, onAccept }: Props) {
               key={card.requestId}
               card={card}
               showSite={showSite}
-              onAccept={onAccept}
+              point={deliveryPoints?.get(card.siteId) ?? null}
+              onAccept={handleAccept}
+              onRefuse={setRefuseId}
             />
           ))}
         </div>
@@ -139,11 +273,21 @@ export function TodayDeliveriesBoard({ requests, variant, onAccept }: Props) {
                 key={card.requestId}
                 card={card}
                 showSite={showSite}
-                onAccept={onAccept}
+                point={deliveryPoints?.get(card.siteId) ?? null}
+                onAccept={handleAccept}
+                onRefuse={setRefuseId}
               />
             ))}
           </div>
         </div>
+      ) : null}
+
+      {refuseReq ? (
+        <CargoReceiptSheet
+          request={refuseReq}
+          onClose={() => setRefuseId(null)}
+          onSubmit={handleRefuseSubmit}
+        />
       ) : null}
     </section>
   )

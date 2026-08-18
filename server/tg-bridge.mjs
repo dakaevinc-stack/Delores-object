@@ -49,6 +49,7 @@ import {
   parseBrigadierReportText,
   looksLikeBrigadierReport,
 } from '../src/lib/tgReportParser.mjs'
+import { parseDriverTelegramCommand } from '../src/lib/driverTripNotify.mjs'
 import { resolveSiteId } from '../src/lib/siteIdResolver.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -221,12 +222,74 @@ function buildBrigadierStoredReport(parsed, siteId, { id }) {
 /* -------------------------- обработка сообщения ---------------------- */
 
 /**
+ * Личный чат водителя с ботом: привязка фамилии к chat_id.
  * @param {any} message Telegram Message object
- * @param {ReturnType<typeof loadSitesRegistry> extends Promise<infer T> ? T : never} sites
- * @param {BridgeState} state
  */
+async function handleDriverPrivateChat(message) {
+  const chat = message.chat
+  if (!chat || chat.type !== 'private') return false
+  const chatId = chat.id
+  const text = String(message.text ?? message.caption ?? '')
+  const cmd = parseDriverTelegramCommand(text)
+  if (!cmd) {
+    await tgCall('sendMessage', {
+      chat_id: chatId,
+      text: 'Напишите фамилию, как в парке техники — тогда новые рейсы будут приходить сюда.',
+    })
+    return true
+  }
+  if (cmd.type === 'start') {
+    await tgCall('sendMessage', {
+      chat_id: chatId,
+      text:
+        'Чтобы получать рейсы на телефон, напишите фамилию — как её ставят в заявке (например: Иванов).',
+    })
+    return true
+  }
+  if (cmd.type === 'help') {
+    await tgCall('sendMessage', {
+      chat_id: chatId,
+      text:
+        'Фамилия — подключить оповещения о рейсах.\n/stop — больше не присылать.',
+    })
+    return true
+  }
+  if (cmd.type === 'stop') {
+    await siteFormsPost('/api/driver-notify/unbind', { chatId })
+    await tgCall('sendMessage', {
+      chat_id: chatId,
+      text: 'Оповещения о рейсах выключены. Чтобы включить снова — напишите фамилию.',
+    })
+    return true
+  }
+  if (cmd.type === 'bind') {
+    const from = message.from || {}
+    const telegramUsername = typeof from.username === 'string' ? from.username : ''
+    await siteFormsPost('/api/driver-notify/bind', {
+      driverName: cmd.name,
+      chatId,
+      telegramUsername,
+    })
+    await tgCall('sendMessage', {
+      chat_id: chatId,
+      text: `Готово. Когда вам поставят рейс на «${cmd.name}», сообщение придёт сюда — даже если кабинет закрыт.`,
+    })
+    console.log(`▸ водитель привязан: ${cmd.name} → chat ${chatId}`)
+    return true
+  }
+  return true
+}
+
 async function handleMessage(message, sites, state) {
   if (!message || typeof message !== 'object') return
+  if (message.chat?.type === 'private') {
+    try {
+      await handleDriverPrivateChat(message)
+    } catch (e) {
+      console.error('личный чат водителя:', e?.message ?? e)
+    }
+    return
+  }
   const chatId = message.chat?.id?.toString()
   if (!chatId) return
   if (ALLOWED_CHATS.size > 0 && !ALLOWED_CHATS.has(chatId)) {

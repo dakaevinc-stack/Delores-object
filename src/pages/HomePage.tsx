@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAllSites } from '../lib/useAllSites'
 import { completionPercent, countSitesByStatus } from '../domain/executiveDashboard'
@@ -13,7 +13,9 @@ import {
 import { resolveSiteStatus } from '../domain/objectStatus'
 import { useFleetRegistry } from '../features/fleet/useFleetRegistry'
 import { TodayDeliveriesBoard } from '../features/deliveries/TodayDeliveriesBoard'
-import { loadProcurementRequestsForSites } from '../lib/procurementRequestsRepository'
+import { loadProcurementRequests, loadProcurementRequestsForSites, saveProcurementRequests } from '../lib/procurementRequestsRepository'
+import { fetchProcurementRequestsRemote } from '../lib/siteFormsApi'
+import { loadSiteDeliveryPointsForSites } from '../lib/siteDeliveryPointsRepository'
 import styles from './HomePage.module.css'
 
 function pluralizeUnits(n: number): string {
@@ -147,10 +149,33 @@ export function HomePage() {
   const fleetClasses = fleetCategories.length
 
   const portfolioCounts = useMemo(() => countSitesByStatus(sites), [sites])
-  const deliveryRequests = useMemo(
-    () => loadProcurementRequestsForSites(sites.map((s) => s.id)),
+  const [deliveryRequests, setDeliveryRequests] = useState(() =>
+    loadProcurementRequestsForSites(sites.map((s) => s.id)),
+  )
+  const deliveryPoints = useMemo(
+    () => loadSiteDeliveryPointsForSites(sites.map((s) => s.id)),
     [sites],
   )
+
+  useEffect(() => {
+    const ids = sites.map((s) => s.id)
+    const refresh = async () => {
+      const lists = await Promise.all(
+        ids.map(async (id) => {
+          const remote = await fetchProcurementRequestsRemote(id)
+          if (remote) {
+            saveProcurementRequests(id, remote)
+            return remote
+          }
+          return loadProcurementRequests(id)
+        }),
+      )
+      setDeliveryRequests(lists.flat())
+    }
+    void refresh()
+    const t = window.setInterval(() => void refresh(), 12_000)
+    return () => window.clearInterval(t)
+  }, [sites])
 
   const averageCompletion = useMemo(() => {
     if (sites.length === 0) return 0
@@ -331,7 +356,17 @@ export function HomePage() {
         </div>
       </header>
 
-      <TodayDeliveriesBoard requests={deliveryRequests} variant="home" />
+      <TodayDeliveriesBoard
+        requests={deliveryRequests}
+        variant="home"
+        deliveryPoints={deliveryPoints}
+      />
+
+      <p className={styles.driverEntry}>
+        <Link className={styles.driverEntryLink} to="/driver">
+          Кабинет водителя — маршруты
+        </Link>
+      </p>
 
       <div className={styles.fleetHubRow}>
         <div className={styles.fleetHubMain}>

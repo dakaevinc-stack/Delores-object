@@ -195,6 +195,20 @@ step_tg_bridge() {
         sed -i "s|^SITE_FORMS_WRITE_SECRET=\\s*$|SITE_FORMS_WRITE_SECRET=${SITE_SECRET}|" "$TG_ENV"
     fi
 
+    local TG_TOKEN
+    TG_TOKEN="$(awk -F= '/^TG_BOT_TOKEN=/{print substr($0, index($0,"=")+1)}' "$TG_ENV")"
+    if [[ -n "$TG_TOKEN" && "$TG_TOKEN" != "ЗАМЕНИТЕ_НА_ТОКЕН" ]]; then
+        if grep -qE '^TG_BOT_TOKEN=' "$ENV_FILE"; then
+            if grep -qE '^TG_BOT_TOKEN=\s*$' "$ENV_FILE"; then
+                log "  подставляю TG_BOT_TOKEN в $ENV_FILE для оповещений водителям"
+                sed -i "s|^TG_BOT_TOKEN=\\s*$|TG_BOT_TOKEN=${TG_TOKEN}|" "$ENV_FILE"
+            fi
+        else
+            log "  добавляю TG_BOT_TOKEN в $ENV_FILE для оповещений водителям"
+            printf '\nTG_BOT_TOKEN=%s\n' "$TG_TOKEN" >> "$ENV_FILE"
+        fi
+    fi
+
     sed \
         -e "s|^User=.*|User=${DEPLOY_USER}|" \
         -e "s|^Group=.*|Group=${DEPLOY_USER}|" \

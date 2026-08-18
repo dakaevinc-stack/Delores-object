@@ -21,6 +21,7 @@ describe('procurementRequestsRepository', () => {
       status: 'pending',
       urgent: true,
       neededByIso: new Date('2026-01-02T08:00:00Z').toISOString(),
+      receipt: null,
     }
     saveProcurementRequests(siteId, [req])
     const out = loadProcurementRequests(siteId)
@@ -51,6 +52,35 @@ describe('procurementRequestsRepository', () => {
     expect(out[0]?.status).toBe('pending')
     expect(out[0]?.urgent).toBe(false)
     expect(out[0]?.neededByIso).toBeNull()
+    expect(out[0]?.receipt).toBeNull()
+  })
+
+  it('сохраняет отказ с фото и временем', () => {
+    const siteId = 's2'
+    const req: ProcurementRequest = {
+      id: 'r2',
+      shortCode: '20260817-1848',
+      siteId,
+      siteName: 'Тестовый объект',
+      createdAtIso: new Date('2026-08-17T12:00:00Z').toISOString(),
+      createdBy: 'Снабжение',
+      note: '',
+      items: [{ presetId: null, title: 'Грунт', unitId: 'm3', quantity: 20 }],
+      status: 'refused',
+      urgent: false,
+      neededByIso: null,
+      receipt: {
+        decision: 'refused',
+        atIso: '2026-08-17T15:48:00.000Z',
+        reason: 'Плохое качество',
+        media: [{ id: 'm1', kind: 'photo', name: 'bad.jpg', previewUrl: 'data:image/jpeg;base64,xx' }],
+      },
+    }
+    saveProcurementRequests(siteId, [req])
+    const out = loadProcurementRequests(siteId)
+    expect(out[0]?.status).toBe('refused')
+    expect(out[0]?.receipt?.reason).toBe('Плохое качество')
+    expect(out[0]?.receipt?.media).toHaveLength(1)
   })
 })
 

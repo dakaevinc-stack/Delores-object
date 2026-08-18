@@ -1,13 +1,14 @@
 /**
  * Резервное копирование и восстановление данных приложения в localStorage.
  * Ключи должны совпадать с: sitesRepository, fleetRegistry, vehicleOverrides,
- * siteObjectMedia (авторы), procurementRequest, brigadierReports.
+ * siteObjectMedia (авторы), procurementRequest, brigadierReports, deliveryPoint.
  */
 
 const EXACT_KEYS = [
   'deloresh-user-sites:v1',
   'fleet:registry',
   'deloresh-procurement-authors',
+  'deloresh-driver-trips:v1',
 ] as const
 
 const KEY_PREFIXES = [
@@ -15,6 +16,7 @@ const KEY_PREFIXES = [
   'deloresh-site-object-media-authors:',
   'deloresh-procurement-requests:',
   'deloresh-brigadier-reports:',
+  'deloresh-site-delivery-point:',
 ] as const
 
 function isManagedKey(key: string): boolean {

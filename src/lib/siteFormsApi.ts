@@ -1,5 +1,15 @@
 import type { BrigadierStoredReport } from '../domain/brigadierReport'
 import type { ProcurementRequest } from '../domain/procurementRequest'
+import {
+  parseNominatimReverse,
+  parseNominatimSearch,
+  type AddressHit,
+} from '../domain/addressSearch'
+import { normalizeDriverTrip, type DriverTrip } from '../domain/driverTrip'
+import {
+  normalizeDeliveryPoint,
+  type SiteDeliveryPoint,
+} from '../domain/siteDeliveryPoint'
 import { parseBrigadierReportsJson } from './brigadierReportsRepository'
 import type { StoredSiteMedia } from './mediaRepository'
 import { parseProcurementRequestsJson } from './procurementRequestsRepository'
@@ -113,18 +123,35 @@ async function readBlobAsBase64(blob: Blob): Promise<string> {
   })
 }
 
-/** GET заявок и отчётов успешен — API доступно; манифест медиа подгружается отдельным GET (старые серверы без маршрута просто отключают синхронизацию медиа). */
+/** GET заявок и отчётов успешен — API доступно; манифест медиа и точка разгрузки подгружаются отдельно (старые серверы без маршрута просто отключают синхронизацию). */
+export async function fetchProcurementRequestsRemote(
+  siteId: string,
+): Promise<ProcurementRequest[] | null> {
+  try {
+    const res = await fetch(siteUrl(siteId, '/procurement-requests'))
+    if (!res.ok) return null
+    const json: unknown = await res.json()
+    return parseProcurementRequestsJson(json)
+  } catch {
+    return null
+  }
+}
+
+/** GET заявок и отчётов успешен — API доступно; манифест медиа и точка разгрузки подгружаются отдельно (старые серверы без маршрута просто отключают синхронизацию). */
 export async function fetchSiteFormsFromServer(siteId: string): Promise<{
   procurement: ProcurementRequest[]
   brigadier: BrigadierStoredReport[]
   objectMediaRemoteAvailable: boolean
   objectMediaManifest: StoredSiteMedia[]
+  deliveryPointRemoteAvailable: boolean
+  deliveryPoint: SiteDeliveryPoint | null
 } | null> {
   try {
-    const [procRes, brigRes, mediaRes] = await Promise.all([
+    const [procRes, brigRes, mediaRes, pointRes] = await Promise.all([
       fetch(siteUrl(siteId, '/procurement-requests')),
       fetch(siteUrl(siteId, '/brigadier-reports')),
       fetch(siteUrl(siteId, '/object-media')),
+      fetch(siteUrl(siteId, '/delivery-point')),
     ])
     if (!procRes.ok || !brigRes.ok) return null
     const procJson: unknown = await procRes.json()
@@ -139,14 +166,227 @@ export async function fetchSiteFormsFromServer(siteId: string): Promise<{
         objectMediaManifest = []
       }
     }
+    let deliveryPointRemoteAvailable = false
+    let deliveryPoint: SiteDeliveryPoint | null = null
+    if (pointRes.ok) {
+      try {
+        const pointJson: unknown = await pointRes.json()
+        if (pointJson && typeof pointJson === 'object' && 'point' in pointJson) {
+          deliveryPointRemoteAvailable = true
+          deliveryPoint = normalizeDeliveryPoint(
+            (pointJson as { point: unknown }).point,
+          )
+        }
+      } catch {
+        deliveryPoint = null
+      }
+    }
     return {
       procurement: parseProcurementRequestsJson(procJson),
       brigadier: parseBrigadierReportsJson(brigJson),
       objectMediaRemoteAvailable,
       objectMediaManifest,
+      deliveryPointRemoteAvailable,
+      deliveryPoint,
     }
   } catch {
     return null
+  }
+}
+
+export async function putSiteDeliveryPointRemote(
+  siteId: string,
+  point: SiteDeliveryPoint,
+): Promise<boolean> {
+  try {
+    const res = await fetch(siteUrl(siteId, '/delivery-point'), {
+      method: 'PUT',
+      headers: writeHeaders(true),
+      body: JSON.stringify(point),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+export async function deleteSiteDeliveryPointRemote(siteId: string): Promise<boolean> {
+  try {
+    const res = await fetch(siteUrl(siteId, '/delivery-point'), {
+      method: 'DELETE',
+      headers: writeHeaders(false),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+async function nominatimDirect(kind: 'search' | 'reverse', params: URLSearchParams): Promise<unknown> {
+  const url = new URL(`https://nominatim.openstreetmap.org/${kind}`)
+  url.search = params.toString()
+  const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } })
+  if (!res.ok) return null
+  return res.json()
+}
+
+export async function searchAddressRemote(query: string): Promise<AddressHit[]> {
+  const q = query.trim()
+  if (q.length < 3) return []
+  const params = new URLSearchParams({
+    format: 'jsonv2',
+    q,
+    limit: '6',
+    'accept-language': 'ru',
+    countrycodes: 'ru',
+    addressdetails: '1',
+  })
+  try {
+    const proxied = await fetch(`${apiBase()}/api/geocode?q=${encodeURIComponent(q)}`)
+    if (proxied.ok) {
+      const json: unknown = await proxied.json()
+      if (json && typeof json === 'object' && 'data' in json) {
+        return parseNominatimSearch((json as { data: unknown }).data)
+      }
+    }
+  } catch {
+    /* прямой Nominatim */
+  }
+  try {
+    return parseNominatimSearch(await nominatimDirect('search', params))
+  } catch {
+    return []
+  }
+}
+
+export async function reverseGeocodeRemote(lat: number, lng: number): Promise<string | null> {
+  try {
+    const proxied = await fetch(
+      `${apiBase()}/api/geocode?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+    )
+    if (proxied.ok) {
+      const json: unknown = await proxied.json()
+      if (json && typeof json === 'object' && 'data' in json) {
+        return parseNominatimReverse((json as { data: unknown }).data)
+      }
+    }
+  } catch {
+    /* прямой Nominatim */
+  }
+  try {
+    const params = new URLSearchParams({
+      format: 'jsonv2',
+      lat: String(lat),
+      lon: String(lng),
+      'accept-language': 'ru',
+      addressdetails: '1',
+    })
+    return parseNominatimReverse(await nominatimDirect('reverse', params))
+  } catch {
+    return null
+  }
+}
+
+export async function fetchDriverTripsRemote(): Promise<DriverTrip[] | null> {
+  try {
+    const res = await fetch(`${apiBase()}/api/driver-trips`)
+    if (!res.ok) return null
+    const json: unknown = await res.json()
+    if (!Array.isArray(json)) return []
+    return json.map(normalizeDriverTrip).filter((x): x is DriverTrip => x !== null)
+  } catch {
+    return null
+  }
+}
+
+export type DriverTripPutResult = {
+  ok: boolean
+  telegramNotified: boolean
+}
+
+export async function putDriverTripRemote(trip: DriverTrip): Promise<DriverTripPutResult> {
+  try {
+    const res = await fetch(`${apiBase()}/api/driver-trips`, {
+      method: 'POST',
+      headers: writeHeaders(true),
+      body: JSON.stringify(trip),
+    })
+    if (!res.ok) return { ok: false, telegramNotified: false }
+    const json: unknown = await res.json().catch(() => null)
+    const telegramCount =
+      json &&
+      typeof json === 'object' &&
+      json !== null &&
+      'notified' in json &&
+      typeof (json as { notified?: { telegram?: unknown } }).notified?.telegram === 'number'
+        ? (json as { notified: { telegram: number } }).notified.telegram
+        : 0
+    return { ok: true, telegramNotified: telegramCount > 0 }
+  } catch {
+    return { ok: false, telegramNotified: false }
+  }
+}
+
+export async function markDriverTripSeenRemote(id: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${apiBase()}/api/driver-trips/${encodeURIComponent(id)}/seen`, {
+      method: 'POST',
+    })
+    if (!res.ok) return null
+    const json: unknown = await res.json().catch(() => null)
+    if (json && typeof json === 'object' && typeof (json as { seenAtIso?: unknown }).seenAtIso === 'string') {
+      return (json as { seenAtIso: string }).seenAtIso
+    }
+    return new Date().toISOString()
+  } catch {
+    return null
+  }
+}
+
+export async function fetchDriverNotifyConfig(): Promise<{
+  telegramEnabled: boolean
+  botUsername: string
+} | null> {
+  try {
+    const res = await fetch(`${apiBase()}/api/driver-notify/config`)
+    if (!res.ok) return null
+    const json: unknown = await res.json()
+    if (!json || typeof json !== 'object') return null
+    const row = json as { telegramEnabled?: unknown; botUsername?: unknown }
+    return {
+      telegramEnabled: row.telegramEnabled === true,
+      botUsername: typeof row.botUsername === 'string' ? row.botUsername : '',
+    }
+  } catch {
+    return null
+  }
+}
+
+export async function fetchDriverNotifyStatus(name: string): Promise<boolean | null> {
+  const q = name.trim()
+  if (!q) return false
+  try {
+    const res = await fetch(
+      `${apiBase()}/api/driver-notify/status?name=${encodeURIComponent(q)}`,
+    )
+    if (!res.ok) return null
+    const json: unknown = await res.json()
+    if (!json || typeof json !== 'object' || !('bound' in json)) return null
+    return (json as { bound: unknown }).bound === true
+  } catch {
+    return null
+  }
+}
+
+export async function deleteDriverTripRemote(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${apiBase()}/api/driver-trips/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: writeHeaders(false),
+    })
+    return res.ok
+  } catch {
+    return false
   }
 }
 

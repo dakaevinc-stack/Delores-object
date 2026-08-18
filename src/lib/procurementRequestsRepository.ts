@@ -1,3 +1,4 @@
+import type { CargoReceipt, CargoReceiptMedia } from '../domain/cargoReceipt'
 import type {
   ProcurementRequest,
   ProcurementRequestStatus,
@@ -35,14 +36,53 @@ export function isLegacyProcurementRow(x: unknown): boolean {
   )
 }
 
+function normalizeReceiptMedia(row: unknown): CargoReceiptMedia | null {
+  if (!row || typeof row !== 'object') return null
+  const m = row as Record<string, unknown>
+  if (typeof m.id !== 'string' || typeof m.name !== 'string') return null
+  if (m.kind !== 'photo' && m.kind !== 'video') return null
+  if (typeof m.previewUrl !== 'string') return null
+  return {
+    id: m.id,
+    kind: m.kind,
+    name: m.name,
+    previewUrl: m.previewUrl,
+  }
+}
+
+export function normalizeCargoReceipt(row: unknown): CargoReceipt | null {
+  if (!row || typeof row !== 'object') return null
+  const r = row as Record<string, unknown>
+  const decision = r.decision === 'accepted' || r.decision === 'refused' ? r.decision : null
+  const rawAt = typeof r.atIso === 'string' ? r.atIso.trim() : ''
+  const atIso =
+    rawAt && !Number.isNaN(new Date(rawAt).getTime()) ? new Date(rawAt).toISOString() : null
+  if (!decision || !atIso) return null
+  const media = Array.isArray(r.media)
+    ? r.media.map(normalizeReceiptMedia).filter((x): x is CargoReceiptMedia => x !== null)
+    : []
+  return {
+    decision,
+    atIso,
+    reason: typeof r.reason === 'string' ? r.reason : '',
+    media,
+  }
+}
+
 export function normalizeProcurementRequest(row: unknown): ProcurementRequest {
   const r = row as ProcurementRequest & {
     status?: ProcurementRequestStatus
     urgent?: boolean
     neededByIso?: string | null
+    receipt?: unknown
   }
-  const status: ProcurementRequestStatus =
-    r.status === 'accepted' || r.status === 'rejected' || r.status === 'pending'
+  let status: ProcurementRequestStatus =
+    r.status === 'accepted' ||
+    r.status === 'rejected' ||
+    r.status === 'pending' ||
+    r.status === 'refused' ||
+    r.status === 'approved' ||
+    r.status === 'cancelled'
       ? r.status
       : 'pending'
   const rawNeed = typeof r.neededByIso === 'string' ? r.neededByIso.trim() : ''
@@ -50,11 +90,15 @@ export function normalizeProcurementRequest(row: unknown): ProcurementRequest {
     rawNeed && !Number.isNaN(new Date(rawNeed).getTime())
       ? new Date(rawNeed).toISOString()
       : null
+  const receipt = normalizeCargoReceipt(r.receipt)
+  if (receipt?.decision === 'accepted') status = 'accepted'
+  if (receipt?.decision === 'refused') status = 'refused'
   return {
     ...r,
     status,
     urgent: Boolean(r.urgent),
     neededByIso,
+    receipt,
   }
 }
 

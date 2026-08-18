@@ -1,0 +1,40 @@
+.frame {
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #dfe6ef;
+  isolation: isolate;
+}
+
+.map {
+  width: 100%;
+  height: min(52vw, 360px);
+  min-height: 240px;
+  z-index: 0;
+  font: inherit;
+}
+
+.pinWrap {
+  background: none;
+  border: 0;
+}
+
+.pin {
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: 0 auto;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--brand-red, #ee2d3a);
+  box-shadow: 0 6px 14px rgba(181, 31, 45, 0.35);
+  border: 2px solid #fff;
+}
+
+.pin::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  border-radius: 50%;
+  background: #fff;
+}

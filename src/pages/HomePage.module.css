@@ -349,6 +349,25 @@
    Список объектов
    ============================================================ */
 
+.driverEntry {
+  margin: 0 0 22px;
+}
+
+.driverEntryLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--brand-navy, #172a4d);
+  text-decoration: none;
+  border-bottom: 2px solid rgba(238, 45, 58, 0.45);
+}
+
+.driverEntryLink:hover {
+  color: var(--brand-red, #ee2d3a);
+}
+
 /* Парк техники + внешняя панель приёмки (две колонки на широких экранах) */
 .fleetHubRow {
   display: grid;

@@ -19,6 +19,9 @@ const AddObjectPage = lazy(() =>
 const ObjectDetailPage = lazy(() =>
   import('../pages/ObjectDetailPage').then((m) => ({ default: m.ObjectDetailPage })),
 )
+const DriverCabinetPage = lazy(() =>
+  import('../pages/DriverCabinetPage').then((m) => ({ default: m.DriverCabinetPage })),
+)
 
 function RouteFallback() {
   return (
@@ -39,6 +42,7 @@ export function App() {
         <Route path="/spectehnika/:categoryId" element={<FleetCategoryPage />} />
         <Route path="/objects/new" element={<AddObjectPage />} />
         <Route path="/objects/:siteId" element={<ObjectDetailPage />} />
+        <Route path="/driver" element={<DriverCabinetPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

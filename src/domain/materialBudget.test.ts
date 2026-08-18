@@ -45,6 +45,7 @@ function request(
     note: '',
     urgent: false,
     neededByIso: null,
+    receipt: null,
     ...patch,
   }
 }
@@ -72,6 +73,30 @@ describe('расход материалов', () => {
     expect(stone.consumed).toBe(100)
     expect(stone.remaining).toBe(2900)
     expect(stone.status).toBe('ok')
+  })
+
+  it('отказ от груза на объекте не списывает объём', () => {
+    const requests = [
+      request({
+        id: 'r1',
+        status: 'refused',
+        receipt: {
+          decision: 'refused',
+          atIso: '2026-08-17T15:48:00.000Z',
+          reason: 'Плохое качество',
+          media: [{ id: 'm1', kind: 'photo', name: 'a.jpg', previewUrl: 'data:,' }],
+        },
+        items: [
+          {
+            presetId: 'crushed-granite-20-40',
+            title: 'Щебень гранитный 20–40',
+            unitId: 'm3',
+            quantity: 100,
+          },
+        ],
+      }),
+    ]
+    expect(consumedQtyByArticleId(budget, requests).get('a-stone')).toBeUndefined()
   })
 
   it('заявка в обработке не списывает объём', () => {

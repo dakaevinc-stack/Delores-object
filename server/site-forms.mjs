@@ -12,6 +12,10 @@ import http from 'node:http'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  formatDriverTripNotifyText,
+  namesMatchDriver,
+} from '../src/lib/driverTripNotify.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = Number(process.env.DELORESH_SITE_FORMS_PORT || 8787) || 8787
@@ -19,7 +23,12 @@ const DATA_ROOT =
   process.env.DELORESH_SITE_FORMS_DATA?.trim() ||
   path.join(__dirname, '..', 'data', 'site-forms')
 const WRITE_SECRET = (process.env.DELORESH_SITE_FORMS_WRITE_SECRET || '').trim()
+const TG_BOT_TOKEN = (process.env.TG_BOT_TOKEN || '').trim()
 const MAX_BODY_BYTES = 100 * 1024 * 1024
+const DRIVER_BINDS_FILE = () => path.join(DATA_ROOT, 'driver-telegram-binds.json')
+
+/** @type {string} */
+let cachedBotUsername = (process.env.TG_BOT_USERNAME || '').trim()
 
 /** @param {string | undefined} id */
 function safeSiteId(id) {
@@ -35,7 +44,7 @@ function safeMediaId(id) {
 
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Deloresh-Write-Secret')
 }
 
@@ -84,6 +93,30 @@ async function readJsonArray(filePath) {
 async function writeJsonArray(filePath, arr) {
   await fs.mkdir(path.dirname(filePath), { recursive: true })
   await fs.writeFile(filePath, JSON.stringify(arr, null, 2), 'utf8')
+}
+
+/** @param {string} filePath @param {unknown} obj */
+async function writeJsonFile(filePath, obj) {
+  await fs.mkdir(path.dirname(filePath), { recursive: true })
+  await fs.writeFile(filePath, JSON.stringify(obj, null, 2), 'utf8')
+}
+
+/** @param {unknown} x */
+function isDeliveryPointRow(x) {
+  if (!x || typeof x !== 'object') return false
+  const r = /** @type {Record<string, unknown>} */ (x)
+  const lat = typeof r.lat === 'number' ? r.lat : Number(r.lat)
+  const lng = typeof r.lng === 'number' ? r.lng : Number(r.lng)
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180 &&
+    typeof r.hint === 'string' &&
+    typeof r.updatedAtIso === 'string'
+  )
 }
 
 /** @param {unknown} x */
@@ -146,6 +179,93 @@ function checkWrite(req, res) {
   return false
 }
 
+async function ensureBotUsername() {
+  if (cachedBotUsername || !TG_BOT_TOKEN) return cachedBotUsername
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/getMe`)
+    const json = /** @type {{ ok?: boolean, result?: { username?: string } }} */ (await res.json())
+    if (json.ok && json.result?.username) cachedBotUsername = json.result.username
+  } catch {
+    /* бот недоступен — кабинет просто без кнопки */
+  }
+  return cachedBotUsername
+}
+
+/** @returns {Promise<Array<{ driverName: string, chatId: string, telegramUsername?: string, boundAtIso: string }>>} */
+async function readDriverBinds() {
+  const list = await readJsonArray(DRIVER_BINDS_FILE())
+  return list.filter(
+    (x) =>
+      x &&
+      typeof x === 'object' &&
+      typeof /** @type {{driverName?: unknown}} */ (x).driverName === 'string' &&
+      typeof /** @type {{chatId?: unknown}} */ (x).chatId === 'string',
+  )
+}
+
+/**
+ * @param {string} driverName
+ * @param {string} chatId
+ * @param {string} [telegramUsername]
+ */
+async function upsertDriverBind(driverName, chatId, telegramUsername) {
+  const name = driverName.trim()
+  const id = String(chatId).trim()
+  if (!name || !id) return null
+  const prev = await readDriverBinds()
+  const next = [
+    {
+      driverName: name,
+      chatId: id,
+      telegramUsername: telegramUsername?.trim() || '',
+      boundAtIso: new Date().toISOString(),
+    },
+    ...prev.filter((b) => b.chatId !== id && !namesMatchDriver(b.driverName, name)),
+  ]
+  await writeJsonArray(DRIVER_BINDS_FILE(), next)
+  return next[0]
+}
+
+/** @param {string} chatId */
+async function removeDriverBindByChat(chatId) {
+  const id = String(chatId).trim()
+  const prev = await readDriverBinds()
+  const next = prev.filter((b) => b.chatId !== id)
+  await writeJsonArray(DRIVER_BINDS_FILE(), next)
+  return prev.length !== next.length
+}
+
+/**
+ * @param {unknown} trip
+ * @returns {Promise<number>}
+ */
+async function notifyDriverTripTelegram(trip) {
+  if (!TG_BOT_TOKEN) return 0
+  if (!trip || typeof trip !== 'object') return 0
+  const row = /** @type {Record<string, unknown>} */ (trip)
+  const driverName = typeof row.driverName === 'string' ? row.driverName.trim() : ''
+  if (!driverName) return 0
+  const binds = await readDriverBinds()
+  const targets = binds.filter((b) => namesMatchDriver(b.driverName, driverName))
+  if (targets.length === 0) return 0
+  const text = formatDriverTripNotifyText(row)
+  let sent = 0
+  for (const b of targets) {
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: b.chatId, text }),
+      })
+      if (res.ok) sent += 1
+      else console.warn('telegram notify failed', b.chatId, await res.text())
+    } catch (e) {
+      console.warn('telegram notify error', b.chatId, e)
+    }
+  }
+  return sent
+}
+
 const server = http.createServer(async (req, res) => {
   setCors(res)
 
@@ -160,6 +280,169 @@ const server = http.createServer(async (req, res) => {
     const parts = url.pathname.split('/').filter(Boolean)
 
     if (parts[0] === 'api' && parts[1] === 'health' && req.method === 'GET') {
+      sendJson(res, 200, { ok: true })
+      return
+    }
+
+    if (parts[0] === 'api' && parts[1] === 'geocode' && req.method === 'GET') {
+      const q = (url.searchParams.get('q') || '').trim()
+      const lat = url.searchParams.get('lat')
+      const lng = url.searchParams.get('lng')
+      const nom = new URL('https://nominatim.openstreetmap.org/')
+      nom.searchParams.set('format', 'jsonv2')
+      nom.searchParams.set('accept-language', 'ru')
+      nom.searchParams.set('addressdetails', '1')
+      if (lat && lng) {
+        nom.pathname = '/reverse'
+        nom.searchParams.set('lat', lat)
+        nom.searchParams.set('lon', lng)
+      } else {
+        if (q.length < 3) {
+          sendJson(res, 200, { hits: [] })
+          return
+        }
+        nom.pathname = '/search'
+        nom.searchParams.set('q', q)
+        nom.searchParams.set('limit', '6')
+        nom.searchParams.set('countrycodes', 'ru')
+      }
+      const upstream = await fetch(nom.toString(), {
+        headers: { 'User-Agent': 'Deloresh-Objects/1.0 (site-forms geocode)' },
+      })
+      if (!upstream.ok) {
+        sendJson(res, 502, { error: 'geocode_upstream' })
+        return
+      }
+      const data = await upstream.json()
+      sendJson(res, 200, { data })
+      return
+    }
+
+    if (parts[0] === 'api' && parts[1] === 'driver-trips' && parts.length === 2) {
+      const file = path.join(DATA_ROOT, 'driver-trips.json')
+      if (req.method === 'GET') {
+        const list = await readJsonArray(file)
+        sendJson(res, 200, list)
+        return
+      }
+      if (req.method === 'POST') {
+        if (!checkWrite(req, res)) return
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        if (!body || typeof body !== 'object' || typeof body.id !== 'string') {
+          sendJson(res, 400, { error: 'invalid_trip' })
+          return
+        }
+        const list = await readJsonArray(file)
+        const next = [body, ...list.filter((x) => !x || /** @type {{id?:unknown}} */ (x).id !== body.id)]
+        await writeJsonArray(file, next)
+        const telegram = await notifyDriverTripTelegram(body)
+        sendJson(res, 200, { ok: true, notified: { telegram } })
+        return
+      }
+    }
+
+    if (
+      parts[0] === 'api' &&
+      parts[1] === 'driver-trips' &&
+      parts.length === 4 &&
+      parts[3] === 'seen' &&
+      req.method === 'POST'
+    ) {
+      const id = parts[2]
+      if (!id || id.includes('..')) {
+        sendJson(res, 400, { error: 'bad_id' })
+        return
+      }
+      const file = path.join(DATA_ROOT, 'driver-trips.json')
+      const list = await readJsonArray(file)
+      const idx = list.findIndex((x) => x && /** @type {{id?:unknown}} */ (x).id === id)
+      if (idx === -1) {
+        sendJson(res, 404, { error: 'not_found' })
+        return
+      }
+      const row = /** @type {Record<string, unknown>} */ (list[idx] && typeof list[idx] === 'object' ? list[idx] : {})
+      const already = typeof row.seenAtIso === 'string' && row.seenAtIso ? String(row.seenAtIso) : ''
+      const seenAtIso = already || new Date().toISOString()
+      list[idx] = { ...row, seenAtIso }
+      await writeJsonArray(file, list)
+      sendJson(res, 200, { ok: true, seenAtIso })
+      return
+    }
+
+    if (parts[0] === 'api' && parts[1] === 'driver-notify' && parts[2] === 'config' && req.method === 'GET') {
+      const botUsername = await ensureBotUsername()
+      sendJson(res, 200, {
+        telegramEnabled: Boolean(TG_BOT_TOKEN),
+        botUsername: botUsername || '',
+      })
+      return
+    }
+
+    if (parts[0] === 'api' && parts[1] === 'driver-notify' && parts[2] === 'status' && req.method === 'GET') {
+      const name = (url.searchParams.get('name') || '').trim()
+      if (!name) {
+        sendJson(res, 200, { bound: false })
+        return
+      }
+      const binds = await readDriverBinds()
+      sendJson(res, 200, { bound: binds.some((b) => namesMatchDriver(b.driverName, name)) })
+      return
+    }
+
+    if (parts[0] === 'api' && parts[1] === 'driver-notify' && parts[2] === 'bind' && req.method === 'POST') {
+      if (!checkWrite(req, res)) return
+      const raw = await readBody(req)
+      const body = JSON.parse(raw)
+      const driverName = body && typeof body.driverName === 'string' ? body.driverName : ''
+      const chatId =
+        body && (typeof body.chatId === 'string' || typeof body.chatId === 'number')
+          ? String(body.chatId)
+          : ''
+      const telegramUsername =
+        body && typeof body.telegramUsername === 'string' ? body.telegramUsername : ''
+      const saved = await upsertDriverBind(driverName, chatId, telegramUsername)
+      if (!saved) {
+        sendJson(res, 400, { error: 'invalid_bind' })
+        return
+      }
+      sendJson(res, 200, { ok: true, bind: saved })
+      return
+    }
+
+    if (parts[0] === 'api' && parts[1] === 'driver-notify' && parts[2] === 'unbind' && req.method === 'POST') {
+      if (!checkWrite(req, res)) return
+      const raw = await readBody(req)
+      const body = JSON.parse(raw)
+      const chatId =
+        body && (typeof body.chatId === 'string' || typeof body.chatId === 'number')
+          ? String(body.chatId)
+          : ''
+      if (!chatId) {
+        sendJson(res, 400, { error: 'invalid_unbind' })
+        return
+      }
+      const removed = await removeDriverBindByChat(chatId)
+      sendJson(res, 200, { ok: true, removed })
+      return
+    }
+
+    if (
+      parts[0] === 'api' &&
+      parts[1] === 'driver-trips' &&
+      parts.length === 3 &&
+      req.method === 'DELETE'
+    ) {
+      if (!checkWrite(req, res)) return
+      const id = parts[2]
+      if (!id || id.includes('..')) {
+        sendJson(res, 400, { error: 'bad_id' })
+        return
+      }
+      const file = path.join(DATA_ROOT, 'driver-trips.json')
+      const list = await readJsonArray(file)
+      const next = list.filter((x) => !x || /** @type {{id?:unknown}} */ (x).id !== id)
+      await writeJsonArray(file, next)
       sendJson(res, 200, { ok: true })
       return
     }
@@ -223,7 +506,7 @@ const server = http.createServer(async (req, res) => {
           return
         }
         const cur = /** @type {Record<string, unknown>} */ (list[idx])
-        const allowed = ['status', 'urgent', 'neededByIso', 'note', 'items', 'siteName']
+        const allowed = ['status', 'urgent', 'neededByIso', 'note', 'items', 'siteName', 'receipt']
         const merged = { ...cur }
         for (const k of allowed) {
           if (k in patch) merged[k] = patch[k]
@@ -453,6 +736,60 @@ const server = http.createServer(async (req, res) => {
             throw e
           }
         }
+        return
+      }
+    }
+
+    if (
+      parts[0] === 'api' &&
+      parts[1] === 'sites' &&
+      parts[2] &&
+      parts[3] === 'delivery-point' &&
+      parts.length === 4
+    ) {
+      const siteId = safeSiteId(parts[2])
+      if (!siteId) {
+        sendJson(res, 400, { error: 'bad_site_id' })
+        return
+      }
+      const file = path.join(DATA_ROOT, 'sites', siteId, 'delivery-point.json')
+
+      if (req.method === 'GET') {
+        try {
+          const raw = await fs.readFile(file, 'utf8')
+          const parsed = JSON.parse(raw)
+          sendJson(res, 200, { point: isDeliveryPointRow(parsed) ? parsed : null })
+        } catch (e) {
+          if (/** @type {NodeJS.ErrnoException} */ (e).code === 'ENOENT') {
+            sendJson(res, 200, { point: null })
+            return
+          }
+          throw e
+        }
+        return
+      }
+
+      if (req.method === 'PUT') {
+        if (!checkWrite(req, res)) return
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        if (!isDeliveryPointRow(body)) {
+          sendJson(res, 400, { error: 'invalid_delivery_point' })
+          return
+        }
+        await writeJsonFile(file, body)
+        sendJson(res, 200, { ok: true })
+        return
+      }
+
+      if (req.method === 'DELETE') {
+        if (!checkWrite(req, res)) return
+        try {
+          await fs.unlink(file)
+        } catch (e) {
+          if (/** @type {NodeJS.ErrnoException} */ (e).code !== 'ENOENT') throw e
+        }
+        sendJson(res, 200, { ok: true })
         return
       }
     }

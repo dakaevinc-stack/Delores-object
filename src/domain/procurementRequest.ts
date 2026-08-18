@@ -1,4 +1,8 @@
 import { MEASUREMENT_UNITS, type MeasurementUnitId, unitLabel } from './brigadierReport'
+import type { CargoReceipt } from './cargoReceipt'
+export type { CargoReceipt, CargoReceiptMedia } from './cargoReceipt'
+import type { SiteDeliveryPoint } from './siteDeliveryPoint'
+import { renderDriverDirections, yandexMapsRouteUrl } from './siteDeliveryPoint'
 export {
   PROCUREMENT_CATEGORIES,
   PROCUREMENT_MATERIAL_PRESETS,
@@ -44,13 +48,48 @@ export type ProcurementLine = {
   quantity: number
 }
 
-/** Статус заявки для снабжения (виден на карточке по цвету). */
-export type ProcurementRequestStatus = 'pending' | 'accepted' | 'rejected'
+/** Статус заявки: сначала снабжение, затем приёмка на объекте. */
+export type ProcurementRequestStatus =
+  | 'pending'
+  | 'approved'
+  | 'accepted'
+  | 'rejected'
+  | 'refused'
+  | 'cancelled'
 
 export const PROCUREMENT_STATUS_LABELS: Record<ProcurementRequestStatus, string> = {
-  pending: 'В обработке',
-  accepted: 'Принято',
-  rejected: 'Отказано',
+  pending: 'Ждёт согласования',
+  approved: 'Согласовано',
+  accepted: 'Принято на объекте',
+  rejected: 'Отказано снабжением',
+  refused: 'Отказано в приёмке',
+  cancelled: 'Снята снабжением',
+}
+
+/** Приёмщик видит только то, что снабжение уже согласовало. */
+export function isVisibleToMaterialReceiver(req: Pick<ProcurementRequest, 'status'>): boolean {
+  return req.status === 'approved' || req.status === 'accepted' || req.status === 'refused'
+}
+
+export function canSupplyApprove(req: Pick<ProcurementRequest, 'status'>): boolean {
+  return req.status === 'pending' || req.status === 'rejected' || req.status === 'cancelled'
+}
+
+export function canSupplyCancel(req: Pick<ProcurementRequest, 'status'>): boolean {
+  return req.status === 'pending' || req.status === 'approved'
+}
+
+export function canSupplyEdit(req: Pick<ProcurementRequest, 'status'>): boolean {
+  return (
+    req.status === 'pending' ||
+    req.status === 'approved' ||
+    req.status === 'rejected' ||
+    req.status === 'cancelled'
+  )
+}
+
+export function canReceiveOnSite(req: Pick<ProcurementRequest, 'status' | 'receipt'>): boolean {
+  return req.status === 'approved' && !req.receipt
 }
 
 export type ProcurementRequest = {
@@ -68,6 +107,8 @@ export type ProcurementRequest = {
   urgent: boolean
   /** К какому сроку нужна поставка на объект (ISO), или null если не указано. */
   neededByIso: string | null
+  /** Факт приёмки/отказа на объекте: время ставится само, к отказу — фото. */
+  receipt: CargoReceipt | null
 }
 
 const STORAGE_KEY_AUTHORS = 'deloresh-procurement-authors'
@@ -151,20 +192,30 @@ export function buildProcurementFileBase(req: ProcurementRequest): string {
 }
 
 /** Многострочное человекочитаемое представление заявки — для копирования и .txt. */
-export function renderProcurementRequestPlainText(req: ProcurementRequest): string {
+export function renderProcurementRequestPlainText(
+  req: ProcurementRequest,
+  deliveryPoint?: SiteDeliveryPoint | null,
+): string {
   const statusLabel = PROCUREMENT_STATUS_LABELS[req.status] ?? req.status
   const urgentLine = req.urgent ? '\nСрочно: да' : ''
   const neededLine =
     req.neededByIso && !Number.isNaN(new Date(req.neededByIso).getTime())
       ? `\nНужно к: ${formatDateTimeRu(req.neededByIso)}`
       : ''
+  const receiptLine = req.receipt
+    ? `\nНа объекте: ${
+        req.receipt.decision === 'accepted' ? 'принято' : 'отказано в приёмке'
+      } ${formatDateTimeRu(req.receipt.atIso)}${
+        req.receipt.reason ? ` (${req.receipt.reason})` : ''
+      }${req.receipt.media.length > 0 ? `, файлов: ${req.receipt.media.length}` : ''}`
+    : ''
 
   const header = [
     `ЗАЯВКА НА МАТЕРИАЛЫ № ${req.shortCode}`,
     `Объект: ${req.siteName}`,
     `Дата: ${formatDateTimeRu(req.createdAtIso)}`,
     `Заявку создал: ${req.createdBy}`,
-    `Статус: ${statusLabel}${urgentLine}${neededLine}`,
+    `Статус: ${statusLabel}${urgentLine}${neededLine}${receiptLine}`,
   ].join('\n')
 
   const head = ['№', 'Материал', 'Кол-во', 'Ед.']
@@ -188,12 +239,18 @@ export function renderProcurementRequestPlainText(req: ProcurementRequest): stri
 
   const tableLines = [fmtRow(head), sep, ...rows.map(fmtRow)]
   const noteLine = req.note.trim() ? `\nКомментарий: ${req.note.trim()}` : ''
+  const pointBlock = deliveryPoint
+    ? `\n\n${renderDriverDirections(req.siteName, deliveryPoint)}`
+    : ''
 
-  return `${header}\n\n${tableLines.join('\n')}${noteLine}\n`
+  return `${header}\n\n${tableLines.join('\n')}${noteLine}${pointBlock}\n`
 }
 
 /** CSV для Excel (BOM + ; как разделитель — корректно открывается в RU-локали). */
-export function renderProcurementRequestCsv(req: ProcurementRequest): string {
+export function renderProcurementRequestCsv(
+  req: ProcurementRequest,
+  deliveryPoint?: SiteDeliveryPoint | null,
+): string {
   const escape = (v: string | number) => {
     const s = String(v)
     if (/[";\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`
@@ -208,6 +265,22 @@ export function renderProcurementRequestCsv(req: ProcurementRequest): string {
   lines.push(`Срочно;${escape(req.urgent ? 'да' : 'нет')}`)
   if (req.neededByIso && !Number.isNaN(new Date(req.neededByIso).getTime())) {
     lines.push(`Нужно к;${escape(formatDateTimeRu(req.neededByIso))}`)
+  }
+  if (req.receipt) {
+    lines.push(
+      `На объекте;${escape(
+        `${req.receipt.decision === 'accepted' ? 'принято' : 'отказано в приёмке'} ${formatDateTimeRu(
+          req.receipt.atIso,
+        )}`,
+      )}`,
+    )
+    if (req.receipt.reason) lines.push(`Причина отказа;${escape(req.receipt.reason)}`)
+  }
+  if (deliveryPoint) {
+    lines.push(`Точка разгрузки;${escape(`${deliveryPoint.lat.toFixed(6)}, ${deliveryPoint.lng.toFixed(6)}`)}`)
+    if (deliveryPoint.address) lines.push(`Адрес;${escape(deliveryPoint.address)}`)
+    if (deliveryPoint.hint) lines.push(`Как подъехать;${escape(deliveryPoint.hint)}`)
+    lines.push(`Маршрут;${escape(yandexMapsRouteUrl(deliveryPoint))}`)
   }
   if (req.note.trim()) lines.push(`Комментарий;${escape(req.note.trim())}`)
   lines.push('')

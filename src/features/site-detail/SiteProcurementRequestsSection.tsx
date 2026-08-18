@@ -1,6 +1,16 @@
 import { useState } from 'react'
 import {
+  cargoReceiptPatch,
+  formatReceiptStampRu,
+  makeAcceptedReceipt,
+  type CargoReceipt,
+} from '../../domain/cargoReceipt'
+import {
   buildProcurementFileBase,
+  canReceiveOnSite,
+  canSupplyApprove,
+  canSupplyCancel,
+  canSupplyEdit,
   downloadTextFile,
   formatQty,
   PROCUREMENT_STATUS_LABELS,
@@ -8,15 +18,18 @@ import {
   renderProcurementRequestPlainText,
   unitLabel,
   type ProcurementRequest,
-  type ProcurementRequestStatus,
 } from '../../domain/procurementRequest'
+import type { SiteDeliveryPoint } from '../../domain/siteDeliveryPoint'
+import { CargoReceiptSheet } from '../deliveries/CargoReceiptSheet'
 import styles from './SiteProcurementRequestsSection.module.css'
 
 type Props = {
   requests: readonly ProcurementRequest[]
   /** Если true — данные синхронизируются с сервером (текст подсказки). */
   serverBacked?: boolean
+  deliveryPoint?: SiteDeliveryPoint | null
   onCreate: () => void
+  onEdit: (req: ProcurementRequest) => void
   onRemove: (id: string) => void | Promise<void>
   onUpdateRequest: (id: string, patch: Partial<ProcurementRequest>) => void | Promise<void>
 }
@@ -63,27 +76,31 @@ async function copyToClipboard(text: string): Promise<boolean> {
 export function SiteProcurementRequestsSection({
   requests,
   serverBacked = false,
+  deliveryPoint = null,
   onCreate,
+  onEdit,
   onRemove,
   onUpdateRequest,
 }: Props) {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [sharedId, setSharedId] = useState<string | null>(null)
+  const [refuseId, setRefuseId] = useState<string | null>(null)
+  const refuseReq = refuseId ? requests.find((r) => r.id === refuseId) ?? null : null
 
   const handleDownloadTxt = (req: ProcurementRequest) => {
     const base = buildProcurementFileBase(req)
-    const text = renderProcurementRequestPlainText(req)
+    const text = renderProcurementRequestPlainText(req, deliveryPoint)
     downloadTextFile(`${base}.txt`, 'text/plain;charset=utf-8', text)
   }
 
   const handleDownloadCsv = (req: ProcurementRequest) => {
     const base = buildProcurementFileBase(req)
-    const text = renderProcurementRequestCsv(req)
+    const text = renderProcurementRequestCsv(req, deliveryPoint)
     downloadTextFile(`${base}.csv`, 'text/csv;charset=utf-8', text)
   }
 
   const handleCopy = async (req: ProcurementRequest) => {
-    const ok = await copyToClipboard(renderProcurementRequestPlainText(req))
+    const ok = await copyToClipboard(renderProcurementRequestPlainText(req, deliveryPoint))
     if (ok) {
       setCopiedId(req.id)
       window.setTimeout(() => {
@@ -93,7 +110,7 @@ export function SiteProcurementRequestsSection({
   }
 
   const handleShare = async (req: ProcurementRequest) => {
-    const text = renderProcurementRequestPlainText(req)
+    const text = renderProcurementRequestPlainText(req, deliveryPoint)
     const title = `Заявка № ${req.shortCode} — ${req.siteName}`
     try {
       if (typeof navigator !== 'undefined' && 'share' in navigator) {
@@ -129,10 +146,10 @@ export function SiteProcurementRequestsSection({
           </h2>
           <p className={styles.lead}>
             {serverBacked
-              ? 'Заявки сохраняются на сервере (копия дублируется в этом браузере). '
+              ? 'Заявки сохраняются на сервере. '
               : 'Заявки сохраняются на этом устройстве. '}
-            Когда бригадир нажимает «Принял груз», заявка зеленеет и объём сразу
-            списывается из расхода материалов.
+            Снабжение согласовывает заявку — только тогда она появляется у приёмщика.
+            Снять или изменить можно, пока материал не приняли на объекте.
           </p>
         </div>
         <button type="button" className={styles.createBtn} onClick={onCreate}>
@@ -171,27 +188,33 @@ export function SiteProcurementRequestsSection({
                       </span>
                     ) : null}
                   </div>
-                  <label className={styles.statusLabel} htmlFor={`proc-status-${req.id}`}>
-                    Статус для снабжения
-                  </label>
-                  <select
-                    id={`proc-status-${req.id}`}
-                    className={styles.statusSelect}
-                    value={req.status}
-                    onChange={(e) =>
-                      onUpdateRequest(req.id, {
-                        status: e.target.value as ProcurementRequestStatus,
-                      })
-                    }
-                  >
-                    {(Object.keys(PROCUREMENT_STATUS_LABELS) as ProcurementRequestStatus[]).map(
-                      (s) => (
-                        <option key={s} value={s}>
-                          {PROCUREMENT_STATUS_LABELS[s]}
-                        </option>
-                      ),
-                    )}
-                  </select>
+                  <div className={styles.supplyBar}>
+                    {canSupplyApprove(req) ? (
+                      <button
+                        type="button"
+                        className={styles.approveBtn}
+                        onClick={() => onUpdateRequest(req.id, { status: 'approved' })}
+                      >
+                        Согласовать
+                      </button>
+                    ) : null}
+                    {canSupplyEdit(req) ? (
+                      <button type="button" className={styles.actionBtn} onClick={() => onEdit(req)}>
+                        Изменить
+                      </button>
+                    ) : null}
+                    {canSupplyCancel(req) ? (
+                      <button
+                        type="button"
+                        className={styles.cancelSupplyBtn}
+                        onClick={() =>
+                          onUpdateRequest(req.id, { status: 'cancelled', receipt: null })
+                        }
+                      >
+                        Снять
+                      </button>
+                    ) : null}
+                  </div>
                   {req.neededByIso ? (
                     <p className={styles.needBy}>
                       <span className={styles.needByLabel}>Нужно к: </span>
@@ -236,21 +259,74 @@ export function SiteProcurementRequestsSection({
               ) : null}
 
               {req.status === 'accepted' ? (
-                <p className={styles.acceptedMark}>
-                  <span className={styles.acceptedIcon} aria-hidden>
-                    ✓
-                  </span>
-                  Груз принят — объём списан в расход материалов
-                </p>
-              ) : (
-                <button
-                  type="button"
-                  className={styles.acceptBtn}
-                  onClick={() => onUpdateRequest(req.id, { status: 'accepted' })}
-                >
-                  Принял груз
-                </button>
-              )}
+                <div className={styles.receiptBlock}>
+                  <p className={styles.acceptedMark}>
+                    <span className={styles.acceptedIcon} aria-hidden>
+                      ✓
+                    </span>
+                    Принято
+                    {req.receipt
+                      ? ` ${formatReceiptStampRu(req.receipt.atIso)}`
+                      : ' — объём списан в расход материалов'}
+                  </p>
+                  {req.receipt?.media && req.receipt.media.length > 0 ? (
+                    <ul className={styles.receiptMedia}>
+                      {req.receipt.media.map((m) => (
+                        <li key={m.id}>
+                          {m.kind === 'video' && m.previewUrl ? (
+                            <video src={m.previewUrl} muted playsInline controls />
+                          ) : m.previewUrl ? (
+                            <img src={m.previewUrl} alt="" />
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : req.status === 'refused' ? (
+                <div className={styles.receiptBlock}>
+                  <p className={styles.refusedMark}>
+                    Отказано в приёмке
+                    {req.receipt ? ` ${formatReceiptStampRu(req.receipt.atIso)}` : ''}
+                    {req.receipt?.reason ? `. ${req.receipt.reason}` : ''}
+                  </p>
+                  {req.receipt?.media && req.receipt.media.length > 0 ? (
+                    <ul className={styles.receiptMedia}>
+                      {req.receipt.media.map((m) => (
+                        <li key={m.id}>
+                          {m.kind === 'video' && m.previewUrl ? (
+                            <video src={m.previewUrl} muted playsInline controls />
+                          ) : m.previewUrl ? (
+                            <img src={m.previewUrl} alt="" />
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : canReceiveOnSite(req) ? (
+                <div className={styles.decide}>
+                  <button
+                    type="button"
+                    className={styles.acceptBtn}
+                    onClick={() =>
+                      onUpdateRequest(
+                        req.id,
+                        cargoReceiptPatch(makeAcceptedReceipt(new Date().toISOString())),
+                      )
+                    }
+                  >
+                    Принять материал
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.refuseBtn}
+                    onClick={() => setRefuseId(req.id)}
+                  >
+                    Отказать в приёмке
+                  </button>
+                </div>
+              ) : null}
 
               <div className={styles.cardActions}>
                 <button
@@ -296,6 +372,17 @@ export function SiteProcurementRequestsSection({
           ))}
         </ul>
       )}
+
+      {refuseReq ? (
+        <CargoReceiptSheet
+          request={refuseReq}
+          onClose={() => setRefuseId(null)}
+          onSubmit={(receipt: CargoReceipt) => {
+            void onUpdateRequest(refuseReq.id, cargoReceiptPatch(receipt))
+            setRefuseId(null)
+          }}
+        />
+      ) : null}
     </section>
   )
 }

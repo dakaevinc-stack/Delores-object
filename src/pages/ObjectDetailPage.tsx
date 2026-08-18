@@ -2,8 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { BrigadierStoredReport } from '../domain/brigadierReport'
 import type { ProcurementRequest } from '../domain/procurementRequest'
+import type { SiteDeliveryPoint } from '../domain/siteDeliveryPoint'
+import type { DriverTrip } from '../domain/driverTrip'
 import { applyAcceptedQuantitiesToPlan, applyWorkEntriesToPlan } from '../domain/workPlan'
-import { issuedQtyByPlanItemMap } from '../domain/workDayPlan'
+import { issuedQtyByPlanItemMap, toDateKey } from '../domain/workDayPlan'
+import { collectTodayDeliveries } from '../domain/todayDeliveries'
 import { computeSiteLiveKpis, todayIsoMsk } from '../domain/siteKpis'
 import { getSiteDetailDashboard } from '../data/siteDetail.mock'
 import { getWorkPlanForSite } from '../data/workPlans'
@@ -16,6 +19,11 @@ import {
   loadProcurementRequests,
   saveProcurementRequests,
 } from '../lib/procurementRequestsRepository'
+import {
+  loadSiteDeliveryPoint,
+  saveSiteDeliveryPoint,
+} from '../lib/siteDeliveryPointsRepository'
+import { upsertDriverTrip } from '../lib/driverTripsRepository'
 import type { StoredSiteMedia } from '../lib/mediaRepository'
 import {
   RemoteWriteFailure,
@@ -26,6 +34,9 @@ import {
   describeRemoteWriteError,
   fetchSiteFormsFromServer,
   patchProcurementRequestRemote,
+  putSiteDeliveryPointRemote,
+  deleteSiteDeliveryPointRemote,
+  putDriverTripRemote,
   uploadBrigadierAttachmentRemote,
 } from '../lib/siteFormsApi'
 import { useAllSites } from '../lib/useAllSites'
@@ -39,6 +50,7 @@ import { SiteReportingSection } from '../features/site-detail/SiteReportingSecti
 import { SiteScheduleSection } from '../features/site-detail/SiteScheduleSection'
 import { SiteWorkPlanSection } from '../features/site-detail/SiteWorkPlanSection'
 import { SiteMaterialConsumptionSection } from '../features/site-detail/SiteMaterialConsumptionSection'
+import { SiteDeliveryPointSection } from '../features/site-detail/SiteDeliveryPointSection'
 import { TodayDeliveriesBoard } from '../features/deliveries/TodayDeliveriesBoard'
 import { getMaterialBudgetForSite } from '../data/materialBudgets'
 import { loadWorkDayPlan } from '../lib/workDayPlanRepository'
@@ -53,6 +65,7 @@ export function ObjectDetailPage() {
   const [composerKey, setComposerKey] = useState(0)
   const [procurementOpen, setProcurementOpen] = useState(false)
   const [procurementKey, setProcurementKey] = useState(0)
+  const [editingRequest, setEditingRequest] = useState<ProcurementRequest | null>(null)
   const [brigadierReports, setBrigadierReports] = useState<BrigadierStoredReport[]>([])
   const [procurementRequests, setProcurementRequests] = useState<ProcurementRequest[]>([])
   const brigadierReportsRef = useRef<BrigadierStoredReport[]>([])
@@ -62,10 +75,17 @@ export function ObjectDetailPage() {
   const remoteFormsRef = useRef(false)
   const [formsApiMessage, setFormsApiMessage] = useState<string | null>(null)
   const [objectMediaManifest, setObjectMediaManifest] = useState<StoredSiteMedia[]>([])
+  const [deliveryPoint, setDeliveryPoint] = useState<SiteDeliveryPoint | null>(null)
+  const [deliveryPointRemoteActive, setDeliveryPointRemoteActive] = useState(false)
+  const deliveryPointRemoteRef = useRef(false)
 
   useEffect(() => {
     remoteFormsRef.current = remoteFormsActive
   }, [remoteFormsActive])
+
+  useEffect(() => {
+    deliveryPointRemoteRef.current = deliveryPointRemoteActive
+  }, [deliveryPointRemoteActive])
 
   useEffect(() => {
     brigadierReportsRef.current = brigadierReports
@@ -85,8 +105,70 @@ export function ObjectDetailPage() {
       setObjectMediaManifest(bundle.objectMediaManifest)
       saveProcurementRequests(site.id, bundle.procurement)
       saveBrigadierReports(site.id, bundle.brigadier)
+      setDeliveryPointRemoteActive(bundle.deliveryPointRemoteAvailable)
+      if (bundle.deliveryPointRemoteAvailable) {
+        if (bundle.deliveryPoint) {
+          setDeliveryPoint(bundle.deliveryPoint)
+          saveSiteDeliveryPoint(site.id, bundle.deliveryPoint)
+        } else {
+          const local = loadSiteDeliveryPoint(site.id)
+          setDeliveryPoint(local)
+          if (local) void putSiteDeliveryPointRemote(site.id, local)
+        }
+      }
     }
   }, [site])
+
+  const handleUpdateProcurementRequest = useCallback(
+    async (id: string, patch: Partial<ProcurementRequest>): Promise<boolean> => {
+      if (!site) return false
+      const previous = procurementRequestsRef.current
+      const next = previous.map((r) => (r.id === id ? { ...r, ...patch } : r))
+      setProcurementRequests(next)
+      saveProcurementRequests(site.id, next)
+      if (!remoteFormsRef.current) return true
+      const ok = await patchProcurementRequestRemote(site.id, id, patch)
+      if (!ok) {
+        setFormsApiMessage('Не удалось сохранить изменения заявки на сервере.')
+        setProcurementRequests(previous)
+        void resyncFormsFromServer()
+        return false
+      }
+      return true
+    },
+    [site, resyncFormsFromServer],
+  )
+
+  const handleSaveDeliveryPoint = useCallback(
+    async (next: SiteDeliveryPoint | null) => {
+      if (!site) return
+      const previous = deliveryPoint
+      setDeliveryPoint(next)
+      saveSiteDeliveryPoint(site.id, next)
+      if (!deliveryPointRemoteRef.current) return
+      const ok = next
+        ? await putSiteDeliveryPointRemote(site.id, next)
+        : await deleteSiteDeliveryPointRemote(site.id)
+      if (!ok) {
+        setFormsApiMessage('Не удалось сохранить точку разгрузки на сервере.')
+        setDeliveryPoint(previous)
+        saveSiteDeliveryPoint(site.id, previous)
+      }
+    },
+    [site, deliveryPoint],
+  )
+
+  const handleAssignTrip = useCallback(
+    async (trip: DriverTrip) => {
+      upsertDriverTrip(trip)
+      const result = await putDriverTripRemote(trip)
+      if (!result.ok && remoteFormsRef.current) {
+        setFormsApiMessage('Рейс записан на этом устройстве, на сервер не ушёл.')
+      }
+      return result
+    },
+    [],
+  )
 
   useEffect(() => {
     if (!site) return
@@ -95,6 +177,8 @@ export function ObjectDetailPage() {
     setRemoteFormsActive(false)
     setRemoteObjectMediaActive(false)
     setObjectMediaManifest([])
+    setDeliveryPointRemoteActive(false)
+    setDeliveryPoint(loadSiteDeliveryPoint(site.id))
     setProcurementRequests(loadProcurementRequests(site.id))
     setBrigadierReports(loadBrigadierReports(site.id))
 
@@ -105,6 +189,7 @@ export function ObjectDetailPage() {
         setRemoteFormsActive(false)
         setRemoteObjectMediaActive(false)
         setObjectMediaManifest([])
+        setDeliveryPointRemoteActive(false)
         return
       }
       setRemoteFormsActive(true)
@@ -114,6 +199,17 @@ export function ObjectDetailPage() {
       setBrigadierReports(bundle.brigadier)
       saveProcurementRequests(site.id, bundle.procurement)
       saveBrigadierReports(site.id, bundle.brigadier)
+      setDeliveryPointRemoteActive(bundle.deliveryPointRemoteAvailable)
+      if (bundle.deliveryPointRemoteAvailable) {
+        if (bundle.deliveryPoint) {
+          setDeliveryPoint(bundle.deliveryPoint)
+          saveSiteDeliveryPoint(site.id, bundle.deliveryPoint)
+        } else {
+          const local = loadSiteDeliveryPoint(site.id)
+          setDeliveryPoint(local)
+          if (local) void putSiteDeliveryPointRemote(site.id, local)
+        }
+      }
     })()
 
     return () => {
@@ -125,6 +221,15 @@ export function ObjectDetailPage() {
     if (!site) return
     saveProcurementRequests(site.id, procurementRequests)
   }, [procurementRequests, site])
+
+  useEffect(() => {
+    if (!site) return
+    const t = window.setInterval(() => {
+      if (procurementOpen || composerOpen) return
+      void resyncFormsFromServer()
+    }, 12_000)
+    return () => window.clearInterval(t)
+  }, [site, procurementOpen, composerOpen, resyncFormsFromServer])
 
   useEffect(() => {
     if (!site) return
@@ -150,6 +255,21 @@ export function ObjectDetailPage() {
     const dayQty = issuedQtyByPlanItemMap(loadWorkDayPlan(site.id).assignments)
     return applyAcceptedQuantitiesToPlan(withReports, dayQty)
   }, [basePlan, brigadierReports, site, dayPlanRevision])
+
+  const cargoChoices = useMemo(
+    () =>
+      collectTodayDeliveries(procurementRequests, toDateKey(new Date()))
+        .filter((c) => c.status === 'pending')
+        .flatMap((c) =>
+          c.items.map((it, i) => ({
+            id: `${c.requestId}:${i}`,
+            title: it.title,
+            quantity: it.quantity,
+            unitId: it.unitId,
+          })),
+        ),
+    [procurementRequests],
+  )
 
   if (!site) {
     return (
@@ -201,6 +321,7 @@ export function ObjectDetailPage() {
           type="button"
           className={styles.toolbarCta}
           onClick={() => {
+            setEditingRequest(null)
             setProcurementKey((k) => k + 1)
             setProcurementOpen(true)
           }}
@@ -219,24 +340,26 @@ export function ObjectDetailPage() {
         </button>
       </div>
 
+      <SiteDeliveryPointSection
+        key={site.id}
+        siteId={site.id}
+        siteName={site.name}
+        address={site.address}
+        point={deliveryPoint}
+        serverBacked={deliveryPointRemoteActive}
+        onSave={handleSaveDeliveryPoint}
+        onAssignTrip={handleAssignTrip}
+        cargoChoices={cargoChoices}
+      />
+
       <TodayDeliveriesBoard
         requests={procurementRequests}
         variant="site"
-        onAccept={(id) => {
-          void (async () => {
-            const previous = procurementRequestsRef.current
-            const next = previous.map((r) =>
-              r.id === id ? { ...r, status: 'accepted' as const } : r,
-            )
-            setProcurementRequests(next)
-            if (!remoteFormsRef.current) return
-            const ok = await patchProcurementRequestRemote(site.id, id, { status: 'accepted' })
-            if (!ok) {
-              setFormsApiMessage('Не удалось сохранить приёмку на сервере.')
-              setProcurementRequests(previous)
-              void resyncFormsFromServer()
-            }
-          })()
+        deliveryPoints={
+          deliveryPoint ? new Map([[site.id, deliveryPoint]]) : undefined
+        }
+        onUpdateRequest={(id, patch) => {
+          void handleUpdateProcurementRequest(id, patch)
         }}
       />
 
@@ -301,7 +424,14 @@ export function ObjectDetailPage() {
       <SiteProcurementRequestsSection
         requests={procurementRequests}
         serverBacked={remoteFormsActive}
+        deliveryPoint={deliveryPoint}
         onCreate={() => {
+          setEditingRequest(null)
+          setProcurementKey((k) => k + 1)
+          setProcurementOpen(true)
+        }}
+        onEdit={(req) => {
+          setEditingRequest(req)
           setProcurementKey((k) => k + 1)
           setProcurementOpen(true)
         }}
@@ -316,17 +446,8 @@ export function ObjectDetailPage() {
           }
           setProcurementRequests((prev) => prev.filter((r) => r.id !== id))
         }}
-        onUpdateRequest={async (id, patch) => {
-          const previous = procurementRequestsRef.current
-          const next = previous.map((r) => (r.id === id ? { ...r, ...patch } : r))
-          setProcurementRequests(next)
-          if (!remoteFormsRef.current) return
-          const ok = await patchProcurementRequestRemote(site.id, id, patch)
-          if (!ok) {
-            setFormsApiMessage('Не удалось сохранить изменения заявки на сервере.')
-            setProcurementRequests(previous)
-            void resyncFormsFromServer()
-          }
+        onUpdateRequest={(id, patch) => {
+          void handleUpdateProcurementRequest(id, patch)
         }}
       />
 
@@ -417,10 +538,28 @@ export function ObjectDetailPage() {
       {procurementOpen ? (
         <ProcurementRequestModal
           key={procurementKey}
-          onClose={() => setProcurementOpen(false)}
+          onClose={() => {
+            setProcurementOpen(false)
+            setEditingRequest(null)
+          }}
           siteId={site.id}
           siteName={site.name}
+          initial={editingRequest}
           onSubmit={async (req) => {
+            const exists = procurementRequestsRef.current.some((r) => r.id === req.id)
+            if (exists) {
+              const ok = await handleUpdateProcurementRequest(req.id, {
+                items: [...req.items],
+                note: req.note,
+                urgent: req.urgent,
+                neededByIso: req.neededByIso,
+                createdBy: req.createdBy,
+              })
+              if (!ok) {
+                throw new RemoteWriteFailure('Не удалось сохранить изменения заявки на сервере.')
+              }
+              return
+            }
             if (remoteFormsRef.current) {
               const result = await createProcurementRequestRemote(site.id, req)
               if (!result.ok) {

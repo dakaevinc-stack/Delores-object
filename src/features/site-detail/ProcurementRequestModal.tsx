@@ -23,6 +23,7 @@ type Props = {
   onClose: () => void
   siteId: string
   siteName: string
+  initial?: ProcurementRequest | null
   onSubmit: (req: ProcurementRequest) => void | Promise<void>
 }
 
@@ -39,6 +40,13 @@ function parseDateTimeLocalToIso(s: string): string | null {
   const d = new Date(t)
   if (Number.isNaN(d.getTime())) return null
   return d.toISOString()
+}
+
+function isoToDateTimeLocal(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 /** Лёгкий иконочный набор для категорий. Без внешней библиотеки — чтобы
@@ -146,19 +154,39 @@ function CategoryGlyph({ accent }: { accent: string }) {
   }
 }
 
-export function ProcurementRequestModal({ onClose, siteId, siteName, onSubmit }: Props) {
+export function ProcurementRequestModal({
+  onClose,
+  siteId,
+  siteName,
+  initial = null,
+  onSubmit,
+}: Props) {
   const uid = useId()
+  const editing = Boolean(initial)
 
   const [createdBy, setCreatedBy] = useState(() => {
+    if (initial?.createdBy) return initial.createdBy
     const list = loadRememberedProcurementAuthors()
     return list[0] ?? ''
   })
   const [knownAuthors, setKnownAuthors] = useState(() => loadRememberedProcurementAuthors())
-  const [urgent, setUrgent] = useState(false)
-  const [neededByLocal, setNeededByLocal] = useState('')
+  const [urgent, setUrgent] = useState(() => initial?.urgent ?? false)
+  const [neededByLocal, setNeededByLocal] = useState(() =>
+    initial?.neededByIso ? isoToDateTimeLocal(initial.neededByIso) : '',
+  )
   const [otherFioMode, setOtherFioMode] = useState(false)
-  const [items, setItems] = useState<ProcurementLineDraft[]>([])
-  const [note, setNote] = useState('')
+  const [items, setItems] = useState<ProcurementLineDraft[]>(() =>
+    initial
+      ? initial.items.map((it) => ({
+          id: newId(),
+          presetId: it.presetId,
+          title: it.title,
+          unitId: it.unitId,
+          quantity: String(it.quantity),
+        }))
+      : [],
+  )
+  const [note, setNote] = useState(() => initial?.note ?? '')
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [openGroups, setOpenGroups] = useState<Set<ProcurementCategoryId>>(
@@ -297,7 +325,7 @@ export function ProcurementRequestModal({ onClose, siteId, siteName, onSubmit }:
       return
     }
 
-    const createdAtIso = new Date().toISOString()
+    const createdAtIso = initial?.createdAtIso ?? new Date().toISOString()
 
     rememberProcurementAuthor(fio)
     setKnownAuthors(loadRememberedProcurementAuthors())
@@ -305,17 +333,18 @@ export function ProcurementRequestModal({ onClose, siteId, siteName, onSubmit }:
     const neededByIso = parseDateTimeLocalToIso(neededByLocal)
 
     const req: ProcurementRequest = {
-      id: newId(),
-      shortCode: buildProcurementShortCode(createdAtIso),
+      id: initial?.id ?? newId(),
+      shortCode: initial?.shortCode ?? buildProcurementShortCode(createdAtIso),
       siteId,
       siteName,
       createdAtIso,
       createdBy: fio,
       note: note.trim(),
       items: filledLines,
-      status: 'pending' satisfies ProcurementRequestStatus,
+      status: initial?.status ?? ('pending' satisfies ProcurementRequestStatus),
       urgent,
       neededByIso,
+      receipt: initial?.receipt ?? null,
     }
 
     try {
@@ -359,7 +388,7 @@ export function ProcurementRequestModal({ onClose, siteId, siteName, onSubmit }:
           <div>
             <p className={styles.kicker}>Снабжение</p>
             <h2 className={styles.title} id={`${uid}-title`}>
-              Заявка на материалы
+              {editing ? 'Изменить заявку' : 'Заявка на материалы'}
             </h2>
             <p className={styles.sub}>{siteName}</p>
           </div>
@@ -718,7 +747,7 @@ export function ProcurementRequestModal({ onClose, siteId, siteName, onSubmit }:
               Отмена
             </button>
             <button type="submit" className={styles.primary}>
-              Сохранить заявку
+              {editing ? 'Сохранить изменения' : 'Сохранить заявку'}
             </button>
           </div>
         </form>

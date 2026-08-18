@@ -161,10 +161,28 @@
   border: 1px solid rgba(46, 160, 67, 0.45);
 }
 
+.status_approved {
+  background: rgba(23, 42, 77, 0.12);
+  color: #172a4d;
+  border: 1px solid rgba(23, 42, 77, 0.28);
+}
+
+.status_cancelled {
+  background: rgba(15, 23, 42, 0.08);
+  color: #5b6472;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+}
+
 .status_rejected {
   background: rgba(198, 40, 40, 0.14);
   color: #8b1a1a;
   border: 1px solid rgba(198, 40, 40, 0.35);
+}
+
+.status_refused {
+  background: rgba(238, 45, 58, 0.12);
+  color: #8b1a1a;
+  border: 1px solid rgba(181, 31, 45, 0.4);
 }
 
 .urgentBadge {
@@ -182,33 +200,34 @@
   border: 1px solid rgba(198, 40, 40, 0.35);
 }
 
-.statusLabel {
-  margin: 10px 0 0;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
+.supplyBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
 }
 
-.statusSelect {
-  margin-top: 6px;
-  width: 100%;
-  max-width: 280px;
-  min-height: 44px;
-  padding: 0 12px;
+.approveBtn,
+.cancelSupplyBtn {
+  min-height: 40px;
+  padding: 0 14px;
   border-radius: 10px;
-  border: 1px solid var(--border-strong);
-  background: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-strong);
+  border: 0;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
   cursor: pointer;
 }
 
-.statusSelect:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--accent-ring);
+.approveBtn {
+  background: linear-gradient(180deg, #2e9f43, #1b5e2a);
+  color: #fff;
+}
+
+.cancelSupplyBtn {
+  background: #fff;
+  color: #8b1a1a;
+  border: 1px solid rgba(181, 31, 45, 0.4);
 }
 
 .needBy {
@@ -324,19 +343,46 @@
 .acceptBtn {
   margin-top: 14px;
   width: 100%;
-  min-height: 46px;
+  min-height: 52px;
   border: 0;
   border-radius: 12px;
-  background: linear-gradient(180deg, #1c2c54, #0f1a35);
+  background: linear-gradient(180deg, #2e9f43, #1b5e2a);
   color: #fff;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
   cursor: pointer;
 }
 
 .acceptBtn:hover {
   filter: brightness(1.08);
+}
+
+.decide {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.decide .acceptBtn {
+  margin-top: 0;
+}
+
+.refuseBtn {
+  width: 100%;
+  min-height: 52px;
+  border-radius: 12px;
+  border: 2px solid rgba(181, 31, 45, 0.45);
+  background: #fff;
+  color: #8b1a1a;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.receiptBlock {
+  margin-top: 14px;
 }
 
 .acceptedMark {
@@ -364,6 +410,42 @@
   color: #fff;
   font-size: 13px;
   font-weight: 800;
+}
+
+.refusedMark {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(238, 45, 58, 0.1);
+  border: 1px solid rgba(181, 31, 45, 0.35);
+  color: #8b1a1a;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.receiptMedia {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.receiptMedia li {
+  width: 88px;
+  height: 88px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #e8edf4;
+}
+
+.receiptMedia img,
+.receiptMedia video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .cardActions {
