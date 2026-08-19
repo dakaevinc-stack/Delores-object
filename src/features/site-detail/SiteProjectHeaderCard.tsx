@@ -154,8 +154,8 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
     const remoteRows = await fetchProjectFilesRemote(siteId)
     if (!remoteRows) return
     setRemoteActive(true)
-    const remoteKinds = new Set(remoteRows.map((row) => row.kind))
     setAssets((prev) => {
+      const remoteKinds = new Set(remoteRows.map((row) => row.kind))
       const resolved: ProjectAsset[] = remoteRows.map((row) => ({
         ...row,
         url: projectFileBlobUrl(siteId, row.id),
@@ -166,6 +166,9 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
         }
       }
       resolved.sort((a, b) => b.uploadedAtIso.localeCompare(a.uploadedAtIso))
+      const prevSig = prev.map((r) => `${r.kind}:${r.id}:${r.sizeBytes}`).join('|')
+      const nextSig = resolved.map((r) => `${r.kind}:${r.id}:${r.sizeBytes}`).join('|')
+      if (prevSig === nextSig) return prev
       return resolved
     })
   }, [siteId])
@@ -324,13 +327,17 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
       const url = syncedToRemote
         ? projectFileBlobUrl(siteId, record.id)
         : URL.createObjectURL(file)
-      setAssets((prev) => {
-        const replaced = prev.filter((row) => row.kind !== kind)
-        for (const row of prev) {
-          if (row.kind === kind) revokeIfBlobUrl(row.url)
-        }
-        return [{ ...record, url }, ...replaced]
-      })
+      if (syncedToRemote) {
+        await refreshFromRemote()
+      } else {
+        setAssets((prev) => {
+          const replaced = prev.filter((row) => row.kind !== kind)
+          for (const row of prev) {
+            if (row.kind === kind) revokeIfBlobUrl(row.url)
+          }
+          return [{ ...record, url }, ...replaced]
+        })
+      }
     } catch {
       setSyncMessage('Не удалось сохранить файл. Попробуйте ещё раз.')
     } finally {
