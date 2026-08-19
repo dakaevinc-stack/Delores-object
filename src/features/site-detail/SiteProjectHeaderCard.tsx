@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { CadViewer, type CadViewerRef } from '@cadview/react'
 import { convertDwgToDxf, dwgConverter, initWasm } from '@cadview/dwg'
 import { computeEntitiesBounds, fitToView as coreFitToView } from '@cadview/core'
@@ -72,6 +72,77 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
     return getProjectFileBlob(fileId)
   }
 
+  const loadAssets = useCallback(async (): Promise<string[]> => {
+    const blobUrls: string[] = []
+    setLoading(true)
+    try {
+      const remoteRows = await fetchProjectFilesRemote(siteId)
+      const remoteAvailable = remoteRows !== null
+      if (remoteAvailable) setRemoteActive(true)
+
+      let rows = remoteRows ?? (await listProjectFilesBySite(siteId))
+
+      // Догружаем на сервер локальные файлы, которых там ещё нет (PDF или DWG по отдельности).
+      if (remoteAvailable && canUpload) {
+        const localRows = await listProjectFilesBySite(siteId)
+        const remoteKinds = new Set((remoteRows ?? []).map((row) => row.kind))
+        const missingOnServer = localRows.filter((local) => !remoteKinds.has(local.kind))
+        if (missingOnServer.length > 0) {
+          setSyncMessage('Отправляем файлы на сервер…')
+          let firstError: string | null = null
+          for (const local of missingOnServer) {
+            try {
+              const blob = await getProjectFileBlob(local.id)
+              if (!blob) continue
+              const result = await createProjectFileRemote(siteId, local, blob)
+              if (!result.ok && !firstError) {
+                firstError = describeRemoteWriteError(result, 'файл')
+              }
+            } catch {
+              if (!firstError) firstError = 'Не удалось перенести файл на сервер.'
+            }
+          }
+          setSyncMessage(firstError)
+          const refreshed = await fetchProjectFilesRemote(siteId)
+          if (refreshed) {
+            setRemoteActive(true)
+            rows = refreshed
+          }
+        }
+      }
+
+      const resolved: ProjectAsset[] = []
+      for (const row of rows) {
+        if (remoteAvailable) {
+          resolved.push({ ...row, url: projectFileBlobUrl(siteId, row.id) })
+        } else {
+          const blob = await getProjectFileBlob(row.id)
+          if (!blob) continue
+          const url = URL.createObjectURL(blob)
+          blobUrls.push(url)
+          resolved.push({ ...row, url })
+        }
+      }
+      resolved.sort((a, b) => b.uploadedAtIso.localeCompare(a.uploadedAtIso))
+      setAssets(resolved)
+      return blobUrls
+    } finally {
+      setLoading(false)
+    }
+  }, [siteId, canUpload])
+
+  const refreshFromRemote = useCallback(async () => {
+    const remoteRows = await fetchProjectFilesRemote(siteId)
+    if (!remoteRows) return
+    setRemoteActive(true)
+    const resolved = remoteRows.map((row) => ({
+      ...row,
+      url: projectFileBlobUrl(siteId, row.id),
+    }))
+    resolved.sort((a, b) => b.uploadedAtIso.localeCompare(a.uploadedAtIso))
+    setAssets(resolved)
+  }, [siteId])
+
   const smartFitToRoad = () => {
     const viewer = dwgCadRef.current?.getViewer()
     const wrap = dwgCanvasWrapRef.current
@@ -112,64 +183,12 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
 
   useEffect(() => {
     let cancelled = false
-    const urls: string[] = []
+    let blobUrls: string[] = []
 
     void (async () => {
-      setLoading(true)
-      try {
-        const remoteRows = await fetchProjectFilesRemote(siteId)
-        const remoteAvailable = remoteRows !== null
-        if (remoteAvailable) setRemoteActive(true)
-
-        // Если сервер пустой, но у текущего девайса уже есть файлы в IndexedDB,
-        // переносим их на сервер один раз (только если у пользователя есть право upload).
-        let rows = remoteRows ?? (await listProjectFilesBySite(siteId))
-        if (remoteAvailable && remoteRows && remoteRows.length === 0 && canUpload) {
-          const localRows = await listProjectFilesBySite(siteId)
-          if (localRows.length > 0) {
-            setSyncMessage('Переносим PDF/DWG на сервер…')
-            let firstError: string | null = null
-            for (const local of localRows) {
-              try {
-                const blob = await getProjectFileBlob(local.id)
-                if (!blob) continue
-                const result = await createProjectFileRemote(siteId, local, blob)
-                if (!result.ok && !firstError) {
-                  firstError = describeRemoteWriteError(result, 'файл')
-                }
-              } catch (e) {
-                if (!firstError) firstError = 'Не удалось перенести файл на сервер.'
-              }
-            }
-            setSyncMessage(firstError ?? null)
-            const refreshed = await fetchProjectFilesRemote(siteId)
-            if (refreshed) {
-              setRemoteActive(true)
-              rows = refreshed
-            }
-          }
-        }
-        const resolved: ProjectAsset[] = []
-        for (const row of rows) {
-          let url = ''
-          if (remoteAvailable) {
-            url = projectFileBlobUrl(siteId, row.id)
-          } else {
-            const blob = await getProjectFileBlob(row.id)
-            if (!blob) continue
-            url = URL.createObjectURL(blob)
-            urls.push(url)
-          }
-          resolved.push({ ...row, url })
-        }
-        resolved.sort((a, b) => b.uploadedAtIso.localeCompare(a.uploadedAtIso))
-        if (cancelled) {
-          for (const url of urls) URL.revokeObjectURL(url)
-          return
-        }
-        setAssets(resolved)
-      } finally {
-        if (!cancelled) setLoading(false)
+      blobUrls = (await loadAssets()) ?? []
+      if (cancelled) {
+        for (const url of blobUrls) revokeIfBlobUrl(url)
       }
     })()
 
@@ -177,7 +196,21 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
       cancelled = true
       for (const row of assetsRef.current) revokeIfBlobUrl(row.url)
     }
-  }, [siteId, canUpload])
+  }, [loadAssets])
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshFromRemote()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [refreshFromRemote])
 
   useEffect(() => {
     const anyOpen = viewerOpen || dwgViewerOpen
@@ -199,6 +232,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
 
   const pdf = useMemo(() => assets.find((row) => row.kind === 'pdf') ?? null, [assets])
   const dwg = useMemo(() => assets.find((row) => row.kind === 'dwg') ?? null, [assets])
+  const hasLocalOnly = useMemo(() => assets.some((row) => row.url.startsWith('blob:')), [assets])
 
   const replaceAsset = async (kind: SiteProjectFileKind, file: File | null) => {
     if (!file) return
@@ -223,11 +257,16 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
         uploadedAtIso: new Date().toISOString(),
       }
       await putProjectFile(record, file)
+      const remoteProbe = await fetchProjectFilesRemote(siteId)
+      const remoteAvailable = remoteProbe !== null
+      if (remoteAvailable) setRemoteActive(true)
+
       let syncedToRemote = false
-      if (remoteActive) {
+      if (remoteAvailable) {
         const result = await createProjectFileRemote(siteId, record, file)
         if (result.ok) {
           syncedToRemote = true
+          setSyncMessage(null)
         } else if (result.reason === 'forbidden') {
           setSyncMessage(
             'Сервер не принял файл — обновите страницу (Ctrl+Shift+R) и загрузите снова. Пока файл открывается только здесь.',
@@ -246,10 +285,6 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
         }
         return [{ ...record, url }, ...replaced]
       })
-      if (!remoteActive) {
-        const probe = await fetchProjectFilesRemote(siteId)
-        if (probe !== null) setRemoteActive(true)
-      }
     } catch {
       setSyncMessage('Не удалось сохранить файл. Попробуйте ещё раз.')
     } finally {
@@ -507,7 +542,12 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
           </div>
         </div>
 
-        {canUpload && !loading ? (
+        {canUpload && !loading && hasLocalOnly ? (
+          <p className={styles.hint}>
+            Есть файлы только на этом устройстве — обновите страницу, они отправятся на сервер для других
+            ноутбуков.
+          </p>
+        ) : canUpload && !loading ? (
           <p className={styles.hint}>
             {remoteActive
               ? 'Файлы доступны на других устройствах по этой же странице.'
