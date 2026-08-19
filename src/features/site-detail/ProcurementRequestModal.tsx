@@ -17,6 +17,7 @@ import {
   type ProcurementRequest,
   type ProcurementRequestStatus,
 } from '../../domain/procurementRequest'
+import { getMaterialBudgetForSite } from '../../data/materialBudgets'
 import type { AddressHit } from '../../domain/addressSearch'
 import type { SiteDeliveryPoint } from '../../domain/siteDeliveryPoint'
 import { reverseGeocodeRemote, searchAddressRemote } from '../../lib/siteFormsApi'
@@ -225,6 +226,16 @@ export function ProcurementRequestModal({
     [],
   )
 
+  const materialBudget = useMemo(() => getMaterialBudgetForSite(siteId), [siteId])
+  const visiblePresetIds = useMemo(() => {
+    const allowed = new Set<string>()
+    for (const a of materialBudget?.articles ?? []) allowed.add(a.presetId)
+    for (const it of items) {
+      if (it.presetId) allowed.add(it.presetId)
+    }
+    return allowed
+  }, [materialBudget, items])
+
   const itemsOrdered = useMemo(() => {
     const presetRows = items.filter((c) => c.presetId != null)
     const customRows = items.filter((c) => c.presetId == null)
@@ -237,8 +248,13 @@ export function ProcurementRequestModal({
 
   const trimmedQuery = searchQuery.trim()
   const filteredPresets = useMemo(
-    () => searchProcurementPresets(trimmedQuery),
-    [trimmedQuery],
+    () => {
+      const base = searchProcurementPresets(trimmedQuery)
+      // Для удобства снабженца показываем только те материалы,
+      // которые входят в смету этого объекта (plus выбранные при редактировании).
+      return base.filter((p) => visiblePresetIds.has(p.id))
+    },
+    [trimmedQuery, visiblePresetIds],
   )
   const groups = useMemo(
     () => groupProcurementPresets(filteredPresets),

@@ -48,6 +48,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: stretch;
 }
 
 @media (max-width: 640px) {
@@ -55,7 +56,8 @@
     width: 100%;
   }
 
-  .actions :global(button) {
+  .actions :global(button),
+  .actions :global(a) {
     width: 100%;
     justify-content: center;
   }

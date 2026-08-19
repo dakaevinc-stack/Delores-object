@@ -96,6 +96,12 @@ canvas {
   height: auto;
 }
 
+img.leaflet-tile {
+  max-width: none;
+  max-height: none;
+  height: unset;
+}
+
 /* На iOS Safari любой input/textarea/select с font-size < 16px
    триггерит авто-зум при фокусе — отключаем, принудительно
    поднимая минимум до 16px на телефонах. Ничего не ломает

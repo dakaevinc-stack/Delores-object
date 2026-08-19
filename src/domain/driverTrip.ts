@@ -2,8 +2,8 @@ import { toDateKey } from './workDayPlan'
 import { normalizeDeliveryPoint, type SiteDeliveryPoint } from './siteDeliveryPoint'
 
 /**
- * Рейс водителя на дату: диспетчер / бригадир / руководитель указывает,
- * что забрать, куда везти. Водитель открывает карточку в кабинете.
+ * Рейс водителя на дату: диспетчер (или руководитель) указывает,
+ * что забрать и куда везти. Бригадир рейсы не ставит — только точку выгрузки.
  */
 
 export type DriverTripAssignerRole = 'brigadier' | 'dispatcher' | 'manager'

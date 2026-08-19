@@ -12,64 +12,64 @@
 .label {
   margin: 0;
   font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: #86868b;
 }
 
 .grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .btn {
-  min-height: 44px;
-  border-radius: 12px;
+  min-height: 32px;
+  border-radius: 980px;
   border: 0;
   font: inherit;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   cursor: pointer;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0 12px;
-  color: #fff;
+  color: #1c1c1e;
+  background: #f2f2f7;
 }
 
 .wa {
-  background: #1f9e4b;
+  color: #128c7e;
 }
 
 .tg {
-  background: #229ed9;
+  color: #0071e3;
 }
 
 .max {
-  background: #111827;
+  color: #1c1c1e;
 }
 
 .maps {
-  background: linear-gradient(180deg, #fc3f1d, #e11f00);
+  color: #ff3b30;
 }
 
 .copy {
-  border: 1px solid rgba(23, 42, 77, 0.2);
-  background: #fff;
-  color: var(--brand-navy, #172a4d);
+  color: #1c1c1e;
 }
 
 .btnOff {
-  opacity: 0.4;
+  opacity: 0.35;
   pointer-events: none;
   cursor: not-allowed;
 }
 
 .wrapCompact .btn {
-  min-height: 40px;
-  border-radius: 10px;
-  font-size: 12px;
+  min-height: 28px;
+  font-size: 11px;
+  padding: 0 10px;
 }

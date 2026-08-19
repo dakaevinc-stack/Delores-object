@@ -68,7 +68,7 @@ export function DriverMessengerShare({ text, mapsUrl, compact = false, disabled 
 
   return (
     <div className={compact ? styles.wrapCompact : styles.wrap}>
-      {compact ? null : <p className={styles.label}>Кинуть водителю</p>}
+      <p className={styles.label}>Поделиться</p>
       <div className={styles.grid} aria-disabled={disabled}>
         <a
           className={`${styles.btn} ${styles.wa} ${disabled ? styles.btnOff : ''}`}

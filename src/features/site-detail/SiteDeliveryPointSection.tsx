@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import {
+  displayDeliveryAddress,
   formatLatLng,
   yandexMapsRouteUrl,
   yandexNaviUrl,
@@ -7,11 +8,7 @@ import {
 } from '../../domain/siteDeliveryPoint'
 import type { AddressHit } from '../../domain/addressSearch'
 import { driverCabinetUrl, renderDriverShareText } from '../../domain/driverShare'
-import {
-  DRIVER_TRIP_ROLE_LABELS,
-  type DriverTrip,
-  type DriverTripAssignerRole,
-} from '../../domain/driverTrip'
+import { type DriverTrip, type DriverTripAssignerRole } from '../../domain/driverTrip'
 import { formatQty, unitLabel } from '../../domain/procurementRequest'
 import type { MeasurementUnitId } from '../../domain/brigadierReport'
 import { toDateKey } from '../../domain/workDayPlan'
@@ -35,10 +32,12 @@ type Props = {
   point: SiteDeliveryPoint | null
   serverBacked?: boolean
   cargoChoices?: readonly DriverTripCargoChoice[]
-  onSave: (point: SiteDeliveryPoint | null) => void | Promise<void>
+  onSave?: (point: SiteDeliveryPoint | null) => void | Promise<void>
   onAssignTrip?: (
     trip: DriverTrip,
   ) => void | Promise<void | { telegramNotified?: boolean }>
+  /** Кто назначает рейс. После входа подставим должность; чипсы на форме не нужны. */
+  assignerRole?: DriverTripAssignerRole
 }
 
 function newId(): string {
@@ -56,10 +55,14 @@ export function SiteDeliveryPointSection({
   cargoChoices = [],
   onSave,
   onAssignTrip,
+  assignerRole = 'dispatcher',
 }: Props) {
   const titleId = useId()
+  const fieldId = useId()
+  const canEditPoint = Boolean(onSave)
+  const canAssignTrip = Boolean(onAssignTrip)
   const { vehicles } = useFleetRegistry()
-  const [query, setQuery] = useState(point?.address || address || '')
+  const [query, setQuery] = useState(() => displayDeliveryAddress(point?.address ?? ''))
   const [hits, setHits] = useState<AddressHit[]>([])
   const [searching, setSearching] = useState(false)
   const [hint, setHint] = useState(point?.hint ?? '')
@@ -67,13 +70,14 @@ export function SiteDeliveryPointSection({
   const [busy, setBusy] = useState(false)
   const [driverName, setDriverName] = useState('')
   const [lastTrip, setLastTrip] = useState<DriverTrip | null>(null)
-  const [assignRole, setAssignRole] = useState<DriverTripAssignerRole>('brigadier')
   const [assignedOk, setAssignedOk] = useState<'off' | 'saved' | 'telegram'>('off')
   const [pickupAddress, setPickupAddress] = useState('')
   const [alreadyLoaded, setAlreadyLoaded] = useState(false)
   const [cargoNote, setCargoNote] = useState('')
   const [pickedCargo, setPickedCargo] = useState<string[]>([])
   const skipDebounce = useRef(false)
+  const queryFocused = useRef(false)
+  const strippedJunkAddress = useRef(false)
 
   const operators = useMemo(() => {
     const names = new Set<string>()
@@ -86,16 +90,32 @@ export function SiteDeliveryPointSection({
 
   useEffect(() => {
     setHint(point?.hint ?? '')
-    if (point?.address) setQuery(point.address)
-  }, [point?.hint, point?.lat, point?.lng, point?.address])
+  }, [point?.hint])
 
   useEffect(() => {
+    if (queryFocused.current) return
+    setQuery(displayDeliveryAddress(point?.address ?? ''))
+  }, [point?.lat, point?.lng, point?.address])
+
+  useEffect(() => {
+    if (strippedJunkAddress.current || !onSave || !point) return
+    const shown = displayDeliveryAddress(point.address)
+    if (shown === (point.address ?? '').trim()) return
+    strippedJunkAddress.current = true
+    void onSave({ ...point, address: shown })
+  }, [onSave, point])
+
+  useEffect(() => {
+    if (!canEditPoint) {
+      setHits([])
+      return
+    }
     const q = query.trim()
     if (skipDebounce.current) {
       skipDebounce.current = false
       return
     }
-    if (q.length < 3 || q === (point?.address ?? '').trim()) {
+    if (q.length < 3 || q === displayDeliveryAddress(point?.address ?? '')) {
       setHits([])
       return
     }
@@ -115,9 +135,10 @@ export function SiteDeliveryPointSection({
       })()
     }, 400)
     return () => window.clearTimeout(t)
-  }, [query, point?.address])
+  }, [canEditPoint, query, point?.address])
 
   const commit = async (next: SiteDeliveryPoint | null) => {
+    if (!onSave) return
     setBusy(true)
     try {
       await onSave(next)
@@ -128,13 +149,15 @@ export function SiteDeliveryPointSection({
 
   const placeAt = (lat: number, lng: number, foundAddress: string, nextHint = hint) => {
     skipDebounce.current = true
-    if (foundAddress) setQuery(foundAddress)
+    queryFocused.current = false
+    const label = displayDeliveryAddress(foundAddress)
+    if (label) setQuery(label)
     setHits([])
     void commit({
       lat,
       lng,
       hint: nextHint.trim(),
-      address: foundAddress.trim(),
+      address: label,
       updatedAtIso: new Date().toISOString(),
     })
   }
@@ -212,7 +235,7 @@ export function SiteDeliveryPointSection({
       cargo,
       cargoNote: cargoNote.trim(),
       assignedBy: '',
-      assignedByRole: assignRole,
+      assignedByRole: assignerRole,
       createdAtIso: new Date().toISOString(),
       seenAtIso: null,
     }
@@ -230,214 +253,238 @@ export function SiteDeliveryPointSection({
   const shareText = sharePoint
     ? renderDriverShareText(siteName, sharePoint, lastTrip, cabinetUrl)
     : ''
+  const captionAddr = displayDeliveryAddress(point?.address ?? '') || null
 
   return (
     <section className={styles.section} aria-labelledby={titleId}>
-      <header className={styles.head}>
-        <div className={styles.headInner}>
-          <p className={styles.kicker}>
-            <img className={styles.kickerMark} src="/brand-chevron.svg" alt="" aria-hidden />
-            Для водителя
-          </p>
-          <h2 className={styles.title} id={titleId}>
-            Куда везти материал
-          </h2>
-          <p className={styles.lead}>
-            Введите адрес — карта сама найдёт место и поставит точку. Можно и ткнуть карту руками.
-            {serverBacked ? ' Точка общая для всех устройств объекта.' : ''}
-          </p>
-        </div>
-      </header>
-
-      <div className={styles.body}>
-        <label className={styles.searchLabel} htmlFor="delivery-address">
-          Адрес разгрузки
-        </label>
-        <div className={styles.searchRow}>
-          <input
-            id="delivery-address"
-            className={styles.search}
-            type="search"
-            autoComplete="street-address"
-            value={query}
-            placeholder="Улица, дом, посёлок — как в навигаторе"
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                if (hits[0]) pickHit(hits[0])
-                else void handleSearchNow()
-              }
-            }}
-          />
-          <button type="button" className={styles.searchBtn} onClick={() => void handleSearchNow()} disabled={searching}>
-            {searching ? 'Ищем…' : 'Найти'}
-          </button>
-        </div>
-
-        {hits.length > 0 ? (
-          <ul className={styles.hits}>
-            {hits.map((h) => (
-              <li key={`${h.lat}-${h.lng}-${h.label}`}>
-                <button type="button" className={styles.hit} onClick={() => pickHit(h)}>
-                  {h.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-
-        <DeliveryPointMap
-          lat={point?.lat ?? null}
-          lng={point?.lng ?? null}
-          onPick={(lat, lng) => void handleMapPick(lat, lng)}
-        />
-
-        <div className={styles.mapActions}>
-          <button type="button" className={styles.ghostBtn} onClick={handleHere} disabled={busy}>
-            Я стою на разгрузке
-          </button>
-          {point ? (
-            <button
-              type="button"
-              className={styles.ghostBtnDanger}
-              disabled={busy}
-              onClick={() => void commit(null)}
-            >
-              Снять точку
-            </button>
-          ) : null}
-        </div>
-
-        {geoError ? <p className={styles.error}>{geoError}</p> : null}
-
-        {point ? (
-          <>
-            <p className={styles.coords}>
-              {point.address ? `${point.address} · ` : null}
-              {formatLatLng(point.lat, point.lng)}
+      {canAssignTrip ? (
+        <h2 className={styles.title} id={titleId} hidden>
+          Рейс водителю
+        </h2>
+      ) : (
+        <header className={styles.head}>
+          <div className={styles.headInner}>
+            <h2 className={styles.title} id={titleId}>
+              Куда разгружать
+            </h2>
+            <p className={styles.lead}>
+              Адрес или точка на карте.
+              {serverBacked ? ' Общая для всех устройств объекта.' : ''}
             </p>
-            <label className={styles.hintField}>
-              <span>Как подъехать и где разгружаться</span>
-              <textarea
-                className={styles.hint}
-                rows={3}
-                value={hint}
-                placeholder="Например: ворота с Вокзальной, штабель щебня слева от бытовки. Во двор не заезжать."
-                onChange={(e) => setHint(e.target.value)}
-                onBlur={saveHint}
-              />
-            </label>
-            <div className={styles.driverBtns}>
-              <a className={styles.naviBtn} href={yandexNaviUrl(point)}>
-                Яндекс.Навигатор
-              </a>
-            </div>
-          </>
-        ) : (
-          <p className={styles.empty}>
-            Напишите адрес сверху и нажмите «Найти» — или ткните карту. Пока точки нет, рейс и
-            мессенджеры не отправят водителя.
-          </p>
-        )}
+          </div>
+        </header>
+      )}
 
-        {onAssignTrip ? (
-          <div className={styles.assign}>
-            <p className={styles.assignTitle}>Отправить водителю</p>
-            <p className={styles.assignLead}>
-              {point
-                ? 'Рейс сразу появится в кабинете. Ниже — WhatsApp, Telegram, Max и Яндекс.Карты, чтобы кинуть ему туда же.'
-                : 'Сначала поставьте точку на карте. Потом фамилия водителя — рейс уйдёт в кабинет и в мессенджеры.'}
-            </p>
-            <div className={styles.assignRow}>
-              <input
-                className={styles.search}
-                list="delivery-drivers"
-                value={driverName}
-                placeholder="Кому — фамилия водителя"
-                onChange={(e) => setDriverName(e.target.value)}
-              />
-              <datalist id="delivery-drivers">
-                {operators.map((n) => (
-                  <option key={n} value={n} />
-                ))}
-              </datalist>
-            </div>
-            {cargoChoices.length > 0 ? (
-              <div className={styles.cargoChips} role="group" aria-label="Что грузить">
-                {cargoChoices.map((c) => {
-                  const on = pickedCargo.includes(c.id)
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      className={`${styles.roleBtn} ${on ? styles.roleOn : ''}`}
-                      onClick={() =>
-                        setPickedCargo((prev) =>
-                          prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id],
-                        )
+      <div className={styles.sheet}>
+        <div className={styles.split}>
+          <div className={styles.mapPane}>
+            {canEditPoint ? (
+              <>
+                <label className={styles.searchLabel} htmlFor={`${fieldId}-address`}>
+                  Адрес разгрузки
+                </label>
+                <div className={styles.searchRow}>
+                  <input
+                    id={`${fieldId}-address`}
+                    className={styles.search}
+                    type="text"
+                    autoComplete="street-address"
+                    value={query}
+                    placeholder={address?.trim() || 'Улица, дом, посёлок'}
+                    onFocus={() => {
+                      queryFocused.current = true
+                    }}
+                    onBlur={() => {
+                      queryFocused.current = false
+                    }}
+                    onChange={(e) => {
+                      queryFocused.current = true
+                      setQuery(e.target.value)
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        if (hits[0]) pickHit(hits[0])
+                        else void handleSearchNow()
                       }
-                    >
-                      {c.title} · {formatQty(c.quantity)} {unitLabel(c.unitId)}
-                    </button>
-                  )
-                })}
+                    }}
+                  />
+                  <button type="button" className={styles.searchBtn} onClick={() => void handleSearchNow()} disabled={searching}>
+                    {searching ? '…' : 'Найти'}
+                  </button>
+                </div>
+                {hits.length > 0 ? (
+                  <ul className={styles.hits}>
+                    {hits.map((h) => (
+                      <li key={`${h.lat}-${h.lng}-${h.label}`}>
+                        <button type="button" className={styles.hit} onClick={() => pickHit(h)}>
+                          {h.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </>
+            ) : null}
+
+            <DeliveryPointMap
+              compact
+              lat={point?.lat ?? null}
+              lng={point?.lng ?? null}
+              editable={canEditPoint}
+              onPick={canEditPoint ? (lat, lng) => void handleMapPick(lat, lng) : undefined}
+            />
+
+            {point ? (
+              <p className={styles.caption}>
+                <span className={styles.captionAddr}>{captionAddr ?? 'Точка на карте'}</span>
+                {canAssignTrip ? (
+                  <a className={styles.naviBtn} href={yandexNaviUrl(point)}>
+                    Навигатор
+                  </a>
+                ) : (
+                  <span className={styles.captionMeta}>{formatLatLng(point.lat, point.lng)}</span>
+                )}
+              </p>
+            ) : null}
+
+            {canEditPoint ? (
+              <div className={styles.mapActions}>
+                <button type="button" className={styles.ghostBtn} onClick={handleHere} disabled={busy}>
+                  Я здесь
+                </button>
+                {point ? (
+                  <button
+                    type="button"
+                    className={styles.ghostBtnDanger}
+                    disabled={busy}
+                    onClick={() => void commit(null)}
+                  >
+                    Снять
+                  </button>
+                ) : null}
               </div>
             ) : null}
-            <input
-              className={styles.search}
-              value={cargoNote}
-              placeholder={cargoChoices.length ? 'Или напишите, что грузить' : 'Что грузить — своими словами'}
-              onChange={(e) => setCargoNote(e.target.value)}
-            />
-            <label className={styles.check}>
-              <input
-                type="checkbox"
-                checked={alreadyLoaded}
-                onChange={(e) => setAlreadyLoaded(e.target.checked)}
-              />
-              Уже в кузове — сразу на объект
-            </label>
-            {alreadyLoaded ? null : (
-              <input
-                className={styles.search}
-                value={pickupAddress}
-                placeholder="Откуда грузить — база, карьер, адрес"
-                onChange={(e) => setPickupAddress(e.target.value)}
-              />
-            )}
-            <div className={styles.roleRow}>
-              {(Object.keys(DRIVER_TRIP_ROLE_LABELS) as DriverTripAssignerRole[]).map((role) => (
+
+            {geoError ? <p className={styles.error}>{geoError}</p> : null}
+          </div>
+
+          <div className={styles.formPane}>
+            {canAssignTrip ? (
+              <div className={styles.assign}>
+                <p className={styles.assignLead}>
+                  {point
+                    ? 'Рейс сразу появится в кабинете водителя.'
+                    : 'Поставьте точку на карте — затем отправьте рейс.'}
+                </p>
+                <div className={styles.group}>
+                  <div className={styles.assignRow}>
+                    <input
+                      className={styles.search}
+                      list={`${fieldId}-drivers`}
+                      value={driverName}
+                      placeholder="Водитель"
+                      onChange={(e) => setDriverName(e.target.value)}
+                    />
+                    <datalist id={`${fieldId}-drivers`}>
+                      {operators.map((n) => (
+                        <option key={n} value={n} />
+                      ))}
+                    </datalist>
+                  </div>
+                  {cargoChoices.length > 0 ? (
+                    <div className={styles.cargoChips} role="group" aria-label="Что грузить">
+                      {cargoChoices.map((c) => {
+                        const on = pickedCargo.includes(c.id)
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            className={`${styles.roleBtn} ${on ? styles.roleOn : ''}`}
+                            onClick={() =>
+                              setPickedCargo((prev) =>
+                                prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id],
+                              )
+                            }
+                          >
+                            {c.title} · {formatQty(c.quantity)} {unitLabel(c.unitId)}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : null}
+                  <input
+                    className={styles.search}
+                    value={cargoNote}
+                    placeholder={cargoChoices.length ? 'Или что грузить' : 'Что грузить'}
+                    onChange={(e) => setCargoNote(e.target.value)}
+                  />
+                  <label className={styles.check}>
+                    Уже в кузове
+                    <input
+                      type="checkbox"
+                      checked={alreadyLoaded}
+                      onChange={(e) => setAlreadyLoaded(e.target.checked)}
+                    />
+                  </label>
+                  {alreadyLoaded ? null : (
+                    <input
+                      className={styles.search}
+                      value={pickupAddress}
+                      placeholder="Откуда грузить"
+                      onChange={(e) => setPickupAddress(e.target.value)}
+                    />
+                  )}
+                  {canEditPoint ? (
+                    <textarea
+                      className={styles.hint}
+                      rows={2}
+                      value={hint}
+                      placeholder="Как подъехать"
+                      onChange={(e) => setHint(e.target.value)}
+                      onBlur={saveHint}
+                    />
+                  ) : point?.hint ? (
+                    <p className={styles.hintNote}>{point.hint}</p>
+                  ) : null}
+                </div>
                 <button
-                  key={role}
                   type="button"
-                  className={`${styles.roleBtn} ${assignRole === role ? styles.roleOn : ''}`}
-                  onClick={() => setAssignRole(role)}
+                  className={styles.assignBtn}
+                  disabled={!point || !driverName.trim() || busy}
+                  onClick={() => void handleAssign()}
                 >
-                  {DRIVER_TRIP_ROLE_LABELS[role]}
+                  {assignedOk === 'off' ? 'Отправить' : 'Готово'}
                 </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              className={styles.assignBtn}
-              disabled={!point || !driverName.trim() || busy}
-              onClick={() => void handleAssign()}
-            >
-              {assignedOk === 'telegram'
-                ? 'В кабинете · бот написал'
-                : assignedOk === 'saved'
-                  ? 'В кабинете — киньте ниже'
-                  : 'Отправить водителю'}
-            </button>
+              </div>
+            ) : point ? (
+              <label className={styles.hintField}>
+                Как подъехать
+                <textarea
+                  className={styles.hint}
+                  rows={4}
+                  value={hint}
+                  placeholder="Ворота с Вокзальной, штабель слева от бытовки."
+                  onChange={(e) => setHint(e.target.value)}
+                  onBlur={saveHint}
+                />
+              </label>
+            ) : (
+              <p className={styles.empty}>Найдите адрес или ткните карту.</p>
+            )}
+          </div>
+        </div>
+
+        {canAssignTrip ? (
+          <div className={styles.shareBar}>
+            <DriverMessengerShare
+              compact
+              text={shareText}
+              mapsUrl={point ? yandexMapsRouteUrl(point) : ''}
+              disabled={!point}
+            />
           </div>
         ) : null}
-
-        <DriverMessengerShare
-          text={shareText}
-          mapsUrl={point ? yandexMapsRouteUrl(point) : ''}
-          disabled={!point}
-        />
       </div>
     </section>
   )

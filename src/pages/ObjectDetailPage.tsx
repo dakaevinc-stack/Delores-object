@@ -44,13 +44,16 @@ import { BrigadierReportModal } from '../features/site-detail/BrigadierReportMod
 import { ProcurementRequestModal } from '../features/site-detail/ProcurementRequestModal'
 import { SiteBrigadierSubmittedReportsSection } from '../features/site-detail/SiteBrigadierSubmittedSection'
 import { SiteProcurementRequestsSection } from '../features/site-detail/SiteProcurementRequestsSection'
+import { SiteProcurementAccountingSection } from '../features/site-detail/SiteProcurementAccountingSection'
 import { SiteDetailHeader } from '../features/site-detail/SiteDetailHeader'
 import { SiteDetailKpiGrid } from '../features/site-detail/SiteDetailKpiGrid'
+import { SiteProjectHeaderCard } from '../features/site-detail/SiteProjectHeaderCard'
 import { SiteReportingSection } from '../features/site-detail/SiteReportingSection'
 import { SiteScheduleSection } from '../features/site-detail/SiteScheduleSection'
 import { SiteWorkPlanSection } from '../features/site-detail/SiteWorkPlanSection'
 import { SiteWorkDayPlanSection } from '../features/site-detail/SiteWorkDayPlanSection'
 import { SiteMaterialConsumptionSection } from '../features/site-detail/SiteMaterialConsumptionSection'
+import { ReportDeadlineBanner } from '../features/site-detail/ReportDeadlineBanner'
 import { SiteDeliveryPointSection } from '../features/site-detail/SiteDeliveryPointSection'
 import { SiteRoleZone } from '../features/site-detail/SiteRoleZone'
 import { TodayDeliveriesBoard } from '../features/deliveries/TodayDeliveriesBoard'
@@ -70,6 +73,7 @@ export function ObjectDetailPage() {
   const [editingRequest, setEditingRequest] = useState<ProcurementRequest | null>(null)
   const [brigadierReports, setBrigadierReports] = useState<BrigadierStoredReport[]>([])
   const [procurementRequests, setProcurementRequests] = useState<ProcurementRequest[]>([])
+  const [procurementFilterAuthor, setProcurementFilterAuthor] = useState<string | null>(null)
   const brigadierReportsRef = useRef<BrigadierStoredReport[]>([])
   const procurementRequestsRef = useRef<ProcurementRequest[]>([])
   const [remoteFormsActive, setRemoteFormsActive] = useState(false)
@@ -284,6 +288,13 @@ export function ObjectDetailPage() {
     [procurementRequests],
   )
 
+  const procurementRequestsFiltered = useMemo(() => {
+    if (!procurementFilterAuthor) return procurementRequests
+    return procurementRequests.filter(
+      (r) => (r.createdBy.trim() || 'Не указан') === procurementFilterAuthor,
+    )
+  }, [procurementRequests, procurementFilterAuthor])
+
   if (!site) {
     return (
       <div className={styles.page}>
@@ -329,7 +340,7 @@ export function ObjectDetailPage() {
         </div>
       ) : null}
 
-      <SiteRoleZone zone="manager">
+      <SiteRoleZone zone="manager" actions={<SiteProjectHeaderCard siteId={site.id} canUpload />}>
         <SiteDetailKpiGrid kpis={liveKpis} />
         <div className={styles.midGrid}>
           <SiteScheduleSection
@@ -351,23 +362,46 @@ export function ObjectDetailPage() {
       <SiteRoleZone
         zone="brigadier"
         actions={
-          <button
-            type="button"
-            className={styles.toolbarCta}
-            onClick={() => {
-              setComposerKey((k) => k + 1)
-              setComposerOpen(true)
-            }}
-          >
-            Ввод отчёта
-          </button>
+          <>
+            <button
+              type="button"
+              className={styles.toolbarCta}
+              onClick={() => {
+                setEditingRequest(null)
+                setProcurementKey((k) => k + 1)
+                setProcurementOpen(true)
+              }}
+            >
+              Заявка снабженцу
+            </button>
+            <button
+              type="button"
+              className={styles.toolbarCta}
+              onClick={() => {
+                setComposerKey((k) => k + 1)
+                setComposerOpen(true)
+              }}
+            >
+              Ввод отчёта
+            </button>
+            <SiteProjectHeaderCard siteId={site.id} canUpload={false} />
+          </>
         }
       >
+        <ReportDeadlineBanner
+          reports={brigadierReports}
+          todayIso={liveKpis.todayIso}
+          onOpenComposer={() => {
+            setComposerKey((k) => k + 1)
+            setComposerOpen(true)
+          }}
+        />
         {workPlan ? (
           <SiteWorkDayPlanSection
             siteId={site.id}
             siteName={site.name}
             workPlan={workPlan}
+            role="brigadier"
             onAssignmentsChange={() => setDayPlanRevision((n) => n + 1)}
           />
         ) : null}
@@ -409,24 +443,15 @@ export function ObjectDetailPage() {
         />
       </SiteRoleZone>
 
-      <SiteRoleZone
-        zone="supply"
-        actions={
-          <button
-            type="button"
-            className={styles.toolbarCta}
-            onClick={() => {
-              setEditingRequest(null)
-              setProcurementKey((k) => k + 1)
-              setProcurementOpen(true)
-            }}
-          >
-            Заявка снабженцу
-          </button>
-        }
-      >
-        <SiteProcurementRequestsSection
+      <SiteRoleZone zone="supply" actions={<SiteProjectHeaderCard siteId={site.id} canUpload={false} />}>
+        <SiteProcurementAccountingSection
           requests={procurementRequests}
+          selectedAuthor={procurementFilterAuthor}
+          onSelectAuthor={setProcurementFilterAuthor}
+        />
+        <SiteProcurementRequestsSection
+          requests={procurementRequestsFiltered}
+          filterAuthor={procurementFilterAuthor}
           serverBacked={remoteFormsActive}
           deliveryPoint={deliveryPoint}
           onCreate={() => {
@@ -459,9 +484,12 @@ export function ObjectDetailPage() {
         ) : null}
       </SiteRoleZone>
 
-      <SiteRoleZone zone="dispatcher">
+      <SiteRoleZone
+        zone="dispatcher"
+        actions={<SiteProjectHeaderCard siteId={site.id} canUpload={false} />}
+      >
         <SiteDeliveryPointSection
-          key={site.id}
+          key={`${site.id}-trip`}
           siteId={site.id}
           siteName={site.name}
           address={site.address}
@@ -469,6 +497,7 @@ export function ObjectDetailPage() {
           serverBacked={deliveryPointRemoteActive}
           onSave={handleSaveDeliveryPoint}
           onAssignTrip={handleAssignTrip}
+          assignerRole="dispatcher"
           cargoChoices={cargoChoices}
         />
       </SiteRoleZone>

@@ -39,6 +39,16 @@ describe('siteDeliveryPoint', () => {
     expect(out?.address).toBe('')
   })
 
+  it('выбрасывает служебный адрес probe', () => {
+    const out = normalizeDeliveryPoint({
+      lat: 55.5,
+      lng: 37.56,
+      address: 'probe',
+      updatedAtIso: '2026-08-17T16:00:00Z',
+    })
+    expect(out?.address).toBe('')
+  })
+
   it('собирает ссылки Яндекса: pt — lng,lat; маршрут — lat,lng', () => {
     expect(yandexMapsPointUrl(point)).toContain('pt=37.559876%2C55.501234')
     expect(yandexMapsRouteUrl(point)).toContain('rtext=%7E55.501234%2C37.559876')

@@ -25,6 +25,8 @@ import styles from './SiteProcurementRequestsSection.module.css'
 
 type Props = {
   requests: readonly ProcurementRequest[]
+  /** Если задан — показываем подсказку, что список отфильтрован. */
+  filterAuthor?: string | null
   /** Если true — данные синхронизируются с сервером (текст подсказки). */
   serverBacked?: boolean
   deliveryPoint?: SiteDeliveryPoint | null
@@ -75,6 +77,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
 
 export function SiteProcurementRequestsSection({
   requests,
+  filterAuthor = null,
   serverBacked = false,
   deliveryPoint = null,
   onCreate,
@@ -148,6 +151,9 @@ export function SiteProcurementRequestsSection({
             {serverBacked
               ? 'Заявки сохраняются на сервере. '
               : 'Заявки сохраняются на этом устройстве. '}
+            {filterAuthor
+              ? `Показаны заявки: ${filterAuthor}. `
+              : null}
             Снабжение согласовывает заявку — только тогда она появляется у приёмщика.
             Снять или изменить можно, пока материал не приняли на объекте.
           </p>

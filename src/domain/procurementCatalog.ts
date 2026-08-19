@@ -23,6 +23,7 @@ export type ProcurementCategoryId =
   | 'curb'
   | 'granite-curb'
   | 'asphalt'
+  | 'road-chemistry'
   | 'plastic-pipes'
   | 'rcc'
   | 'geosynthetics'
@@ -74,6 +75,7 @@ export const PROCUREMENT_CATEGORIES: readonly ProcurementCategory[] = [
   { id: 'curb', title: 'Бордюр бетонный', hint: 'по ГОСТ 6665, длина 100 см', accent: 'concrete' },
   { id: 'granite-curb', title: 'Бордюр гранитный', hint: 'пилёный или колотый', accent: 'concrete' },
   { id: 'asphalt', title: 'Асфальт', hint: 'по слоям и типам смеси', accent: 'asphalt' },
+  { id: 'road-chemistry', title: 'Дорожная химия', hint: 'эмульсии, мастики, праймеры', accent: 'asphalt' },
   { id: 'plastic-pipes', title: 'Трубы пластиковые', hint: 'по диаметру и назначению', accent: 'pipe' },
   { id: 'rcc', title: 'ЖБИ-изделия', hint: 'колодцы, плиты, лотки', accent: 'concrete' },
   { id: 'geosynthetics', title: 'Геосинтетика', hint: 'геотекстиль, геосетка', accent: 'soil' },
@@ -138,23 +140,55 @@ export const PROCUREMENT_MATERIAL_PRESETS: readonly ProcurementPreset[] = [
     defaultUnit: 't',
     aliases: ['гравий', 'гравийный'],
   },
+  {
+    id: 'crushed-granite-40-70',
+    categoryId: 'crushed-stone',
+    title: 'Щебень гранитный 40–70',
+    subtitle: 'нижний слой основания, расклинцовка',
+    defaultUnit: 't',
+    aliases: ['40-70', '40 70', 'гранит 40'],
+  },
+  {
+    id: 'crushed-shgps-c4',
+    categoryId: 'crushed-stone',
+    title: 'ЩГПС С4 (щебёночно-гравийно-песчаная смесь)',
+    subtitle: 'основание дорожной одежды, ГОСТ 25607',
+    defaultUnit: 't',
+    aliases: ['щгпс', 'с4', 'шгпс', 'нпк денис'],
+  },
 
   /* ── Бетон (м³) ── */
   {
-    id: 'concrete-b25',
+    id: 'concrete-b7-5',
     categoryId: 'concrete',
-    title: 'Бетон товарный B25 (М350)',
-    subtitle: 'фундаменты опор, монолит, лотки',
+    title: 'Бетон тощий B7,5 (М100)',
+    subtitle: 'подготовка оснований, подбетонка',
     defaultUnit: 'm3',
-    aliases: ['бетон', 'b25', 'в25', 'м350', 'товарный'],
+    aliases: ['b7.5', 'в7.5', 'в7 5', 'м100', 'тощий'],
   },
   {
     id: 'concrete-b15',
     categoryId: 'concrete',
     title: 'Бетон товарный B15 (М200)',
-    subtitle: 'подготовка, основание под бордюр',
+    subtitle: 'основание под бордюр, лотки',
     defaultUnit: 'm3',
     aliases: ['b15', 'в15', 'м200', 'подбетонка'],
+  },
+  {
+    id: 'concrete-b22-5',
+    categoryId: 'concrete',
+    title: 'Бетон товарный B22,5 (М300)',
+    subtitle: 'фундаменты, монолитные конструкции',
+    defaultUnit: 'm3',
+    aliases: ['b22.5', 'в22.5', 'в22 5', 'м300', 'м-300'],
+  },
+  {
+    id: 'concrete-b25',
+    categoryId: 'concrete',
+    title: 'Бетон товарный B25 (М350)',
+    subtitle: 'фундаменты опор, монолит, ответственные конструкции',
+    defaultUnit: 'm3',
+    aliases: ['бетон', 'b25', 'в25', 'м350', 'товарный'],
   },
 
   /* ── Бордюр бетонный (шт.) ── */
@@ -164,7 +198,7 @@ export const PROCUREMENT_MATERIAL_PRESETS: readonly ProcurementPreset[] = [
     title: 'Бордюр БР 100.30.15',
     subtitle: 'дорожный, между проезжей частью и тротуаром',
     defaultUnit: 'pcs',
-    aliases: ['бр 100', 'бр1003015', 'бортовой', 'бк'],
+    aliases: ['бр 100', 'бр1003015', 'бортовой', 'бк', 'бортовой камень 15'],
   },
   {
     id: 'curb-br-100-20-8',
@@ -173,6 +207,30 @@ export const PROCUREMENT_MATERIAL_PRESETS: readonly ProcurementPreset[] = [
     subtitle: 'тротуарный (магистральный пешеходный)',
     defaultUnit: 'pcs',
     aliases: ['бр 100 20', 'тротуарный'],
+  },
+  {
+    id: 'curb-radius-r3',
+    categoryId: 'curb',
+    title: 'Бордюр радиусный R3',
+    subtitle: 'скругления малого радиуса — островки, примыкания',
+    defaultUnit: 'pcs',
+    aliases: ['радиусный', 'r3', 'р3', 'радиус 3'],
+  },
+  {
+    id: 'curb-radius-r6',
+    categoryId: 'curb',
+    title: 'Бордюр радиусный R6',
+    subtitle: 'скругления среднего радиуса — повороты, кольца',
+    defaultUnit: 'pcs',
+    aliases: ['r6', 'р6', 'радиус 6'],
+  },
+  {
+    id: 'curb-compensator-15',
+    categoryId: 'curb',
+    title: 'Компенсатор бордюрный 15',
+    subtitle: 'переход высоты между бордюрами, пандусы',
+    defaultUnit: 'pcs',
+    aliases: ['компенсатор', 'понижение', 'пандус'],
   },
 
   /* ── Бордюр гранитный (п.м.) ── */
@@ -211,12 +269,46 @@ export const PROCUREMENT_MATERIAL_PRESETS: readonly ProcurementPreset[] = [
     aliases: ['тип б', 'нижний', 'выравнивающий'],
   },
   {
+    id: 'asphalt-type-b-mz',
+    categoryId: 'asphalt',
+    title: 'Асфальтобетон мелкозернистый (МЗ)',
+    subtitle: 'верхний выравнивающий слой, мелкая фракция',
+    defaultUnit: 't',
+    aliases: ['мз', 'мелкозернистый', 'мз др'],
+  },
+  {
+    id: 'asphalt-sandy',
+    categoryId: 'asphalt',
+    title: 'Асфальтобетон песчаный (песчанка)',
+    subtitle: 'тротуары и пешеходные зоны',
+    defaultUnit: 't',
+    aliases: ['песчанка', 'песчаный', 'тротуарный асфальт'],
+  },
+  {
+    id: 'asphalt-shma-20',
+    categoryId: 'asphalt',
+    title: 'ЩМА-20 (щебёночно-мастичный)',
+    subtitle: 'верхний слой на магистралях с высокой нагрузкой',
+    defaultUnit: 't',
+    aliases: ['щма', 'щма-20', 'щма 20', 'мастичный'],
+  },
+  {
     id: 'asphalt-cold',
     categoryId: 'asphalt',
     title: 'Холодный асфальт',
     subtitle: 'ямочный ремонт круглый год, без катка',
     defaultUnit: 't',
     aliases: ['ямочный', 'холодный'],
+  },
+
+  /* ── Дорожная химия (т / л) ── */
+  {
+    id: 'emulsion-edkb-b',
+    categoryId: 'road-chemistry',
+    title: 'Эмульсия битумная ЭДКБ-Б',
+    subtitle: 'подгрунтовка слоёв перед укладкой асфальта',
+    defaultUnit: 't',
+    aliases: ['эмульсия', 'эдкб', 'битумная'],
   },
 
   /* ── Трубы пластиковые (п.м.) ── */

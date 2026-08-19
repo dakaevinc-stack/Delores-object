@@ -40,9 +40,11 @@ type Props = {
   siteName: string
   /** Производственный план — для выбора строки при назначении. */
   workPlan?: WorkPlan
+  /** Роль из входа: руководитель назначает, бригадир сдаёт факт. */
+  role: WorkDayRole
   /**
    * Без внешней шапки секции — для встраивания в общий «План работ».
-   * Роль и календарь остаются, дублирующий title убирается.
+   * Календарь остаётся, дублирующий title убирается.
    */
   embedded?: boolean
   /** Вызывается после любого изменения назначений (для пересчёта план/факт). */
@@ -93,14 +95,21 @@ function uniquePlanPoints(a: WorkDayAssignment): Array<{ number: string; title: 
   return out
 }
 
+const WORK_DAY_LEAD: Record<WorkDayRole, (siteName: string) => string> = {
+  manager: (siteName) =>
+    `${siteName}: выберите пункт справки и объём на день — он сразу уйдёт из остатка.`,
+  brigadier: (siteName) =>
+    `${siteName}: видите пункт от начальника, пишете сколько сделали, прикладываете фото или видео и нажимаете «Я сделал».`,
+}
+
 export function SiteWorkDayPlanSection({
   siteId,
   siteName,
   workPlan,
+  role,
   embedded = false,
   onAssignmentsChange,
 }: Props) {
-  const [role, setRole] = useState<WorkDayRole>('brigadier')
   const [view, setView] = useState<CalendarView>('day')
   const [cursor, setCursor] = useState(() => new Date())
   const [assignments, setAssignments] = useState<WorkDayAssignment[]>(() =>
@@ -210,28 +219,8 @@ export function SiteWorkDayPlanSection({
               <h2 className={styles.title} id="work-day-plan-heading">
                 План работ
               </h2>
-              <div className={styles.roleSwitch} role="group" aria-label="Роль">
-                <button
-                  type="button"
-                  className={`${styles.roleBtn} ${role === 'brigadier' ? styles.roleOn : ''}`}
-                  onClick={() => setRole('brigadier')}
-                >
-                  Бригадир
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.roleBtn} ${role === 'manager' ? styles.roleOn : ''}`}
-                  onClick={() => setRole('manager')}
-                >
-                  Руководитель
-                </button>
-              </div>
             </div>
-            <p className={styles.lead}>
-              {siteName}: начальник ставит пункт справки и объём — они сразу уходят из остатка.
-              Бригадир видит этот пункт, пишет сколько сделал, прикладывает фото или видео
-              и нажимает «Я сделал».
-            </p>
+            <p className={styles.lead}>{WORK_DAY_LEAD[role](siteName)}</p>
           </div>
         </header>
       )}
@@ -244,27 +233,7 @@ export function SiteWorkDayPlanSection({
               Задания дня
             </p>
             <h3 className={styles.embeddedTitle}>Календарь заданий</h3>
-            <p className={styles.embeddedLead}>
-              Начальник выбирает пункт справки и сколько сделать сегодня — объём сразу
-              вычитается из остатка. Бригадир не выбирает работу: видит готовый пункт,
-              пишет сколько сделал, прикладывает фото или видео и нажимает «Я сделал».
-            </p>
-          </div>
-          <div className={styles.roleSwitch} role="group" aria-label="Роль">
-            <button
-              type="button"
-              className={`${styles.roleBtn} ${role === 'brigadier' ? styles.roleOn : ''}`}
-              onClick={() => setRole('brigadier')}
-            >
-              Бригадир
-            </button>
-            <button
-              type="button"
-              className={`${styles.roleBtn} ${role === 'manager' ? styles.roleOn : ''}`}
-              onClick={() => setRole('manager')}
-            >
-              Руководитель
-            </button>
+            <p className={styles.embeddedLead}>{WORK_DAY_LEAD[role](siteName)}</p>
           </div>
         </div>
       ) : null}

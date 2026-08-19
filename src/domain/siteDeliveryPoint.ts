@@ -27,6 +27,17 @@ export function isValidLatLng(lat: number, lng: number): boolean {
   )
 }
 
+/** Служебные подписи вроде «probe» с проверок API — не адрес для водителя. */
+export function isPlaceholderDeliveryAddress(address: string): boolean {
+  return /^(probe|test|todo|xxx|n\/a|undefined|null)$/i.test(address.trim())
+}
+
+export function displayDeliveryAddress(address: string): string {
+  const t = address.trim()
+  if (!t || isPlaceholderDeliveryAddress(t)) return ''
+  return t
+}
+
 export function normalizeDeliveryPoint(row: unknown): SiteDeliveryPoint | null {
   if (!row || typeof row !== 'object') return null
   const r = row as Record<string, unknown>
@@ -36,11 +47,12 @@ export function normalizeDeliveryPoint(row: unknown): SiteDeliveryPoint | null {
   const rawAt = typeof r.updatedAtIso === 'string' ? r.updatedAtIso.trim() : ''
   const updatedAtIso =
     rawAt && !Number.isNaN(new Date(rawAt).getTime()) ? new Date(rawAt).toISOString() : new Date().toISOString()
+  const rawAddress = typeof r.address === 'string' ? r.address.trim() : ''
   return {
     lat,
     lng,
     hint: typeof r.hint === 'string' ? r.hint.trim() : '',
-    address: typeof r.address === 'string' ? r.address.trim() : '',
+    address: displayDeliveryAddress(rawAddress),
     updatedAtIso,
   }
 }

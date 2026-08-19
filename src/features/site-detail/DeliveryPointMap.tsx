@@ -49,10 +49,16 @@ export function DeliveryPointMap({ lat, lng, editable = true, compact = false, o
     })
 
     mapRef.current = map
-    const t = window.setTimeout(() => map.invalidateSize(), 80)
+    const syncSize = () => map.invalidateSize({ animate: false })
+    const t = window.setTimeout(syncSize, 0)
+    const t2 = window.setTimeout(syncSize, 200)
+    const ro = new ResizeObserver(syncSize)
+    ro.observe(el)
 
     return () => {
       window.clearTimeout(t)
+      window.clearTimeout(t2)
+      ro.disconnect()
       map.remove()
       mapRef.current = null
       markerRef.current = null
