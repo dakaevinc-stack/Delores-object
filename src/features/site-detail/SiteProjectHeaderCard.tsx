@@ -17,7 +17,6 @@ import {
   fetchProjectFileBlobRemote,
   fetchProjectFilesRemote,
   projectFileBlobUrl,
-  RemoteWriteFailure,
 } from '../../lib/siteFormsApi'
 import styles from './SiteProjectHeaderCard.module.css'
 
@@ -63,6 +62,14 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
 
   const revokeIfBlobUrl = (url: string) => {
     if (url.startsWith('blob:')) URL.revokeObjectURL(url)
+  }
+
+  const resolveProjectBlob = async (fileId: string): Promise<Blob | null> => {
+    if (remoteActive) {
+      const remote = await fetchProjectFileBlobRemote(siteId, fileId)
+      if (remote) return remote
+    }
+    return getProjectFileBlob(fileId)
   }
 
   const smartFitToRoad = () => {
@@ -216,13 +223,22 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
         uploadedAtIso: new Date().toISOString(),
       }
       await putProjectFile(record, file)
+      let syncedToRemote = false
       if (remoteActive) {
         const result = await createProjectFileRemote(siteId, record, file)
-        if (!result.ok) {
-          throw new RemoteWriteFailure(describeRemoteWriteError(result, 'файл'))
+        if (result.ok) {
+          syncedToRemote = true
+        } else if (result.reason === 'forbidden') {
+          setSyncMessage(
+            'Сервер не принял файл — обновите страницу (Ctrl+Shift+R) и загрузите снова. Пока файл открывается только здесь.',
+          )
+        } else {
+          setSyncMessage(describeRemoteWriteError(result, 'файл'))
         }
       }
-      const url = remoteActive ? projectFileBlobUrl(siteId, record.id) : URL.createObjectURL(file)
+      const url = syncedToRemote
+        ? projectFileBlobUrl(siteId, record.id)
+        : URL.createObjectURL(file)
       setAssets((prev) => {
         const replaced = prev.filter((row) => row.kind !== kind)
         for (const row of prev) {
@@ -234,12 +250,8 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
         const probe = await fetchProjectFilesRemote(siteId)
         if (probe !== null) setRemoteActive(true)
       }
-    } catch (e) {
-      if (e instanceof RemoteWriteFailure) {
-        setSyncMessage(e.message)
-      } else {
-        setSyncMessage('Файл сохранился только на этом устройстве. На другом ноутбуке его пока не будет.')
-      }
+    } catch {
+      setSyncMessage('Не удалось сохранить файл. Попробуйте ещё раз.')
     } finally {
       setBusyKind(null)
     }
@@ -280,9 +292,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
     dwgLayersLoadedRef.current = false
     try {
       await initWasm()
-      const blob = remoteActive
-        ? await fetchProjectFileBlobRemote(siteId, dwg.id)
-        : await getProjectFileBlob(dwg.id)
+      const blob = await resolveProjectBlob(dwg.id)
       if (!blob) throw new Error('dwg_blob_missing')
 
       const file = new File([blob], dwg.name, { type: dwg.mime || 'application/acad' })
@@ -316,9 +326,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
       if (dwgLayersLoadedRef.current) return
 
       try {
-        const blob = remoteActive
-          ? await fetchProjectFileBlobRemote(siteId, currentDwgId)
-          : await getProjectFileBlob(currentDwgId)
+        const blob = await resolveProjectBlob(currentDwgId)
         if (!blob) throw new Error('dwg_blob_missing')
         const arrayBuffer = await blob.arrayBuffer()
         const dxfText = await convertDwgToDxf(arrayBuffer, { timeout: 60000 })
