@@ -454,7 +454,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
 
         {/* ── DWG строка ── */}
         <div className={`${styles.fileRow} ${dwg ? '' : styles.fileRowEmpty}`}>
-          <span className={`${styles.fileTag} ${dwg ? styles.fileTagDwg : ''}`}>DWG</span>
+          <span className={`${styles.fileTag} ${styles.fileTagDwg}`}>DWG</span>
           <div className={styles.fileRowBody}>
             {dwg ? (
               <>
