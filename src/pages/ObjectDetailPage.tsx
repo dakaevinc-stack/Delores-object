@@ -384,7 +384,6 @@ export function ObjectDetailPage() {
             >
               Ввод отчёта
             </button>
-            <SiteProjectHeaderCard siteId={site.id} canUpload={false} />
           </>
         }
       >
@@ -443,7 +442,7 @@ export function ObjectDetailPage() {
         />
       </SiteRoleZone>
 
-      <SiteRoleZone zone="supply" actions={<SiteProjectHeaderCard siteId={site.id} canUpload={false} />}>
+      <SiteRoleZone zone="supply">
         <SiteProcurementAccountingSection
           requests={procurementRequests}
           selectedAuthor={procurementFilterAuthor}
@@ -484,10 +483,7 @@ export function ObjectDetailPage() {
         ) : null}
       </SiteRoleZone>
 
-      <SiteRoleZone
-        zone="dispatcher"
-        actions={<SiteProjectHeaderCard siteId={site.id} canUpload={false} />}
-      >
+      <SiteRoleZone zone="dispatcher">
         <SiteDeliveryPointSection
           key={`${site.id}-trip`}
           siteId={site.id}
