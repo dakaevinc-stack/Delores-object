@@ -113,7 +113,35 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
         const remoteRows = await fetchProjectFilesRemote(siteId)
         const remoteAvailable = remoteRows !== null
         if (remoteAvailable) setRemoteActive(true)
-        const rows = remoteRows ?? (await listProjectFilesBySite(siteId))
+
+        // Если сервер пустой, но у текущего девайса уже есть файлы в IndexedDB,
+        // переносим их на сервер один раз (только если у пользователя есть право upload).
+        let rows = remoteRows ?? (await listProjectFilesBySite(siteId))
+        if (remoteAvailable && remoteRows && remoteRows.length === 0 && canUpload) {
+          const localRows = await listProjectFilesBySite(siteId)
+          if (localRows.length > 0) {
+            setSyncMessage('Переносим PDF/DWG на сервер…')
+            let firstError: string | null = null
+            for (const local of localRows) {
+              try {
+                const blob = await getProjectFileBlob(local.id)
+                if (!blob) continue
+                const result = await createProjectFileRemote(siteId, local, blob)
+                if (!result.ok && !firstError) {
+                  firstError = describeRemoteWriteError(result, 'файл')
+                }
+              } catch (e) {
+                if (!firstError) firstError = 'Не удалось перенести файл на сервер.'
+              }
+            }
+            setSyncMessage(firstError ?? null)
+            const refreshed = await fetchProjectFilesRemote(siteId)
+            if (refreshed) {
+              setRemoteActive(true)
+              rows = refreshed
+            }
+          }
+        }
         const resolved: ProjectAsset[] = []
         for (const row of rows) {
           let url = ''
@@ -142,7 +170,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
       cancelled = true
       for (const row of assetsRef.current) revokeIfBlobUrl(row.url)
     }
-  }, [siteId])
+  }, [siteId, canUpload])
 
   useEffect(() => {
     const anyOpen = viewerOpen || dwgViewerOpen
