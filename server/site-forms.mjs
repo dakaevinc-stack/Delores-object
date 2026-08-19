@@ -86,6 +86,19 @@ async function readBodyBuffer(req) {
   return Buffer.concat(chunks)
 }
 
+/** @param {unknown} raw */
+function parseProjectFileRecordHeader(raw) {
+  const s = String(raw)
+  try {
+    if (s.startsWith('b64.')) {
+      return JSON.parse(Buffer.from(s.slice(4), 'base64').toString('utf8'))
+    }
+    return JSON.parse(s)
+  } catch {
+    return null
+  }
+}
+
 /**
  * @param {string} baseDir
  * @param {string} manifestPath
@@ -1011,13 +1024,7 @@ const server = http.createServer(async (req, res) => {
 
         const recordHeader = req.headers['x-project-file-record']
         if (recordHeader) {
-          let record
-          try {
-            record = JSON.parse(String(recordHeader))
-          } catch {
-            sendJson(res, 400, { error: 'invalid_project_file' })
-            return
-          }
+          const record = parseProjectFileRecordHeader(recordHeader)
           if (!isProjectFileRecord(record)) {
             sendJson(res, 400, { error: 'invalid_project_file' })
             return

@@ -482,6 +482,14 @@ export async function fetchProjectFileBlobRemote(
   }
 }
 
+function encodeProjectFileRecord(record: StoredSiteProjectFile): string {
+  const json = JSON.stringify(record)
+  const bytes = new TextEncoder().encode(json)
+  let binary = ''
+  for (const byte of bytes) binary += String.fromCharCode(byte)
+  return `b64.${btoa(binary)}`
+}
+
 export async function createProjectFileRemote(
   siteId: string,
   record: StoredSiteProjectFile,
@@ -490,7 +498,7 @@ export async function createProjectFileRemote(
   try {
     const headers: Record<string, string> = {
       'Content-Type': file.type || 'application/octet-stream',
-      'X-Project-File-Record': JSON.stringify(record),
+      'X-Project-File-Record': encodeProjectFileRecord(record),
     }
     const secret = import.meta.env.VITE_SITE_FORMS_WRITE_SECRET
     if (typeof secret === 'string' && secret.trim()) {

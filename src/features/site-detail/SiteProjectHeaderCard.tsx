@@ -45,6 +45,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
   const pdfInputRef = useRef<HTMLInputElement | null>(null)
   const dwgInputRef = useRef<HTMLInputElement | null>(null)
   const assetsRef = useRef<ProjectAsset[]>([])
+  const busyKindRef = useRef<SiteProjectFileKind | null>(null)
 
   const [assets, setAssets] = useState<ProjectAsset[]>([])
   const [loading, setLoading] = useState(true)
@@ -72,41 +73,45 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
     return getProjectFileBlob(fileId)
   }
 
-  const loadAssets = useCallback(async (): Promise<string[]> => {
+  const loadAssets = useCallback(async (opts?: { silent?: boolean }): Promise<string[]> => {
     const blobUrls: string[] = []
-    setLoading(true)
+    if (!opts?.silent) setLoading(true)
     try {
       const remoteRows = await fetchProjectFilesRemote(siteId)
       const remoteAvailable = remoteRows !== null
       if (remoteAvailable) setRemoteActive(true)
 
       let rows = remoteRows ?? (await listProjectFilesBySite(siteId))
+      const remoteKinds = new Set(rows.map((row) => row.kind))
 
       // Догружаем на сервер локальные файлы, которых там ещё нет (PDF или DWG по отдельности).
       if (remoteAvailable && canUpload) {
         const localRows = await listProjectFilesBySite(siteId)
-        const remoteKinds = new Set((remoteRows ?? []).map((row) => row.kind))
         const missingOnServer = localRows.filter((local) => !remoteKinds.has(local.kind))
         if (missingOnServer.length > 0) {
-          setSyncMessage('Отправляем файлы на сервер…')
+          if (!opts?.silent) setSyncMessage('Отправляем файлы на сервер…')
           let firstError: string | null = null
           for (const local of missingOnServer) {
             try {
               const blob = await getProjectFileBlob(local.id)
               if (!blob) continue
               const result = await createProjectFileRemote(siteId, local, blob)
-              if (!result.ok && !firstError) {
+              if (result.ok) {
+                remoteKinds.add(local.kind)
+              } else if (!firstError) {
                 firstError = describeRemoteWriteError(result, 'файл')
               }
             } catch {
               if (!firstError) firstError = 'Не удалось перенести файл на сервер.'
             }
           }
-          setSyncMessage(firstError)
+          if (firstError) setSyncMessage(firstError)
+          else if (!opts?.silent) setSyncMessage(null)
           const refreshed = await fetchProjectFilesRemote(siteId)
           if (refreshed) {
             setRemoteActive(true)
             rows = refreshed
+            for (const row of refreshed) remoteKinds.add(row.kind)
           }
         }
       }
@@ -123,11 +128,25 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
           resolved.push({ ...row, url })
         }
       }
+
+      // Локальные файлы, которые сервер ещё не принял — не теряем из интерфейса.
+      if (remoteAvailable) {
+        const localRows = await listProjectFilesBySite(siteId)
+        for (const local of localRows) {
+          if (remoteKinds.has(local.kind)) continue
+          const blob = await getProjectFileBlob(local.id)
+          if (!blob) continue
+          const url = URL.createObjectURL(blob)
+          blobUrls.push(url)
+          resolved.push({ ...local, url })
+        }
+      }
+
       resolved.sort((a, b) => b.uploadedAtIso.localeCompare(a.uploadedAtIso))
       setAssets(resolved)
       return blobUrls
     } finally {
-      setLoading(false)
+      if (!opts?.silent) setLoading(false)
     }
   }, [siteId, canUpload])
 
@@ -135,12 +154,20 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
     const remoteRows = await fetchProjectFilesRemote(siteId)
     if (!remoteRows) return
     setRemoteActive(true)
-    const resolved = remoteRows.map((row) => ({
-      ...row,
-      url: projectFileBlobUrl(siteId, row.id),
-    }))
-    resolved.sort((a, b) => b.uploadedAtIso.localeCompare(a.uploadedAtIso))
-    setAssets(resolved)
+    const remoteKinds = new Set(remoteRows.map((row) => row.kind))
+    setAssets((prev) => {
+      const resolved: ProjectAsset[] = remoteRows.map((row) => ({
+        ...row,
+        url: projectFileBlobUrl(siteId, row.id),
+      }))
+      for (const row of prev) {
+        if (row.url.startsWith('blob:') && !remoteKinds.has(row.kind)) {
+          resolved.push(row)
+        }
+      }
+      resolved.sort((a, b) => b.uploadedAtIso.localeCompare(a.uploadedAtIso))
+      return resolved
+    })
   }, [siteId])
 
   const smartFitToRoad = () => {
@@ -182,6 +209,10 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
   }, [assets])
 
   useEffect(() => {
+    busyKindRef.current = busyKind
+  }, [busyKind])
+
+  useEffect(() => {
     let cancelled = false
     let blobUrls: string[] = []
 
@@ -215,7 +246,8 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
   useEffect(() => {
     const tick = () => {
       if (document.visibilityState !== 'visible') return
-      if (canUpload) void loadAssets()
+      if (busyKindRef.current) return
+      if (canUpload) void loadAssets({ silent: true })
       else void refreshFromRemote()
     }
     const id = window.setInterval(tick, 15000)
@@ -277,13 +309,17 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
         if (result.ok) {
           syncedToRemote = true
           setSyncMessage(null)
+        } else if (result.reason === 'network') {
+          setSyncMessage('Не удалось отправить на сервер — проверьте интернет и нажмите «Отправить на сервер».')
         } else if (result.reason === 'forbidden') {
           setSyncMessage(
-            'Сервер не принял файл — обновите страницу (Ctrl+Shift+R) и загрузите снова. Пока файл открывается только здесь.',
+            'Сервер не принял файл — обновите страницу (Ctrl+Shift+R) и загрузите снова.',
           )
         } else {
           setSyncMessage(describeRemoteWriteError(result, 'файл'))
         }
+      } else {
+        setSyncMessage('Сервер недоступен — файл сохранён только на этом устройстве.')
       }
       const url = syncedToRemote
         ? projectFileBlobUrl(siteId, record.id)
@@ -555,7 +591,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
         {canUpload && !loading && hasLocalOnly ? (
           <div className={styles.hintRow}>
             <p className={styles.hint}>Файл не на сервере — другие ноутбуки его не видят.</p>
-            <button type="button" className={styles.actionBtnMuted} onClick={() => void loadAssets()}>
+            <button type="button" className={styles.actionBtnMuted} onClick={() => void loadAssets({ silent: true })}>
               Отправить на сервер
             </button>
           </div>
