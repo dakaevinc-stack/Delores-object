@@ -213,6 +213,16 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
   }, [refreshFromRemote])
 
   useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState !== 'visible') return
+      if (canUpload) void loadAssets()
+      else void refreshFromRemote()
+    }
+    const id = window.setInterval(tick, 15000)
+    return () => window.clearInterval(id)
+  }, [canUpload, loadAssets, refreshFromRemote])
+
+  useEffect(() => {
     const anyOpen = viewerOpen || dwgViewerOpen
     if (!anyOpen) return
     const onKey = (e: KeyboardEvent) => {
@@ -543,10 +553,12 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
         </div>
 
         {canUpload && !loading && hasLocalOnly ? (
-          <p className={styles.hint}>
-            Есть файлы только на этом устройстве — обновите страницу, они отправятся на сервер для других
-            ноутбуков.
-          </p>
+          <div className={styles.hintRow}>
+            <p className={styles.hint}>Файл не на сервере — другие ноутбуки его не видят.</p>
+            <button type="button" className={styles.actionBtnMuted} onClick={() => void loadAssets()}>
+              Отправить на сервер
+            </button>
+          </div>
         ) : canUpload && !loading ? (
           <p className={styles.hint}>
             {remoteActive

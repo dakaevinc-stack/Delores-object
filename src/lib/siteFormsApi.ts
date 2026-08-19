@@ -488,11 +488,18 @@ export async function createProjectFileRemote(
   file: Blob,
 ): Promise<RemoteWriteResult> {
   try {
-    const dataBase64 = await readBlobAsBase64(file)
+    const headers: Record<string, string> = {
+      'Content-Type': file.type || 'application/octet-stream',
+      'X-Project-File-Record': JSON.stringify(record),
+    }
+    const secret = import.meta.env.VITE_SITE_FORMS_WRITE_SECRET
+    if (typeof secret === 'string' && secret.trim()) {
+      headers['X-Deloresh-Write-Secret'] = secret.trim()
+    }
     const res = await fetch(siteUrl(siteId, '/project-files'), {
       method: 'POST',
-      headers: writeHeaders(true),
-      body: JSON.stringify({ record, dataBase64 }),
+      headers,
+      body: file,
     })
     if (res.ok) return { ok: true }
     return classifyResponse(res.status)
