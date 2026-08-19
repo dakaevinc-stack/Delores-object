@@ -418,7 +418,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
                     Открыть
                   </button>
                   <a className={styles.actionBtnSecondary} href={pdf.url} download={pdf.name}>
-                    Скачать PDF
+                    Скачать
                   </a>
                 </div>
                 {canUpload ? (
@@ -446,7 +446,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
                 className={styles.actionBtnPrimary}
                 onClick={() => pdfInputRef.current?.click()}
               >
-                Загрузить PDF
+                Загрузить
               </button>
             ) : null}
           </div>
@@ -473,7 +473,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
                     Открыть
                   </button>
                   <a className={styles.actionBtnSecondary} href={dwg.url} download={dwg.name}>
-                    Скачать DWG
+                    Скачать
                   </a>
                 </div>
                 {canUpload ? (
@@ -501,7 +501,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
                 className={styles.actionBtnPrimary}
                 onClick={() => dwgInputRef.current?.click()}
               >
-                Загрузить DWG
+                Загрузить
               </button>
             ) : null}
           </div>
