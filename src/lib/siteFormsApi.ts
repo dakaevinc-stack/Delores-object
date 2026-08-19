@@ -1,5 +1,6 @@
 import type { BrigadierStoredReport } from '../domain/brigadierReport'
 import type { ProcurementRequest } from '../domain/procurementRequest'
+import type { StoredSiteProjectFile } from './siteProjectFilesRepository'
 import {
   parseNominatimReverse,
   parseNominatimSearch,
@@ -57,6 +58,25 @@ function isObjectMediaRecord(x: unknown): x is StoredSiteMedia {
 function parseObjectMediaManifestJson(data: unknown): StoredSiteMedia[] {
   if (!Array.isArray(data)) return []
   return data.filter(isObjectMediaRecord)
+}
+
+function isProjectFileRecord(x: unknown): x is StoredSiteProjectFile {
+  if (!x || typeof x !== 'object') return false
+  const r = x as Record<string, unknown>
+  return (
+    typeof r.id === 'string' &&
+    typeof r.siteId === 'string' &&
+    (r.kind === 'pdf' || r.kind === 'dwg') &&
+    typeof r.name === 'string' &&
+    typeof r.mime === 'string' &&
+    typeof r.sizeBytes === 'number' &&
+    typeof r.uploadedAtIso === 'string'
+  )
+}
+
+function parseProjectFilesJson(data: unknown): StoredSiteProjectFile[] {
+  if (!Array.isArray(data)) return []
+  return data.filter(isProjectFileRecord)
 }
 
 /**
@@ -436,6 +456,66 @@ export async function deleteObjectMediaRemote(siteId: string, mediaId: string): 
   } catch {
     return false
   }
+}
+
+export async function fetchProjectFilesRemote(siteId: string): Promise<StoredSiteProjectFile[] | null> {
+  try {
+    const res = await fetch(siteUrl(siteId, '/project-files'))
+    if (!res.ok) return null
+    const json: unknown = await res.json()
+    return parseProjectFilesJson(json)
+  } catch {
+    return null
+  }
+}
+
+export async function fetchProjectFileBlobRemote(
+  siteId: string,
+  fileId: string,
+): Promise<Blob | null> {
+  try {
+    const res = await fetch(siteUrl(siteId, `/project-files/${encodeURIComponent(fileId)}/blob`))
+    if (!res.ok) return null
+    return await res.blob()
+  } catch {
+    return null
+  }
+}
+
+export async function createProjectFileRemote(
+  siteId: string,
+  record: StoredSiteProjectFile,
+  file: Blob,
+): Promise<RemoteWriteResult> {
+  try {
+    const dataBase64 = await readBlobAsBase64(file)
+    const res = await fetch(siteUrl(siteId, '/project-files'), {
+      method: 'POST',
+      headers: writeHeaders(true),
+      body: JSON.stringify({ record, dataBase64 }),
+    })
+    if (res.ok) return { ok: true }
+    return classifyResponse(res.status)
+  } catch {
+    return { ok: false, reason: 'network', status: null }
+  }
+}
+
+export async function deleteProjectFileRemote(siteId: string, fileId: string): Promise<boolean> {
+  try {
+    const res = await fetch(siteUrl(siteId, `/project-files/${encodeURIComponent(fileId)}`), {
+      method: 'DELETE',
+      headers: writeHeaders(false),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+export function projectFileBlobUrl(siteId: string, fileId: string): string {
+  const b = apiBase()
+  return `${b}/api/sites/${encodeURIComponent(siteId)}/project-files/${encodeURIComponent(fileId)}/blob`
 }
 
 export async function createProcurementRequestRemote(

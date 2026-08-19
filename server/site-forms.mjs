@@ -167,6 +167,21 @@ function isObjectMediaRecord(x) {
   )
 }
 
+/** @param {unknown} x */
+function isProjectFileRecord(x) {
+  if (!x || typeof x !== 'object') return false
+  const r = /** @type {Record<string, unknown>} */ (x)
+  return (
+    typeof r.id === 'string' &&
+    typeof r.siteId === 'string' &&
+    (r.kind === 'pdf' || r.kind === 'dwg') &&
+    typeof r.name === 'string' &&
+    typeof r.mime === 'string' &&
+    typeof r.sizeBytes === 'number' &&
+    typeof r.uploadedAtIso === 'string'
+  )
+}
+
 /**
  * @param {import('node:http').IncomingMessage} req
  * @param {import('node:http').ServerResponse} res
@@ -895,6 +910,121 @@ const server = http.createServer(async (req, res) => {
         )
         await writeJsonArray(manifestPath, next)
         const blobPath = path.join(baseDir, 'blobs', mediaId)
+        try {
+          await fs.unlink(blobPath)
+        } catch (e) {
+          if (/** @type {NodeJS.ErrnoException} */ (e).code !== 'ENOENT') throw e
+        }
+        sendJson(res, 200, { ok: true })
+        return
+      }
+    }
+
+    if (
+      parts[0] === 'api' &&
+      parts[1] === 'sites' &&
+      parts[2] &&
+      parts[3] === 'project-files'
+    ) {
+      const siteId = safeSiteId(parts[2])
+      if (!siteId) {
+        sendJson(res, 400, { error: 'bad_site_id' })
+        return
+      }
+      const baseDir = path.join(DATA_ROOT, 'sites', siteId, 'project-files')
+      const manifestPath = path.join(baseDir, 'manifest.json')
+
+      if (parts.length === 4 && req.method === 'GET') {
+        const list = await readJsonArray(manifestPath)
+        const valid = list.filter(isProjectFileRecord)
+        sendJson(res, 200, valid)
+        return
+      }
+
+      if (parts.length === 6 && parts[5] === 'blob' && req.method === 'GET') {
+        const fileId = safeMediaId(parts[4])
+        if (!fileId) {
+          sendJson(res, 400, { error: 'bad_id' })
+          return
+        }
+        const list = await readJsonArray(manifestPath)
+        const meta = list.find((x) => isProjectFileRecord(x) && /** @type {{id:string}} */ (x).id === fileId)
+        if (!meta) {
+          sendJson(res, 404, { error: 'not_found' })
+          return
+        }
+        const blobPath = path.join(baseDir, 'blobs', fileId)
+        try {
+          const buf = await fs.readFile(blobPath)
+          setCors(res)
+          res.statusCode = 200
+          res.setHeader('Content-Type', /** @type {{mime:string}} */ (meta).mime || 'application/octet-stream')
+          res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(/** @type {{name:string}} */ (meta).name)}"`)
+          res.end(buf)
+        } catch (e) {
+          if (/** @type {NodeJS.ErrnoException} */ (e).code === 'ENOENT') {
+            sendJson(res, 404, { error: 'blob_missing' })
+          } else {
+            throw e
+          }
+        }
+        return
+      }
+
+      if (parts.length === 4 && req.method === 'POST') {
+        if (!checkWrite(req, res)) return
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        if (!body || typeof body !== 'object') {
+          sendJson(res, 400, { error: 'invalid_project_file' })
+          return
+        }
+        const b = /** @type {Record<string, unknown>} */ (body)
+        if (!isProjectFileRecord(b.record) || typeof b.dataBase64 !== 'string') {
+          sendJson(res, 400, { error: 'invalid_project_file' })
+          return
+        }
+        const record = /** @type {{ id: string, siteId: string, kind: 'pdf'|'dwg', name: string, mime: string, sizeBytes: number, uploadedAtIso: string }} */ (b.record)
+        if (record.siteId !== siteId) {
+          sendJson(res, 400, { error: 'site_mismatch' })
+          return
+        }
+        const buf = Buffer.from(b.dataBase64, 'base64')
+        if (!buf.length && record.sizeBytes > 0) {
+          sendJson(res, 400, { error: 'empty_payload' })
+          return
+        }
+        const list = await readJsonArray(manifestPath)
+        const valid = list.filter(isProjectFileRecord)
+        const sameKind = valid.find((x) => /** @type {{kind:'pdf'|'dwg'}} */ (x).kind === record.kind)
+        if (sameKind) {
+          try {
+            await fs.unlink(path.join(baseDir, 'blobs', /** @type {{id:string}} */ (sameKind).id))
+          } catch (e) {
+            if (/** @type {NodeJS.ErrnoException} */ (e).code !== 'ENOENT') throw e
+          }
+        }
+        const next = [record, ...valid.filter((x) => /** @type {{kind:'pdf'|'dwg'}} */ (x).kind !== record.kind)]
+        await fs.mkdir(path.join(baseDir, 'blobs'), { recursive: true })
+        await fs.writeFile(path.join(baseDir, 'blobs', record.id), buf)
+        await writeJsonArray(manifestPath, next)
+        sendJson(res, 201, { ok: true })
+        return
+      }
+
+      if (parts.length === 5 && req.method === 'DELETE') {
+        if (!checkWrite(req, res)) return
+        const fileId = safeMediaId(parts[4])
+        if (!fileId) {
+          sendJson(res, 400, { error: 'bad_id' })
+          return
+        }
+        const list = await readJsonArray(manifestPath)
+        const next = list.filter(
+          (x) => !isProjectFileRecord(x) || /** @type {{id:string}} */ (x).id !== fileId,
+        )
+        await writeJsonArray(manifestPath, next)
+        const blobPath = path.join(baseDir, 'blobs', fileId)
         try {
           await fs.unlink(blobPath)
         } catch (e) {

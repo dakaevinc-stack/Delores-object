@@ -1,0 +1,483 @@
+/* ── Карточка ── */
+.card {
+  min-width: min(100%, 340px);
+  max-width: 400px;
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  background:
+    radial-gradient(120% 100% at 100% 0%, rgba(23, 42, 77, 0.07) 0%, transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(247, 249, 253, 0.98) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.92) inset,
+    0 12px 32px rgba(15, 23, 42, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: radial-gradient(600px 160px at 10% 0%, rgba(14, 165, 233, 0.22) 0%, rgba(99, 102, 241, 0.14) 36%, rgba(0, 0, 0, 0) 70%);
+  filter: blur(10px);
+  opacity: 0.95;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hiddenInput {
+  display: none;
+}
+
+/* ── Шапка ── */
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.kicker {
+  margin: 0 0 2px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brand-red, #ee2d3a);
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+}
+
+.statusReady,
+.statusEmpty,
+.statusBusy {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.statusReady {
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.08) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  color: #047857;
+  box-shadow: 0 14px 36px rgba(16, 185, 129, 0.12);
+}
+
+.statusEmpty {
+  background: rgba(23, 42, 77, 0.06);
+  border: 1px solid rgba(23, 42, 77, 0.12);
+  color: var(--muted);
+}
+
+.statusBusy {
+  background: rgba(234, 179, 8, 0.14);
+  border: 1px solid rgba(234, 179, 8, 0.22);
+  color: #92400e;
+}
+
+/* ── Строка файла ── */
+.fileRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  transition: border-color 0.15s;
+}
+
+.fileRow:hover {
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+.fileRowEmpty {
+  opacity: 0.7;
+}
+
+/* ── Тег формата ── */
+.fileTag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 22px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  background: rgba(23, 42, 77, 0.07);
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.fileTagPdf {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #fff;
+}
+
+.fileTagDwg {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #fff;
+}
+
+/* ── Тело строки ── */
+.fileRowBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.fileName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.fileMeta {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.fileEmpty {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* ── Кнопки в строке ── */
+.fileRowActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.fileRowActionsTop,
+.fileRowActionsBottom {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--brand-navy, #172a4d);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.actionBtn:hover {
+  background: #f0f2f5;
+  border-color: rgba(15, 23, 42, 0.18);
+}
+
+/* Primary: “Открыть / Загрузить” */
+.actionBtnPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 24, 40, 0.88);
+  background: linear-gradient(180deg, #1f3558 0%, #0f1724 100%);
+  color: #f2f4f8;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 14px 30px rgba(12, 18, 32, 0.18);
+  transition: transform 0.08s ease, box-shadow 0.12s ease;
+}
+
+.actionBtnPrimary:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 18px 42px rgba(12, 18, 32, 0.2);
+}
+
+/* Secondary: “Скачать …” */
+.actionBtnSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--brand-navy, #172a4d);
+  transition: background 0.12s, border-color 0.12s, transform 0.08s ease;
+  box-shadow: 0 6px 18px rgba(9, 14, 24, 0.08);
+}
+
+.actionBtnSecondary:hover {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(15, 23, 42, 0.18);
+  transform: translateY(-1px);
+}
+
+.actionBtnMuted {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.actionBtnMuted:hover {
+  background: rgba(15, 23, 42, 0.05);
+  color: var(--text-strong);
+}
+
+.actionBtnDanger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: #dc2626;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.actionBtnDanger:hover {
+  background: rgba(220, 38, 38, 0.08);
+  opacity: 1;
+}
+
+/* ── Подсказка ── */
+.hint {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+/* ══════════════════════════════════
+   Модалки (общие)
+   ══════════════════════════════════ */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(9, 14, 24, 0.62);
+  backdrop-filter: blur(8px);
+}
+
+.viewer {
+  width: min(1200px, 100%);
+  height: min(88vh, 960px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 24px 64px rgba(9, 14, 24, 0.35);
+}
+
+/* ── Шапка модалки (light — для PDF) ── */
+.viewerHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.viewerKicker {
+  margin: 0 0 2px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brand-red, #ee2d3a);
+}
+
+.viewerTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-strong);
+}
+
+/* ── Шапка модалки (dark — для DWG) ── */
+.viewerHeadDark {
+  composes: viewerHead;
+  background: #0d1526;
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.viewerKickerDark {
+  composes: viewerKicker;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.viewerTitleDark {
+  composes: viewerTitle;
+  color: #f2f4f8;
+}
+
+/* ── Кнопки модалки ── */
+.viewerActions {
+  display: flex;
+  gap: 6px;
+}
+
+.viewerBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-strong);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.viewerBtn:hover {
+  background: #f0f2f5;
+}
+
+.viewerBtnClose {
+  composes: viewerBtn;
+  border-color: rgba(220, 38, 38, 0.2);
+  color: #dc2626;
+}
+
+.viewerBtnClose:hover {
+  background: rgba(220, 38, 38, 0.06);
+}
+
+/* ── PDF iframe ── */
+.frame {
+  width: 100%;
+  flex: 1;
+  border: 0;
+  background: #f4f5f7;
+}
+
+/* ── DWG canvas ── */
+.dwgCanvasWrap {
+  flex: 1;
+  min-height: 360px;
+  background: linear-gradient(180deg, #0b1222 0%, #0f1b31 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.dwgLoading {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ══════════════════════════════════
+   Responsive
+   ══════════════════════════════════ */
+
+@media (max-width: 900px) {
+  .card {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .viewerHead,
+  .viewerHeadDark,
+  .viewerActions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fileRowActions {
+    flex-direction: column;
+  }
+
+  .viewer {
+    height: 92vh;
+  }
+}
