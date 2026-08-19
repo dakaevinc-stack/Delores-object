@@ -77,7 +77,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
     }
 
     const ROAD_TYPES = new Set(['LINE', 'LWPOLYLINE', 'POLYLINE'])
-    const entities = viewer.getEntities()
+    const entities = viewer.getEntities() as Array<{ visible: boolean; type: string }>
     const roadEntities = entities.filter((e) => e.visible && ROAD_TYPES.has(e.type))
 
     if (roadEntities.length === 0) {
