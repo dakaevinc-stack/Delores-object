@@ -1,24 +1,24 @@
 .frame {
   width: 100%;
-  height: 280px;
+  height: 340px;
   overflow: hidden;
   border-radius: 0;
   border: 0;
-  background: #dfe6ef;
+  background: #1a2740;
 }
 
 .map {
   width: 100%;
-  height: 280px;
+  height: 340px;
   font: inherit;
 }
 
 .compact {
-  height: 280px;
+  height: 340px;
 }
 
 .compact .map {
-  height: 280px;
+  height: 340px;
 }
 
 /* Глобальный img { max-width:100%; height:auto } схлопывает тайлы OSM. */

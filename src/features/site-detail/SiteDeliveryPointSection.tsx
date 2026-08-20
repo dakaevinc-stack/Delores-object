@@ -257,29 +257,31 @@ export function SiteDeliveryPointSection({
 
   return (
     <section className={styles.section} aria-labelledby={titleId}>
-      {canAssignTrip ? (
-        <h2 className={styles.title} id={titleId} hidden>
-          Рейс водителю
-        </h2>
-      ) : (
-        <header className={styles.head}>
-          <div className={styles.headInner}>
-            <h2 className={styles.title} id={titleId}>
-              Куда разгружать
-            </h2>
-            <p className={styles.lead}>
-              Адрес или точка на карте.
-              {serverBacked ? ' Общая для всех устройств объекта.' : ''}
-            </p>
-          </div>
-        </header>
-      )}
+      <header className={styles.head}>
+        <div className={styles.headInner}>
+          <p className={styles.kicker}>
+            <span className={styles.kickerMark} aria-hidden />
+            Диспетчер
+          </p>
+          <h2 className={styles.title} id={titleId}>
+            {canAssignTrip ? 'Рейс водителю' : 'Куда разгружать'}
+          </h2>
+          <p className={styles.lead}>
+            {canAssignTrip
+              ? 'Точка на карте, груз и отправка в кабинет.'
+              : 'Адрес или точка на карте.'}
+          </p>
+        </div>
+        <span className={`${styles.syncBadge} ${serverBacked ? styles.syncOn : styles.syncOff}`}>
+          {serverBacked ? 'На сервере' : 'Только здесь'}
+        </span>
+      </header>
 
       <div className={styles.sheet}>
         <div className={styles.split}>
           <div className={styles.mapPane}>
             {canEditPoint ? (
-              <>
+              <div className={styles.searchOverlay}>
                 <label className={styles.searchLabel} htmlFor={`${fieldId}-address`}>
                   Адрес разгрузки
                 </label>
@@ -309,7 +311,12 @@ export function SiteDeliveryPointSection({
                       }
                     }}
                   />
-                  <button type="button" className={styles.searchBtn} onClick={() => void handleSearchNow()} disabled={searching}>
+                  <button
+                    type="button"
+                    className={styles.searchBtn}
+                    onClick={() => void handleSearchNow()}
+                    disabled={searching}
+                  >
                     {searching ? '…' : 'Найти'}
                   </button>
                 </div>
@@ -324,47 +331,51 @@ export function SiteDeliveryPointSection({
                     ))}
                   </ul>
                 ) : null}
-              </>
-            ) : null}
-
-            <DeliveryPointMap
-              compact
-              lat={point?.lat ?? null}
-              lng={point?.lng ?? null}
-              editable={canEditPoint}
-              onPick={canEditPoint ? (lat, lng) => void handleMapPick(lat, lng) : undefined}
-            />
-
-            {point ? (
-              <p className={styles.caption}>
-                <span className={styles.captionAddr}>{captionAddr ?? 'Точка на карте'}</span>
-                {canAssignTrip ? (
-                  <a className={styles.naviBtn} href={yandexNaviUrl(point)}>
-                    Навигатор
-                  </a>
-                ) : (
-                  <span className={styles.captionMeta}>{formatLatLng(point.lat, point.lng)}</span>
-                )}
-              </p>
-            ) : null}
-
-            {canEditPoint ? (
-              <div className={styles.mapActions}>
-                <button type="button" className={styles.ghostBtn} onClick={handleHere} disabled={busy}>
-                  Я здесь
-                </button>
-                {point ? (
-                  <button
-                    type="button"
-                    className={styles.ghostBtnDanger}
-                    disabled={busy}
-                    onClick={() => void commit(null)}
-                  >
-                    Снять
-                  </button>
-                ) : null}
               </div>
             ) : null}
+
+            <div className={styles.mapGrow}>
+              <DeliveryPointMap
+                compact
+                lat={point?.lat ?? null}
+                lng={point?.lng ?? null}
+                editable={canEditPoint}
+                onPick={canEditPoint ? (lat, lng) => void handleMapPick(lat, lng) : undefined}
+              />
+            </div>
+
+            <div className={styles.mapFooter}>
+              {point ? (
+                <>
+                  <span className={styles.captionAddr}>{captionAddr ?? 'Точка на карте'}</span>
+                  <span className={styles.captionMeta}>{formatLatLng(point.lat, point.lng)}</span>
+                  {canAssignTrip ? (
+                    <a className={styles.naviBtn} href={yandexNaviUrl(point)}>
+                      Навигатор
+                    </a>
+                  ) : null}
+                </>
+              ) : (
+                <span className={styles.captionAddr}>Точка ещё не выбрана</span>
+              )}
+              {canEditPoint ? (
+                <div className={styles.mapActions}>
+                  <button type="button" className={styles.ghostBtn} onClick={handleHere} disabled={busy}>
+                    Я здесь
+                  </button>
+                  {point ? (
+                    <button
+                      type="button"
+                      className={styles.ghostBtnDanger}
+                      disabled={busy}
+                      onClick={() => void commit(null)}
+                    >
+                      Снять
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
 
             {geoError ? <p className={styles.error}>{geoError}</p> : null}
           </div>
@@ -375,25 +386,29 @@ export function SiteDeliveryPointSection({
                 <p className={styles.assignLead}>
                   {point
                     ? serverBacked
-                      ? 'Рейс уйдёт на сервер и появится в кабинете водителя на любом устройстве.'
-                      : 'Рейс появится в кабинете водителя. Точка пока только на этом устройстве.'
-                    : 'Поставьте точку на карте — затем отправьте рейс.'}
+                      ? 'Рейс уйдёт на сервер и появится в кабинете на любом устройстве.'
+                      : 'Рейс появится в кабинете. Точка пока только на этом устройстве.'
+                    : 'Сначала поставьте точку на карте.'}
                 </p>
-                <div className={styles.group}>
-                  <div className={styles.assignRow}>
-                    <input
-                      className={styles.search}
-                      list={`${fieldId}-drivers`}
-                      value={driverName}
-                      placeholder="Водитель"
-                      onChange={(e) => setDriverName(e.target.value)}
-                    />
-                    <datalist id={`${fieldId}-drivers`}>
-                      {operators.map((n) => (
-                        <option key={n} value={n} />
-                      ))}
-                    </datalist>
-                  </div>
+
+                <div className={`${styles.zone} ${styles.zoneDriver}`}>
+                  <p className={styles.zoneLabel}>Водитель</p>
+                  <input
+                    className={styles.fieldInput}
+                    list={`${fieldId}-drivers`}
+                    value={driverName}
+                    placeholder="ФИО водителя"
+                    onChange={(e) => setDriverName(e.target.value)}
+                  />
+                  <datalist id={`${fieldId}-drivers`}>
+                    {operators.map((n) => (
+                      <option key={n} value={n} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div className={`${styles.zone} ${styles.zoneCargo}`}>
+                  <p className={styles.zoneLabel}>Груз</p>
                   {cargoChoices.length > 0 ? (
                     <div className={styles.cargoChips} role="group" aria-label="Что грузить">
                       {cargoChoices.map((c) => {
@@ -405,7 +420,9 @@ export function SiteDeliveryPointSection({
                             className={`${styles.roleBtn} ${on ? styles.roleOn : ''}`}
                             onClick={() =>
                               setPickedCargo((prev) =>
-                                prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id],
+                                prev.includes(c.id)
+                                  ? prev.filter((id) => id !== c.id)
+                                  : [...prev, c.id],
                               )
                             }
                           >
@@ -416,11 +433,15 @@ export function SiteDeliveryPointSection({
                     </div>
                   ) : null}
                   <input
-                    className={styles.search}
+                    className={styles.fieldInput}
                     value={cargoNote}
-                    placeholder={cargoChoices.length ? 'Или что грузить' : 'Что грузить'}
+                    placeholder={cargoChoices.length ? 'Или свой груз' : 'Что грузить'}
                     onChange={(e) => setCargoNote(e.target.value)}
                   />
+                </div>
+
+                <div className={`${styles.zone} ${styles.zoneRoute}`}>
+                  <p className={styles.zoneLabel}>Маршрут</p>
                   <label className={styles.check}>
                     Уже в кузове
                     <input
@@ -431,7 +452,7 @@ export function SiteDeliveryPointSection({
                   </label>
                   {alreadyLoaded ? null : (
                     <input
-                      className={styles.search}
+                      className={styles.fieldInput}
                       value={pickupAddress}
                       placeholder="Откуда грузить"
                       onChange={(e) => setPickupAddress(e.target.value)}
@@ -450,13 +471,14 @@ export function SiteDeliveryPointSection({
                     <p className={styles.hintNote}>{point.hint}</p>
                   ) : null}
                 </div>
+
                 <button
                   type="button"
-                  className={styles.assignBtn}
+                  className={`${styles.assignBtn} ${assignedOk !== 'off' ? styles.assignBtnOk : ''}`}
                   disabled={!point || !driverName.trim() || busy}
                   onClick={() => void handleAssign()}
                 >
-                  {assignedOk === 'off' ? 'Отправить' : 'Готово'}
+                  {assignedOk === 'off' ? 'Отправить рейс' : 'Отправлено'}
                 </button>
               </div>
             ) : point ? (
