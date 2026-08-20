@@ -374,7 +374,9 @@ export function SiteDeliveryPointSection({
               <div className={styles.assign}>
                 <p className={styles.assignLead}>
                   {point
-                    ? 'Рейс сразу появится в кабинете водителя.'
+                    ? serverBacked
+                      ? 'Рейс уйдёт на сервер и появится в кабинете водителя на любом устройстве.'
+                      : 'Рейс появится в кабинете водителя. Точка пока только на этом устройстве.'
                     : 'Поставьте точку на карте — затем отправьте рейс.'}
                 </p>
                 <div className={styles.group}>

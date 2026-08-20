@@ -43,16 +43,20 @@ export function upsertDriverTrip(trip: DriverTrip): DriverTrip[] {
 }
 
 export function mergeDriverTrips(local: readonly DriverTrip[], remote: readonly DriverTrip[]): DriverTrip[] {
-  const byId = new Map(local.map((t) => [t.id, t]))
-  for (const t of remote) {
-    const prev = byId.get(t.id)
+  const localById = new Map(local.map((t) => [t.id, t]))
+  const remoteIds = new Set(remote.map((t) => t.id))
+  const merged = remote.map((t) => {
+    const prev = localById.get(t.id)
     if (prev?.seenAtIso && !t.seenAtIso) {
-      byId.set(t.id, { ...t, seenAtIso: prev.seenAtIso })
-    } else {
-      byId.set(t.id, t)
+      return { ...t, seenAtIso: prev.seenAtIso }
     }
+    return t
+  })
+  // Локальные рейсы, которые ещё не дошли до сервера, оставляем.
+  for (const t of local) {
+    if (!remoteIds.has(t.id)) merged.push(t)
   }
-  return [...byId.values()]
+  return merged
 }
 
 export function markDriverTripSeen(id: string, atIso: string = new Date().toISOString()): DriverTrip[] {

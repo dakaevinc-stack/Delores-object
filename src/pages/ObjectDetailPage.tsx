@@ -101,6 +101,45 @@ export function ObjectDetailPage() {
     procurementRequestsRef.current = procurementRequests
   }, [procurementRequests])
 
+  const deliveryPointMigratedRef = useRef(false)
+
+  const applyDeliveryPointFromServer = useCallback(
+    async (
+      remoteAvailable: boolean,
+      remotePoint: SiteDeliveryPoint | null,
+      opts?: { allowMigrateLocal?: boolean },
+    ) => {
+      if (!site) return
+      setDeliveryPointRemoteActive(remoteAvailable)
+      if (!remoteAvailable) return
+
+      // Сервер — источник правды: null на сервере = точка снята везде.
+      if (remotePoint) {
+        setDeliveryPoint(remotePoint)
+        saveSiteDeliveryPoint(site.id, remotePoint)
+        return
+      }
+
+      // Однократный перенос старой локальной точки, если на сервере ещё пусто.
+      if (opts?.allowMigrateLocal && !deliveryPointMigratedRef.current) {
+        deliveryPointMigratedRef.current = true
+        const local = loadSiteDeliveryPoint(site.id)
+        if (local) {
+          const ok = await putSiteDeliveryPointRemote(site.id, local)
+          if (ok) {
+            setDeliveryPoint(local)
+            setDeliveryPointRemoteActive(true)
+            return
+          }
+        }
+      }
+
+      setDeliveryPoint(null)
+      saveSiteDeliveryPoint(site.id, null)
+    },
+    [site],
+  )
+
   const resyncFormsFromServer = useCallback(async () => {
     if (!site || !remoteFormsRef.current) return
     const bundle = await fetchSiteFormsFromServer(site.id)
@@ -111,22 +150,13 @@ export function ObjectDetailPage() {
       setObjectMediaManifest(bundle.objectMediaManifest)
       saveProcurementRequests(site.id, bundle.procurement)
       saveBrigadierReports(site.id, bundle.brigadier)
-      setDeliveryPointRemoteActive(bundle.deliveryPointRemoteAvailable)
-      if (bundle.deliveryPointRemoteAvailable) {
-        if (bundle.deliveryPoint) {
-          setDeliveryPoint(bundle.deliveryPoint)
-          saveSiteDeliveryPoint(site.id, bundle.deliveryPoint)
-        } else {
-          const local = loadSiteDeliveryPoint(site.id)
-          setDeliveryPoint(local)
-          if (local) {
-            const ok = await putSiteDeliveryPointRemote(site.id, local)
-            if (ok) setDeliveryPointRemoteActive(true)
-          }
-        }
-      }
+      await applyDeliveryPointFromServer(
+        bundle.deliveryPointRemoteAvailable,
+        bundle.deliveryPoint,
+        { allowMigrateLocal: false },
+      )
     }
-  }, [site])
+  }, [site, applyDeliveryPointFromServer])
 
   const handleUpdateProcurementRequest = useCallback(
     async (id: string, patch: Partial<ProcurementRequest>): Promise<boolean> => {
@@ -187,6 +217,7 @@ export function ObjectDetailPage() {
   useEffect(() => {
     if (!site) return
     let cancelled = false
+    deliveryPointMigratedRef.current = false
     setFormsApiMessage(null)
     setRemoteFormsActive(false)
     setRemoteObjectMediaActive(false)
@@ -213,26 +244,17 @@ export function ObjectDetailPage() {
       setBrigadierReports(bundle.brigadier)
       saveProcurementRequests(site.id, bundle.procurement)
       saveBrigadierReports(site.id, bundle.brigadier)
-      setDeliveryPointRemoteActive(bundle.deliveryPointRemoteAvailable)
-      if (bundle.deliveryPointRemoteAvailable) {
-        if (bundle.deliveryPoint) {
-          setDeliveryPoint(bundle.deliveryPoint)
-          saveSiteDeliveryPoint(site.id, bundle.deliveryPoint)
-        } else {
-          const local = loadSiteDeliveryPoint(site.id)
-          setDeliveryPoint(local)
-          if (local) {
-            const ok = await putSiteDeliveryPointRemote(site.id, local)
-            if (ok) setDeliveryPointRemoteActive(true)
-          }
-        }
-      }
+      await applyDeliveryPointFromServer(
+        bundle.deliveryPointRemoteAvailable,
+        bundle.deliveryPoint,
+        { allowMigrateLocal: true },
+      )
     })()
 
     return () => {
       cancelled = true
     }
-  }, [site])
+  }, [site, applyDeliveryPointFromServer])
 
   useEffect(() => {
     if (!site) return
