@@ -1281,11 +1281,12 @@
   position: fixed;
   inset: 0;
   z-index: 80;
-  background: rgba(10, 16, 28, 0.52);
+  background: rgba(10, 16, 28, 0.55);
   display: flex;
   align-items: flex-end;
   justify-content: center;
   padding: 12px;
+  backdrop-filter: blur(4px);
 }
 
 .dialog {
@@ -1293,9 +1294,9 @@
   max-height: min(92vh, 860px);
   overflow: auto;
   border-radius: 20px 20px 16px 16px;
-  background: #fff;
+  background: linear-gradient(180deg, #f7f9fc 0%, #ffffff 28%);
   box-shadow: 0 24px 60px rgba(10, 16, 28, 0.35);
-  padding: 18px 16px 20px;
+  padding: 0 0 18px;
 }
 
 .dialogHead {
@@ -1303,63 +1304,156 @@
   justify-content: space-between;
   gap: 12px;
   align-items: flex-start;
-  margin-bottom: 12px;
+  padding: 18px 16px 14px;
+  background: linear-gradient(135deg, #172a4d 0%, #243b5f 55%, #1a2f52 100%);
+  color: #f4f6f9;
+  border-radius: 20px 20px 0 0;
+}
+
+.dialogHeadMain {
+  min-width: 0;
+  flex: 1;
 }
 
 .dialogKicker {
   margin: 0 0 4px;
-  font-size: 11px;
-  font-weight: 750;
-  letter-spacing: 0.08em;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--brand-red);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .dialogTitle {
   margin: 0;
   font-size: 18px;
-  font-weight: 750;
-  color: var(--text-strong);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+  line-height: 1.25;
 }
 
-.dialogMeta {
-  margin: 6px 0 0;
-  font-size: 13px;
-  color: var(--muted);
+.dialogMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.metaChip,
+.metaChipMuted {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.metaChip {
+  background: rgba(238, 45, 58, 0.92);
+  color: #fff;
+}
+
+.metaChipMuted {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .closeBtn {
   width: 36px;
   height: 36px;
+  flex-shrink: 0;
   border: 0;
   border-radius: 10px;
-  background: var(--surface-2);
+  background: rgba(255, 255, 255, 0.12);
   font-size: 22px;
   line-height: 1;
   cursor: pointer;
-  color: var(--text-strong);
+  color: #fff;
 }
 
-.dialogProgress {
-  margin: 12px 0 0;
-  font-size: 14px;
+.closeBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dialogHero {
+  padding: 14px 16px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.heroBlock {
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(23, 42, 77, 0.1);
+}
+
+.heroLabel {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.instructionBanner {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+}
+
+.instructionActive {
+  background: rgba(23, 42, 77, 0.05);
+  border-color: rgba(23, 42, 77, 0.12);
+}
+
+.instructionDone {
+  background: rgba(22, 163, 74, 0.08);
+  border-color: rgba(22, 163, 74, 0.22);
+}
+
+.instructionText {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-strong);
+  line-height: 1.35;
+}
+
+.instructionSteps {
+  margin: 0;
+  padding: 0 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
   font-weight: 650;
-  color: var(--text-strong, #12141a);
-  line-height: 1.4;
+  color: var(--text-strong);
+  line-height: 1.35;
+}
+
+.managerProgressBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .dialogProgressSub {
-  margin: 4px 0 0;
+  margin: 0;
   font-size: 12.5px;
   color: var(--muted);
   line-height: 1.4;
 }
 
 .progressBar {
-  margin: 10px 0 16px;
-  height: 8px;
+  height: 6px;
   border-radius: 999px;
-  background: var(--surface-2);
+  background: rgba(23, 42, 77, 0.08);
   overflow: hidden;
 }
 
@@ -1367,38 +1461,38 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--status-ok), #3bb56d);
+  background: linear-gradient(90deg, #1d4ed8, #16a34a);
 }
 
 .stageList {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 8px 16px 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
 .stageCard {
-  border: 1px solid var(--border);
+  border: 1px solid rgba(23, 42, 77, 0.1);
   border-radius: 14px;
   padding: 14px;
-  background: #fbfcfe;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
 }
 
 .stage_done {
-  border-color: rgba(31, 143, 74, 0.35);
-  background: rgba(31, 143, 74, 0.05);
+  border-color: rgba(22, 163, 74, 0.28);
+  background: linear-gradient(180deg, rgba(22, 163, 74, 0.06) 0%, #fff 40%);
 }
 
 .stage_open {
   border-color: rgba(15, 23, 42, 0.08);
-  background: #fff;
 }
 
 .stage_focus {
-  border-color: rgba(238, 45, 58, 0.28);
-  box-shadow: 0 0 0 3px rgba(238, 45, 58, 0.08);
+  border-color: rgba(238, 45, 58, 0.35);
+  box-shadow: 0 0 0 3px rgba(238, 45, 58, 0.1);
 }
 
 .stage_locked {
@@ -1412,34 +1506,45 @@
 .stageHead {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.stageHeadLeft {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .stageIndex,
 .stagesHeading {
   margin: 0;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--brand-red, #ee2d3a);
 }
 
 .stagesHeading {
   margin: 16px 0 10px;
+  color: var(--muted);
 }
 
 .stageTitle {
-  margin: 0 0 4px;
+  margin: 0;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--text-strong);
+  line-height: 1.3;
 }
 
 .pointList {
   list-style: none;
-  margin: 10px 0 0;
+  margin: 0;
   padding: 0;
   display: flex;
   flex-wrap: wrap;
@@ -1452,9 +1557,9 @@
   gap: 6px;
   max-width: 100%;
   padding: 5px 10px;
-  border-radius: 999px;
-  background: rgba(23, 42, 77, 0.06);
-  border: 1px solid rgba(23, 42, 77, 0.12);
+  border-radius: 8px;
+  background: rgba(23, 42, 77, 0.05);
+  border: 1px solid rgba(23, 42, 77, 0.1);
   font-size: 12.5px;
   font-weight: 650;
   color: var(--text-strong);
@@ -1466,11 +1571,77 @@
   white-space: nowrap;
 }
 
+.pointTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .lockedQty {
-  font-size: 12px;
+  flex-shrink: 0;
+  font-size: 11.5px;
   font-weight: 800;
   color: var(--brand-navy, #172a4d);
   font-variant-numeric: tabular-nums;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(23, 42, 77, 0.06);
+}
+
+.zone {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.zoneLabel {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.zoneBrief {
+  background: rgba(29, 78, 216, 0.06);
+  border-color: rgba(29, 78, 216, 0.16);
+}
+
+.zoneBrief .zoneLabel {
+  color: #1d4ed8;
+}
+
+.zoneFact {
+  background: rgba(22, 163, 74, 0.07);
+  border-color: rgba(22, 163, 74, 0.18);
+}
+
+.zoneFact .zoneLabel {
+  color: #15803d;
+}
+
+.zoneQty {
+  background: rgba(180, 83, 9, 0.06);
+  border-color: rgba(180, 83, 9, 0.16);
+}
+
+.zoneQty .zoneLabel {
+  color: #b45309;
+}
+
+.zoneMedia {
+  background: rgba(23, 42, 77, 0.04);
+  border-color: rgba(23, 42, 77, 0.12);
+}
+
+.zoneMedia .zoneLabel {
+  color: var(--brand-navy, #172a4d);
+}
+
+.zoneManager {
+  background: rgba(23, 42, 77, 0.04);
+  border-color: rgba(23, 42, 77, 0.1);
 }
 
 .lockedFact {
@@ -1490,15 +1661,11 @@
 }
 
 .remainHint {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--text);
-}
-
-.remainHint strong {
-  font-weight: 800;
-  color: var(--text-strong);
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: #92400e;
+  font-weight: 650;
 }
 
 .overLimit {
@@ -1512,17 +1679,32 @@
 .stageReq,
 .stagePlan,
 .lockedNote,
-.hint {
+.hint,
+.hintMuted {
   margin: 0;
   font-size: 13px;
   color: var(--muted);
   line-height: 1.4;
 }
 
-.stagePlan {
-  margin-top: 6px;
-  font-weight: 650;
+.hintMuted {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.stageReq {
+  margin: 0 0 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.03);
+  border-left: 3px solid rgba(238, 45, 58, 0.45);
   color: var(--text);
+}
+
+.stagePlan {
+  margin-top: 10px;
+  font-weight: 700;
+  color: #15803d;
 }
 
 .lockedNote {
@@ -1532,7 +1714,7 @@
 
 .mediaRow {
   list-style: none;
-  margin: 10px 0 0;
+  margin: 0;
   padding: 0;
   display: flex;
   gap: 8px;
@@ -1553,9 +1735,9 @@
 }
 
 .mediaThumbLg {
-  width: 148px;
-  height: 110px;
-  border-radius: 12px;
+  width: 132px;
+  height: 96px;
+  border-radius: 10px;
   overflow: hidden;
   background: #e8edf5;
   border: 1px solid var(--border);
@@ -1570,9 +1752,9 @@
 }
 
 .mediaThumb {
-  width: 64px;
-  height: 64px;
-  border-radius: 10px;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
   overflow: hidden;
   background: #e8edf5;
   border: 1px solid var(--border);
@@ -1591,7 +1773,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 4px;
 }
 
 .field {
@@ -1614,6 +1796,12 @@
   font-weight: 500;
   color: var(--text-strong);
   background: #fff;
+}
+
+.zoneQty .field input {
+  font-size: 16px;
+  font-weight: 700;
+  border-color: rgba(180, 83, 9, 0.28);
 }
 
 .fieldFull {
@@ -1655,7 +1843,7 @@
 .primaryBtn,
 .dangerBtn {
   min-height: 44px;
-  border-radius: 12px;
+  border-radius: 11px;
   font: inherit;
   font-size: 14px;
   font-weight: 700;
@@ -1664,15 +1852,22 @@
 
 .mediaCta,
 .secondaryBtn {
-  border: 1px solid var(--border-strong);
+  border: 1px solid rgba(23, 42, 77, 0.16);
   background: #fff;
   color: var(--text-strong);
+}
+
+.mediaCta:hover,
+.secondaryBtn:hover {
+  border-color: rgba(23, 42, 77, 0.28);
+  background: rgba(23, 42, 77, 0.03);
 }
 
 .primaryBtn {
   border: 0;
   background: linear-gradient(180deg, #1c2c54, #0f1a35);
   color: #fff;
+  margin-top: 2px;
 }
 
 .primaryBtn:disabled {
@@ -1681,8 +1876,8 @@
 }
 
 .dangerBtn {
-  margin-top: 14px;
-  width: 100%;
+  margin: 14px 16px 0;
+  width: calc(100% - 32px);
   border: 1px solid rgba(198, 40, 40, 0.25);
   background: rgba(198, 40, 40, 0.06);
   color: var(--status-bad);
@@ -1692,14 +1887,38 @@
   margin: 0;
 }
 
+.dialogBody {
+  padding: 14px 16px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 @media (min-width: 720px) {
   .backdrop {
     align-items: center;
   }
 
   .dialog {
-    border-radius: 20px;
-    padding: 22px 22px 24px;
+    border-radius: 18px;
+  }
+
+  .dialogHead {
+    border-radius: 18px 18px 0 0;
+    padding: 20px 20px 16px;
+  }
+
+  .dialogHero,
+  .dialogBody,
+  .stageList {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .dangerBtn {
+    margin-left: 20px;
+    margin-right: 20px;
+    width: calc(100% - 40px);
   }
 }
 

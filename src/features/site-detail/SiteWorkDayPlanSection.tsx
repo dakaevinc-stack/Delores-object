@@ -638,66 +638,89 @@ function TaskDetailModal({
     <div className={styles.backdrop} role="dialog" aria-modal="true" onClick={onClose}>
       <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
         <header className={styles.dialogHead}>
-          <div>
-            <p className={styles.dialogKicker}>Где работать</p>
+          <div className={styles.dialogHeadMain}>
+            <p className={styles.dialogKicker}>Задание на смену</p>
             <h3 className={styles.dialogTitle}>{assignment.area}</h3>
-            <p className={styles.dialogMeta}>
-              {formatDayHeadingRu(assignment.dateKey)}
-              {role === 'manager' ? ` · ${assignment.brigadierName}` : null}
-            </p>
-            <ul className={styles.pointList}>
-              {points.map((p) => (
-                <li key={p.number} className={styles.pointChip}>
-                  <span className={styles.pointNum}>п. {p.number}</span>
-                  {p.title}
-                </li>
-              ))}
-            </ul>
+            <div className={styles.dialogMetaRow}>
+              <span className={styles.metaChip}>{formatDayHeadingRu(assignment.dateKey)}</span>
+              {role === 'manager' ? (
+                <span className={styles.metaChipMuted}>{assignment.brigadierName}</span>
+              ) : null}
+              <span className={styles.metaChipMuted}>
+                {prog.doneStages}/{prog.totalStages} пунктов
+              </span>
+            </div>
           </div>
           <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Закрыть">
             ×
           </button>
         </header>
 
-        {role === 'brigadier' ? (
-          <p className={styles.dialogProgress}>
-            {prog.allDone
-              ? 'Все пункты сделаны. Можно закрыть.'
-              : 'Пункты уже выбраны за тебя. По каждому напиши, сколько сделал, и приложи фото или видео.'}
-          </p>
-        ) : (
-          <>
-            <p className={styles.dialogProgress}>
-              Шаги: {prog.doneStages} из {prog.totalStages}
-              {prog.allDone ? ' · задание закрыто' : null}
-            </p>
-            {points.map((p) => {
-              const item = planItems.find((it) => it.number === p.number)
-              const total = item?.total ?? assignment.planTotalQty
-              const unit = item?.unitLabel ?? assignment.planUnit
-              return (
-                <p key={p.number} className={styles.dialogProgressSub}>
-                  п. {p.number} {p.title}:{' '}
-                  {formatProgressLine(
-                    issuedQtyForPlanItem(allAssignments, p.number),
-                    total,
-                    unit,
-                  )}
-                </p>
+        <div className={styles.dialogHero}>
+          <div className={styles.heroBlock}>
+            <p className={styles.heroLabel}>Состав задания</p>
+            <ul className={styles.pointList}>
+              {points.map((p) => (
+                <li key={p.number} className={styles.pointChip}>
+                  <span className={styles.pointNum}>п. {p.number}</span>
+                  <span className={styles.pointTitle}>{p.title}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div
+            className={`${styles.instructionBanner} ${
+              prog.allDone ? styles.instructionDone : styles.instructionActive
+            }`}
+          >
+            {role === 'brigadier' ? (
+              prog.allDone ? (
+                <p className={styles.instructionText}>Все пункты закрыты.</p>
+              ) : (
+                <ol className={styles.instructionSteps}>
+                  <li>Введите фактический объём</li>
+                  <li>Приложите фото или видео</li>
+                  <li>Нажмите «Готово»</li>
+                </ol>
               )
-            })}
-          </>
-        )}
-        <div className={styles.progressBar} aria-hidden>
-          <span
-            className={styles.progressFill}
-            style={{
-              width: `${Math.min(
-                100,
-                (prog.doneStages / Math.max(1, prog.totalStages)) * 100,
-              )}%`,
-            }}
-          />
+            ) : (
+              <div className={styles.managerProgressBlock}>
+                <p className={styles.instructionText}>
+                  {prog.allDone
+                    ? 'Задание закрыто.'
+                    : `Выполнено ${prog.doneStages} из ${prog.totalStages}.`}
+                </p>
+                {points.map((p) => {
+                  const item = planItems.find((it) => it.number === p.number)
+                  const total = item?.total ?? assignment.planTotalQty
+                  const unit = item?.unitLabel ?? assignment.planUnit
+                  return (
+                    <p key={p.number} className={styles.dialogProgressSub}>
+                      п. {p.number}:{' '}
+                      {formatProgressLine(
+                        issuedQtyForPlanItem(allAssignments, p.number),
+                        total,
+                        unit,
+                      )}
+                    </p>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className={styles.progressBar} aria-hidden>
+            <span
+              className={styles.progressFill}
+              style={{
+                width: `${Math.min(
+                  100,
+                  (prog.doneStages / Math.max(1, prog.totalStages)) * 100,
+                )}%`,
+              }}
+            />
+          </div>
         </div>
 
         <ol className={styles.stageList}>
@@ -722,12 +745,6 @@ function TaskDetailModal({
               qtyOk ? qtyNum : 0,
             )
             const isFocus = prog.openStage?.id === stage.id
-            const pointTitle = formatWorkPointLine(
-              pointNumber,
-              pointName,
-              stage.plannedQty,
-              stage.unit,
-            )
             const qtyDiffers =
               qtyOk && Math.abs(qtyNum - stage.plannedQty) > 0.0001
 
@@ -742,29 +759,30 @@ function TaskDetailModal({
                 } ${isFocus && !isDone ? styles.stage_focus : ''}`}
               >
                 <div className={styles.stageHead}>
-                  <span className={styles.stageIndex}>
-                    Пункт {pointNumber || index + 1}
-                  </span>
+                  <div className={styles.stageHeadLeft}>
+                    <span className={styles.stageIndex}>
+                      п. {pointNumber || index + 1}
+                    </span>
+                    <h4 className={styles.stageTitle}>{pointName}</h4>
+                  </div>
                   {isDone ? (
                     <span className={styles.badgeDone}>
-                      <CheckIcon /> Сделано
+                      <CheckIcon /> Готово
                     </span>
                   ) : (
                     <span className={styles.lockedQty}>
-                      задание {formatQtyRu(stage.plannedQty)} {stage.unit}
+                      план {formatQtyRu(stage.plannedQty)} {stage.unit}
                     </span>
                   )}
                 </div>
-                <h4 className={styles.stageTitle}>{pointTitle}</h4>
+
                 {stage.requirements.trim() ? (
                   <p className={styles.stageReq}>{stage.requirements}</p>
                 ) : null}
 
                 {brief.length > 0 ? (
-                  <div className={styles.mediaBlock}>
-                    <p className={styles.mediaCaption}>
-                      Смотри: что делать и где
-                    </p>
+                  <div className={`${styles.zone} ${styles.zoneBrief}`}>
+                    <p className={styles.zoneLabel}>Образец места</p>
                     <ul className={styles.mediaRow}>
                       {brief.map((m) => (
                         <li key={m.id} className={styles.mediaThumbLg}>
@@ -778,14 +796,12 @@ function TaskDetailModal({
                     </ul>
                   </div>
                 ) : role === 'brigadier' && !isDone ? (
-                  <p className={styles.hint}>
-                    Начальник ещё не приложил фото места. Делай, как написано в шаге.
-                  </p>
+                  <p className={styles.hintMuted}>Образец места пока не приложен.</p>
                 ) : null}
 
                 {isDone && stage.media.length > 0 ? (
-                  <div className={styles.mediaBlock}>
-                    <p className={styles.mediaCaption}>Твоё фото или видео — что сделал</p>
+                  <div className={`${styles.zone} ${styles.zoneFact}`}>
+                    <p className={styles.zoneLabel}>Факт с объекта</p>
                     <ul className={styles.mediaRow}>
                       {stage.media.map((m) => (
                         <li key={m.id} className={styles.mediaThumb}>
@@ -801,7 +817,7 @@ function TaskDetailModal({
                 ) : null}
 
                 {role === 'manager' ? (
-                  <div className={styles.managerActions}>
+                  <div className={`${styles.zone} ${styles.zoneManager}`}>
                     <input
                       ref={(el) => {
                         briefFileRefs.current[stage.id] = el
@@ -821,93 +837,89 @@ function TaskDetailModal({
                       className={styles.mediaCta}
                       onClick={() => briefFileRefs.current[stage.id]?.click()}
                     >
-                      Фото или видео: что делать и где
+                      Приложить образец места
                     </button>
-                    <p className={styles.hint}>
-                      Бригадир увидит это в шаге. Покажи место и как должно выглядеть.
-                    </p>
                   </div>
                 ) : null}
 
                 {isDone && stage.actualQty != null ? (
                   <p className={styles.stagePlan}>
-                    Сдал {formatQtyRu(stage.actualQty)} {stage.unit}
+                    Сдано {formatQtyRu(stage.actualQty)} {stage.unit}
                     {stage.actualQty !== stage.plannedQty
-                      ? ` · в задании было ${formatQtyRu(stage.plannedQty)} ${stage.unit}`
+                      ? ` · по плану ${formatQtyRu(stage.plannedQty)} ${stage.unit}`
                       : null}
                   </p>
                 ) : null}
 
                 {canWork ? (
                   <div className={styles.brigadierActions}>
-                    <p className={styles.lockedFact}>
-                      Работа уже выбрана:{' '}
-                      <strong>
-                        п. {pointNumber} {pointName}
-                      </strong>
-                      . Другой пункт выбирать не нужно.
-                    </p>
-                    <label className={styles.field}>
-                      <span>
-                        Сколько сделал по пункту {pointNumber || ''} ({stage.unit})
-                      </span>
+                    <div className={`${styles.zone} ${styles.zoneQty}`}>
+                      <p className={styles.zoneLabel}>1. Объём</p>
+                      <label className={styles.field}>
+                        <span>Факт, {stage.unit}</span>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min={0}
+                          step="any"
+                          value={qtyStr}
+                          onChange={(e) =>
+                            setQtyByStage((p) => ({ ...p, [stage.id]: e.target.value }))
+                          }
+                        />
+                      </label>
+                      {qtyDiffers ? (
+                        <p className={styles.remainHint}>
+                          План: {formatQtyRu(stage.plannedQty)} {stage.unit} → факт:{' '}
+                          {formatQtyRu(qtyNum)} {stage.unit}
+                        </p>
+                      ) : (
+                        <p className={styles.hintMuted}>
+                          По плану {formatQtyRu(stage.plannedQty)} {stage.unit}. При отклонении
+                          измените цифру.
+                        </p>
+                      )}
+                    </div>
+
+                    <div className={`${styles.zone} ${styles.zoneMedia}`}>
+                      <p className={styles.zoneLabel}>2. Подтверждение</p>
                       <input
-                        type="number"
-                        inputMode="decimal"
-                        min={0}
-                        step="any"
-                        value={qtyStr}
-                        onChange={(e) =>
-                          setQtyByStage((p) => ({ ...p, [stage.id]: e.target.value }))
-                        }
+                        ref={(el) => {
+                          fileRefs.current[stage.id] = el
+                        }}
+                        type="file"
+                        accept="image/*,video/*"
+                        multiple
+                        className={styles.hiddenFile}
+                        onChange={(e) => {
+                          addFactFiles(stage.id, e.target.files)
+                          e.target.value = ''
+                        }}
                       />
-                    </label>
-                    {qtyDiffers ? (
-                      <p className={styles.remainHint}>
-                        В задании было {formatQtyRu(stage.plannedQty)} {stage.unit}.
-                        Записываешь {formatQtyRu(qtyNum)} {stage.unit} — так и пойдёт в план.
-                      </p>
-                    ) : (
-                      <p className={styles.hint}>
-                        Если сделал не {formatQtyRu(stage.plannedQty)} {stage.unit} — исправь
-                        цифру. Например, вместо 100 напиши 80.
-                      </p>
-                    )}
-                    <input
-                      ref={(el) => {
-                        fileRefs.current[stage.id] = el
-                      }}
-                      type="file"
-                      accept="image/*,video/*"
-                      multiple
-                      className={styles.hiddenFile}
-                      onChange={(e) => {
-                        addFactFiles(stage.id, e.target.files)
-                        e.target.value = ''
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className={styles.mediaCta}
-                      onClick={() => fileRefs.current[stage.id]?.click()}
-                    >
-                      Фото или видео, что сделал
-                    </button>
-                    {draftMedia.length > 0 ? (
-                      <ul className={styles.mediaRow}>
-                        {draftMedia.map((m) => (
-                          <li key={m.id} className={styles.mediaThumb}>
-                            {m.kind === 'photo' ? (
-                              <img src={m.previewUrl} alt={m.name} />
-                            ) : (
-                              <video src={m.previewUrl} muted />
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className={styles.hint}>Нужно хотя бы одно своё фото или видео.</p>
-                    )}
+                      <button
+                        type="button"
+                        className={styles.mediaCta}
+                        onClick={() => fileRefs.current[stage.id]?.click()}
+                      >
+                        Фото или видео
+                      </button>
+                      {draftMedia.length > 0 ? (
+                        <ul className={styles.mediaRow}>
+                          {draftMedia.map((m) => (
+                            <li key={m.id} className={styles.mediaThumb}>
+                              {m.kind === 'photo' ? (
+                                <img src={m.previewUrl} alt={m.name} />
+                              ) : (
+                                <video src={m.previewUrl} muted />
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className={styles.hintMuted}>Нужно хотя бы одно вложение.</p>
+                      )}
+                    </div>
+
                     <button
                       type="button"
                       className={styles.primaryBtn}
@@ -920,7 +932,7 @@ function TaskDetailModal({
                         )
                       }
                     >
-                      Я сделал
+                      3. Готово
                     </button>
                   </div>
                 ) : null}
@@ -931,7 +943,7 @@ function TaskDetailModal({
 
         {role === 'manager' ? (
           <button type="button" className={styles.dangerBtn} onClick={onDelete}>
-            Удалить задачу
+            Удалить задание
           </button>
         ) : null}
       </div>
@@ -1034,9 +1046,9 @@ function AssignModal({
             ×
           </button>
         </header>
+        <div className={styles.dialogBody}>
         <p className={styles.hint}>
-          Выберите пункты справки и сколько сделать сегодня. Этот объём сразу вычтется из
-          остатка. Бригадир увидит только эти пункты — перепутать работу не сможет.
+          Выберите пункты плана и объём на день. Объём сразу спишется из остатка.
         </p>
 
         <div className={styles.formGrid}>
@@ -1266,6 +1278,7 @@ function AssignModal({
         >
           Поставить в план
         </button>
+        </div>
       </div>
     </div>
   )
