@@ -57,6 +57,17 @@
   background: #fff;
 }
 
+.projectFilesSlot {
+  margin: 0 0 clamp(20px, 3vw, 28px);
+  max-width: 420px;
+}
+
+@media (max-width: 720px) {
+  .projectFilesSlot {
+    max-width: none;
+  }
+}
+
 .toolbarCta {
   min-height: 48px;
   padding: 0 22px 1px;

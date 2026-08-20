@@ -116,3 +116,19 @@ export async function deleteProjectFile(id: string): Promise<void> {
     tx.objectStore(STORE_BLOBS).delete(id)
   })
 }
+
+/**
+ * Подгоняет локальный кэш под сервер: удаляет записи сайта, которых нет
+ * в remoteIds (кроме pendingIds — ещё не отправленные с этого устройства).
+ */
+export async function pruneProjectFilesToRemote(
+  siteId: string,
+  remoteIds: ReadonlySet<string>,
+  pendingIds: ReadonlySet<string> = new Set(),
+): Promise<void> {
+  const localRows = await listProjectFilesBySite(siteId)
+  for (const row of localRows) {
+    if (remoteIds.has(row.id) || pendingIds.has(row.id)) continue
+    await deleteProjectFile(row.id)
+  }
+}

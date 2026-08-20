@@ -34,6 +34,12 @@ function writeHeaders(withJsonBody: boolean): HeadersInit {
   return h
 }
 
+/** Есть ли ключ записи в текущей сборке (нужен для POST/PUT на сервер). */
+export function hasWriteSecret(): boolean {
+  const secret = import.meta.env.VITE_SITE_FORMS_WRITE_SECRET
+  return typeof secret === 'string' && secret.trim().length > 0
+}
+
 function siteUrl(siteId: string, tail: string): string {
   const b = apiBase()
   return `${b}/api/sites/${encodeURIComponent(siteId)}${tail}`
@@ -119,7 +125,10 @@ export function describeRemoteWriteError(
   what: 'отчёт' | 'заявку' | 'изменения' | 'удаление' | 'файл',
 ): string {
   if (result.reason === 'forbidden') {
-    return `Сервер отклонил ${what}: нет ключа записи. Нужен новый деплой бандла с актуальным VITE_SITE_FORMS_WRITE_SECRET — сообщите администратору.`
+    if (import.meta.env.DEV && !hasWriteSecret()) {
+      return `Сервер отклонил ${what}: в .env не задан VITE_SITE_FORMS_WRITE_SECRET (тот же, что на сервере). Перезапустите npm run dev или загрузите файл на http://94.242.58.24.`
+    }
+    return `Сервер отклонил ${what}: нет ключа записи. Обновите страницу (Ctrl+Shift+R) или сообщите администратору.`
   }
   if (result.reason === 'too_large') {
     return `${what.charAt(0).toUpperCase()}${what.slice(1)} не приняли — слишком большой объём. Уменьшите видео или количество фото и повторите.`

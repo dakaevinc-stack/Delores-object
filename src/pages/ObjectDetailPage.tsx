@@ -340,7 +340,12 @@ export function ObjectDetailPage() {
         </div>
       ) : null}
 
-      <SiteRoleZone zone="manager" actions={<SiteProjectHeaderCard siteId={site.id} canUpload />}>
+      {/* Общие PDF/DWG — одна карточка для всех зон и устройств. */}
+      <div className={styles.projectFilesSlot}>
+        <SiteProjectHeaderCard siteId={site.id} canUpload />
+      </div>
+
+      <SiteRoleZone zone="manager">
         <SiteDetailKpiGrid kpis={liveKpis} />
         <div className={styles.midGrid}>
           <SiteScheduleSection
