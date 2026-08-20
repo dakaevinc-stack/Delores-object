@@ -1,5 +1,5 @@
 /*
- * «Кто что заказал» — премиум-карточка в стиле «Сроки и динамика»:
+ * «Реестр заявок» — премиум-карточка в стиле «Сроки и динамика»:
  * navy→red rail, glass-метрики, аватары с инициалами, мягкие тени.
  */
 
@@ -121,32 +121,29 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
   gap: 0;
-  margin-bottom: 16px;
-  padding: 4px 0;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.68);
+  margin-bottom: 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(15, 23, 42, 0.06);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  overflow: hidden;
 }
 
 @media (max-width: 560px) {
   .stats {
     grid-template-columns: 1fr;
-    gap: 0;
-    padding: 0;
   }
 }
 
 .stat {
   display: grid;
-  grid-template-rows: 40px 14px 36px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-items: center;
+  column-gap: 10px;
   min-width: 0;
-  min-height: 102px;
-  padding: 14px 10px;
-  text-align: center;
+  min-height: 52px;
+  padding: 8px 14px;
 }
 
 .stat:not(:last-child) {
@@ -155,9 +152,8 @@
 
 @media (max-width: 560px) {
   .stat {
-    grid-template-rows: 40px 14px 36px;
-    min-height: 96px;
-    padding: 12px 14px;
+    min-height: 48px;
+    padding: 8px 12px;
   }
 
   .stat:not(:last-child) {
@@ -171,14 +167,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 13px;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   flex-shrink: 0;
   border: 1px solid rgba(255, 255, 255, 0.72);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.92) inset,
-    0 8px 18px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
 }
 
 .statIcon::after {
@@ -194,6 +188,8 @@
   display: block;
   position: relative;
   z-index: 1;
+  width: 14px;
+  height: 14px;
 }
 
 .statIcon_total {
@@ -218,31 +214,26 @@
 }
 
 .statLabel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 14px;
+  min-width: 0;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted, #6b7280);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
 }
 
 .statValue {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 36px;
-  font-size: 30px;
+  font-size: 22px;
   font-weight: 800;
   letter-spacing: -0.04em;
   color: var(--text-strong, #0f1114);
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  text-align: right;
 }
 
 .stat_total .statValue {

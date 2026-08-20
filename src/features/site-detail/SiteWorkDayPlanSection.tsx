@@ -96,10 +96,9 @@ function uniquePlanPoints(a: WorkDayAssignment): Array<{ number: string; title: 
 }
 
 const WORK_DAY_LEAD: Record<WorkDayRole, (siteName: string) => string> = {
-  manager: (siteName) =>
-    `${siteName}: выберите пункт справки и объём на день — он сразу уйдёт из остатка.`,
-  brigadier: (siteName) =>
-    `${siteName}: видите пункт от начальника, пишете сколько сделали, прикладываете фото или видео и нажимаете «Я сделал».`,
+  manager: () => 'Назначьте строку плана и объём на день.',
+  brigadier: () =>
+    'Укажите выполненный объём, приложите медиа и подтвердите выполнение.',
 }
 
 export function SiteWorkDayPlanSection({

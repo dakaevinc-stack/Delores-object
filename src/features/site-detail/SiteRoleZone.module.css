@@ -4,23 +4,22 @@
 }
 
 .head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px 20px;
-  margin-bottom: 18px;
-  padding-bottom: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: clamp(20px, 3vw, 36px);
+  row-gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
   border-bottom: 1px solid rgba(15, 23, 42, 0.1);
 }
 
 .headText {
   min-width: 0;
-  flex: 1 1 240px;
 }
 
 .kicker {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.18em;
@@ -29,7 +28,7 @@
 }
 
 .title {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
   font-size: clamp(20px, 2.1vw, 26px);
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -38,7 +37,7 @@
 
 .lead {
   margin: 0;
-  max-width: 58ch;
+  max-width: 52ch;
   font-size: 14px;
   line-height: 1.45;
   color: var(--muted);
@@ -48,16 +47,28 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  align-items: stretch;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+@media (max-width: 860px) {
+  .head {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .actions > * {
+    width: 100%;
+  }
 }
 
 @media (max-width: 640px) {
-  .actions {
-    width: 100%;
-  }
-
-  .actions :global(button),
-  .actions :global(a) {
+  .actions :global(button.toolbarCta),
+  .actions :global(a.toolbarCta) {
     width: 100%;
     justify-content: center;
   }

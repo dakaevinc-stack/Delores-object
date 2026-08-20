@@ -148,14 +148,9 @@ export function SiteProcurementRequestsSection({
             Заявки снабженцу
           </h2>
           <p className={styles.lead}>
-            {serverBacked
-              ? 'Заявки сохраняются на сервере. '
-              : 'Заявки сохраняются на этом устройстве. '}
-            {filterAuthor
-              ? `Показаны заявки: ${filterAuthor}. `
-              : null}
-            Снабжение согласовывает заявку — только тогда она появляется у приёмщика.
-            Снять или изменить можно, пока материал не приняли на объекте.
+            {serverBacked ? 'На сервере. ' : 'На этом устройстве. '}
+            {filterAuthor ? `Фильтр: ${filterAuthor}. ` : null}
+            После согласования — у приёмщика. Правки до приёмки.
           </p>
         </div>
         <button type="button" className={styles.createBtn} onClick={onCreate}>

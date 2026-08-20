@@ -142,11 +142,9 @@ export function SiteProcurementAccountingSection({
         <div className={styles.titleRow}>
           <div>
             <h2 className={styles.title} id="procurement-accounting-heading">
-              Кто что заказал
+              Реестр заявок
             </h2>
-            <p className={styles.lead}>
-              Нажмите на имя — ниже останутся только его заявки.
-            </p>
+            <p className={styles.lead}>Фильтр по заявителю.</p>
           </div>
           {selectedAuthor ? (
             <button type="button" className={styles.clearBtn} onClick={() => onSelectAuthor(null)}>
@@ -260,7 +258,7 @@ export function SiteProcurementAccountingSection({
           onClick={() => setShowAllMaterials((v) => !v)}
           aria-expanded={showAllMaterials}
         >
-          {showAllMaterials ? 'Скрыть общий список' : 'Показать всё, что заказали на объекте'}
+          {showAllMaterials ? 'Скрыть сводку материалов' : 'Показать сводку материалов'}
         </button>
 
         {showAllMaterials ? (
@@ -294,7 +292,7 @@ export function SiteProcurementAccountingSection({
 
         <details className={styles.history}>
           <summary>
-            Все заявки по порядку ({summary.totalRequests})
+            Журнал заявок ({summary.totalRequests})
             <span className={styles.historyChevron} aria-hidden>
               <ChevronDownIcon />
             </span>

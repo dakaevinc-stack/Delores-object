@@ -523,149 +523,126 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
       ) : null}
 
       <aside className={styles.card} aria-labelledby={`${uid}-title`}>
-        {/* ── Шапка ── */}
-        <div className={styles.top}>
-          <div>
+        <div className={styles.rail}>
+          <div className={styles.railLabel}>
             <p className={styles.kicker}>Проект</p>
-            <p className={styles.title} id={`${uid}-title`}>PDF / DWG</p>
-          </div>
-          {busyText ? (
-            <span className={styles.statusBusy}>{busyText}</span>
-          ) : hasAny ? (
-            <span className={styles.statusReady}>Готово</span>
-          ) : (
-            <span className={styles.statusEmpty}>Пусто</span>
-          )}
-        </div>
-
-        {/* ── PDF строка ── */}
-        <div className={`${styles.fileRow} ${pdf ? '' : styles.fileRowEmpty}`}>
-          <span className={`${styles.fileTag} ${styles.fileTagPdf}`}>PDF</span>
-          <div className={styles.fileRowBody}>
-            {pdf ? (
-              <>
-                <span className={styles.fileName}>{pdf.name}</span>
-                <span className={styles.fileMeta}>{formatSize(pdf.sizeBytes)}</span>
-              </>
+            <p className={styles.title} id={`${uid}-title`}>
+              PDF / DWG
+            </p>
+            {busyText ? (
+              <span className={styles.statusBusy}>{busyText}</span>
+            ) : hasAny ? (
+              <span className={styles.statusReady}>Готово</span>
             ) : (
-              <span className={styles.fileEmpty}>Не загружен</span>
+              <span className={styles.statusEmpty}>Пусто</span>
             )}
           </div>
-          <div className={styles.fileRowActions}>
-            {pdf ? (
-              <>
-                <div className={styles.fileRowActionsTop}>
-                  <button type="button" className={styles.actionBtnPrimary} onClick={() => setViewerOpen(true)}>
-                    Открыть
-                  </button>
-                  <a className={styles.actionBtnSecondary} href={pdf.url} download={pdf.name}>
-                    Скачать
-                  </a>
-                </div>
-                {canUpload ? (
-                  <div className={styles.fileRowActionsBottom}>
-                    <button
-                      type="button"
-                      className={styles.actionBtnMuted}
-                      onClick={() => pdfInputRef.current?.click()}
-                    >
-                      Заменить
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.actionBtnDanger}
-                      onClick={() => void removeAsset('pdf')}
-                    >
-                      Убрать
-                    </button>
-                  </div>
-                ) : null}
-              </>
-            ) : canUpload ? (
-              <button
-                type="button"
-                className={styles.actionBtnPrimary}
-                onClick={() => pdfInputRef.current?.click()}
-              >
-                Загрузить
-              </button>
-            ) : null}
-          </div>
-        </div>
 
-        {/* ── DWG строка ── */}
-        <div className={`${styles.fileRow} ${dwg ? '' : styles.fileRowEmpty}`}>
-          <span className={`${styles.fileTag} ${styles.fileTagDwg}`}>DWG</span>
-          <div className={styles.fileRowBody}>
-            {dwg ? (
-              <>
-                <span className={styles.fileName}>{dwg.name}</span>
-                <span className={styles.fileMeta}>{formatSize(dwg.sizeBytes)}</span>
-              </>
-            ) : (
-              <span className={styles.fileEmpty}>Не загружен</span>
-            )}
-          </div>
-          <div className={styles.fileRowActions}>
-            {dwg ? (
-              <>
-                <div className={styles.fileRowActionsTop}>
-                  <button type="button" className={styles.actionBtnPrimary} onClick={() => void openDwgViewer()}>
-                    Открыть
+          <div className={styles.files}>
+            <div className={`${styles.fileRow} ${pdf ? '' : styles.fileRowEmpty}`}>
+              <span className={`${styles.fileTag} ${styles.fileTagPdf}`}>PDF</span>
+              <div className={styles.fileRowBody}>
+                {pdf ? (
+                  <span className={styles.fileName} title={pdf.name}>
+                    {pdf.name}
+                    <span className={styles.fileMeta}> · {formatSize(pdf.sizeBytes)}</span>
+                  </span>
+                ) : (
+                  <span className={styles.fileEmpty}>Не загружен</span>
+                )}
+              </div>
+              <div className={styles.fileRowActions}>
+                {pdf ? (
+                  <>
+                    <button type="button" className={styles.actionBtnPrimary} onClick={() => setViewerOpen(true)}>
+                      Открыть
+                    </button>
+                    <a className={styles.actionBtnSecondary} href={pdf.url} download={pdf.name} title="Скачать">
+                      ↓
+                    </a>
+                    {canUpload ? (
+                      <button
+                        type="button"
+                        className={styles.actionBtnDanger}
+                        onClick={() => void removeAsset('pdf')}
+                        title="Убрать"
+                      >
+                        ×
+                      </button>
+                    ) : null}
+                  </>
+                ) : canUpload ? (
+                  <button
+                    type="button"
+                    className={styles.actionBtnPrimary}
+                    onClick={() => pdfInputRef.current?.click()}
+                  >
+                    Загрузить
                   </button>
-                  <a className={styles.actionBtnSecondary} href={dwg.url} download={dwg.name}>
-                    Скачать
-                  </a>
-                </div>
-                {canUpload ? (
-                  <div className={styles.fileRowActionsBottom}>
-                    <button
-                      type="button"
-                      className={styles.actionBtnMuted}
-                      onClick={() => dwgInputRef.current?.click()}
-                    >
-                      Заменить
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.actionBtnDanger}
-                      onClick={() => void removeAsset('dwg')}
-                    >
-                      Убрать
-                    </button>
-                  </div>
                 ) : null}
-              </>
-            ) : canUpload ? (
-              <button
-                type="button"
-                className={styles.actionBtnPrimary}
-                onClick={() => dwgInputRef.current?.click()}
-              >
-                Загрузить
-              </button>
-            ) : null}
+              </div>
+            </div>
+
+            <div className={`${styles.fileRow} ${dwg ? '' : styles.fileRowEmpty}`}>
+              <span className={`${styles.fileTag} ${styles.fileTagDwg}`}>DWG</span>
+              <div className={styles.fileRowBody}>
+                {dwg ? (
+                  <span className={styles.fileName} title={dwg.name}>
+                    {dwg.name}
+                    <span className={styles.fileMeta}> · {formatSize(dwg.sizeBytes)}</span>
+                  </span>
+                ) : (
+                  <span className={styles.fileEmpty}>Не загружен</span>
+                )}
+              </div>
+              <div className={styles.fileRowActions}>
+                {dwg ? (
+                  <>
+                    <button type="button" className={styles.actionBtnPrimary} onClick={() => void openDwgViewer()}>
+                      Открыть
+                    </button>
+                    <a className={styles.actionBtnSecondary} href={dwg.url} download={dwg.name} title="Скачать">
+                      ↓
+                    </a>
+                    {canUpload ? (
+                      <button
+                        type="button"
+                        className={styles.actionBtnDanger}
+                        onClick={() => void removeAsset('dwg')}
+                        title="Убрать"
+                      >
+                        ×
+                      </button>
+                    ) : null}
+                  </>
+                ) : canUpload ? (
+                  <button
+                    type="button"
+                    className={styles.actionBtnPrimary}
+                    onClick={() => dwgInputRef.current?.click()}
+                  >
+                    Загрузить
+                  </button>
+                ) : null}
+              </div>
+            </div>
           </div>
         </div>
 
         {canUpload && !loading && hasLocalOnly ? (
           <div className={styles.hintRow}>
-            <p className={styles.hint}>Файл ещё не на сервере — другие устройства его не видят.</p>
-            <button type="button" className={styles.actionBtnMuted} onClick={() => {
-              syncBlockedRef.current = false
-              void loadAssets({ silent: true })
-            }}>
-              Отправить на сервер
+            <p className={styles.hint}>Файл ещё не на сервере.</p>
+            <button
+              type="button"
+              className={styles.actionBtnMuted}
+              onClick={() => {
+                syncBlockedRef.current = false
+                void loadAssets({ silent: true })
+              }}
+            >
+              Отправить
             </button>
           </div>
-        ) : canUpload && !loading ? (
-          <p className={styles.hint}>
-            {remoteActive
-              ? 'Одинаково на всех устройствах: добавление и удаление сразу на сервере.'
-              : 'Файлы пока сохраняются только на этом устройстве.'}
-          </p>
-        ) : !loading && remoteActive ? (
-          <p className={styles.hint}>Файлы с сервера — те же, что на других устройствах.</p>
         ) : null}
         {syncMessage ? <p className={styles.hint}>{syncMessage}</p> : null}
       </aside>
