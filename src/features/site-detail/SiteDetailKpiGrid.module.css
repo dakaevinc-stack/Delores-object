@@ -10,6 +10,10 @@
   margin-bottom: clamp(28px, 4vw, 40px);
 }
 
+.sectionEmbedded {
+  margin-bottom: clamp(20px, 2.8vw, 28px);
+}
+
 /* ─── Шапка ──────────────────────────────────────────────────────── */
 
 .sectionHead {

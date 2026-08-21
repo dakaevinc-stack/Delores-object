@@ -13,9 +13,9 @@ export const SITE_PAGE_ZONES: Record<
   { kicker: string; title: string; lead: string }
 > = {
   manager: {
-    kicker: 'Руководитель',
-    title: 'Объект и план',
-    lead: 'Сроки, график и справка план/факт по объекту.',
+    kicker: '',
+    title: 'Сводка по объекту',
+    lead: 'Прогресс, сроки и отклонение от плана — из графика работ и отчётов бригадира.',
   },
   brigadier: {
     kicker: 'Бригадир',

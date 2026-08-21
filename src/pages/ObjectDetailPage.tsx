@@ -354,7 +354,7 @@ export function ObjectDetailPage() {
         zone="manager"
         actions={<SiteProjectHeaderCard siteId={site.id} canUpload />}
       >
-        <SiteDetailKpiGrid kpis={liveKpis} />
+        <SiteDetailKpiGrid kpis={liveKpis} embedded />
         <div className={styles.midGrid}>
           <SiteScheduleSection
             kpis={liveKpis}

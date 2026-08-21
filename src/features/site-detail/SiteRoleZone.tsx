@@ -11,6 +11,7 @@ type Props = {
 export function SiteRoleZone({ zone, actions, children }: Props) {
   const copy = SITE_PAGE_ZONES[zone]
   const titleId = `site-zone-${zone}-title`
+  const showKicker = Boolean(copy.kicker.trim())
 
   return (
     <section className={styles.zone} data-site-zone={zone} aria-labelledby={titleId}>
@@ -18,10 +19,12 @@ export function SiteRoleZone({ zone, actions, children }: Props) {
         <div className={styles.headRail} aria-hidden />
         <div className={styles.headGlow} aria-hidden />
         <div className={styles.headText}>
-          <p className={styles.kicker}>
-            <img className={styles.kickerMark} src="/brand-chevron.svg" alt="" aria-hidden />
-            {copy.kicker}
-          </p>
+          {showKicker ? (
+            <p className={styles.kicker}>
+              <img className={styles.kickerMark} src="/brand-chevron.svg" alt="" aria-hidden />
+              {copy.kicker}
+            </p>
+          ) : null}
           <h2 className={styles.title} id={titleId}>
             {copy.title}
           </h2>

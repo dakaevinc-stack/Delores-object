@@ -7,6 +7,8 @@ import styles from './SiteDetailKpiGrid.module.css'
 
 type Props = {
   kpis: SiteLiveKpis
+  /** Без своей шапки — когда сверху уже зона «Сводка по объекту». */
+  embedded?: boolean
 }
 
 const NUM_FMT = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 })
@@ -61,7 +63,7 @@ function fmtSignedPct(n: number): string {
   return `${sign}${Math.abs(n).toFixed(1).replace('.', ',')}`
 }
 
-export function SiteDetailKpiGrid({ kpis }: Props) {
+export function SiteDetailKpiGrid({ kpis, embedded = false }: Props) {
   const tone = STATUS_TONE[kpis.status]
   const statusLabel = STATUS_LABEL[kpis.status]
 
@@ -88,25 +90,29 @@ export function SiteDetailKpiGrid({ kpis }: Props) {
         : 'идём ровно по плану'
 
   return (
-    <section className={styles.section} aria-labelledby="site-kpi-heading">
-      <div className={styles.sectionHead}>
-        <p className={styles.kicker}>
-          <img
-            className={styles.kickerMark}
-            src="/brand-chevron.svg"
-            alt=""
-            aria-hidden="true"
-          />
-          <span>Сводка по объекту</span>
-        </p>
-        <h2 className={styles.sectionTitle} id="site-kpi-heading">
-          Ключевые показатели
-        </h2>
-        <p className={styles.sectionLead}>
-          Реальные цифры по объёму работ и срокам — пересчитываются автоматически
-          из плана и отчётов бригадира.
-        </p>
-      </div>
+    <section
+      className={`${styles.section} ${embedded ? styles.sectionEmbedded : ''}`}
+      aria-labelledby={embedded ? 'site-zone-manager-title' : 'site-kpi-heading'}
+    >
+      {embedded ? null : (
+        <div className={styles.sectionHead}>
+          <p className={styles.kicker}>
+            <img
+              className={styles.kickerMark}
+              src="/brand-chevron.svg"
+              alt=""
+              aria-hidden="true"
+            />
+            <span>Сводка по объекту</span>
+          </p>
+          <h2 className={styles.sectionTitle} id="site-kpi-heading">
+            Ключевые показатели
+          </h2>
+          <p className={styles.sectionLead}>
+            Прогресс, сроки и отклонение от плана — из графика работ и отчётов бригадира.
+          </p>
+        </div>
+      )}
 
       <div className={styles.grid}>
         {/* ── Прогресс ─────────────────────────────────────────────── */}
