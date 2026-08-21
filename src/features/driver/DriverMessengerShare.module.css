@@ -111,8 +111,7 @@
 }
 
 .max .glyph {
-  background: linear-gradient(145deg, #7c6cf0 0%, #4f46e5 100%);
-  font-weight: 800;
+  background: linear-gradient(145deg, #471aff 0%, #6e1aff 45%, #9500ff 100%);
 }
 
 .maps {
