@@ -1,5 +1,5 @@
 .section {
-  margin-bottom: clamp(24px, 3vw, 32px);
+  margin-bottom: var(--block-gap);
 }
 
 .head {

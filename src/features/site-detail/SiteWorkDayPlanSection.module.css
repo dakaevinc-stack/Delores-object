@@ -1,5 +1,5 @@
 .section {
-  margin-bottom: clamp(28px, 3vw, 40px);
+  margin-bottom: var(--block-gap);
 }
 
 .embedded {

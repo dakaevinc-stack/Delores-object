@@ -28,6 +28,9 @@
   --status-warn: #d4a017;
   --status-bad: #c62828;
 
+  /* Одинаковый зазор между крупными блоками по всему приложению */
+  --block-gap: 24px;
+
   --sans:
     'Inter',
     system-ui,

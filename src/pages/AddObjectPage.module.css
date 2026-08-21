@@ -23,7 +23,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 10px;
-  margin-bottom: 24px;
+  margin-bottom: var(--block-gap);
   font-size: 14px;
 }
 
@@ -57,7 +57,7 @@
 }
 
 .header {
-  margin-bottom: 22px;
+  margin-bottom: var(--block-gap);
 }
 
 .title {

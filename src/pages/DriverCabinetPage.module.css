@@ -6,7 +6,7 @@
 }
 
 .nav {
-  margin-bottom: 18px;
+  margin-bottom: var(--block-gap);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -37,7 +37,7 @@
 }
 
 .head {
-  margin-bottom: 20px;
+  margin-bottom: var(--block-gap);
 }
 
 .kicker {

@@ -1,5 +1,5 @@
 .header {
-  margin-bottom: clamp(24px, 4vw, 36px);
+  margin-bottom: var(--block-gap);
 }
 
 .topBar {
