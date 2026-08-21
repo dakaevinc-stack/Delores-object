@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { collectTodayTripsForDriver, isTripUnread, namesMatchDriver, normalizeDriverTrip, tripCargoPreview } from './driverTrip'
+import { collectTodayTripsForDriver, formatTripAssignedTime, isTripUnread, namesMatchDriver, normalizeDriverTrip, tripCargoPreview, tripPickupLabel, tripUnloadLabel } from './driverTrip'
 
 const point = {
   lat: 55.5,
@@ -13,6 +13,31 @@ describe('driverTrip', () => {
   it('водитель видит рейс, даже если написали фамилию чуть иначе', () => {
     expect(namesMatchDriver('Иванов Сергей', 'иванов')).toBe(true)
     expect(namesMatchDriver('Петров', 'Сидоров')).toBe(false)
+  })
+
+  it('подписи откуда/куда и время для карточки', () => {
+    const trip = normalizeDriverTrip({
+      id: '1',
+      dateKey: '2026-08-18',
+      driverName: 'Иванов',
+      vehiclePlate: '',
+      siteId: 'brusilova',
+      siteName: 'Брусилова',
+      point,
+      pickup: { address: 'База Пески, ворота 2', hint: '' },
+      assignedBy: '',
+      assignedByRole: 'dispatcher',
+      createdAtIso: '2026-08-18T10:30:00.000Z',
+    })
+    expect(trip).not.toBeNull()
+    if (!trip) return
+    expect(tripPickupLabel(trip)).toBe('База Пески, ворота 2')
+    expect(tripUnloadLabel(trip)).toBe('ул. Вокзальная, 12')
+    expect(formatTripAssignedTime(trip.createdAtIso)).toMatch(/\d{2}:\d{2}/)
+    expect(tripPickupLabel({ pickup: { address: '', hint: '' } })).toBe('Уже в кузове')
+    expect(tripUnloadLabel({ point: { ...point, address: '' }, siteName: 'Объект А' })).toBe(
+      'Объект А',
+    )
   })
 
   it('сегодняшние рейсы — только свои и на сегодня', () => {

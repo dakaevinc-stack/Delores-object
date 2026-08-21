@@ -3,8 +3,11 @@ import { Link, useSearchParams } from 'react-router-dom'
 import {
   collectTodayTripsForDriver,
   collectUnreadTrips,
+  formatTripAssignedTime,
   isTripUnread,
   tripCargoPreview,
+  tripPickupLabel,
+  tripUnloadLabel,
   type DriverTrip,
 } from '../domain/driverTrip'
 import { DriverTripSheet } from '../features/driver/DriverTripSheet'
@@ -40,6 +43,7 @@ export function DriverCabinetPage() {
   const [botUsername, setBotUsername] = useState('')
   const [telegramEnabled, setTelegramEnabled] = useState(false)
   const [telegramBound, setTelegramBound] = useState(false)
+  const [syncOk, setSyncOk] = useState<boolean | null>(null)
   const knownUnread = useRef<Set<string> | null>(null)
   const tripParam = searchParams.get('trip')
 
@@ -54,7 +58,11 @@ export function DriverCabinetPage() {
 
   const refresh = useCallback(async () => {
     const remote = await fetchDriverTripsRemote()
-    if (!remote) return
+    if (!remote) {
+      setSyncOk(false)
+      return
+    }
+    setSyncOk(true)
     const merged = mergeDriverTrips(loadDriverTrips(), remote)
     saveDriverTrips(merged)
     setTrips(merged)
@@ -147,6 +155,12 @@ export function DriverCabinetPage() {
   }, [openTrip])
 
   const botHref = botUsername ? `https://t.me/${botUsername}` : ''
+  const todayLabel = new Intl.DateTimeFormat('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    weekday: 'short',
+    timeZone: 'Europe/Moscow',
+  }).format(new Date())
 
   return (
     <div className={styles.page}>
@@ -154,6 +168,11 @@ export function DriverCabinetPage() {
         <Link className={styles.crumb} to="/">
           На главную
         </Link>
+        {syncOk === true ? (
+          <span className={styles.syncOn}>С сервера</span>
+        ) : syncOk === false ? (
+          <span className={styles.syncOff}>Только здесь</span>
+        ) : null}
       </nav>
 
       <header className={styles.head}>
@@ -161,11 +180,11 @@ export function DriverCabinetPage() {
           <img className={styles.kickerMark} src="/brand-chevron.svg" alt="" aria-hidden />
           Кабинет водителя
         </p>
-        <h1 className={styles.title}>Куда ехать сегодня</h1>
+        <h1 className={styles.title}>Рейсы на сегодня</h1>
         <p className={styles.lead}>
-          Напишите фамилию. Новый маршрут всплывёт здесь — нажмите и увидите, что грузить и куда
-          везти.
+          Укажите ФИО как у диспетчера. Каждый рейс — отдельно: откуда забрать и куда везти.
         </p>
+        <p className={styles.dateLine}>{todayLabel}</p>
       </header>
 
       <label className={styles.field}>
@@ -173,7 +192,7 @@ export function DriverCabinetPage() {
         <input
           className={styles.input}
           value={name}
-          placeholder="Фамилия и имя"
+          placeholder="Фамилия и имя — как в рейсе"
           autoComplete="name"
           onChange={(e) => setName(e.target.value)}
         />
@@ -185,9 +204,7 @@ export function DriverCabinetPage() {
           {telegramBound ? (
             <p className={styles.notifyOk}>Telegram подключён — рейс придёт и туда.</p>
           ) : (
-            <p className={styles.notifyLead}>
-              Один раз откройте бота и напишите ту же фамилию.
-            </p>
+            <p className={styles.notifyLead}>Один раз откройте бота и напишите ту же фамилию.</p>
           )}
           {botHref ? (
             <a className={styles.notifyBtn} href={botHref} target="_blank" rel="noreferrer">
@@ -198,11 +215,29 @@ export function DriverCabinetPage() {
       ) : null}
 
       {!name.trim() ? (
-        <p className={styles.empty}>Сначала напишите, кто вы — тогда покажем рейсы.</p>
+        <p className={styles.empty}>Сначала укажите ФИО — покажем ваши рейсы на сегодня.</p>
       ) : today.length === 0 ? (
-        <p className={styles.empty}>На сегодня рейсов нет. Когда диспетчер поставит маршрут — он появится здесь.</p>
+        <div className={styles.emptyBox}>
+          <p className={styles.empty}>На сегодня рейсов нет.</p>
+          <p className={styles.emptyHint}>
+            Когда диспетчер отправит рейс на это ФИО, он появится здесь. Проверьте написание — должно
+            совпадать с рейсом.
+          </p>
+        </div>
       ) : (
         <>
+          <div className={styles.summary} aria-live="polite">
+            <span className={styles.summaryCount}>
+              {today.length}{' '}
+              {today.length === 1 ? 'рейс' : today.length < 5 ? 'рейса' : 'рейсов'}
+            </span>
+            {unread.length > 0 ? (
+              <span className={styles.summaryNew}>{unread.length} новых</span>
+            ) : (
+              <span className={styles.summaryOk}>Все просмотрены</span>
+            )}
+          </div>
+
           {newestUnread && newestUnread.id !== openId ? (
             <button
               type="button"
@@ -210,19 +245,25 @@ export function DriverCabinetPage() {
               onClick={() => openTripById(newestUnread.id)}
             >
               <span className={styles.bannerKicker}>
-                {unread.length > 1 ? 'Новые маршруты' : 'Новый маршрут'}
+                {unread.length > 1 ? 'Есть новые рейсы' : 'Новый рейс'}
               </span>
               <span className={styles.bannerTitle}>
                 {tripCargoPreview(newestUnread) || newestUnread.siteName}
+              </span>
+              <span className={styles.bannerRoute}>
+                {tripPickupLabel(newestUnread)} → {tripUnloadLabel(newestUnread)}
               </span>
               <span className={styles.bannerGo}>Открыть</span>
             </button>
           ) : null}
 
-          <ul className={styles.list}>
+          <ol className={styles.list}>
             {today.map((trip, i) => {
               const preview = tripCargoPreview(trip)
               const unreadTrip = isTripUnread(trip)
+              const time = formatTripAssignedTime(trip.createdAtIso)
+              const from = tripPickupLabel(trip)
+              const to = tripUnloadLabel(trip)
               return (
                 <li key={trip.id}>
                   <button
@@ -230,27 +271,41 @@ export function DriverCabinetPage() {
                     className={`${styles.card} ${unreadTrip ? styles.cardNew : ''}`}
                     onClick={() => openTripById(trip.id)}
                   >
-                    <p className={styles.cardKicker}>
-                      {unreadTrip ? 'Новый · ' : ''}
-                      Рейс {i + 1}
-                      {trip.vehiclePlate ? ` · ${trip.vehiclePlate}` : ''}
-                    </p>
-                    <h2 className={styles.cardTitle}>{trip.siteName}</h2>
-                    {preview ? <p className={styles.cardAddress}>{preview}</p> : null}
-                    {trip.pickup.address ? (
-                      <p className={styles.cardHint}>Забрать: {trip.pickup.address}</p>
+                    <div className={styles.cardTop}>
+                      <span className={styles.cardNum}>Рейс {i + 1}</span>
+                      <span className={styles.cardTopRight}>
+                        {unreadTrip ? <span className={styles.badgeNew}>Новый</span> : null}
+                        {time ? <span className={styles.cardTime}>{time}</span> : null}
+                      </span>
+                    </div>
+
+                    {preview ? <p className={styles.cardCargo}>{preview}</p> : null}
+
+                    <div className={styles.route}>
+                      <div className={`${styles.routeBlock} ${styles.routeFrom}`}>
+                        <span className={styles.routeLabel}>Откуда</span>
+                        <span className={styles.routeValue}>{from}</span>
+                      </div>
+                      <span className={styles.routeArrow} aria-hidden>
+                        →
+                      </span>
+                      <div className={`${styles.routeBlock} ${styles.routeTo}`}>
+                        <span className={styles.routeLabel}>Куда</span>
+                        <span className={styles.routeValue}>{to}</span>
+                      </div>
+                    </div>
+
+                    <p className={styles.cardSite}>{trip.siteName}</p>
+                    {trip.vehiclePlate ? (
+                      <p className={styles.cardPlate}>{trip.vehiclePlate}</p>
                     ) : null}
-                    {trip.point.address ? (
-                      <p className={styles.cardHint}>Везти: {trip.point.address}</p>
-                    ) : (
-                      <p className={styles.cardHint}>Везти на объект</p>
-                    )}
+
                     <span className={styles.cardOpen}>Открыть маршрут</span>
                   </button>
                 </li>
               )
             })}
-          </ul>
+          </ol>
         </>
       )}
 

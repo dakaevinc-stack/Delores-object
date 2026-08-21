@@ -28,13 +28,29 @@
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
 }
 
+.headRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
 .kicker {
-  margin: 0 0 4px;
+  margin: 0;
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #b51f2d;
+}
+
+.time {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .title {
@@ -50,6 +66,18 @@
   font-size: 14px;
   font-weight: 650;
   color: var(--muted);
+}
+
+.stepPickup .stepTitle {
+  color: #1d4f91;
+}
+
+.stepUnload .stepTitle {
+  color: #b51f2d;
+}
+
+.numUnload {
+  background: #b51f2d;
 }
 
 .steps {

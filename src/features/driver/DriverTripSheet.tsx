@@ -1,4 +1,9 @@
-import { DRIVER_TRIP_ROLE_LABELS, tripCargoLines, type DriverTrip } from '../../domain/driverTrip'
+import {
+  DRIVER_TRIP_ROLE_LABELS,
+  formatTripAssignedTime,
+  tripCargoLines,
+  type DriverTrip,
+} from '../../domain/driverTrip'
 import { yandexMapsRouteUrl, yandexNaviUrl } from '../../domain/siteDeliveryPoint'
 import styles from './DriverTripSheet.module.css'
 
@@ -12,6 +17,9 @@ export function DriverTripSheet({ trip, onClose }: Props) {
   const pickupAddress = trip.pickup.address.trim()
   const pickupHint = trip.pickup.hint.trim()
   const hasPickup = Boolean(pickupAddress || pickupHint)
+  const unloadAddress = trip.point.address.trim()
+  const unloadHint = trip.point.hint.trim()
+  const time = formatTripAssignedTime(trip.createdAtIso)
 
   return (
     <div className={styles.scrim} role="presentation" onClick={onClose}>
@@ -21,67 +29,61 @@ export function DriverTripSheet({ trip, onClose }: Props) {
         aria-labelledby="driver-trip-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className={styles.kicker}>Маршрут</p>
+        <div className={styles.headRow}>
+          <p className={styles.kicker}>Маршрут</p>
+          {time ? <p className={styles.time}>назначен в {time}</p> : null}
+        </div>
         <h2 className={styles.title} id="driver-trip-title">
           {trip.siteName}
         </h2>
         {trip.vehiclePlate ? <p className={styles.meta}>{trip.vehiclePlate}</p> : null}
 
         <ol className={styles.steps}>
-          {hasPickup ? (
-            <li className={styles.step}>
-              <span className={styles.num} aria-hidden>
-                1
-              </span>
-              <div>
-                <h3 className={styles.stepTitle}>Забрать</h3>
-                {pickupAddress ? <p className={styles.strong}>{pickupAddress}</p> : null}
-                {pickupHint ? <p className={styles.hint}>{pickupHint}</p> : null}
-                {cargo.length > 0 ? (
-                  <ul className={styles.cargo}>
-                    {cargo.map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className={styles.hint}>Что грузить — уточните у диспетчера.</p>
-                )}
-              </div>
-            </li>
-          ) : (
-            <li className={styles.step}>
-              <span className={styles.num} aria-hidden>
-                1
-              </span>
-              <div>
-                <h3 className={styles.stepTitle}>Что везти</h3>
-                {cargo.length > 0 ? (
-                  <ul className={styles.cargo}>
-                    {cargo.map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className={styles.hint}>Уже в кузове или скажет диспетчер.</p>
-                )}
-              </div>
-            </li>
-          )}
-
-          <li className={styles.step}>
+          <li className={`${styles.step} ${styles.stepPickup}`}>
             <span className={styles.num} aria-hidden>
+              1
+            </span>
+            <div>
+              <h3 className={styles.stepTitle}>Откуда забрать</h3>
+              {hasPickup ? (
+                <>
+                  {pickupAddress ? <p className={styles.strong}>{pickupAddress}</p> : null}
+                  {pickupHint ? <p className={styles.hint}>{pickupHint}</p> : null}
+                </>
+              ) : (
+                <p className={styles.strong}>Уже в кузове / скажет диспетчер</p>
+              )}
+              {cargo.length > 0 ? (
+                <ul className={styles.cargo}>
+                  {cargo.map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className={styles.hint}>Что грузить — уточните у диспетчера.</p>
+              )}
+            </div>
+          </li>
+
+          <li className={`${styles.step} ${styles.stepUnload}`}>
+            <span className={`${styles.num} ${styles.numUnload}`} aria-hidden>
               2
             </span>
             <div>
-              <h3 className={styles.stepTitle}>Везти на объект</h3>
+              <h3 className={styles.stepTitle}>Куда везти</h3>
               <p className={styles.strong}>{trip.siteName}</p>
-              {trip.point.address ? <p className={styles.strong}>{trip.point.address}</p> : null}
-              {trip.point.hint ? <p className={styles.hint}>{trip.point.hint}</p> : null}
+              {unloadAddress ? <p className={styles.strong}>{unloadAddress}</p> : null}
+              {unloadHint ? <p className={styles.hint}>{unloadHint}</p> : null}
               <div className={styles.btns}>
                 <a className={styles.navi} href={yandexNaviUrl(trip.point)}>
                   Навигатор
                 </a>
-                <a className={styles.maps} href={yandexMapsRouteUrl(trip.point)} target="_blank" rel="noreferrer">
+                <a
+                  className={styles.maps}
+                  href={yandexMapsRouteUrl(trip.point)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   Яндекс.Карты
                 </a>
               </div>

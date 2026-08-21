@@ -65,6 +65,28 @@ export function tripCargoPreview(trip: Pick<DriverTrip, 'cargo' | 'cargoNote'>):
   return tripCargoLines(trip).join(', ')
 }
 
+/** Время назначения рейса (МСК), для списка в кабинете. */
+export function formatTripAssignedTime(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return new Intl.DateTimeFormat('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Moscow',
+  }).format(d)
+}
+
+export function tripPickupLabel(trip: Pick<DriverTrip, 'pickup'>): string {
+  const a = trip.pickup.address.trim()
+  return a || 'Уже в кузове'
+}
+
+export function tripUnloadLabel(trip: Pick<DriverTrip, 'point' | 'siteName'>): string {
+  const a = trip.point.address.trim()
+  if (a) return a
+  return trip.siteName.trim() || 'Объект'
+}
+
 export function isTripUnread(trip: Pick<DriverTrip, 'seenAtIso'>): boolean {
   return !trip.seenAtIso
 }
