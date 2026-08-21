@@ -13,9 +13,59 @@ export function whatsappShareUrl(text: string): string {
   return `https://wa.me/?text=${encodeURIComponent(text)}`
 }
 
-export function telegramShareUrl(text: string, url: string): string {
+/** Deep link в приложение Telegram (шаринг в чат). */
+export function telegramAppShareUrl(text: string, url: string): string {
+  const params = new URLSearchParams({ url, text })
+  return `tg://msg_url?${params.toString()}`
+}
+
+/** Веб-запасной вариант, если приложение не открылось. */
+export function telegramWebShareUrl(text: string, url: string): string {
   const params = new URLSearchParams({ url, text })
   return `https://t.me/share/url?${params.toString()}`
+}
+
+/** @deprecated используйте telegramAppShareUrl / telegramWebShareUrl */
+export function telegramShareUrl(text: string, url: string): string {
+  return telegramAppShareUrl(text, url)
+}
+
+/**
+ * Сначала пробуем открыть приложение Telegram, если не вышло — веб-шаринг.
+ */
+export function openTelegramShare(text: string, url: string): void {
+  if (typeof window === 'undefined') return
+  const appUrl = telegramAppShareUrl(text, url)
+  const webUrl = telegramWebShareUrl(text, url)
+  const started = Date.now()
+  let fellBack = false
+
+  const fallback = () => {
+    if (fellBack) return
+    fellBack = true
+    window.open(webUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  const onBlur = () => {
+    window.clearTimeout(timer)
+    window.removeEventListener('blur', onBlur)
+    window.removeEventListener('pagehide', onBlur)
+  }
+
+  window.addEventListener('blur', onBlur)
+  window.addEventListener('pagehide', onBlur)
+
+  // На macOS/iOS/Android зарегистрированный tg:// открывает приложение.
+  window.location.href = appUrl
+
+  const timer = window.setTimeout(() => {
+    window.removeEventListener('blur', onBlur)
+    window.removeEventListener('pagehide', onBlur)
+    // Если страница всё ещё на переднем плане — приложение не перехватило ссылку.
+    if (Date.now() - started >= 600 && !document.hidden && document.hasFocus()) {
+      fallback()
+    }
+  }, 900)
 }
 
 /** Deeplink MAX: экран выбора чата с готовым текстом. */

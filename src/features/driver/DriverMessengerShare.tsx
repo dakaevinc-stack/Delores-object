@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { maxShareUrl, telegramShareUrl, whatsappShareUrl } from '../../domain/driverShare'
+import { maxShareUrl, openTelegramShare, whatsappShareUrl } from '../../domain/driverShare'
 import styles from './DriverMessengerShare.module.css'
 
 type Props = {
@@ -177,7 +177,10 @@ export function DriverMessengerShare({ text, mapsUrl, compact = false, disabled 
     if (await copyText(text)) markCopied()
   }
 
-  const handleMax = async () => {
+  const handleTelegram = () => {
+    if (disabled) return
+    openTelegramShare(text, mapsUrl)
+  }
     if (disabled) return
     await copyText(text)
     markCopied()
@@ -209,8 +212,9 @@ export function DriverMessengerShare({ text, mapsUrl, compact = false, disabled 
         />
         <ShareTile
           className={styles.tg}
-          href={telegramShareUrl(text, mapsUrl)}
+          asButton
           disabled={disabled}
+          onClick={handleTelegram}
           icon={<IconTg />}
           label="Telegram"
         />

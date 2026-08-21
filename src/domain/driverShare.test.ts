@@ -4,7 +4,8 @@ import {
   maxShareUrl,
   renderDriverShareText,
   renderDriverTripShareText,
-  telegramShareUrl,
+  telegramAppShareUrl,
+  telegramWebShareUrl,
   whatsappShareUrl,
 } from './driverShare'
 import type { DriverTrip } from './driverTrip'
@@ -43,7 +44,10 @@ describe('driverShare', () => {
     const text = 'Куда везти\nБрусилова'
     expect(whatsappShareUrl(text)).toContain('https://wa.me/?text=')
     expect(whatsappShareUrl(text)).toContain(encodeURIComponent(text))
-    expect(telegramShareUrl(text, 'https://yandex.ru/maps/?rtext=1')).toContain('https://t.me/share/url?')
+    expect(telegramAppShareUrl(text, 'https://yandex.ru/maps/?rtext=1')).toContain('tg://msg_url?')
+    expect(telegramWebShareUrl(text, 'https://yandex.ru/maps/?rtext=1')).toContain(
+      'https://t.me/share/url?',
+    )
     expect(maxShareUrl(text)).toContain('https://max.ru/:share?text=')
     expect(maxShareUrl(text)).toContain(encodeURIComponent(text))
   })
