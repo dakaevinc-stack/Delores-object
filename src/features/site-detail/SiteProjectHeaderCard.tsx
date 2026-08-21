@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CadViewer, type CadViewerRef } from '@cadview/react'
 import { convertDwgToDxf, dwgConverter, initWasm } from '@cadview/dwg'
 import { computeEntitiesBounds, fitToView as coreFitToView } from '@cadview/core'
@@ -43,7 +43,6 @@ function formatSize(bytes: number): string {
 }
 
 export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
-  const uid = useId()
   const pdfInputRef = useRef<HTMLInputElement | null>(null)
   const dwgInputRef = useRef<HTMLInputElement | null>(null)
   const assetsRef = useRef<ProjectAsset[]>([])
@@ -515,101 +514,93 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
         </>
       ) : null}
 
-      <aside className={styles.card} aria-labelledby={`${uid}-title`}>
-        <div className={styles.rail}>
-          <div className={styles.railLabel}>
-            <p className={styles.title} id={`${uid}-title`}>
-              Проект
-            </p>
+      <aside className={styles.card} aria-label="Файлы проекта">
+        <div className={styles.files}>
+          <div className={`${styles.fileRow} ${pdf ? styles.fileRowReady : styles.fileRowEmpty}`}>
+            <span className={`${styles.fileTag} ${styles.fileTagPdf}`}>PDF</span>
+            <div className={styles.fileRowBody}>
+              {pdf ? (
+                <span className={styles.fileName} title={pdf.name}>
+                  <span className={styles.fileNameText}>{pdf.name}</span>
+                  <span className={styles.fileMeta}>{formatSize(pdf.sizeBytes)}</span>
+                </span>
+              ) : (
+                <span className={styles.fileEmpty}>Не загружен</span>
+              )}
+            </div>
+            <div className={styles.fileRowActions}>
+              {pdf ? (
+                <>
+                  <button type="button" className={styles.actionBtnPrimary} onClick={() => setViewerOpen(true)}>
+                    Открыть
+                  </button>
+                  <a className={styles.actionBtnSecondary} href={pdf.url} download={pdf.name} title="Скачать">
+                    ↓
+                  </a>
+                  {canUpload ? (
+                    <button
+                      type="button"
+                      className={styles.actionBtnDanger}
+                      onClick={() => void removeAsset('pdf')}
+                      title="Убрать"
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </>
+              ) : canUpload ? (
+                <button
+                  type="button"
+                  className={styles.actionBtnPrimary}
+                  onClick={() => pdfInputRef.current?.click()}
+                >
+                  Загрузить
+                </button>
+              ) : null}
+            </div>
           </div>
 
-          <div className={styles.files}>
-            <div className={`${styles.fileRow} ${pdf ? '' : styles.fileRowEmpty}`}>
-              <span className={`${styles.fileTag} ${styles.fileTagPdf}`}>PDF</span>
-              <div className={styles.fileRowBody}>
-                {pdf ? (
-                  <span className={styles.fileName} title={pdf.name}>
-                    {pdf.name}
-                    <span className={styles.fileMeta}> · {formatSize(pdf.sizeBytes)}</span>
-                  </span>
-                ) : (
-                  <span className={styles.fileEmpty}>Не загружен</span>
-                )}
-              </div>
-              <div className={styles.fileRowActions}>
-                {pdf ? (
-                  <>
-                    <button type="button" className={styles.actionBtnPrimary} onClick={() => setViewerOpen(true)}>
-                      Открыть
-                    </button>
-                    <a className={styles.actionBtnSecondary} href={pdf.url} download={pdf.name} title="Скачать">
-                      ↓
-                    </a>
-                    {canUpload ? (
-                      <button
-                        type="button"
-                        className={styles.actionBtnDanger}
-                        onClick={() => void removeAsset('pdf')}
-                        title="Убрать"
-                      >
-                        ×
-                      </button>
-                    ) : null}
-                  </>
-                ) : canUpload ? (
-                  <button
-                    type="button"
-                    className={styles.actionBtnPrimary}
-                    onClick={() => pdfInputRef.current?.click()}
-                  >
-                    Загрузить
-                  </button>
-                ) : null}
-              </div>
+          <div className={`${styles.fileRow} ${dwg ? styles.fileRowReady : styles.fileRowEmpty}`}>
+            <span className={`${styles.fileTag} ${styles.fileTagDwg}`}>DWG</span>
+            <div className={styles.fileRowBody}>
+              {dwg ? (
+                <span className={styles.fileName} title={dwg.name}>
+                  <span className={styles.fileNameText}>{dwg.name}</span>
+                  <span className={styles.fileMeta}>{formatSize(dwg.sizeBytes)}</span>
+                </span>
+              ) : (
+                <span className={styles.fileEmpty}>Не загружен</span>
+              )}
             </div>
-
-            <div className={`${styles.fileRow} ${dwg ? '' : styles.fileRowEmpty}`}>
-              <span className={`${styles.fileTag} ${styles.fileTagDwg}`}>DWG</span>
-              <div className={styles.fileRowBody}>
-                {dwg ? (
-                  <span className={styles.fileName} title={dwg.name}>
-                    {dwg.name}
-                    <span className={styles.fileMeta}> · {formatSize(dwg.sizeBytes)}</span>
-                  </span>
-                ) : (
-                  <span className={styles.fileEmpty}>Не загружен</span>
-                )}
-              </div>
-              <div className={styles.fileRowActions}>
-                {dwg ? (
-                  <>
-                    <button type="button" className={styles.actionBtnPrimary} onClick={() => void openDwgViewer()}>
-                      Открыть
-                    </button>
-                    <a className={styles.actionBtnSecondary} href={dwg.url} download={dwg.name} title="Скачать">
-                      ↓
-                    </a>
-                    {canUpload ? (
-                      <button
-                        type="button"
-                        className={styles.actionBtnDanger}
-                        onClick={() => void removeAsset('dwg')}
-                        title="Убрать"
-                      >
-                        ×
-                      </button>
-                    ) : null}
-                  </>
-                ) : canUpload ? (
-                  <button
-                    type="button"
-                    className={styles.actionBtnPrimary}
-                    onClick={() => dwgInputRef.current?.click()}
-                  >
-                    Загрузить
+            <div className={styles.fileRowActions}>
+              {dwg ? (
+                <>
+                  <button type="button" className={styles.actionBtnPrimary} onClick={() => void openDwgViewer()}>
+                    Открыть
                   </button>
-                ) : null}
-              </div>
+                  <a className={styles.actionBtnSecondary} href={dwg.url} download={dwg.name} title="Скачать">
+                    ↓
+                  </a>
+                  {canUpload ? (
+                    <button
+                      type="button"
+                      className={styles.actionBtnDanger}
+                      onClick={() => void removeAsset('dwg')}
+                      title="Убрать"
+                    >
+                      ×
+                    </button>
+                  ) : null}
+                </>
+              ) : canUpload ? (
+                <button
+                  type="button"
+                  className={styles.actionBtnPrimary}
+                  onClick={() => dwgInputRef.current?.click()}
+                >
+                  Загрузить
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
