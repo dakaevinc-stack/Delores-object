@@ -179,7 +179,7 @@ export function DriverMessengerShare({ text, mapsUrl, compact = false, disabled 
 
   const handleTelegram = () => {
     if (disabled) return
-    openTelegramShare(text, mapsUrl)
+    void openTelegramShare(text, mapsUrl)
   }
 
   const handleMax = async () => {

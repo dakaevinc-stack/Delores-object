@@ -13,10 +13,11 @@ export function whatsappShareUrl(text: string): string {
   return `https://wa.me/?text=${encodeURIComponent(text)}`
 }
 
-/** Deep link в приложение Telegram (шаринг в чат). */
+/** Deep link в приложение Telegram с готовым текстом. */
 export function telegramAppShareUrl(text: string, url: string): string {
-  const params = new URLSearchParams({ url, text })
-  return `tg://msg_url?${params.toString()}`
+  const body = [text.trim(), url.trim()].filter(Boolean).join('\n\n')
+  // msg?text= лучше поддерживается Telegram Desktop / iOS / Android, чем msg_url.
+  return `tg://msg?text=${encodeURIComponent(body)}`
 }
 
 /** Веб-запасной вариант, если приложение не открылось. */
@@ -30,42 +31,62 @@ export function telegramShareUrl(text: string, url: string): string {
   return telegramAppShareUrl(text, url)
 }
 
+function launchCustomProtocol(href: string): void {
+  const a = document.createElement('a')
+  a.href = href
+  a.target = '_self'
+  a.rel = 'noopener'
+  a.style.display = 'none'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+}
+
 /**
- * Сначала пробуем открыть приложение Telegram, если не вышло — веб-шаринг.
+ * Открыть шаринг в приложении Telegram.
+ * 1) системный Share (если есть) — пользователь выбирает Telegram
+ * 2) tg:// deep link в приложение
+ * 3) запасной t.me в браузере
  */
-export function openTelegramShare(text: string, url: string): void {
+export async function openTelegramShare(text: string, url: string): Promise<void> {
   if (typeof window === 'undefined') return
-  const appUrl = telegramAppShareUrl(text, url)
-  const webUrl = telegramWebShareUrl(text, url)
-  const started = Date.now()
-  let fellBack = false
 
-  const fallback = () => {
-    if (fellBack) return
-    fellBack = true
-    window.open(webUrl, '_blank', 'noopener,noreferrer')
-  }
+  const payload = text.trim()
+  const maps = url.trim()
+  const appUrl = telegramAppShareUrl(payload, maps)
+  const webUrl = telegramWebShareUrl(payload, maps || 'https://t.me')
 
-  const onBlur = () => {
-    window.clearTimeout(timer)
-    window.removeEventListener('blur', onBlur)
-    window.removeEventListener('pagehide', onBlur)
-  }
-
-  window.addEventListener('blur', onBlur)
-  window.addEventListener('pagehide', onBlur)
-
-  // На macOS/iOS/Android зарегистрированный tg:// открывает приложение.
-  window.location.href = appUrl
-
-  const timer = window.setTimeout(() => {
-    window.removeEventListener('blur', onBlur)
-    window.removeEventListener('pagehide', onBlur)
-    // Если страница всё ещё на переднем плане — приложение не перехватило ссылку.
-    if (Date.now() - started >= 600 && !document.hidden && document.hasFocus()) {
-      fallback()
+  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    try {
+      await navigator.share({
+        title: 'Рейс водителю',
+        text: payload,
+        url: maps || undefined,
+      })
+      return
+    } catch (err) {
+      // Пользователь отменил — не открываем браузер.
+      if (err instanceof DOMException && err.name === 'AbortError') return
     }
-  }, 900)
+  }
+
+  let appTookFocus = false
+  const onHide = () => {
+    appTookFocus = true
+  }
+  window.addEventListener('blur', onHide, { once: true })
+  window.addEventListener('pagehide', onHide, { once: true })
+  document.addEventListener('visibilitychange', onHide, { once: true })
+
+  launchCustomProtocol(appUrl)
+
+  window.setTimeout(() => {
+    window.removeEventListener('blur', onHide)
+    window.removeEventListener('pagehide', onHide)
+    document.removeEventListener('visibilitychange', onHide)
+    if (appTookFocus || document.hidden) return
+    window.open(webUrl, '_blank', 'noopener,noreferrer')
+  }, 1600)
 }
 
 /** Deeplink MAX: экран выбора чата с готовым текстом. */

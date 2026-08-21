@@ -44,7 +44,10 @@ describe('driverShare', () => {
     const text = 'Куда везти\nБрусилова'
     expect(whatsappShareUrl(text)).toContain('https://wa.me/?text=')
     expect(whatsappShareUrl(text)).toContain(encodeURIComponent(text))
-    expect(telegramAppShareUrl(text, 'https://yandex.ru/maps/?rtext=1')).toContain('tg://msg_url?')
+    expect(telegramAppShareUrl(text, 'https://yandex.ru/maps/?rtext=1')).toContain('tg://msg?text=')
+    expect(telegramAppShareUrl(text, 'https://yandex.ru/maps/?rtext=1')).toContain(
+      encodeURIComponent(text),
+    )
     expect(telegramWebShareUrl(text, 'https://yandex.ru/maps/?rtext=1')).toContain(
       'https://t.me/share/url?',
     )
