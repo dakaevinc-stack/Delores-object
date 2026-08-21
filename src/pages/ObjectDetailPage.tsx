@@ -488,11 +488,6 @@ export function ObjectDetailPage() {
       case 'supply':
         return (
           <SiteRoleZone key={zone} zone="supply" layout="panel">
-            <SiteProcurementAccountingSection
-              requests={procurementRequests}
-              selectedAuthor={procurementFilterAuthor}
-              onSelectAuthor={setProcurementFilterAuthor}
-            />
             <SiteProcurementRequestsSection
               requests={procurementRequestsFiltered}
               filterAuthor={procurementFilterAuthor}
@@ -521,6 +516,11 @@ export function ObjectDetailPage() {
               onUpdateRequest={(id, patch) => {
                 void handleUpdateProcurementRequest(id, patch)
               }}
+            />
+            <SiteProcurementAccountingSection
+              requests={procurementRequests}
+              selectedAuthor={procurementFilterAuthor}
+              onSelectAuthor={setProcurementFilterAuthor}
             />
             {materialBudget ? (
               <SiteMaterialConsumptionSection
