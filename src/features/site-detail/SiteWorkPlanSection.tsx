@@ -121,7 +121,7 @@ export function SiteWorkPlanSection({
     return buckets
   }, [healthByNumber])
 
-  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(['1']))
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set())
   // Развёрнуто по умолчанию: сводка + задачи + справка план/факт в одном блоке.
   const [expanded, setExpanded] = useState(true)
 

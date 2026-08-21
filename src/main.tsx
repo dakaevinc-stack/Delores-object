@@ -8,6 +8,10 @@ import { installDeloreshBackupBridge } from './lib/deloreshLocalStorageBackup.ts
 
 installDeloreshBackupBridge()
 
+if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+  window.history.scrollRestoration = 'manual'
+}
+
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     void navigator.serviceWorker.register('/sw.js', { scope: '/' })

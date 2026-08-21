@@ -89,6 +89,10 @@ export function ObjectDetailPage() {
   }, [remoteFormsActive])
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [siteId])
+
+  useEffect(() => {
     deliveryPointRemoteRef.current = deliveryPointRemoteActive
   }, [deliveryPointRemoteActive])
 
