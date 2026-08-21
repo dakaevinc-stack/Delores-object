@@ -181,6 +181,8 @@ export function DriverMessengerShare({ text, mapsUrl, compact = false, disabled 
     if (disabled) return
     openTelegramShare(text, mapsUrl)
   }
+
+  const handleMax = async () => {
     if (disabled) return
     await copyText(text)
     markCopied()
