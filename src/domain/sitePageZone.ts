@@ -20,7 +20,7 @@ export const SITE_PAGE_ZONES: Record<
   brigadier: {
     kicker: 'Бригадир',
     title: 'Смена на объекте',
-    lead: 'Заявки, задания дня и журнал смены.',
+    lead: 'Поставки на сегодня, задания дня и журнал смены.',
   },
   supply: {
     kicker: 'Снабжение',

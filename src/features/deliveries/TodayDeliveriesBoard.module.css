@@ -6,6 +6,10 @@
   margin-bottom: 14px;
 }
 
+.subHead {
+  margin-bottom: 12px;
+}
+
 .kicker {
   margin: 0 0 6px;
   display: inline-flex;
@@ -31,12 +35,28 @@
   color: var(--text-strong);
 }
 
+.subTitle {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+}
+
 .lead {
   margin: 0;
   max-width: 58ch;
   font-size: 14.5px;
   line-height: 1.45;
   color: var(--text);
+}
+
+.subLead {
+  margin: 0;
+  max-width: 58ch;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--muted);
 }
 
 .grid {

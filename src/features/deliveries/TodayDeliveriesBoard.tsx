@@ -195,16 +195,25 @@ export function TodayDeliveriesBoard({
 
   return (
     <section className={styles.section} aria-labelledby="today-deliveries-heading">
-      <header className={styles.head}>
-        <p className={styles.kicker}>
-          <img className={styles.kickerMark} src="/brand-chevron.svg" alt="" aria-hidden />
-          Для бригадира
-        </p>
-        <h2 className={styles.title} id="today-deliveries-heading">
-          Сегодня ждать
-        </h2>
-        <p className={styles.lead}>{lead}</p>
-      </header>
+      {variant === 'home' ? (
+        <header className={styles.head}>
+          <p className={styles.kicker}>
+            <img className={styles.kickerMark} src="/brand-chevron.svg" alt="" aria-hidden />
+            Для бригадира
+          </p>
+          <h2 className={styles.title} id="today-deliveries-heading">
+            Сегодня ждать
+          </h2>
+          <p className={styles.lead}>{lead}</p>
+        </header>
+      ) : (
+        <header className={styles.subHead}>
+          <h2 className={styles.subTitle} id="today-deliveries-heading">
+            Сегодня ждать
+          </h2>
+          <p className={styles.subLead}>{lead}</p>
+        </header>
+      )}
 
       {today.length > 0 ? (
         <div className={styles.grid}>
@@ -219,9 +228,9 @@ export function TodayDeliveriesBoard({
             />
           ))}
         </div>
-      ) : (
+      ) : variant === 'home' ? (
         <p className={styles.empty}>Поставок на сегодня нет.</p>
-      )}
+      ) : null}
 
       {overdue.length > 0 ? (
         <div className={styles.overdue}>
