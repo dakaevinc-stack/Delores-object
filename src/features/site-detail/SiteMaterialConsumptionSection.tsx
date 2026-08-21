@@ -17,69 +17,49 @@ type Props = {
 }
 
 const STATUS_LABEL: Record<MaterialArticleStatus, string> = {
-  ok: 'В норме',
+  ok: 'Норма',
   low: 'Мало',
-  over: 'В минус',
-}
-
-function CheckIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-      <path
-        d="M3 7.2 5.8 10 11 4"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
+  over: 'Минус',
 }
 
 function ArticleRow({ fact }: { fact: MaterialArticleFact }) {
   const { article, consumed, remaining, percent, status } = fact
   const unit = unitLabel(article.unit)
   const remainAbs = Math.abs(remaining)
+  const barPct = Math.max(0, Math.min(100, percent))
+
   return (
-    <li className={`${styles.item} ${styles[`tone_${status}`]}`}>
-      <div className={styles.itemHead}>
-        <h4 className={styles.itemTitle}>{article.title}</h4>
-        <span className={`${styles.itemStatus} ${styles[`status_${status}`]}`}>
-          {status === 'ok' ? <CheckIcon /> : null}
+    <li className={`${styles.row} ${styles[`tone_${status}`]}`}>
+      <div className={styles.rowMain}>
+        <span className={styles.rowTitle}>{article.title}</span>
+        <span className={`${styles.rowStatus} ${styles[`status_${status}`]}`}>
           {STATUS_LABEL[status]}
         </span>
       </div>
-      <div className={styles.itemHero}>
-        <span className={styles.itemDone}>{formatQty(consumed)}</span>
-        <span className={styles.itemSlash}>из</span>
-        <span className={styles.itemTotal}>
+      <div className={styles.rowQty} aria-label={`${formatQty(consumed)} из ${formatQty(article.planned)} ${unit}`}>
+        <strong>{formatQty(consumed)}</strong>
+        <span className={styles.rowSlash}>/</span>
+        <span>
           {formatQty(article.planned)} {unit}
         </span>
-        <span className={styles.itemPercent}>{percent.toFixed(0)}%</span>
       </div>
-      <div className={styles.itemBar} aria-hidden>
-        <span
-          className={styles.itemBarFill}
-          style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
-        />
+      <div className={styles.rowBar} aria-hidden>
+        <span className={styles.rowBarFill} style={{ width: `${barPct}%` }} />
       </div>
-      <p className={styles.itemFoot}>
-        {remaining < 0 ? (
-          <>
-            Перерасход{' '}
-            <strong>
-              {formatQty(remainAbs)} {unit}
-            </strong>
-          </>
-        ) : (
-          <>
-            Осталось{' '}
-            <strong>
-              {formatQty(remaining)} {unit}
-            </strong>
-          </>
-        )}
-      </p>
+      <div className={styles.rowMeta}>
+        <span className={styles.rowPercent}>{percent.toFixed(0)}%</span>
+        <span className={styles.rowRemain}>
+          {remaining < 0 ? (
+            <>
+              −{formatQty(remainAbs)} {unit}
+            </>
+          ) : (
+            <>
+              ост. {formatQty(remaining)} {unit}
+            </>
+          )}
+        </span>
+      </div>
     </li>
   )
 }
@@ -113,32 +93,26 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
               className={styles.headToggle}
             />
           </div>
-          <p className={styles.lead}>
-          Списание при приёмке. Перерасход — в минус.
-          </p>
+          <p className={styles.lead}>Списание при приёмке. Перерасход — в минус.</p>
         </div>
       </div>
 
       {expanded ? (
         <div id="material-spend-body" className={styles.body}>
-          <dl className={styles.summary}>
-            <div className={styles.summaryItem}>
-              <dt>Статей</dt>
-              <dd>{summary.facts.length}</dd>
-            </div>
-            <div className={styles.summaryItem}>
-              <dt>В норме</dt>
-              <dd>{summary.okCount}</dd>
-            </div>
-            <div className={styles.summaryItem}>
-              <dt>Мало</dt>
-              <dd>{summary.lowCount}</dd>
-            </div>
-            <div className={`${styles.summaryItem} ${summary.overCount ? styles.summaryOver : ''}`}>
-              <dt>В минус</dt>
-              <dd>{summary.overCount}</dd>
-            </div>
-          </dl>
+          <div className={styles.summary} role="group" aria-label="Сводка по смете">
+            <span className={styles.summaryChip}>
+              Статей <strong>{summary.facts.length}</strong>
+            </span>
+            <span className={styles.summaryChip}>
+              Норма <strong>{summary.okCount}</strong>
+            </span>
+            <span className={`${styles.summaryChip} ${summary.lowCount ? styles.summaryWarn : ''}`}>
+              Мало <strong>{summary.lowCount}</strong>
+            </span>
+            <span className={`${styles.summaryChip} ${summary.overCount ? styles.summaryBad : ''}`}>
+              Минус <strong>{summary.overCount}</strong>
+            </span>
+          </div>
 
           {groups.map((g) => (
             <div key={g.group} className={styles.group}>
@@ -153,15 +127,14 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
 
           {summary.unplanned.length > 0 ? (
             <div className={styles.unplanned}>
-              <h3 className={styles.groupTitle}>Принято вне сметы</h3>
-              <p className={styles.unplannedLead}>
-                Эти позиции приняли по заявке, но в смете объекта их нет — расход идёт сверх
-                расчёта.
-              </p>
+              <h3 className={styles.groupTitle}>Вне сметы</h3>
               <ul className={styles.unplannedList}>
                 {summary.unplanned.map((row) => (
                   <li key={`${row.presetId ?? row.title}-${row.unit}`}>
-                    {row.title}: {formatQty(row.qty)} {unitLabel(row.unit)}
+                    {row.title}
+                    <span>
+                      {formatQty(row.qty)} {unitLabel(row.unit)}
+                    </span>
                   </li>
                 ))}
               </ul>
