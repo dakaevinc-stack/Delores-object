@@ -66,15 +66,18 @@ export function renderDriverTripShareText(trip: DriverTrip, cabinetUrl: string):
   const pickupHint = trip.pickup.hint.trim()
   const address = trip.point.address.trim()
   const hint = trip.point.hint.trim()
+  const site = trip.siteName.trim()
+  const destination = address || site || 'точка на карте'
   const lines = [
     `Рейс для ${trip.driverName}`,
     `Кабинет водителя: ${cabinetUrl}`,
-    pickup ? `Забрать: ${pickup}` : 'Груз уже в кузове — сразу на объект',
+    pickup ? `Забрать: ${pickup}` : 'Груз уже в кузове — сразу на разгрузку',
     pickupHint ? `Погрузка: ${pickupHint}` : null,
     cargo.length ? `Что везти:` : null,
     ...cargo.map((line) => `• ${line}`),
-    `Везти: ${trip.siteName}`,
-    address ? `Адрес: ${address}` : null,
+    `Везти: ${destination}`,
+    // Название объекта — только если адрес уже указан отдельно (иначе destination = site).
+    address && site ? `Объект: ${site}` : null,
     hint ? `Разгрузка: ${hint}` : null,
     `Яндекс.Карты:`,
     yandexMapsRouteUrl(trip.point),

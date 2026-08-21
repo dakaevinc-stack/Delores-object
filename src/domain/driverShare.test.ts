@@ -63,7 +63,9 @@ describe('driverShare', () => {
     expect(text).toContain('http://example.test/driver')
     expect(text).toContain('Забрать: Карьер Щербинка')
     expect(text).toContain('Щебень — 12 м³')
-    expect(text).toContain('Везти: Брусилова')
+    expect(text).toContain('Везти: ул. Вокзальная, 12')
+    expect(text).toContain('Объект: Брусилова')
+    expect(text).not.toContain('Везти: Брусилова')
     expect(text).toContain('yandex.ru/maps')
   })
 

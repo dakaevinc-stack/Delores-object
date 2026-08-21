@@ -34,8 +34,11 @@ export function DriverTripSheet({ trip, onClose }: Props) {
           {time ? <p className={styles.time}>назначен в {time}</p> : null}
         </div>
         <h2 className={styles.title} id="driver-trip-title">
-          {trip.siteName}
+          {unloadAddress || trip.siteName}
         </h2>
+        {unloadAddress && trip.siteName ? (
+          <p className={styles.meta}>Объект: {trip.siteName}</p>
+        ) : null}
         {trip.vehiclePlate ? <p className={styles.meta}>{trip.vehiclePlate}</p> : null}
 
         <ol className={styles.steps}>
@@ -71,8 +74,11 @@ export function DriverTripSheet({ trip, onClose }: Props) {
             </span>
             <div>
               <h3 className={styles.stepTitle}>Куда везти</h3>
-              <p className={styles.strong}>{trip.siteName}</p>
-              {unloadAddress ? <p className={styles.strong}>{unloadAddress}</p> : null}
+              {unloadAddress ? (
+                <p className={styles.strong}>{unloadAddress}</p>
+              ) : (
+                <p className={styles.strong}>{trip.siteName}</p>
+              )}
               {unloadHint ? <p className={styles.hint}>{unloadHint}</p> : null}
               <div className={styles.btns}>
                 <a className={styles.navi} href={yandexNaviUrl(trip.point)}>
