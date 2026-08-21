@@ -11,7 +11,7 @@
 }
 
 .sectionEmbedded {
-  margin-bottom: var(--block-gap);
+  margin-bottom: 0;
 }
 
 /* ─── Шапка ──────────────────────────────────────────────────────── */

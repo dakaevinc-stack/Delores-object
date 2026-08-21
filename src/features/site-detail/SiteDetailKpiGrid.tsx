@@ -92,7 +92,7 @@ export function SiteDetailKpiGrid({ kpis, embedded = false }: Props) {
   return (
     <section
       className={`${styles.section} ${embedded ? styles.sectionEmbedded : ''}`}
-      aria-labelledby={embedded ? 'site-zone-manager-title' : 'site-kpi-heading'}
+      aria-labelledby={embedded ? 'object-summary-heading' : 'site-kpi-heading'}
     >
       {embedded ? null : (
         <div className={styles.sectionHead}>

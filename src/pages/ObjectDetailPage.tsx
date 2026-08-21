@@ -354,31 +354,47 @@ export function ObjectDetailPage() {
   }
 
   const objectSummary = (
-    <section className={styles.summaryBlock} aria-labelledby="object-summary-heading">
-      <div className={styles.summaryHead}>
-        <h2 className={styles.summaryTitle} id="object-summary-heading">
-          Сводка по объекту
-        </h2>
-        <p className={styles.summaryLead}>
-          Прогресс, сроки и отклонение от плана — по графику работ и отчётам бригадира.
-        </p>
+    <section
+      className={styles.summaryPanel}
+      aria-labelledby="object-summary-heading"
+      data-site-zone="summary"
+    >
+      <div className={styles.summaryRail} aria-hidden />
+      <div className={styles.summaryGlow} aria-hidden />
+
+      <header className={styles.summaryPanelHead}>
+        <div className={styles.summaryHeadCopy}>
+          <p className={styles.summaryKicker}>
+            <img className={styles.summaryKickerMark} src="/brand-chevron.svg" alt="" aria-hidden />
+            Сводка
+          </p>
+          <h2 className={styles.summaryTitle} id="object-summary-heading">
+            Сводка по объекту
+          </h2>
+          <p className={styles.summaryLead}>
+            Прогресс, сроки и отклонение от плана — по графику работ и отчётам бригадира.
+          </p>
+        </div>
+      </header>
+
+      <div className={styles.summaryPanelBody}>
+        <SiteDetailKpiGrid kpis={liveKpis} embedded />
+        <div className={styles.midGrid}>
+          <SiteScheduleSection
+            kpis={liveKpis}
+            basePlan={basePlan}
+            reports={brigadierReports}
+          />
+          <SiteReportingSection reports={brigadierReports} todayIso={liveKpis.todayIso} />
+        </div>
+        {workPlan ? (
+          <SiteWorkPlanSection
+            plan={workPlan}
+            windowStartIso={liveKpis.startIso}
+            windowEndIso={liveKpis.endIso}
+          />
+        ) : null}
       </div>
-      <SiteDetailKpiGrid kpis={liveKpis} embedded />
-      <div className={styles.midGrid}>
-        <SiteScheduleSection
-          kpis={liveKpis}
-          basePlan={basePlan}
-          reports={brigadierReports}
-        />
-        <SiteReportingSection reports={brigadierReports} todayIso={liveKpis.todayIso} />
-      </div>
-      {workPlan ? (
-        <SiteWorkPlanSection
-          plan={workPlan}
-          windowStartIso={liveKpis.startIso}
-          windowEndIso={liveKpis.endIso}
-        />
-      ) : null}
     </section>
   )
 
@@ -575,17 +591,9 @@ export function ObjectDetailPage() {
         // Если зоны бригадира нет — сразу после проекта.
         if (showObjectSummary) {
           if (zone === 'brigadier') {
-            nodes.push(
-              <div key="object-summary" className={styles.summaryShell}>
-                {objectSummary}
-              </div>,
-            )
+            nodes.push(<div key="object-summary">{objectSummary}</div>)
           } else if (zone === 'manager' && !visibleZones.includes('brigadier')) {
-            nodes.push(
-              <div key="object-summary" className={styles.summaryShell}>
-                {objectSummary}
-              </div>,
-            )
+            nodes.push(<div key="object-summary">{objectSummary}</div>)
           }
         }
         return nodes
