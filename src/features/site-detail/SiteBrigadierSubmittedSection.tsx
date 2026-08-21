@@ -369,7 +369,7 @@ export function SiteBrigadierSubmittedReportsSection({
                 narrativeComment={r.comment}
                 narrativeStructured={parseBrigadierComment(r.comment)}
                 collapsible={total > 1}
-                defaultExpanded={idx === 0}
+                defaultExpanded={false}
                 problems={r.problems.map((p) => ({
                   kindLabel: brigadierProblemKindLabel(p.kindId),
                   details: p.details,

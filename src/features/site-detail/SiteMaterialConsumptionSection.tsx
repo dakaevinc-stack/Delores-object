@@ -85,7 +85,7 @@ function ArticleRow({ fact }: { fact: MaterialArticleFact }) {
 }
 
 export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(false)
   const summary = useMemo(
     () => summarizeMaterialBudget(budget, requests),
     [budget, requests],

@@ -123,7 +123,7 @@ export function SiteWorkPlanSection({
 
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set())
   // Развёрнуто по умолчанию: сводка + задачи + справка план/факт в одном блоке.
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(false)
 
   const toggleSection = (number: string) => {
     setOpenSections((prev) => {
