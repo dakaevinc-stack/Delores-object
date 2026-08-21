@@ -17,9 +17,9 @@ type Props = {
 }
 
 const STATUS_LABEL: Record<MaterialArticleStatus, string> = {
-  ok: 'Норма',
+  ok: 'В норме',
   low: 'Мало',
-  over: 'Минус',
+  over: 'В минус',
 }
 
 function ArticleRow({ fact }: { fact: MaterialArticleFact }) {
@@ -30,35 +30,40 @@ function ArticleRow({ fact }: { fact: MaterialArticleFact }) {
 
   return (
     <li className={`${styles.row} ${styles[`tone_${status}`]}`}>
-      <div className={styles.rowMain}>
-        <span className={styles.rowTitle}>{article.title}</span>
-        <span className={`${styles.rowStatus} ${styles[`status_${status}`]}`}>
-          {STATUS_LABEL[status]}
-        </span>
-      </div>
-      <div className={styles.rowQty} aria-label={`${formatQty(consumed)} из ${formatQty(article.planned)} ${unit}`}>
-        <strong>{formatQty(consumed)}</strong>
-        <span className={styles.rowSlash}>/</span>
-        <span>
-          {formatQty(article.planned)} {unit}
-        </span>
-      </div>
-      <div className={styles.rowBar} aria-hidden>
-        <span className={styles.rowBarFill} style={{ width: `${barPct}%` }} />
-      </div>
-      <div className={styles.rowMeta}>
-        <span className={styles.rowPercent}>{percent.toFixed(0)}%</span>
-        <span className={styles.rowRemain}>
-          {remaining < 0 ? (
-            <>
-              −{formatQty(remainAbs)} {unit}
-            </>
-          ) : (
-            <>
-              ост. {formatQty(remaining)} {unit}
-            </>
-          )}
-        </span>
+      <span className={styles.rowDot} aria-hidden />
+      <div className={styles.rowBody}>
+        <div className={styles.rowTop}>
+          <div className={styles.rowIdentity}>
+            <span className={styles.rowTitle}>{article.title}</span>
+            <span className={styles.rowStatus}>{STATUS_LABEL[status]}</span>
+          </div>
+          <div className={styles.rowFigures}>
+            <p className={styles.rowQty}>
+              <span className={styles.rowDone}>{formatQty(consumed)}</span>
+              <span className={styles.rowOf}>из</span>
+              <span className={styles.rowPlan}>
+                {formatQty(article.planned)} {unit}
+              </span>
+            </p>
+            <p className={styles.rowRemain}>
+              {remaining < 0 ? (
+                <>
+                  Перерасход <strong>{formatQty(remainAbs)} {unit}</strong>
+                </>
+              ) : (
+                <>
+                  Осталось <strong>{formatQty(remaining)} {unit}</strong>
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+        <div className={styles.rowTrack}>
+          <div className={styles.rowBar} aria-hidden>
+            <span className={styles.rowBarFill} style={{ width: `${barPct}%` }} />
+          </div>
+          <span className={styles.rowPercent}>{percent.toFixed(0)}%</span>
+        </div>
       </div>
     </li>
   )
@@ -74,11 +79,11 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
 
   return (
     <section className={styles.section} aria-labelledby="material-spend-heading">
-      <div className={styles.head}>
-        <div className={styles.headInner}>
+      <header className={styles.head}>
+        <div className={styles.headCopy}>
           <p className={styles.kicker}>
             <img className={styles.kickerMark} src="/brand-chevron.svg" alt="" aria-hidden />
-            <span>Смета</span>
+            Смета объекта
           </p>
           <div className={styles.titleRow}>
             <h2 className={styles.title} id="material-spend-heading">
@@ -93,30 +98,54 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
               className={styles.headToggle}
             />
           </div>
-          <p className={styles.lead}>Списание при приёмке. Перерасход — в минус.</p>
+          <p className={styles.lead}>Списание при приёмке. Перерасход уходит в минус.</p>
         </div>
-      </div>
+
+        {!expanded ? (
+          <dl className={styles.previewStats} aria-hidden>
+            <div>
+              <dt>Статей</dt>
+              <dd>{summary.facts.length}</dd>
+            </div>
+            <div>
+              <dt>Норма</dt>
+              <dd>{summary.okCount}</dd>
+            </div>
+            <div className={summary.overCount ? styles.statBad : undefined}>
+              <dt>Минус</dt>
+              <dd>{summary.overCount}</dd>
+            </div>
+          </dl>
+        ) : null}
+      </header>
 
       {expanded ? (
         <div id="material-spend-body" className={styles.body}>
-          <div className={styles.summary} role="group" aria-label="Сводка по смете">
-            <span className={styles.summaryChip}>
-              Статей <strong>{summary.facts.length}</strong>
-            </span>
-            <span className={styles.summaryChip}>
-              Норма <strong>{summary.okCount}</strong>
-            </span>
-            <span className={`${styles.summaryChip} ${summary.lowCount ? styles.summaryWarn : ''}`}>
-              Мало <strong>{summary.lowCount}</strong>
-            </span>
-            <span className={`${styles.summaryChip} ${summary.overCount ? styles.summaryBad : ''}`}>
-              Минус <strong>{summary.overCount}</strong>
-            </span>
+          <div className={styles.metrics} role="group" aria-label="Сводка по смете">
+            <div className={styles.metric}>
+              <span className={styles.metricLabel}>Статей</span>
+              <span className={styles.metricValue}>{summary.facts.length}</span>
+            </div>
+            <div className={styles.metric}>
+              <span className={styles.metricLabel}>В норме</span>
+              <span className={styles.metricValue}>{summary.okCount}</span>
+            </div>
+            <div className={`${styles.metric} ${summary.lowCount ? styles.metricWarn : ''}`}>
+              <span className={styles.metricLabel}>Мало</span>
+              <span className={styles.metricValue}>{summary.lowCount}</span>
+            </div>
+            <div className={`${styles.metric} ${summary.overCount ? styles.metricBad : ''}`}>
+              <span className={styles.metricLabel}>В минус</span>
+              <span className={styles.metricValue}>{summary.overCount}</span>
+            </div>
           </div>
 
           {groups.map((g) => (
             <div key={g.group} className={styles.group}>
-              <h3 className={styles.groupTitle}>{g.group}</h3>
+              <div className={styles.groupHead}>
+                <h3 className={styles.groupTitle}>{g.group}</h3>
+                <span className={styles.groupCount}>{g.facts.length}</span>
+              </div>
               <ul className={styles.list}>
                 {g.facts.map((fact) => (
                   <ArticleRow key={fact.article.id} fact={fact} />
@@ -127,14 +156,17 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
 
           {summary.unplanned.length > 0 ? (
             <div className={styles.unplanned}>
-              <h3 className={styles.groupTitle}>Вне сметы</h3>
+              <div className={styles.groupHead}>
+                <h3 className={styles.groupTitle}>Вне сметы</h3>
+                <span className={styles.groupCount}>{summary.unplanned.length}</span>
+              </div>
               <ul className={styles.unplannedList}>
                 {summary.unplanned.map((row) => (
                   <li key={`${row.presetId ?? row.title}-${row.unit}`}>
-                    {row.title}
-                    <span>
+                    <span>{row.title}</span>
+                    <strong>
                       {formatQty(row.qty)} {unitLabel(row.unit)}
-                    </span>
+                    </strong>
                   </li>
                 ))}
               </ul>
