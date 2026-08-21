@@ -201,7 +201,30 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 2px;
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: background 0.16s ease;
+}
+
+.groupHead:hover {
+  background: rgba(23, 42, 77, 0.04);
+}
+
+.groupHead:focus-visible {
+  outline: 2px solid rgba(23, 42, 77, 0.35);
+  outline-offset: 2px;
+}
+
+.groupHeadOpen {
+  background: rgba(23, 42, 77, 0.05);
 }
 
 .groupTitle {
@@ -228,11 +251,33 @@
   color: var(--brand-navy, #172a4d);
 }
 
-.groupHead::after {
-  content: '';
+.groupRail {
   flex: 1;
   height: 1px;
   background: linear-gradient(90deg, rgba(23, 42, 77, 0.14), transparent 90%);
+}
+
+.groupChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(23, 42, 77, 0.06);
+  color: var(--brand-navy, #172a4d);
+  flex-shrink: 0;
+  transition: transform 0.2s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.groupHeadOpen .groupChevron {
+  transform: rotate(180deg);
+  background: rgba(238, 45, 58, 0.1);
+  color: var(--brand-red, #ee2d3a);
+}
+
+.groupPanel {
+  min-width: 0;
 }
 
 .list {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import type { ProcurementRequest } from '../../domain/procurementRequest'
 import {
   groupMaterialFacts,
@@ -66,6 +66,60 @@ function ArticleRow({ fact }: { fact: MaterialArticleFact }) {
         </div>
       </div>
     </li>
+  )
+}
+
+function MaterialGroup({
+  id,
+  title,
+  count,
+  defaultOpen = false,
+  children,
+  className,
+}: {
+  id: string
+  title: string
+  count: number
+  defaultOpen?: boolean
+  children: ReactNode
+  className?: string
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  const panelId = `material-group-${id}`
+  const countLabel = count === 1 ? '1 позиция' : `${count} позиций`
+
+  return (
+    <div className={className ?? styles.group}>
+      <button
+        type="button"
+        className={`${styles.groupHead} ${open ? styles.groupHeadOpen : ''}`}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls={panelId}
+      >
+        <h3 className={styles.groupTitle}>{title}</h3>
+        <span className={styles.groupCount} title={countLabel}>
+          {count}
+        </span>
+        <span className={styles.groupRail} aria-hidden />
+        <span className={styles.groupChevron} aria-hidden>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none">
+            <path
+              d="m6 9 6 6 6-6"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      </button>
+      {open ? (
+        <div id={panelId} className={styles.groupPanel}>
+          {children}
+        </div>
+      ) : null}
+    </div>
   )
 }
 
@@ -141,25 +195,27 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
           </div>
 
           {groups.map((g) => (
-            <div key={g.group} className={styles.group}>
-              <div className={styles.groupHead}>
-                <h3 className={styles.groupTitle}>{g.group}</h3>
-                <span className={styles.groupCount}>{g.facts.length}</span>
-              </div>
+            <MaterialGroup
+              key={g.group}
+              id={g.group}
+              title={g.group}
+              count={g.facts.length}
+            >
               <ul className={styles.list}>
                 {g.facts.map((fact) => (
                   <ArticleRow key={fact.article.id} fact={fact} />
                 ))}
               </ul>
-            </div>
+            </MaterialGroup>
           ))}
 
           {summary.unplanned.length > 0 ? (
-            <div className={styles.unplanned}>
-              <div className={styles.groupHead}>
-                <h3 className={styles.groupTitle}>Вне сметы</h3>
-                <span className={styles.groupCount}>{summary.unplanned.length}</span>
-              </div>
+            <MaterialGroup
+              id="unplanned"
+              title="Вне сметы"
+              count={summary.unplanned.length}
+              className={styles.unplanned}
+            >
               <ul className={styles.unplannedList}>
                 {summary.unplanned.map((row) => (
                   <li key={`${row.presetId ?? row.title}-${row.unit}`}>
@@ -170,7 +226,7 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
                   </li>
                 ))}
               </ul>
-            </div>
+            </MaterialGroup>
           ) : null}
         </div>
       ) : null}
