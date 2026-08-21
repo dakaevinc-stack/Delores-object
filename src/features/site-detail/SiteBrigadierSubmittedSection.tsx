@@ -317,7 +317,7 @@ export function SiteBrigadierSubmittedReportsSection({
         </div>
       ) : sectionExpanded || !canCollapse ? (
         <div className={styles.list} id="brigadier-submitted-list">
-          {sorted.map((r, idx) => {
+          {sorted.map((r) => {
             const photos = r.attachments.filter((a) => a.kind === 'photo').length
             const videos = r.attachments.filter((a) => a.kind === 'video').length
             const problems = r.problems.length
