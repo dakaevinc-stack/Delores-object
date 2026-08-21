@@ -30,6 +30,8 @@ type Props = {
   /** Если true — данные синхронизируются с сервером (текст подсказки). */
   serverBacked?: boolean
   deliveryPoint?: SiteDeliveryPoint | null
+  /** Кнопка «Создать» в шапке (можно вынести в зону выше). */
+  showCreateButton?: boolean
   onCreate: () => void
   onEdit: (req: ProcurementRequest) => void
   onRemove: (id: string) => void | Promise<void>
@@ -80,6 +82,7 @@ export function SiteProcurementRequestsSection({
   filterAuthor = null,
   serverBacked = false,
   deliveryPoint = null,
+  showCreateButton = true,
   onCreate,
   onEdit,
   onRemove,
@@ -145,17 +148,19 @@ export function SiteProcurementRequestsSection({
       <header className={styles.head}>
         <div className={styles.headText}>
           <h2 className={styles.title} id="procurement-heading">
-            Заявки снабженцу
+            Заявки
           </h2>
           <p className={styles.lead}>
             {serverBacked ? 'На сервере. ' : 'На этом устройстве. '}
             {filterAuthor ? `Фильтр: ${filterAuthor}. ` : null}
-            После согласования — у приёмщика. Правки до приёмки.
+            Правки до приёмки.
           </p>
         </div>
-        <button type="button" className={styles.createBtn} onClick={onCreate}>
-          Создать заявку
-        </button>
+        {showCreateButton ? (
+          <button type="button" className={styles.createBtn} onClick={onCreate}>
+            Создать заявку
+          </button>
+        ) : null}
       </header>
 
       {requests.length === 0 ? (

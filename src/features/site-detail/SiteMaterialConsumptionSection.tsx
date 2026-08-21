@@ -98,7 +98,7 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
         <div className={styles.headInner}>
           <p className={styles.kicker}>
             <img className={styles.kickerMark} src="/brand-chevron.svg" alt="" aria-hidden />
-            <span>Смета объекта</span>
+            <span>Смета</span>
           </p>
           <div className={styles.titleRow}>
             <h2 className={styles.title} id="material-spend-heading">
@@ -114,7 +114,7 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
             />
           </div>
           <p className={styles.lead}>
-            Списание при приёмке. Без приёмки смета не меняется; перерасход — в минус.
+          Списание при приёмке. Перерасход — в минус.
           </p>
         </div>
       </div>

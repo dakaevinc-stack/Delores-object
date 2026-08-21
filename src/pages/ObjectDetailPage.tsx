@@ -455,7 +455,22 @@ export function ObjectDetailPage() {
         />
       </SiteRoleZone>
 
-      <SiteRoleZone zone="supply">
+      <SiteRoleZone
+        zone="supply"
+        actions={
+          <button
+            type="button"
+            className={styles.toolbarCta}
+            onClick={() => {
+              setEditingRequest(null)
+              setProcurementKey((k) => k + 1)
+              setProcurementOpen(true)
+            }}
+          >
+            Создать заявку
+          </button>
+        }
+      >
         <SiteProcurementAccountingSection
           requests={procurementRequests}
           selectedAuthor={procurementFilterAuthor}
@@ -466,6 +481,7 @@ export function ObjectDetailPage() {
           filterAuthor={procurementFilterAuthor}
           serverBacked={remoteFormsActive}
           deliveryPoint={deliveryPoint}
+          showCreateButton={false}
           onCreate={() => {
             setEditingRequest(null)
             setProcurementKey((k) => k + 1)
