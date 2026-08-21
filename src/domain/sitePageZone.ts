@@ -29,8 +29,8 @@ export const SITE_PAGE_ZONES: Record<
   },
   dispatcher: {
     kicker: 'Диспетчер',
-    title: 'Рейсы',
-    lead: 'Точка выгрузки, рейс и ссылка водителю.',
+    title: 'Рейс водителю',
+    lead: 'Точка на карте, груз и отправка в кабинет.',
   },
 }
 

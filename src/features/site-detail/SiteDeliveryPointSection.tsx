@@ -79,7 +79,6 @@ export function SiteDeliveryPointSection({
   onAssignTrip,
   assignerRole = 'dispatcher',
 }: Props) {
-  const titleId = useId()
   const fieldId = useId()
   const canEditPoint = Boolean(onSave)
   const canAssignTrip = Boolean(onAssignTrip)
@@ -446,26 +445,15 @@ export function SiteDeliveryPointSection({
       : address?.trim() || 'Улица, дом, посёлок'
 
   return (
-    <section className={styles.section} aria-labelledby={titleId}>
-      <header className={styles.head}>
-        <div className={styles.headInner}>
-          <p className={styles.kicker}>
-            <span className={styles.kickerMark} aria-hidden />
-            Диспетчер
-          </p>
-          <h2 className={styles.title} id={titleId}>
-            {canAssignTrip ? 'Рейс водителю' : 'Куда разгружать'}
-          </h2>
-          <p className={styles.lead}>
-            {canAssignTrip
-              ? 'Точка на карте, груз и отправка в кабинет.'
-              : 'Адрес или точка на карте.'}
-          </p>
-        </div>
+    <section
+      className={styles.section}
+      aria-label={canAssignTrip ? 'Рейс водителю' : 'Куда разгружать'}
+    >
+      <div className={styles.toolbar}>
         <span className={`${styles.syncBadge} ${serverBacked ? styles.syncOn : styles.syncOff}`}>
           {serverBacked ? 'На сервере' : 'Только здесь'}
         </span>
-      </header>
+      </div>
 
       <div className={styles.sheet}>
         <div className={styles.split}>
