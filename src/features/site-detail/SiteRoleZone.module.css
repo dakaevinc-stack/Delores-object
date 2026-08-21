@@ -298,17 +298,23 @@
 
 /* Внутренние модули: лёгкие вложенные поверхности */
 .zonePanel .panelBody > :global(section) {
+  position: relative;
   margin: 0;
   padding: 16px 16px 14px;
   border-radius: 16px;
   border: 1px solid rgba(15, 23, 42, 0.07);
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.84);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  overflow: hidden;
+}
+
+.zonePanel .panelBody > :global(section)::before {
+  display: none !important;
 }
 
 /*
- * Снимаем тяжёлую «шапку-карточку» у вложенных секций
- * (журнал отчётов, поставки), но не трогаем moduleHead плана.
+ * Снимаем тяжёлую «шапку-карточку» у вложенных секций,
+ * но не трогаем moduleHead плана смены.
  */
 .zonePanel .panelBody > :global(section) > :first-child:not([class*='moduleHead']) {
   margin: 0 0 12px !important;
@@ -343,6 +349,27 @@
 
 .zonePanel[data-site-zone='brigadier'] .kicker {
   color: #b45309;
+}
+
+.zonePanel[data-site-zone='supply'] {
+  background:
+    radial-gradient(110% 80% at 0% 0%, rgba(15, 118, 110, 0.12) 0%, transparent 50%),
+    radial-gradient(100% 70% at 100% 0%, rgba(23, 42, 77, 0.06) 0%, transparent 48%),
+    linear-gradient(180deg, #ffffff 0%, #eef7f5 100%);
+  border-color: rgba(15, 118, 110, 0.16);
+}
+
+.zonePanel[data-site-zone='supply'] .panelRail {
+  background: linear-gradient(180deg, #0f766e 0%, #115e59 40%, #172a4d 100%);
+  width: 5px;
+}
+
+.zonePanel[data-site-zone='supply'] .panelGlow {
+  background: radial-gradient(circle, rgba(15, 118, 110, 0.18) 0%, transparent 68%);
+}
+
+.zonePanel[data-site-zone='supply'] .kicker {
+  color: #0f766e;
 }
 
 @media (max-width: 860px) {
