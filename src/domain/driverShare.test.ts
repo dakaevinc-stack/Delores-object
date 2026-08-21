@@ -76,9 +76,9 @@ describe('driverShare', () => {
   it('без рейса остаётся короткая точка разгрузки', () => {
     const text = renderDriverShareText('Брусилова', point, null, 'http://example.test/driver')
     expect(text).toContain('Куда везти материал')
-    expect(text).not.toContain('Кабинет водителя')
+    expect(text).not.toContain('Все рейсы на сегодня')
     expect(renderDriverShareText('Брусилова', point, trip, 'http://example.test/driver')).toContain(
-      'Кабинет водителя',
+      'Все рейсы на сегодня',
     )
   })
 })
