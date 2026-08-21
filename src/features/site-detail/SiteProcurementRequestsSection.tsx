@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   cargoReceiptPatch,
   formatReceiptStampRu,
   makeAcceptedReceipt,
   type CargoReceipt,
 } from '../../domain/cargoReceipt'
+import { summarizeProcurementAccounting } from '../../domain/procurementAccounting'
 import {
   buildProcurementFileBase,
   canReceiveOnSite,
@@ -25,12 +26,9 @@ import styles from './SiteProcurementRequestsSection.module.css'
 
 type Props = {
   requests: readonly ProcurementRequest[]
-  /** Если задан — показываем подсказку, что список отфильтрован. */
-  filterAuthor?: string | null
-  /** Если true — данные синхронизируются с сервером (текст подсказки). */
-  serverBacked?: boolean
+  selectedAuthor: string | null
+  onSelectAuthor: (name: string | null) => void
   deliveryPoint?: SiteDeliveryPoint | null
-  /** Кнопка «Создать» в шапке (можно вынести в зону выше). */
   showCreateButton?: boolean
   onCreate: () => void
   onEdit: (req: ProcurementRequest) => void
@@ -48,6 +46,11 @@ function formatDateTime(iso: string): string {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function deliveryPct(requestedQty: number, acceptedQty: number): number {
+  if (requestedQty <= 0) return acceptedQty > 0 ? 100 : 0
+  return Math.min(100, Math.round((acceptedQty / requestedQty) * 100))
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -79,8 +82,8 @@ async function copyToClipboard(text: string): Promise<boolean> {
 
 export function SiteProcurementRequestsSection({
   requests,
-  filterAuthor = null,
-  serverBacked = false,
+  selectedAuthor,
+  onSelectAuthor,
   deliveryPoint = null,
   showCreateButton = true,
   onCreate,
@@ -91,18 +94,34 @@ export function SiteProcurementRequestsSection({
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [sharedId, setSharedId] = useState<string | null>(null)
   const [refuseId, setRefuseId] = useState<string | null>(null)
+  const [showMaterials, setShowMaterials] = useState(false)
+
+  const summary = useMemo(() => summarizeProcurementAccounting(requests), [requests])
+  const visible = useMemo(() => {
+    if (!selectedAuthor) return requests
+    return requests.filter((r) => (r.createdBy.trim() || 'Не указан') === selectedAuthor)
+  }, [requests, selectedAuthor])
+
+  const waiting =
+    summary.byStatus.pending + summary.byStatus.approved + summary.byStatus.refused
   const refuseReq = refuseId ? requests.find((r) => r.id === refuseId) ?? null : null
 
   const handleDownloadTxt = (req: ProcurementRequest) => {
     const base = buildProcurementFileBase(req)
-    const text = renderProcurementRequestPlainText(req, deliveryPoint)
-    downloadTextFile(`${base}.txt`, 'text/plain;charset=utf-8', text)
+    downloadTextFile(
+      `${base}.txt`,
+      'text/plain;charset=utf-8',
+      renderProcurementRequestPlainText(req, deliveryPoint),
+    )
   }
 
   const handleDownloadCsv = (req: ProcurementRequest) => {
     const base = buildProcurementFileBase(req)
-    const text = renderProcurementRequestCsv(req, deliveryPoint)
-    downloadTextFile(`${base}.csv`, 'text/csv;charset=utf-8', text)
+    downloadTextFile(
+      `${base}.csv`,
+      'text/csv;charset=utf-8',
+      renderProcurementRequestCsv(req, deliveryPoint),
+    )
   }
 
   const handleCopy = async (req: ProcurementRequest) => {
@@ -146,93 +165,140 @@ export function SiteProcurementRequestsSection({
       aria-labelledby="procurement-heading"
     >
       <header className={styles.head}>
-        <div className={styles.headText}>
-          <h2 className={styles.title} id="procurement-heading">
-            Заявки
-          </h2>
-          <p className={styles.lead}>
-            {serverBacked ? 'На сервере. ' : 'На этом устройстве. '}
-            {filterAuthor ? `Фильтр: ${filterAuthor}. ` : null}
-            Правки до приёмки.
-          </p>
-        </div>
+        <h2 className={styles.title} id="procurement-heading">
+          Заявки
+        </h2>
         {showCreateButton ? (
           <button type="button" className={styles.createBtn} onClick={onCreate}>
-            Создать заявку
+            Создать
           </button>
         ) : null}
       </header>
 
-      {requests.length === 0 ? (
-        <div className={styles.empty}>
-          <p className={styles.emptyTitle}>Заявок ещё нет</p>
-          <p className={styles.emptyText}>
-            Нажмите «Создать заявку», чтобы перечислить материалы и их количество:
-            бортовой камень, трубы, песок, асфальт, щебень — или добавить свою позицию.
+      {requests.length > 0 ? (
+        <div className={styles.toolbar}>
+          <p className={styles.stats} aria-label="Сводка по заявкам">
+            <span>
+              <strong>{summary.totalRequests}</strong> всего
+            </span>
+            <span className={styles.statSep} aria-hidden>
+              ·
+            </span>
+            <span>
+              <strong className={styles.statWait}>{waiting}</strong> ждут
+            </span>
+            <span className={styles.statSep} aria-hidden>
+              ·
+            </span>
+            <span>
+              <strong className={styles.statOk}>{summary.byStatus.accepted}</strong> на объекте
+            </span>
           </p>
+
+          {summary.authors.length > 1 || selectedAuthor ? (
+            <div className={styles.filters} role="group" aria-label="Фильтр по заявителю">
+              <button
+                type="button"
+                className={`${styles.chip} ${!selectedAuthor ? styles.chipOn : ''}`}
+                aria-pressed={!selectedAuthor}
+                onClick={() => onSelectAuthor(null)}
+              >
+                Все
+              </button>
+              {summary.authors.map((author) => {
+                const on = selectedAuthor === author.name
+                return (
+                  <button
+                    key={author.name}
+                    type="button"
+                    className={`${styles.chip} ${on ? styles.chipOn : ''}`}
+                    aria-pressed={on}
+                    onClick={() => onSelectAuthor(on ? null : author.name)}
+                  >
+                    {author.name}
+                    <span className={styles.chipCount}>{author.requestCount}</span>
+                  </button>
+                )
+              })}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {visible.length === 0 ? (
+        <div className={styles.empty}>
+          <p className={styles.emptyTitle}>
+            {requests.length === 0
+              ? 'Заявок ещё нет'
+              : `Нет заявок от «${selectedAuthor}»`}
+          </p>
+          {requests.length === 0 ? (
+            <p className={styles.emptyText}>Создайте заявку со списком материалов и количеством.</p>
+          ) : (
+            <button
+              type="button"
+              className={styles.linkBtn}
+              onClick={() => onSelectAuthor(null)}
+            >
+              Показать всех
+            </button>
+          )}
         </div>
       ) : (
         <ul className={styles.list}>
-          {requests.map((req) => (
+          {visible.map((req) => (
             <li key={req.id} className={styles.card}>
               <header className={styles.cardHead}>
                 <div className={styles.cardHeadText}>
-                  <p className={styles.cardKicker}>Заявка № {req.shortCode}</p>
-                  <p className={styles.cardMeta}>
-                    {formatDateTime(req.createdAtIso)} · создал {req.createdBy}
-                  </p>
-                  <div className={styles.statusRow}>
-                    <span
-                      className={`${styles.statusBadge} ${styles[`status_${req.status}`]}`}
-                      aria-hidden
-                    >
-                      {PROCUREMENT_STATUS_LABELS[req.status]}
-                    </span>
+                  <p className={styles.cardTitle}>
+                    № {req.shortCode}
                     {req.urgent ? (
                       <span className={styles.urgentBadge} title="Срочная заявка">
                         Срочно
                       </span>
                     ) : null}
-                  </div>
-                  <div className={styles.supplyBar}>
-                    {canSupplyApprove(req) ? (
-                      <button
-                        type="button"
-                        className={styles.approveBtn}
-                        onClick={() => onUpdateRequest(req.id, { status: 'approved' })}
-                      >
-                        Согласовать
-                      </button>
-                    ) : null}
-                    {canSupplyEdit(req) ? (
-                      <button type="button" className={styles.actionBtn} onClick={() => onEdit(req)}>
-                        Изменить
-                      </button>
-                    ) : null}
-                    {canSupplyCancel(req) ? (
-                      <button
-                        type="button"
-                        className={styles.cancelSupplyBtn}
-                        onClick={() =>
-                          onUpdateRequest(req.id, { status: 'cancelled', receipt: null })
-                        }
-                      >
-                        Снять
-                      </button>
-                    ) : null}
-                  </div>
-                  {req.neededByIso ? (
-                    <p className={styles.needBy}>
-                      <span className={styles.needByLabel}>Нужно к: </span>
-                      {formatDateTime(req.neededByIso)}
-                    </p>
+                  </p>
+                  <p className={styles.cardMeta}>
+                    {formatDateTime(req.createdAtIso)} · {req.createdBy}
+                    {req.neededByIso ? ` · нужно к ${formatDateTime(req.neededByIso)}` : ''}
+                  </p>
+                </div>
+                <span
+                  className={`${styles.statusBadge} ${styles[`status_${req.status}`]}`}
+                >
+                  {PROCUREMENT_STATUS_LABELS[req.status]}
+                </span>
+              </header>
+
+              {(canSupplyApprove(req) || canSupplyEdit(req) || canSupplyCancel(req)) && (
+                <div className={styles.supplyBar}>
+                  {canSupplyApprove(req) ? (
+                    <button
+                      type="button"
+                      className={styles.approveBtn}
+                      onClick={() => onUpdateRequest(req.id, { status: 'approved' })}
+                    >
+                      Согласовать
+                    </button>
+                  ) : null}
+                  {canSupplyEdit(req) ? (
+                    <button type="button" className={styles.actionBtn} onClick={() => onEdit(req)}>
+                      Изменить
+                    </button>
+                  ) : null}
+                  {canSupplyCancel(req) ? (
+                    <button
+                      type="button"
+                      className={styles.cancelSupplyBtn}
+                      onClick={() =>
+                        onUpdateRequest(req.id, { status: 'cancelled', receipt: null })
+                      }
+                    >
+                      Снять
+                    </button>
                   ) : null}
                 </div>
-                <div className={styles.cardCount}>
-                  <span className={styles.cardCountLabel}>Позиций</span>
-                  <span className={styles.cardCountValue}>{req.items.length}</span>
-                </div>
-              </header>
+              )}
 
               <div className={styles.tableWrap}>
                 <table className={styles.table}>
@@ -349,14 +415,14 @@ export function SiteProcurementRequestsSection({
                   className={styles.actionBtn}
                   onClick={() => handleDownloadTxt(req)}
                 >
-                  Скачать TXT
+                  TXT
                 </button>
                 <button
                   type="button"
                   className={styles.actionBtn}
                   onClick={() => handleDownloadCsv(req)}
                 >
-                  Скачать CSV
+                  CSV
                 </button>
                 <button
                   type="button"
@@ -364,7 +430,7 @@ export function SiteProcurementRequestsSection({
                   onClick={() => handleCopy(req)}
                   aria-live="polite"
                 >
-                  {copiedId === req.id ? 'Скопировано ✓' : 'Скопировать текст'}
+                  {copiedId === req.id ? 'Скопировано ✓' : 'Копировать'}
                 </button>
                 <button
                   type="button"
@@ -387,6 +453,44 @@ export function SiteProcurementRequestsSection({
           ))}
         </ul>
       )}
+
+      {summary.materials.length > 0 ? (
+        <div className={styles.materialsBlock}>
+          <button
+            type="button"
+            className={styles.moreBtn}
+            onClick={() => setShowMaterials((v) => !v)}
+            aria-expanded={showMaterials}
+          >
+            {showMaterials ? 'Скрыть сводку материалов' : 'Сводка материалов'}
+          </button>
+          {showMaterials ? (
+            <ul className={styles.materials}>
+              {summary.materials.map((m) => {
+                const who = [...new Set(m.refs.map((r) => r.createdBy))]
+                const pct = deliveryPct(m.requestedQty, m.acceptedQty)
+                return (
+                  <li key={`${m.title}-${m.unitId}`} className={styles.material}>
+                    <div className={styles.materialHead}>
+                      <span className={styles.materialName}>{m.title}</span>
+                      {m.acceptedQty > 0 ? (
+                        <span className={styles.materialPct}>{pct}%</span>
+                      ) : null}
+                    </div>
+                    <p className={styles.materialQty}>
+                      {formatQty(m.requestedQty)} {unitLabel(m.unitId)}
+                      {m.acceptedQty > 0
+                        ? ` · привезли ${formatQty(m.acceptedQty)} ${unitLabel(m.unitId)}`
+                        : ''}
+                    </p>
+                    <p className={styles.materialWho}>{who.join(', ')}</p>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
 
       {refuseReq ? (
         <CargoReceiptSheet

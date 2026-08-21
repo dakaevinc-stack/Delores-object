@@ -43,7 +43,6 @@ import { BrigadierReportModal } from '../features/site-detail/BrigadierReportMod
 import { ProcurementRequestModal } from '../features/site-detail/ProcurementRequestModal'
 import { SiteBrigadierSubmittedReportsSection } from '../features/site-detail/SiteBrigadierSubmittedSection'
 import { SiteProcurementRequestsSection } from '../features/site-detail/SiteProcurementRequestsSection'
-import { SiteProcurementAccountingSection } from '../features/site-detail/SiteProcurementAccountingSection'
 import { SiteDetailHeader } from '../features/site-detail/SiteDetailHeader'
 import { SiteDetailKpiGrid } from '../features/site-detail/SiteDetailKpiGrid'
 import { SiteProjectHeaderCard } from '../features/site-detail/SiteProjectHeaderCard'
@@ -303,13 +302,6 @@ export function ObjectDetailPage() {
     return applyAcceptedQuantitiesToPlan(withReports, dayQty)
   }, [basePlan, brigadierReports, site, dayPlanRevision])
 
-  const procurementRequestsFiltered = useMemo(() => {
-    if (!procurementFilterAuthor) return procurementRequests
-    return procurementRequests.filter(
-      (r) => (r.createdBy.trim() || 'Не указан') === procurementFilterAuthor,
-    )
-  }, [procurementRequests, procurementFilterAuthor])
-
   if (!site) {
     return (
       <div className={styles.page}>
@@ -489,9 +481,9 @@ export function ObjectDetailPage() {
         return (
           <SiteRoleZone key={zone} zone="supply" layout="panel">
             <SiteProcurementRequestsSection
-              requests={procurementRequestsFiltered}
-              filterAuthor={procurementFilterAuthor}
-              serverBacked={remoteFormsActive}
+              requests={procurementRequests}
+              selectedAuthor={procurementFilterAuthor}
+              onSelectAuthor={setProcurementFilterAuthor}
               deliveryPoint={deliveryPoint}
               showCreateButton={false}
               onCreate={openProcurementComposer}
@@ -516,11 +508,6 @@ export function ObjectDetailPage() {
               onUpdateRequest={(id, patch) => {
                 void handleUpdateProcurementRequest(id, patch)
               }}
-            />
-            <SiteProcurementAccountingSection
-              requests={procurementRequests}
-              selectedAuthor={procurementFilterAuthor}
-              onSelectAuthor={setProcurementFilterAuthor}
             />
             {materialBudget ? (
               <SiteMaterialConsumptionSection
