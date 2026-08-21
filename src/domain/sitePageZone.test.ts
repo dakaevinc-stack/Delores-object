@@ -1,12 +1,29 @@
 import { describe, expect, it } from 'vitest'
-import { SITE_DUTY_CAPABILITIES, SITE_PAGE_ZONES, ZONES_BY_DUTY } from './sitePageZone'
+import {
+  SITE_DUTY_CAPABILITIES,
+  SITE_PAGE_ZONE_ORDER,
+  SITE_PAGE_ZONES,
+  ZONES_BY_DUTY,
+  zonesForDuty,
+} from './sitePageZone'
 
 describe('sitePageZone', () => {
-  it('руководитель видит все зоны, остальные — только свою', () => {
+  it('порядок зон на полном экране: сводка → смена → материалы → рейс', () => {
+    expect(SITE_PAGE_ZONE_ORDER).toEqual([
+      'manager',
+      'brigadier',
+      'supply',
+      'dispatcher',
+    ])
+  })
+
+  it('руководитель и зам видят все зоны, остальные — только свою', () => {
+    expect(zonesForDuty('manager')).toEqual(SITE_PAGE_ZONE_ORDER)
+    expect(zonesForDuty('deputy')).toEqual(SITE_PAGE_ZONE_ORDER)
     expect(ZONES_BY_DUTY.brigadier).toEqual(['brigadier'])
     expect(ZONES_BY_DUTY.supply).toEqual(['supply'])
     expect(ZONES_BY_DUTY.dispatcher).toEqual(['dispatcher'])
-    expect(ZONES_BY_DUTY.manager).toEqual(['manager', 'brigadier', 'supply', 'dispatcher'])
+    expect(ZONES_BY_DUTY.driver).toEqual([])
   })
 
   it('бригадир не ставит рейс, диспетчер — ставит', () => {
@@ -16,6 +33,8 @@ describe('sitePageZone', () => {
     expect(SITE_DUTY_CAPABILITIES.dispatcher.assignDriverTrip).toBe(true)
     expect(SITE_DUTY_CAPABILITIES.dispatcher.editUnloadPoint).toBe(false)
     expect(SITE_DUTY_CAPABILITIES.manager.assignDriverTrip).toBe(true)
+    expect(SITE_DUTY_CAPABILITIES.deputy.assignDriverTrip).toBe(true)
+    expect(SITE_DUTY_CAPABILITIES.driver.seeAllZones).toBe(false)
   })
 
   it('у зон есть подписи для шапки страницы', () => {
