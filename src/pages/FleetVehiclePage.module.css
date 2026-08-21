@@ -320,10 +320,10 @@
 
 .heroModel {
   margin: 4px 0 2px;
-  font-size: clamp(20px, 2.6vw, 26px);
-  font-weight: 800;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  font-size: var(--heading-block-size);
+  font-weight: var(--heading-block-weight);
+  line-height: var(--heading-block-line);
+  letter-spacing: var(--heading-block-tracking);
   color: var(--text-strong);
 }
 
@@ -590,10 +590,10 @@
 
 .passportTitle {
   margin: 0 0 4px;
-  font-size: clamp(20px, 2.2vw, 26px);
-  line-height: 1.1;
-  letter-spacing: -0.015em;
-  font-weight: 800;
+  font-size: var(--heading-block-size);
+  line-height: var(--heading-block-line);
+  letter-spacing: var(--heading-block-tracking);
+  font-weight: var(--heading-block-weight);
   color: var(--text);
 }
 
@@ -1737,10 +1737,10 @@
 
 .documentsTitle {
   margin: 0 0 4px;
-  font-size: clamp(20px, 2.2vw, 26px);
-  line-height: 1.1;
-  letter-spacing: -0.015em;
-  font-weight: 800;
+  font-size: var(--heading-block-size);
+  line-height: var(--heading-block-line);
+  letter-spacing: var(--heading-block-tracking);
+  font-weight: var(--heading-block-weight);
   color: var(--text);
 }
 

@@ -132,9 +132,10 @@
 
 .title {
   margin: 0 0 10px;
-  font-size: clamp(24px, 3vw, 32px);
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-size: var(--heading-block-size);
+  font-weight: var(--heading-block-weight);
+  letter-spacing: var(--heading-block-tracking);
+  line-height: var(--heading-block-line);
   color: var(--text-strong);
 }
 

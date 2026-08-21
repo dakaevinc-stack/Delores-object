@@ -39,10 +39,10 @@
 
 .title {
   margin: 0 0 8px;
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1.15;
+  font-size: var(--heading-block-size);
+  font-weight: var(--heading-block-weight);
+  letter-spacing: var(--heading-block-tracking);
+  line-height: var(--heading-block-line);
   color: var(--text-strong);
 }
 

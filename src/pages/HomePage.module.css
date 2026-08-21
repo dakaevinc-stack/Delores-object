@@ -550,9 +550,10 @@
 }
 
 .fleetEntryTitle {
-  font-size: clamp(20px, 2.4vw, 26px);
-  font-weight: 800;
-  letter-spacing: -0.025em;
+  font-size: var(--heading-block-size);
+  font-weight: var(--heading-block-weight);
+  letter-spacing: var(--heading-block-tracking);
+  line-height: var(--heading-block-line);
   color: var(--text-strong);
   line-height: 1.1;
 }
@@ -895,9 +896,10 @@
 }
 
 .inspectionAdminTitle {
-  font-size: clamp(20px, 2.4vw, 26px);
-  font-weight: 800;
-  letter-spacing: -0.025em;
+  font-size: var(--heading-block-size);
+  font-weight: var(--heading-block-weight);
+  letter-spacing: var(--heading-block-tracking);
+  line-height: var(--heading-block-line);
   color: var(--text-strong);
   line-height: 1.1;
 }
@@ -1109,9 +1111,10 @@
 
 .objectsTitle {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: var(--heading-block-size);
+  font-weight: var(--heading-block-weight);
+  letter-spacing: var(--heading-block-tracking);
+  line-height: var(--heading-block-line);
   color: var(--text-strong);
 }
 

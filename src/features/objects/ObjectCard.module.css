@@ -106,10 +106,10 @@
 
 .title {
   margin: 0 0 14px;
-  font-size: clamp(19px, 2vw, 22px);
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  font-size: var(--heading-block-size);
+  font-weight: var(--heading-block-weight);
+  letter-spacing: var(--heading-block-tracking);
+  line-height: var(--heading-block-line);
   color: var(--text-strong);
 }
 
@@ -152,10 +152,6 @@
     padding: 18px 16px 16px;
     min-height: 0;
     border-radius: 14px;
-  }
-
-  .title {
-    font-size: clamp(17px, 4.5vw, 20px);
   }
 
   .hint {

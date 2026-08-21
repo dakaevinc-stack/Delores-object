@@ -31,6 +31,12 @@
   /* Одинаковый зазор между крупными блоками по всему приложению */
   --block-gap: 24px;
 
+  /* Заголовки зон и секций — один вид везде */
+  --heading-block-size: 22px;
+  --heading-block-weight: 800;
+  --heading-block-tracking: -0.03em;
+  --heading-block-line: 1.25;
+
   --sans:
     'Inter',
     system-ui,

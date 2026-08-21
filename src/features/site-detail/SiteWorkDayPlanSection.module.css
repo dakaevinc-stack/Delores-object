@@ -54,9 +54,10 @@
 
 .embeddedTitle {
   margin: 0;
-  font-size: clamp(17px, 1.6vw, 20px);
-  font-weight: 750;
-  letter-spacing: -0.02em;
+  font-size: var(--heading-block-size);
+  font-weight: var(--heading-block-weight);
+  letter-spacing: var(--heading-block-tracking);
+  line-height: var(--heading-block-line);
   color: var(--text-strong);
 }
 
@@ -133,9 +134,10 @@
 
 .title {
   margin: 0;
-  font-size: clamp(18px, 1.8vw, 22px);
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: var(--heading-block-size);
+  font-weight: var(--heading-block-weight);
+  letter-spacing: var(--heading-block-tracking);
+  line-height: var(--heading-block-line);
   color: var(--text-strong);
 }
 
@@ -330,9 +332,10 @@
 
 .daySheetTitle {
   margin: 0 0 4px;
-  font-size: clamp(18px, 1.8vw, 22px);
-  font-weight: 750;
-  letter-spacing: -0.02em;
+  font-size: var(--heading-block-size);
+  font-weight: var(--heading-block-weight);
+  letter-spacing: var(--heading-block-tracking);
+  line-height: var(--heading-block-line);
   color: var(--text-strong);
   text-transform: capitalize;
 }
