@@ -540,7 +540,7 @@ export function SiteDeliveryPointSection({
             <div className={styles.mapFooter}>
               {mapTarget === 'pickup' && canAssignTrip ? (
                 <span className={styles.captionAddr}>
-                  {pickupAddress.trim() || 'Ткните карту — адрес сразу попадёт в «Откуда грузить»'}
+                  {pickupAddress.trim() || 'Укажите точку на карте — адрес погрузки подставится автоматически'}
                 </span>
               ) : point ? (
                 <>
@@ -739,7 +739,7 @@ export function SiteDeliveryPointSection({
                     <input
                       className={styles.fieldInput}
                       value={pickupAddress}
-                      placeholder="Ткните карту — адрес подставится сам"
+                      placeholder="Адрес погрузки или точка на карте"
                       onChange={(e) => {
                         setPickupAddress(e.target.value)
                         if (mapTarget === 'pickup') setQuery(e.target.value)
