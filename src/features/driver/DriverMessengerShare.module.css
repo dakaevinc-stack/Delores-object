@@ -126,15 +126,6 @@
   background: linear-gradient(145deg, #471aff 0%, #6e1aff 45%, #9500ff 100%);
 }
 
-.maps {
-  border-color: rgba(252, 59, 70, 0.16);
-  background: linear-gradient(180deg, #fff5f5 0%, #ffffff 70%);
-}
-
-.maps .glyph {
-  background: linear-gradient(145deg, #ff5a5f 0%, #fc3b46 55%, #e11d2e 100%);
-}
-
 .copy {
   border-color: rgba(23, 42, 77, 0.12);
   background: linear-gradient(180deg, #f5f7fb 0%, #ffffff 70%);

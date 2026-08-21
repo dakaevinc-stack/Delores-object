@@ -70,17 +70,6 @@ function IconMax() {
   )
 }
 
-function IconMaps() {
-  return (
-    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M12 2.5c-3.4 0-6.2 2.7-6.2 6.1 0 4.4 5.4 10.5 5.7 10.8.3.3.7.3 1 0 .3-.3 5.7-6.4 5.7-10.8 0-3.4-2.8-6.1-6.2-6.1zm0 8.3a2.3 2.3 0 1 1 0-4.6 2.3 2.3 0 0 1 0 4.6z"
-      />
-    </svg>
-  )
-}
-
 function IconCopy() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
@@ -244,13 +233,6 @@ export function DriverMessengerShare({ text, mapsUrl, compact = false, disabled 
           onClick={() => void handleMax()}
           icon={<IconMax />}
           label="Max"
-        />
-        <ShareTile
-          className={styles.maps}
-          href={mapsUrl}
-          disabled={disabled}
-          icon={<IconMaps />}
-          label="Карты"
         />
         <ShareTile
           className={styles.copy}
