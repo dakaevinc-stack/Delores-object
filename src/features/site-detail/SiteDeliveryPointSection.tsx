@@ -311,6 +311,17 @@ export function SiteDeliveryPointSection({
     void commit({ ...point, hint: hint.trim(), updatedAtIso: new Date().toISOString() })
   }
 
+  const clearPickup = () => {
+    setPickupAddress('')
+    setPickupLat(null)
+    setPickupLng(null)
+    if (mapTarget === 'pickup') {
+      skipDebounce.current = true
+      setQuery('')
+    }
+    setHits([])
+  }
+
   const switchMapTarget = (next: MapTarget) => {
     setMapTarget(next)
     setHits([])
@@ -530,17 +541,36 @@ export function SiteDeliveryPointSection({
                 accentLng={alreadyLoaded ? null : pickupLng}
                 editable={searchEnabled}
                 draggable={searchEnabled && mapTarget === 'unload'}
+                accentDraggable={searchEnabled && mapTarget === 'pickup' && !alreadyLoaded}
                 ariaLabel={
                   mapTarget === 'pickup' ? 'Карта точки погрузки' : 'Карта точки разгрузки'
                 }
                 onPick={searchEnabled ? (lat, lng) => void handleMapPick(lat, lng) : undefined}
+                onAccentPick={
+                  searchEnabled && !alreadyLoaded
+                    ? (lat, lng) => {
+                        void (async () => {
+                          placePickup(formatLatLng(lat, lng), lat, lng)
+                          const found = (await reverseGeocodeRemote(lat, lng)) ?? ''
+                          if (found.trim()) placePickup(found, lat, lng)
+                        })()
+                      }
+                    : undefined
+                }
               />
+              {canAssignTrip ? (
+                <div className={styles.mapLegend} aria-hidden>
+                  <span className={styles.legendRed}>Куда везти</span>
+                  <span className={styles.legendBlue}>Откуда грузить</span>
+                </div>
+              ) : null}
             </div>
 
             <div className={styles.mapFooter}>
               {mapTarget === 'pickup' && canAssignTrip ? (
                 <span className={styles.captionAddr}>
-                  {pickupAddress.trim() || 'Укажите точку на карте — адрес погрузки подставится автоматически'}
+                  {pickupAddress.trim() ||
+                    'Синяя точка — откуда грузить. Ткните карту или перетащите.'}
                 </span>
               ) : point ? (
                 <>
@@ -566,6 +596,16 @@ export function SiteDeliveryPointSection({
                       className={styles.ghostBtnDanger}
                       disabled={busy}
                       onClick={() => void commit(null)}
+                    >
+                      Снять
+                    </button>
+                  ) : null}
+                  {mapTarget === 'pickup' && !alreadyLoaded && (pickupLat != null || pickupAddress.trim()) ? (
+                    <button
+                      type="button"
+                      className={styles.ghostBtnDanger}
+                      disabled={busy}
+                      onClick={clearPickup}
                     >
                       Снять
                     </button>
@@ -741,8 +781,13 @@ export function SiteDeliveryPointSection({
                       value={pickupAddress}
                       placeholder="Адрес погрузки или точка на карте"
                       onChange={(e) => {
-                        setPickupAddress(e.target.value)
-                        if (mapTarget === 'pickup') setQuery(e.target.value)
+                        const v = e.target.value
+                        setPickupAddress(v)
+                        if (mapTarget === 'pickup') setQuery(v)
+                        if (!v.trim()) {
+                          setPickupLat(null)
+                          setPickupLng(null)
+                        }
                       }}
                       onFocus={() => {
                         if (mapTarget !== 'pickup') switchMapTarget('pickup')

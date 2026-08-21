@@ -12,13 +12,17 @@ type Props = {
   accentLng?: number | null
   /** Если false — клики по карте не принимают. */
   editable?: boolean
-  /** Можно ли тащить основную метку. */
+  /** Можно ли тащить основную (красную) метку. */
   draggable?: boolean
+  /** Можно ли тащить синюю метку погрузки. */
+  accentDraggable?: boolean
   compact?: boolean
   /** Растянуть на всю высоту родителя (один экран карты). */
   fill?: boolean
   ariaLabel?: string
   onPick?: (lat: number, lng: number) => void
+  /** Перенос синей метки (погрузка). */
+  onAccentPick?: (lat: number, lng: number) => void
 }
 
 function makeIcon(accent: boolean) {
@@ -37,22 +41,29 @@ export function DeliveryPointMap({
   accentLng = null,
   editable = true,
   draggable,
+  accentDraggable = false,
   compact = false,
   fill = false,
   ariaLabel = 'Карта',
   onPick,
+  onAccentPick,
 }: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const markerRef = useRef<L.Marker | null>(null)
   const accentRef = useRef<L.Marker | null>(null)
   const onPickRef = useRef(onPick)
+  const onAccentPickRef = useRef(onAccentPick)
   const editableRef = useRef(editable)
   const canDrag = draggable ?? editable
 
   useEffect(() => {
     onPickRef.current = onPick
   }, [onPick])
+
+  useEffect(() => {
+    onAccentPickRef.current = onAccentPick
+  }, [onAccentPick])
 
   useEffect(() => {
     editableRef.current = editable
@@ -153,12 +164,26 @@ export function DeliveryPointMap({
     const icon = makeIcon(true)
 
     if (!accentRef.current) {
-      accentRef.current = L.marker(here, { icon, interactive: false }).addTo(map)
+      const marker = L.marker(here, {
+        icon,
+        draggable: accentDraggable,
+        interactive: true,
+      })
+      marker.addTo(map)
+      marker.on('dragend', () => {
+        const p = marker.getLatLng()
+        onAccentPickRef.current?.(p.lat, p.lng)
+      })
+      accentRef.current = marker
     } else {
       accentRef.current.setLatLng(here)
       accentRef.current.setIcon(icon)
+      if (accentRef.current.dragging) {
+        if (accentDraggable) accentRef.current.dragging.enable()
+        else accentRef.current.dragging.disable()
+      }
     }
-  }, [accentLat, accentLng])
+  }, [accentLat, accentLng, accentDraggable])
 
   return (
     <div className={`${styles.frame} ${compact ? styles.compact : ''} ${fill ? styles.fill : ''}`}>
