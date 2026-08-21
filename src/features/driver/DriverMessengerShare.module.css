@@ -27,6 +27,18 @@
   color: var(--muted, #6b7280);
 }
 
+.tgTip {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(34, 158, 217, 0.28);
+  background: linear-gradient(180deg, #eef8fd 0%, #f7fcff 100%);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.4;
+  color: #0c4a6e;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));

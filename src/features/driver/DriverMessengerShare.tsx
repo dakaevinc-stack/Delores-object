@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { maxShareUrl, telegramAppShareUrl, whatsappShareUrl } from '../../domain/driverShare'
+import { maxShareUrl, openTelegramApp, telegramSharePayload, whatsappShareUrl } from '../../domain/driverShare'
 import styles from './DriverMessengerShare.module.css'
 
 type Props = {
@@ -168,16 +168,29 @@ function ShareTile({
 
 export function DriverMessengerShare({ text, mapsUrl, compact = false, disabled = false }: Props) {
   const [copied, setCopied] = useState(false)
+  const [tgReady, setTgReady] = useState(false)
   const canSystemShare = typeof navigator !== 'undefined' && 'share' in navigator
 
   const markCopied = () => {
     setCopied(true)
-    window.setTimeout(() => setCopied(false), 1800)
+    window.setTimeout(() => setCopied(false), 2200)
   }
 
   const handleCopy = async () => {
     if (disabled) return
     if (await copyText(text)) markCopied()
+  }
+
+  const handleTelegram = async () => {
+    if (disabled) return
+    const payload = telegramSharePayload(text, mapsUrl)
+    const ok = await copyText(payload)
+    if (ok) {
+      markCopied()
+      setTgReady(true)
+      window.setTimeout(() => setTgReady(false), 12000)
+    }
+    openTelegramApp(text, mapsUrl)
   }
 
   const handleMax = async () => {
@@ -200,8 +213,14 @@ export function DriverMessengerShare({ text, mapsUrl, compact = false, disabled 
     <div className={compact ? styles.wrapCompact : styles.wrap}>
       <div className={styles.head}>
         <p className={styles.label}>Отправить водителю</p>
-        <p className={styles.hint}>Текст рейса готов — выберите, куда отправить</p>
+        <p className={styles.hint}>Текст рейса готов — выберите канал</p>
       </div>
+      {tgReady ? (
+        <p className={styles.tgTip} role="status">
+          Текст скопирован. В Telegram выберите чат водителя и вставьте: ⌘V (на телефоне — «Вставить»), затем
+          отправьте.
+        </p>
+      ) : null}
       <div className={styles.grid} aria-disabled={disabled}>
         <ShareTile
           className={styles.wa}
@@ -212,8 +231,9 @@ export function DriverMessengerShare({ text, mapsUrl, compact = false, disabled 
         />
         <ShareTile
           className={styles.tg}
-          href={telegramAppShareUrl(text, mapsUrl)}
+          asButton
           disabled={disabled}
+          onClick={() => void handleTelegram()}
           icon={<IconTg />}
           label="Telegram"
         />

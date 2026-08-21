@@ -26,10 +26,22 @@ export function whatsappShareUrl(text: string): string {
   return `https://wa.me/?text=${encodeURIComponent(text)}`
 }
 
-/** Deep link в приложение Telegram с готовым текстом. */
+/** Deep link: открыть приложение Telegram (текст на Desktop часто не подставляется). */
 export function telegramAppShareUrl(text: string, url: string): string {
   const body = [text.trim(), url.trim()].filter(Boolean).join('\n\n')
   return `tg://msg?text=${encodeURIComponent(body)}`
+}
+
+/** Полный текст для буфера / мессенджера. */
+export function telegramSharePayload(text: string, url: string): string {
+  return [text.trim(), url.trim()].filter(Boolean).join('\n\n')
+}
+
+/** Открыть приложение Telegram (без веб-страницы t.me). */
+export function openTelegramApp(text: string, url: string): void {
+  if (typeof window === 'undefined') return
+  // Сначала пробуем шаринг с текстом; если клиент проигнорирует — приложение всё равно откроется.
+  window.location.href = telegramAppShareUrl(text, url)
 }
 
 /** Веб-шаринг Telegram (только если явно нужен браузер). */
