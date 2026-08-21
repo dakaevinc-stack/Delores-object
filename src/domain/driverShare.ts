@@ -5,8 +5,21 @@ import {
   type SiteDeliveryPoint,
 } from './siteDeliveryPoint'
 
+/** Боевой адрес — в шаринге с localhost подставляем его, чтобы водитель открыл кабинет. */
+export const PUBLIC_APP_ORIGIN = 'http://94.242.58.24'
+
 export function driverCabinetUrl(origin: string): string {
-  return `${origin.replace(/\/$/, '')}/driver`
+  let base = origin.replace(/\/$/, '') || PUBLIC_APP_ORIGIN
+  try {
+    const raw = base.includes('://') ? base : `http://${base}`
+    const host = new URL(raw).hostname
+    if (host === 'localhost' || host === '127.0.0.1') {
+      base = PUBLIC_APP_ORIGIN
+    }
+  } catch {
+    base = PUBLIC_APP_ORIGIN
+  }
+  return `${base}/driver`
 }
 
 export function whatsappShareUrl(text: string): string {
@@ -16,77 +29,18 @@ export function whatsappShareUrl(text: string): string {
 /** Deep link в приложение Telegram с готовым текстом. */
 export function telegramAppShareUrl(text: string, url: string): string {
   const body = [text.trim(), url.trim()].filter(Boolean).join('\n\n')
-  // msg?text= лучше поддерживается Telegram Desktop / iOS / Android, чем msg_url.
   return `tg://msg?text=${encodeURIComponent(body)}`
 }
 
-/** Веб-запасной вариант, если приложение не открылось. */
+/** Веб-шаринг Telegram (только если явно нужен браузер). */
 export function telegramWebShareUrl(text: string, url: string): string {
   const params = new URLSearchParams({ url, text })
   return `https://t.me/share/url?${params.toString()}`
 }
 
-/** @deprecated используйте telegramAppShareUrl / telegramWebShareUrl */
+/** @deprecated используйте telegramAppShareUrl */
 export function telegramShareUrl(text: string, url: string): string {
   return telegramAppShareUrl(text, url)
-}
-
-function launchCustomProtocol(href: string): void {
-  const a = document.createElement('a')
-  a.href = href
-  a.target = '_self'
-  a.rel = 'noopener'
-  a.style.display = 'none'
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-}
-
-/**
- * Открыть шаринг в приложении Telegram.
- * 1) системный Share (если есть) — пользователь выбирает Telegram
- * 2) tg:// deep link в приложение
- * 3) запасной t.me в браузере
- */
-export async function openTelegramShare(text: string, url: string): Promise<void> {
-  if (typeof window === 'undefined') return
-
-  const payload = text.trim()
-  const maps = url.trim()
-  const appUrl = telegramAppShareUrl(payload, maps)
-  const webUrl = telegramWebShareUrl(payload, maps || 'https://t.me')
-
-  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-    try {
-      await navigator.share({
-        title: 'Рейс водителю',
-        text: payload,
-        url: maps || undefined,
-      })
-      return
-    } catch (err) {
-      // Пользователь отменил — не открываем браузер.
-      if (err instanceof DOMException && err.name === 'AbortError') return
-    }
-  }
-
-  let appTookFocus = false
-  const onHide = () => {
-    appTookFocus = true
-  }
-  window.addEventListener('blur', onHide, { once: true })
-  window.addEventListener('pagehide', onHide, { once: true })
-  document.addEventListener('visibilitychange', onHide, { once: true })
-
-  launchCustomProtocol(appUrl)
-
-  window.setTimeout(() => {
-    window.removeEventListener('blur', onHide)
-    window.removeEventListener('pagehide', onHide)
-    document.removeEventListener('visibilitychange', onHide)
-    if (appTookFocus || document.hidden) return
-    window.open(webUrl, '_blank', 'noopener,noreferrer')
-  }, 1600)
 }
 
 /** Deeplink MAX: экран выбора чата с готовым текстом. */

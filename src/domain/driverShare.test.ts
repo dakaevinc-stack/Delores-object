@@ -36,8 +36,10 @@ const trip: DriverTrip = {
 }
 
 describe('driverShare', () => {
-  it('ссылка кабинета — origin + /driver', () => {
+  it('ссылка кабинета — origin + /driver; localhost → прод', () => {
     expect(driverCabinetUrl('http://94.242.58.24/')).toBe('http://94.242.58.24/driver')
+    expect(driverCabinetUrl('http://localhost:5173')).toBe('http://94.242.58.24/driver')
+    expect(driverCabinetUrl('http://127.0.0.1:5173/')).toBe('http://94.242.58.24/driver')
   })
 
   it('WhatsApp, Telegram и Max открывают шаринг с текстом', () => {

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { maxShareUrl, openTelegramShare, whatsappShareUrl } from '../../domain/driverShare'
+import { maxShareUrl, telegramAppShareUrl, whatsappShareUrl } from '../../domain/driverShare'
 import styles from './DriverMessengerShare.module.css'
 
 type Props = {
@@ -146,11 +146,14 @@ function ShareTile({
     )
   }
 
+  // tg:// / whatsapp:// — только _self, иначе браузер уходит в пустую вкладку вместо приложения.
+  const customProtocol = Boolean(href && !/^https?:/i.test(href))
+
   return (
     <a
       className={cls}
       href={disabled ? undefined : href}
-      target="_blank"
+      target={customProtocol ? '_self' : '_blank'}
       rel="noreferrer"
       aria-disabled={disabled}
       onClick={(e) => {
@@ -175,11 +178,6 @@ export function DriverMessengerShare({ text, mapsUrl, compact = false, disabled 
   const handleCopy = async () => {
     if (disabled) return
     if (await copyText(text)) markCopied()
-  }
-
-  const handleTelegram = () => {
-    if (disabled) return
-    void openTelegramShare(text, mapsUrl)
   }
 
   const handleMax = async () => {
@@ -214,9 +212,8 @@ export function DriverMessengerShare({ text, mapsUrl, compact = false, disabled 
         />
         <ShareTile
           className={styles.tg}
-          asButton
+          href={telegramAppShareUrl(text, mapsUrl)}
           disabled={disabled}
-          onClick={handleTelegram}
           icon={<IconTg />}
           label="Telegram"
         />
