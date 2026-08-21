@@ -625,23 +625,105 @@ export function SiteDeliveryPointSection({
                     ? serverBacked
                       ? 'Рейс уйдёт на сервер и появится в кабинете на любом устройстве.'
                       : 'Рейс появится в кабинете. Точка пока только на этом устройстве.'
-                    : 'Сначала поставьте точку разгрузки на карте («Куда везти»).'}
+                    : 'Сначала укажите точку «Куда везти» на карте.'}
                 </p>
 
-                <div className={`${styles.zone} ${styles.zoneRoute}`}>
-                  <p className={styles.zoneLabel}>Куда везти</p>
-                  <p className={styles.destValue}>
-                    {captionAddr || (point ? 'Точка на карте без адреса' : 'Ещё не выбрано — ткните карту')}
-                  </p>
+                <div className={styles.routeCard} aria-label="Маршрут рейса">
+                  <div className={styles.routeRail} aria-hidden>
+                    <span className={styles.routeDotFrom} />
+                    <span className={styles.routeLine} />
+                    <span className={styles.routeDotTo} />
+                  </div>
+                  <div className={styles.routeFields}>
+                    <div className={styles.routeStop}>
+                      <div className={styles.routeStopHead}>
+                        <span className={styles.routeStopLabel}>Откуда</span>
+                        <label className={styles.checkInline}>
+                          <input
+                            type="checkbox"
+                            checked={alreadyLoaded}
+                            onChange={(e) => {
+                              const on = e.target.checked
+                              setAlreadyLoaded(on)
+                              if (on) {
+                                setPickupLat(null)
+                                setPickupLng(null)
+                                if (mapTarget === 'pickup') switchMapTarget('unload')
+                              }
+                            }}
+                          />
+                          Уже в кузове
+                        </label>
+                      </div>
+                      {alreadyLoaded ? (
+                        <p className={styles.routeLoaded}>Погрузка не нужна — материал уже в кузове</p>
+                      ) : (
+                        <input
+                          className={styles.routeInput}
+                          value={pickupAddress}
+                          placeholder="Адрес погрузки или точка на карте"
+                          onChange={(e) => {
+                            const v = e.target.value
+                            setPickupAddress(v)
+                            if (mapTarget === 'pickup') setQuery(v)
+                            if (!v.trim()) {
+                              setPickupLat(null)
+                              setPickupLng(null)
+                            }
+                          }}
+                          onFocus={() => {
+                            if (mapTarget !== 'pickup') switchMapTarget('pickup')
+                          }}
+                        />
+                      )}
+                    </div>
+
+                    <div className={styles.routeStop}>
+                      <span className={styles.routeStopLabel}>Куда</span>
+                      <p
+                        className={`${styles.routeDest} ${point ? '' : styles.routeDestEmpty}`}
+                        onClick={() => {
+                          if (mapTarget !== 'unload') switchMapTarget('unload')
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            if (mapTarget !== 'unload') switchMapTarget('unload')
+                          }
+                        }}
+                      >
+                        {captionAddr ||
+                          (point ? 'Точка на карте без адреса' : 'Ткните карту или найдите адрес')}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className={`${styles.zone} ${styles.zoneDriver}`}>
-                  <p className={styles.zoneLabel}>Водитель</p>
+                {canEditPoint ? (
+                  <label className={styles.hintField}>
+                    Как подъехать
+                    <textarea
+                      className={styles.hint}
+                      rows={2}
+                      value={hint}
+                      placeholder="Ворота, штабель, ориентир…"
+                      onChange={(e) => setHint(e.target.value)}
+                      onBlur={saveHint}
+                    />
+                  </label>
+                ) : point?.hint ? (
+                  <p className={styles.hintNote}>{point.hint}</p>
+                ) : null}
+
+                <label className={styles.fieldBlock}>
+                  <span className={styles.fieldLabel}>Водитель</span>
                   <div className={styles.driverCombo}>
                     <input
                       className={styles.fieldInput}
                       value={driverName}
-                      placeholder="Начните фамилию — выберите из списка"
+                      placeholder="Фамилия из парка"
                       autoComplete="off"
                       onFocus={() => setDriverMenuOpen(true)}
                       onBlur={() => {
@@ -686,22 +768,24 @@ export function SiteDeliveryPointSection({
                       </ul>
                     ) : null}
                   </div>
-                </div>
+                </label>
 
-                <div className={`${styles.zone} ${styles.zoneCargo}`}>
-                  <p className={styles.zoneLabel}>Груз</p>
-                  <div className={styles.cargoActions}>
-                    <button
-                      type="button"
-                      className={styles.pickCargoBtn}
-                      aria-expanded={cargoPickerOpen}
-                      onClick={() => (cargoPickerOpen ? closeCargoPicker() : openCargoPicker())}
-                    >
-                      {cargoPickerOpen ? 'Скрыть список' : 'Выбрать материал'}
-                    </button>
-                    <button type="button" className={styles.addOwnBtn} onClick={addCustomCargo}>
-                      + Свой
-                    </button>
+                <div className={styles.fieldBlock}>
+                  <div className={styles.cargoHead}>
+                    <span className={styles.fieldLabel}>Груз</span>
+                    <div className={styles.cargoActions}>
+                      <button
+                        type="button"
+                        className={styles.pickCargoBtn}
+                        aria-expanded={cargoPickerOpen}
+                        onClick={() => (cargoPickerOpen ? closeCargoPicker() : openCargoPicker())}
+                      >
+                        {cargoPickerOpen ? 'Скрыть' : 'Выбрать'}
+                      </button>
+                      <button type="button" className={styles.addOwnBtn} onClick={addCustomCargo}>
+                        + Свой
+                      </button>
+                    </div>
                   </div>
 
                   {cargoPickerOpen ? (
@@ -784,65 +868,14 @@ export function SiteDeliveryPointSection({
                       ))}
                     </ul>
                   ) : cargoPickerOpen ? null : (
-                    <p className={styles.cargoEmpty}>Нажмите «Выбрать материал» или добавьте свой.</p>
+                    <p className={styles.cargoEmpty}>Выберите материал или добавьте свой.</p>
                   )}
                   <input
                     className={styles.fieldInput}
                     value={cargoNote}
-                    placeholder="Комментарий к грузу (необязательно)"
+                    placeholder="Комментарий к грузу"
                     onChange={(e) => setCargoNote(e.target.value)}
                   />
-                </div>
-
-                <div className={`${styles.zone} ${styles.zoneRoute}`}>
-                  <p className={styles.zoneLabel}>Откуда грузить</p>
-                  <label className={styles.check}>
-                    Уже в кузове
-                    <input
-                      type="checkbox"
-                      checked={alreadyLoaded}
-                      onChange={(e) => {
-                        const on = e.target.checked
-                        setAlreadyLoaded(on)
-                        if (on) {
-                          setPickupLat(null)
-                          setPickupLng(null)
-                          if (mapTarget === 'pickup') switchMapTarget('unload')
-                        }
-                      }}
-                    />
-                  </label>
-                  {alreadyLoaded ? null : (
-                    <input
-                      className={styles.fieldInput}
-                      value={pickupAddress}
-                      placeholder="Адрес погрузки или точка на карте"
-                      onChange={(e) => {
-                        const v = e.target.value
-                        setPickupAddress(v)
-                        if (mapTarget === 'pickup') setQuery(v)
-                        if (!v.trim()) {
-                          setPickupLat(null)
-                          setPickupLng(null)
-                        }
-                      }}
-                      onFocus={() => {
-                        if (mapTarget !== 'pickup') switchMapTarget('pickup')
-                      }}
-                    />
-                  )}
-                  {canEditPoint ? (
-                    <textarea
-                      className={styles.hint}
-                      rows={2}
-                      value={hint}
-                      placeholder="Как подъехать"
-                      onChange={(e) => setHint(e.target.value)}
-                      onBlur={saveHint}
-                    />
-                  ) : point?.hint ? (
-                    <p className={styles.hintNote}>{point.hint}</p>
-                  ) : null}
                 </div>
 
                 <button
