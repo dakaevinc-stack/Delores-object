@@ -40,7 +40,7 @@ describe('procurementAccounting', () => {
         id: 'b1',
         shortCode: 'B1',
         createdBy: 'Иванов',
-        items: [{ presetId: 'crushed-granite-5-20', title: 'Щебень 5–20', unitId: 't', quantity: 20 }],
+        items: [{ presetId: 'crushed-granite-5-20', title: 'Щебень 5–20', unitId: 'm3', quantity: 20 }],
       }),
     ]
 

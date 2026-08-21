@@ -170,4 +170,11 @@ describe('расход материалов', () => {
       expect(findProcurementPreset(article.presetId)?.id).toBe(article.presetId)
     }
   })
+
+  it('единицы сметы совпадают с каталогом (щебень — м³, асфальт — т)', () => {
+    for (const article of BRUSILOVA_MATERIAL_BUDGET.articles) {
+      const preset = findProcurementPreset(article.presetId)
+      expect(preset?.defaultUnit, article.id).toBe(article.unit)
+    }
+  })
 })

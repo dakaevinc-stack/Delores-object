@@ -297,7 +297,7 @@ export function ProcurementRequestModal({
         id: newId(),
         presetId: null,
         title: '',
-        unitId: 't',
+        unitId: 'm3',
         quantity: '',
       },
     ])

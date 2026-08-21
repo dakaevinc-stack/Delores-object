@@ -34,7 +34,7 @@ export const BRUSILOVA_MATERIAL_BUDGET: MaterialBudget = {
       presetId: 'crushed-granite-5-20',
       title: 'Щебень гранитный фр. 5–20',
       group: 'Основания',
-      unit: 't',
+      unit: 'm3',
       planned: 2_880,
     },
     {
@@ -42,7 +42,7 @@ export const BRUSILOVA_MATERIAL_BUDGET: MaterialBudget = {
       presetId: 'crushed-granite-20-40',
       title: 'Щебень гранитный фр. 20–40',
       group: 'Основания',
-      unit: 't',
+      unit: 'm3',
       planned: 9_120,
     },
     {
@@ -50,7 +50,7 @@ export const BRUSILOVA_MATERIAL_BUDGET: MaterialBudget = {
       presetId: 'crushed-granite-40-70',
       title: 'Щебень гранитный фр. 40–70',
       group: 'Основания',
-      unit: 't',
+      unit: 'm3',
       planned: 3_400,
     },
     {
@@ -58,7 +58,7 @@ export const BRUSILOVA_MATERIAL_BUDGET: MaterialBudget = {
       presetId: 'crushed-shgps-c4',
       title: 'ЩГПС С4',
       group: 'Основания',
-      unit: 't',
+      unit: 'm3',
       planned: 4_500,
     },
 

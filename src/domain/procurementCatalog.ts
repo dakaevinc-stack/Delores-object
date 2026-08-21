@@ -115,13 +115,13 @@ export const PROCUREMENT_MATERIAL_PRESETS: readonly ProcurementPreset[] = [
     aliases: ['строительный', 'мк'],
   },
 
-  /* ── Щебень (т) ── */
+  /* ── Щебень (м³) — рейсы и заявки считаем в кубах, не в тоннах ── */
   {
     id: 'crushed-granite-5-20',
     categoryId: 'crushed-stone',
     title: 'Щебень гранитный 5–20',
     subtitle: 'асфальтобетон, бетонные смеси',
-    defaultUnit: 't',
+    defaultUnit: 'm3',
     aliases: ['щебень', '5-20', '5 20', 'гранит 5'],
   },
   {
@@ -129,7 +129,7 @@ export const PROCUREMENT_MATERIAL_PRESETS: readonly ProcurementPreset[] = [
     categoryId: 'crushed-stone',
     title: 'Щебень гранитный 20–40',
     subtitle: 'основания дорог, дренаж',
-    defaultUnit: 't',
+    defaultUnit: 'm3',
     aliases: ['20-40', '20 40', 'гранит 20'],
   },
   {
@@ -137,7 +137,7 @@ export const PROCUREMENT_MATERIAL_PRESETS: readonly ProcurementPreset[] = [
     categoryId: 'crushed-stone',
     title: 'Щебень гравийный 5–20',
     subtitle: 'подсыпки, дешёвый аналог гранита',
-    defaultUnit: 't',
+    defaultUnit: 'm3',
     aliases: ['гравий', 'гравийный'],
   },
   {
@@ -145,7 +145,7 @@ export const PROCUREMENT_MATERIAL_PRESETS: readonly ProcurementPreset[] = [
     categoryId: 'crushed-stone',
     title: 'Щебень гранитный 40–70',
     subtitle: 'нижний слой основания, расклинцовка',
-    defaultUnit: 't',
+    defaultUnit: 'm3',
     aliases: ['40-70', '40 70', 'гранит 40'],
   },
   {
@@ -153,7 +153,7 @@ export const PROCUREMENT_MATERIAL_PRESETS: readonly ProcurementPreset[] = [
     categoryId: 'crushed-stone',
     title: 'ЩГПС С4 (щебёночно-гравийно-песчаная смесь)',
     subtitle: 'основание дорожной одежды, ГОСТ 25607',
-    defaultUnit: 't',
+    defaultUnit: 'm3',
     aliases: ['щгпс', 'с4', 'шгпс', 'нпк денис'],
   },
 

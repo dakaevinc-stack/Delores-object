@@ -52,6 +52,21 @@ describe('Каталог снабжения: целостность данных
       expect(p.defaultUnit).toBe('person')
     }
   })
+
+  it('сыпучие в кубах, асфальт в тоннах', () => {
+    for (const p of PROCUREMENT_MATERIAL_PRESETS.filter((x) => x.categoryId === 'crushed-stone')) {
+      expect(p.defaultUnit, p.id).toBe('m3')
+    }
+    for (const p of PROCUREMENT_MATERIAL_PRESETS.filter((x) => x.categoryId === 'sand')) {
+      expect(p.defaultUnit, p.id).toBe('m3')
+    }
+    for (const p of PROCUREMENT_MATERIAL_PRESETS.filter((x) => x.categoryId === 'concrete')) {
+      expect(p.defaultUnit, p.id).toBe('m3')
+    }
+    for (const p of PROCUREMENT_MATERIAL_PRESETS.filter((x) => x.categoryId === 'asphalt')) {
+      expect(p.defaultUnit, p.id).toBe('t')
+    }
+  })
 })
 
 describe('Каталог: поиск', () => {

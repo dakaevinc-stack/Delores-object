@@ -356,7 +356,7 @@ export function SiteDeliveryPointSection({
         id: `custom-${newId()}`,
         title: '',
         quantity: '',
-        unitId: 't',
+        unitId: 'm3',
         custom: true,
       },
     ])

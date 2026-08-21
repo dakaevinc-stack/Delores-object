@@ -43,7 +43,7 @@ describe('procurementRequestsRepository', () => {
       createdAtIso: new Date('2026-01-01T12:00:00Z').toISOString(),
       createdBy: 'Петров',
       note: '',
-      items: [{ presetId: null, title: 'Щебень', unitId: 't' as const, quantity: 1 }],
+      items: [{ presetId: null, title: 'Щебень', unitId: 'm3' as const, quantity: 1 }],
     }
     localStorage.setItem(
       `deloresh-procurement-requests:${siteId}:v1`,
