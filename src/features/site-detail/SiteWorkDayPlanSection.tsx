@@ -208,7 +208,7 @@ export function SiteWorkDayPlanSection({
   return (
     <section
       className={embedded ? styles.embedded : styles.section}
-      aria-labelledby={embedded ? undefined : 'work-day-plan-heading'}
+      aria-labelledby={!embedded || !showIntro ? 'work-day-plan-heading' : undefined}
     >
       {embedded ? null : (
         <header className={styles.head}>
@@ -241,10 +241,21 @@ export function SiteWorkDayPlanSection({
       ) : null}
 
       {embedded && !showIntro ? (
-        <div className={styles.flatIntro}>
-          <h3 className={styles.flatTitle}>План работ</h3>
-          <p className={styles.flatLead}>{WORK_DAY_LEAD[role](siteName)}</p>
-        </div>
+        <header className={styles.moduleHead}>
+          <p className={styles.moduleKicker}>
+            <img
+              className={styles.moduleKickerMark}
+              src="/brand-chevron.svg"
+              alt=""
+              aria-hidden
+            />
+            Задания дня
+          </p>
+          <h3 className={styles.moduleTitle} id="work-day-plan-heading">
+            План работ
+          </h3>
+          <p className={styles.moduleLead}>{WORK_DAY_LEAD[role](siteName)}</p>
+        </header>
       ) : null}
 
       <div className={styles.toolbar}>

@@ -296,7 +296,7 @@
   margin-bottom: 0;
 }
 
-/* Внутренние модули: лёгкие вложенные поверхности, без «карточки в карточке» */
+/* Внутренние модули: лёгкие вложенные поверхности */
 .zonePanel .panelBody > :global(section) {
   margin: 0;
   padding: 16px 16px 14px;
@@ -306,8 +306,11 @@
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
 }
 
-/* Убираем вторую «шапку-карточку» внутри модуля */
-.zonePanel .panelBody > :global(section) > :first-child {
+/*
+ * Снимаем тяжёлую «шапку-карточку» у вложенных секций
+ * (журнал отчётов, поставки), но не трогаем moduleHead плана.
+ */
+.zonePanel .panelBody > :global(section) > :first-child:not([class*='moduleHead']) {
   margin: 0 0 12px !important;
   padding: 0 !important;
   border: 0 !important;
@@ -317,7 +320,7 @@
   overflow: visible !important;
 }
 
-.zonePanel .panelBody > :global(section) > :first-child::before {
+.zonePanel .panelBody > :global(section) > :first-child:not([class*='moduleHead'])::before {
   display: none !important;
 }
 
