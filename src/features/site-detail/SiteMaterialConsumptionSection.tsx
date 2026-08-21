@@ -72,21 +72,18 @@ function ArticleRow({ fact }: { fact: MaterialArticleFact }) {
 function MaterialGroup({
   id,
   title,
-  count,
   defaultOpen = false,
   children,
   className,
 }: {
   id: string
   title: string
-  count: number
   defaultOpen?: boolean
   children: ReactNode
   className?: string
 }) {
   const [open, setOpen] = useState(defaultOpen)
   const panelId = `material-group-${id}`
-  const countLabel = count === 1 ? '1 позиция' : `${count} позиций`
 
   return (
     <div className={className ?? styles.group}>
@@ -98,9 +95,6 @@ function MaterialGroup({
         aria-controls={panelId}
       >
         <h3 className={styles.groupTitle}>{title}</h3>
-        <span className={styles.groupCount} title={countLabel}>
-          {count}
-        </span>
         <span className={styles.groupRail} aria-hidden />
         <span className={styles.groupChevron} aria-hidden>
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none">
@@ -195,12 +189,7 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
           </div>
 
           {groups.map((g) => (
-            <MaterialGroup
-              key={g.group}
-              id={g.group}
-              title={g.group}
-              count={g.facts.length}
-            >
+            <MaterialGroup key={g.group} id={g.group} title={g.group}>
               <ul className={styles.list}>
                 {g.facts.map((fact) => (
                   <ArticleRow key={fact.article.id} fact={fact} />
@@ -210,12 +199,7 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
           ))}
 
           {summary.unplanned.length > 0 ? (
-            <MaterialGroup
-              id="unplanned"
-              title="Вне сметы"
-              count={summary.unplanned.length}
-              className={styles.unplanned}
-            >
+            <MaterialGroup id="unplanned" title="Вне сметы" className={styles.unplanned}>
               <ul className={styles.unplannedList}>
                 {summary.unplanned.map((row) => (
                   <li key={`${row.presetId ?? row.title}-${row.unit}`}>
