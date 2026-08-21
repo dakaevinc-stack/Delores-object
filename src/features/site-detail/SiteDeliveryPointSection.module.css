@@ -5,7 +5,8 @@
 .toolbar {
   display: flex;
   justify-content: flex-end;
-  margin: 0 0 8px;
+  align-items: center;
+  margin: 0 0 10px;
 }
 
 .syncBadge {

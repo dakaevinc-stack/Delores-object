@@ -15,11 +15,16 @@ export function SiteRoleZone({ zone, actions, children }: Props) {
   return (
     <section className={styles.zone} data-site-zone={zone} aria-labelledby={titleId}>
       <header className={styles.head}>
+        <div className={styles.headRail} aria-hidden />
+        <div className={styles.headGlow} aria-hidden />
         <div className={styles.headText}>
-          <p className={styles.kicker}>{copy.kicker}</p>
-          <p className={styles.title} id={titleId}>
-            {copy.title}
+          <p className={styles.kicker}>
+            <img className={styles.kickerMark} src="/brand-chevron.svg" alt="" aria-hidden />
+            {copy.kicker}
           </p>
+          <h2 className={styles.title} id={titleId}>
+            {copy.title}
+          </h2>
           <p className={styles.lead}>{copy.lead}</p>
         </div>
         {actions ? <div className={styles.actions}>{actions}</div> : null}
