@@ -6,6 +6,29 @@
   margin: 0;
 }
 
+.flatIntro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 14px;
+}
+
+.flatTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+}
+
+.flatLead {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+  max-width: 56ch;
+}
+
 .embeddedIntro {
   position: relative;
   display: flex;

@@ -399,6 +399,7 @@ export function ObjectDetailPage() {
           <SiteRoleZone
             key={zone}
             zone="brigadier"
+            layout="panel"
             actions={
               <>
                 <button
@@ -424,6 +425,8 @@ export function ObjectDetailPage() {
                 siteName={site.name}
                 workPlan={workPlan}
                 role="brigadier"
+                embedded
+                showIntro={false}
                 onAssignmentsChange={() => setDayPlanRevision((n) => n + 1)}
               />
             ) : null}

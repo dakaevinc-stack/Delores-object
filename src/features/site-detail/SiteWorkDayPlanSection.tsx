@@ -47,6 +47,8 @@ type Props = {
    * Календарь остаётся, дублирующий title убирается.
    */
   embedded?: boolean
+  /** Показать встроенный intro-блок при embedded (по умолчанию да). */
+  showIntro?: boolean
   /** Вызывается после любого изменения назначений (для пересчёта план/факт). */
   onAssignmentsChange?: (assignments: WorkDayAssignment[]) => void
 }
@@ -107,6 +109,7 @@ export function SiteWorkDayPlanSection({
   workPlan,
   role,
   embedded = false,
+  showIntro = true,
   onAssignmentsChange,
 }: Props) {
   const [view, setView] = useState<CalendarView>('day')
@@ -224,7 +227,7 @@ export function SiteWorkDayPlanSection({
         </header>
       )}
 
-      {embedded ? (
+      {embedded && showIntro ? (
         <div className={styles.embeddedIntro}>
           <div className={styles.embeddedIntroText}>
             <p className={styles.kicker}>
@@ -234,6 +237,13 @@ export function SiteWorkDayPlanSection({
             <h3 className={styles.embeddedTitle}>Календарь заданий</h3>
             <p className={styles.embeddedLead}>{WORK_DAY_LEAD[role](siteName)}</p>
           </div>
+        </div>
+      ) : null}
+
+      {embedded && !showIntro ? (
+        <div className={styles.flatIntro}>
+          <h3 className={styles.flatTitle}>План работ</h3>
+          <p className={styles.flatLead}>{WORK_DAY_LEAD[role](siteName)}</p>
         </div>
       ) : null}
 
