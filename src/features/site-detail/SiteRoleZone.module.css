@@ -372,6 +372,46 @@
   color: #0f766e;
 }
 
+.zonePanel[data-site-zone='dispatcher'] {
+  background:
+    radial-gradient(110% 80% at 0% 0%, rgba(29, 78, 216, 0.12) 0%, transparent 50%),
+    radial-gradient(100% 70% at 100% 0%, rgba(238, 45, 58, 0.06) 0%, transparent 48%),
+    linear-gradient(180deg, #ffffff 0%, #f2f5fb 100%);
+  border-color: rgba(29, 78, 216, 0.16);
+}
+
+.zonePanel[data-site-zone='dispatcher'] .panelRail {
+  background: linear-gradient(180deg, #1d4ed8 0%, #172a4d 45%, #ee2d3a 100%);
+  width: 5px;
+}
+
+.zonePanel[data-site-zone='dispatcher'] .panelGlow {
+  background: radial-gradient(circle, rgba(29, 78, 216, 0.18) 0%, transparent 68%);
+}
+
+.zonePanel[data-site-zone='dispatcher'] .kicker {
+  color: #1d4ed8;
+}
+
+/* Форма рейса уже в панели — убираем вторую «карточку-лист» внутри */
+.zonePanel[data-site-zone='dispatcher'] .panelBody :global([class*='sheet']) {
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.55) !important;
+  box-shadow: none !important;
+}
+
+.zonePanel[data-site-zone='dispatcher'] .panelBody :global([class*='sheet'])::before {
+  display: none !important;
+}
+
+.zonePanel[data-site-zone='dispatcher'] .panelBody > :global(section) {
+  padding: 12px 12px 10px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
 @media (max-width: 860px) {
   .panelHead {
     grid-template-columns: 1fr;

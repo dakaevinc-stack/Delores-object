@@ -533,7 +533,7 @@ export function ObjectDetailPage() {
 
       case 'dispatcher':
         return (
-          <SiteRoleZone key={zone} zone="dispatcher">
+          <SiteRoleZone key={zone} zone="dispatcher" layout="panel">
             <SiteDeliveryPointSection
               key={`${site.id}-trip`}
               siteId={site.id}
