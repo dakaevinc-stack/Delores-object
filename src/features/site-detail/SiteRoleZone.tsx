@@ -1,17 +1,18 @@
-import type { ReactNode } from 'react'
+import { Children, type ReactNode } from 'react'
 import { SITE_PAGE_ZONES, type SitePageZoneId } from '../../domain/sitePageZone'
 import styles from './SiteRoleZone.module.css'
 
 type Props = {
   zone: SitePageZoneId
   actions?: ReactNode
-  children: ReactNode
+  children?: ReactNode
 }
 
 export function SiteRoleZone({ zone, actions, children }: Props) {
   const copy = SITE_PAGE_ZONES[zone]
   const titleId = `site-zone-${zone}-title`
   const showKicker = Boolean(copy.kicker.trim())
+  const hasBody = Children.count(children) > 0
 
   return (
     <section className={styles.zone} data-site-zone={zone} aria-labelledby={titleId}>
@@ -32,7 +33,7 @@ export function SiteRoleZone({ zone, actions, children }: Props) {
         </div>
         {actions ? <div className={styles.actions}>{actions}</div> : null}
       </header>
-      <div className={styles.body}>{children}</div>
+      {hasBody ? <div className={styles.body}>{children}</div> : null}
     </section>
   )
 }

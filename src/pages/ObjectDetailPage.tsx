@@ -340,6 +340,7 @@ export function ObjectDetailPage() {
 
   // Пока нет входа — полный экран руководителя. После auth: zonesForDuty(session.duty).
   const visibleZones = zonesForDuty(SITE_PAGE_PREVIEW_DUTY)
+  const showObjectSummary = visibleZones.includes('manager')
 
   const openProcurementComposer = () => {
     setEditingRequest(null)
@@ -352,40 +353,45 @@ export function ObjectDetailPage() {
     setComposerOpen(true)
   }
 
+  const objectSummary = (
+    <section className={styles.summaryBlock} aria-labelledby="object-summary-heading">
+      <div className={styles.summaryHead}>
+        <h2 className={styles.summaryTitle} id="object-summary-heading">
+          Сводка по объекту
+        </h2>
+        <p className={styles.summaryLead}>
+          Прогресс, сроки и отклонение от плана — по графику работ и отчётам бригадира.
+        </p>
+      </div>
+      <SiteDetailKpiGrid kpis={liveKpis} embedded />
+      <div className={styles.midGrid}>
+        <SiteScheduleSection
+          kpis={liveKpis}
+          basePlan={basePlan}
+          reports={brigadierReports}
+        />
+        <SiteReportingSection reports={brigadierReports} todayIso={liveKpis.todayIso} />
+      </div>
+      {workPlan ? (
+        <SiteWorkPlanSection
+          plan={workPlan}
+          windowStartIso={liveKpis.startIso}
+          windowEndIso={liveKpis.endIso}
+        />
+      ) : null}
+    </section>
+  )
+
   const renderZone = (zone: SitePageZoneId) => {
     switch (zone) {
       case 'manager':
+        // Только шапка проекта + PDF/DWG. Сводка идёт после зоны бригадира.
         return (
           <SiteRoleZone
             key={zone}
             zone="manager"
             actions={<SiteProjectHeaderCard siteId={site.id} canUpload />}
-          >
-            <div className={styles.summaryBlock}>
-              <div className={styles.summaryHead}>
-                <h3 className={styles.summaryTitle}>Сводка по объекту</h3>
-                <p className={styles.summaryLead}>
-                  Прогресс, сроки и отклонение от плана — по графику работ и отчётам бригадира.
-                </p>
-              </div>
-              <SiteDetailKpiGrid kpis={liveKpis} embedded />
-              <div className={styles.midGrid}>
-                <SiteScheduleSection
-                  kpis={liveKpis}
-                  basePlan={basePlan}
-                  reports={brigadierReports}
-                />
-                <SiteReportingSection reports={brigadierReports} todayIso={liveKpis.todayIso} />
-              </div>
-              {workPlan ? (
-                <SiteWorkPlanSection
-                  plan={workPlan}
-                  windowStartIso={liveKpis.startIso}
-                  windowEndIso={liveKpis.endIso}
-                />
-              ) : null}
-            </div>
-          </SiteRoleZone>
+          />
         )
 
       case 'brigadier':
@@ -560,7 +566,27 @@ export function ObjectDetailPage() {
         </div>
       ) : null}
 
-      {visibleZones.map((zone) => renderZone(zone))}
+      {visibleZones.flatMap((zone) => {
+        const nodes = [renderZone(zone)]
+        // Сводка — после бригадира (под «Документы проекта» → «Смена»).
+        // Если зоны бригадира нет — сразу после проекта.
+        if (showObjectSummary) {
+          if (zone === 'brigadier') {
+            nodes.push(
+              <div key="object-summary" className={styles.summaryShell}>
+                {objectSummary}
+              </div>,
+            )
+          } else if (zone === 'manager' && !visibleZones.includes('brigadier')) {
+            nodes.push(
+              <div key="object-summary" className={styles.summaryShell}>
+                {objectSummary}
+              </div>,
+            )
+          }
+        }
+        return nodes
+      })}
 
       <footer className={styles.footer}>
         <p className={styles.footerNote}>
