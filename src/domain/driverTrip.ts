@@ -133,7 +133,12 @@ function normalizeCargo(row: unknown): DriverTripCargo[] {
 }
 
 export function normalizeDriverName(name: string): string {
-  return name.trim().toLocaleLowerCase('ru-RU').replace(/\s+/g, ' ')
+  return name
+    .trim()
+    .toLocaleLowerCase('ru-RU')
+    .replace(/ё/g, 'е')
+    .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
+    .replace(/\s+/g, ' ')
 }
 
 export function namesMatchDriver(tripName: string, driverName: string): boolean {
@@ -141,6 +146,24 @@ export function namesMatchDriver(tripName: string, driverName: string): boolean 
   const b = normalizeDriverName(driverName)
   if (!a || !b) return false
   return a === b || a.includes(b) || b.includes(a)
+}
+
+/**
+ * Поиск водителя в списке парка: «Васильев», «василь», «Васильева»
+ * находят «Васильев Р. Т.».
+ */
+export function driverNameMatchesQuery(fullName: string, query: string): boolean {
+  const n = normalizeDriverName(fullName)
+  const q = normalizeDriverName(query)
+  if (!q) return true
+  if (!n) return false
+  if (n.includes(q) || q.includes(n)) return true
+  const nSur = n.split(' ')[0] ?? ''
+  const qSur = q.split(' ')[0] ?? ''
+  if (!nSur || !qSur) return false
+  if (nSur.startsWith(qSur) || qSur.startsWith(nSur)) return true
+  const prefix = Math.min(nSur.length, qSur.length)
+  return prefix >= 4 && nSur.slice(0, prefix) === qSur.slice(0, prefix)
 }
 
 export function normalizeDriverTrip(row: unknown): DriverTrip | null {

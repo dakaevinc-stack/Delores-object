@@ -508,6 +508,59 @@
   box-shadow: 0 0 0 3px rgba(23, 42, 77, 0.08);
 }
 
+.driverCombo {
+  position: relative;
+}
+
+.driverHits {
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 220px;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(23, 42, 77, 0.14);
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.14);
+}
+
+.driverHit {
+  width: 100%;
+  display: block;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 11px 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text-strong, #0f1114);
+  cursor: pointer;
+  border-bottom: 1px solid rgba(23, 42, 77, 0.06);
+}
+
+.driverHits li:last-child .driverHit {
+  border-bottom: 0;
+}
+
+.driverHit:hover,
+.driverHit:focus-visible {
+  background: rgba(23, 42, 77, 0.06);
+  outline: none;
+}
+
+.driverEmpty {
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted, #64748b);
+}
+
 .hint {
   width: 100%;
   box-sizing: border-box;

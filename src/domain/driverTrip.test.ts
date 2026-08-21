@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { collectTodayTripsForDriver, formatTripAssignedTime, isTripUnread, namesMatchDriver, normalizeDriverTrip, tripCargoPreview, tripPickupLabel, tripUnloadLabel } from './driverTrip'
+import { collectTodayTripsForDriver, driverNameMatchesQuery, formatTripAssignedTime, isTripUnread, namesMatchDriver, normalizeDriverTrip, tripCargoPreview, tripPickupLabel, tripUnloadLabel } from './driverTrip'
 
 const point = {
   lat: 55.5,
@@ -13,6 +13,13 @@ describe('driverTrip', () => {
   it('водитель видит рейс, даже если написали фамилию чуть иначе', () => {
     expect(namesMatchDriver('Иванов Сергей', 'иванов')).toBe(true)
     expect(namesMatchDriver('Петров', 'Сидоров')).toBe(false)
+  })
+
+  it('поиск по фамилии находит водителя из парка', () => {
+    expect(driverNameMatchesQuery('Васильев Р. Т.', 'Васильев')).toBe(true)
+    expect(driverNameMatchesQuery('Васильев Р. Т.', 'василь')).toBe(true)
+    expect(driverNameMatchesQuery('Васильев Р. Т.', 'Васильева')).toBe(true)
+    expect(driverNameMatchesQuery('Васильев Р. Т.', 'Петров')).toBe(false)
   })
 
   it('подписи откуда/куда и время для карточки', () => {

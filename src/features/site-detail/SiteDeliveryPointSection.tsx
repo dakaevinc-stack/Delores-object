@@ -8,7 +8,12 @@ import {
 } from '../../domain/siteDeliveryPoint'
 import type { AddressHit } from '../../domain/addressSearch'
 import { driverCabinetUrl, renderDriverShareText } from '../../domain/driverShare'
-import { type DriverTrip, type DriverTripAssignerRole, type DriverTripCargo } from '../../domain/driverTrip'
+import {
+  driverNameMatchesQuery,
+  type DriverTrip,
+  type DriverTripAssignerRole,
+  type DriverTripCargo,
+} from '../../domain/driverTrip'
 import { unitLabel } from '../../domain/procurementRequest'
 import type { MeasurementUnitId } from '../../domain/brigadierReport'
 import {
@@ -89,6 +94,7 @@ export function SiteDeliveryPointSection({
   const [geoError, setGeoError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [driverName, setDriverName] = useState('')
+  const [driverMenuOpen, setDriverMenuOpen] = useState(false)
   const [lastTrip, setLastTrip] = useState<DriverTrip | null>(null)
   const [assignedOk, setAssignedOk] = useState<'off' | 'saved' | 'telegram'>('off')
   const [pickupAddress, setPickupAddress] = useState('')
@@ -111,6 +117,12 @@ export function SiteDeliveryPointSection({
     }
     return [...names].sort((a, b) => a.localeCompare(b, 'ru'))
   }, [vehicles])
+
+  const driverHits = useMemo(() => {
+    const q = driverName.trim()
+    if (!q) return operators.slice(0, 12)
+    return operators.filter((n) => driverNameMatchesQuery(n, q)).slice(0, 12)
+  }, [operators, driverName])
 
   const siteMaterials = useMemo((): MaterialChoice[] => {
     const budget = getMaterialBudgetForSite(siteId)
@@ -637,18 +649,55 @@ export function SiteDeliveryPointSection({
 
                 <div className={`${styles.zone} ${styles.zoneDriver}`}>
                   <p className={styles.zoneLabel}>Водитель</p>
-                  <input
-                    className={styles.fieldInput}
-                    list={`${fieldId}-drivers`}
-                    value={driverName}
-                    placeholder="ФИО водителя"
-                    onChange={(e) => setDriverName(e.target.value)}
-                  />
-                  <datalist id={`${fieldId}-drivers`}>
-                    {operators.map((n) => (
-                      <option key={n} value={n} />
-                    ))}
-                  </datalist>
+                  <div className={styles.driverCombo}>
+                    <input
+                      className={styles.fieldInput}
+                      value={driverName}
+                      placeholder="Начните фамилию — выберите из списка"
+                      autoComplete="off"
+                      onFocus={() => setDriverMenuOpen(true)}
+                      onBlur={() => {
+                        window.setTimeout(() => setDriverMenuOpen(false), 150)
+                      }}
+                      onChange={(e) => {
+                        setDriverName(e.target.value)
+                        setDriverMenuOpen(true)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') setDriverMenuOpen(false)
+                        if (e.key === 'Enter' && driverHits[0]) {
+                          e.preventDefault()
+                          setDriverName(driverHits[0])
+                          setDriverMenuOpen(false)
+                        }
+                      }}
+                    />
+                    {driverMenuOpen ? (
+                      <ul className={styles.driverHits} role="listbox" aria-label="Водители из парка">
+                        {driverHits.length > 0 ? (
+                          driverHits.map((n) => (
+                            <li key={n}>
+                              <button
+                                type="button"
+                                className={styles.driverHit}
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                  setDriverName(n)
+                                  setDriverMenuOpen(false)
+                                }}
+                              >
+                                {n}
+                              </button>
+                            </li>
+                          ))
+                        ) : (
+                          <li className={styles.driverEmpty}>
+                            В парке не найден — можно оставить как напечатали
+                          </li>
+                        )}
+                      </ul>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className={`${styles.zone} ${styles.zoneCargo}`}>
