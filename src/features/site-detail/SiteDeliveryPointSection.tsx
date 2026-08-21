@@ -93,6 +93,7 @@ export function SiteDeliveryPointSection({
   const [alreadyLoaded, setAlreadyLoaded] = useState(false)
   const [cargoNote, setCargoNote] = useState('')
   const [cargoSearch, setCargoSearch] = useState('')
+  const [cargoPickerOpen, setCargoPickerOpen] = useState(false)
   const [pickedCargo, setPickedCargo] = useState<PickedCargoRow[]>([])
   const skipDebounce = useRef(false)
   const queryFocused = useRef(false)
@@ -126,12 +127,9 @@ export function SiteDeliveryPointSection({
     }))
   }, [siteId])
 
-  const cargoSuggestions = useMemo((): MaterialChoice[] => {
+  const cargoList = useMemo((): MaterialChoice[] => {
     const q = cargoSearch.trim()
-    const pickedIds = new Set(pickedCargo.map((c) => c.id))
-    if (!q) {
-      return siteMaterials.filter((m) => !pickedIds.has(m.id)).slice(0, 24)
-    }
+    if (!q) return siteMaterials
     const fromCatalog = searchProcurementPresets(q).map((p) => ({
       id: p.id,
       title: p.title,
@@ -141,11 +139,11 @@ export function SiteDeliveryPointSection({
       m.title.toLocaleLowerCase('ru-RU').includes(q.toLocaleLowerCase('ru-RU')),
     )
     const byId = new Map<string, MaterialChoice>()
-    for (const m of [...fromSite, ...fromCatalog]) {
-      if (!pickedIds.has(m.id)) byId.set(m.id, m)
-    }
-    return [...byId.values()].slice(0, 24)
-  }, [cargoSearch, siteMaterials, pickedCargo])
+    for (const m of [...fromSite, ...fromCatalog]) byId.set(m.id, m)
+    return [...byId.values()]
+  }, [cargoSearch, siteMaterials])
+
+  const pickedIds = useMemo(() => new Set(pickedCargo.map((c) => c.id)), [pickedCargo])
 
   useEffect(() => {
     setHint(point?.hint ?? '')
@@ -311,9 +309,9 @@ export function SiteDeliveryPointSection({
     }
   }
 
-  const addMaterial = (m: MaterialChoice) => {
+  const toggleMaterial = (m: MaterialChoice) => {
     setPickedCargo((prev) => {
-      if (prev.some((r) => r.id === m.id)) return prev
+      if (prev.some((r) => r.id === m.id)) return prev.filter((r) => r.id !== m.id)
       return [
         ...prev,
         {
@@ -325,6 +323,15 @@ export function SiteDeliveryPointSection({
         },
       ]
     })
+  }
+
+  const openCargoPicker = () => {
+    setCargoPickerOpen(true)
+    setCargoSearch('')
+  }
+
+  const closeCargoPicker = () => {
+    setCargoPickerOpen(false)
     setCargoSearch('')
   }
 
@@ -385,6 +392,7 @@ export function SiteDeliveryPointSection({
     setPickedCargo([])
     setCargoNote('')
     setCargoSearch('')
+    setCargoPickerOpen(false)
   }
 
   const sharePoint = point ? { ...point, hint: hint.trim() || point.hint } : null
@@ -585,33 +593,65 @@ export function SiteDeliveryPointSection({
 
                 <div className={`${styles.zone} ${styles.zoneCargo}`}>
                   <p className={styles.zoneLabel}>Груз</p>
-                  <input
-                    className={styles.fieldInput}
-                    value={cargoSearch}
-                    placeholder="Найти материал…"
-                    onChange={(e) => setCargoSearch(e.target.value)}
-                    aria-label="Поиск материала"
-                  />
-                  {cargoSuggestions.length > 0 ? (
-                    <div className={styles.cargoChips} role="group" aria-label="Материалы объекта">
-                      {cargoSuggestions.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className={styles.roleBtn}
-                          onClick={() => addMaterial(c)}
-                        >
-                          {c.title}
-                        </button>
-                      ))}
+                  <div className={styles.cargoActions}>
+                    <button
+                      type="button"
+                      className={styles.pickCargoBtn}
+                      aria-expanded={cargoPickerOpen}
+                      onClick={() => (cargoPickerOpen ? closeCargoPicker() : openCargoPicker())}
+                    >
+                      {cargoPickerOpen ? 'Скрыть список' : 'Выбрать материал'}
+                    </button>
+                    <button type="button" className={styles.addOwnBtn} onClick={addCustomCargo}>
+                      + Свой
+                    </button>
+                  </div>
+
+                  {cargoPickerOpen ? (
+                    <div className={styles.cargoPicker} role="listbox" aria-label="Список материалов">
+                      <input
+                        className={styles.fieldInput}
+                        value={cargoSearch}
+                        placeholder="Поиск в списке…"
+                        onChange={(e) => setCargoSearch(e.target.value)}
+                        aria-label="Поиск материала"
+                        autoFocus
+                      />
+                      {cargoList.length > 0 ? (
+                        <ul className={styles.cargoPickList}>
+                          {cargoList.map((c) => {
+                            const on = pickedIds.has(c.id)
+                            return (
+                              <li key={c.id}>
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={on}
+                                  className={`${styles.cargoPickRow} ${on ? styles.cargoPickOn : ''}`}
+                                  onClick={() => toggleMaterial(c)}
+                                >
+                                  <span className={styles.cargoPickCheck} aria-hidden>
+                                    {on ? '✓' : ''}
+                                  </span>
+                                  <span className={styles.cargoPickTitle}>{c.title}</span>
+                                  <span className={styles.cargoPickUnit}>{unitLabel(c.unitId)}</span>
+                                </button>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      ) : (
+                        <p className={styles.cargoEmpty}>Ничего не найдено — добавьте свой груз.</p>
+                      )}
+                      <button type="button" className={styles.cargoPickerDone} onClick={closeCargoPicker}>
+                        Готово
+                        {pickedCargo.filter((r) => !r.custom).length
+                          ? ` · ${pickedCargo.filter((r) => !r.custom).length}`
+                          : ''}
+                      </button>
                     </div>
-                  ) : (
-                    <p className={styles.cargoEmpty}>
-                      {cargoSearch.trim()
-                        ? 'Ничего не найдено — добавьте свой груз ниже.'
-                        : 'Все материалы из списка уже выбраны.'}
-                    </p>
-                  )}
+                  ) : null}
+
                   {pickedCargo.length > 0 ? (
                     <ul className={styles.cargoList}>
                       {pickedCargo.map((row) => (
@@ -646,10 +686,9 @@ export function SiteDeliveryPointSection({
                         </li>
                       ))}
                     </ul>
-                  ) : null}
-                  <button type="button" className={styles.addOwnBtn} onClick={addCustomCargo}>
-                    + Свой груз
-                  </button>
+                  ) : cargoPickerOpen ? null : (
+                    <p className={styles.cargoEmpty}>Нажмите «Выбрать материал» или добавьте свой.</p>
+                  )}
                   <input
                     className={styles.fieldInput}
                     value={cargoNote}

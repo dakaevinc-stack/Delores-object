@@ -501,12 +501,126 @@
   color: var(--text-strong, #0f1114);
 }
 
-.cargoChips {
+.cargoActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  max-height: 120px;
+  gap: 8px;
+}
+
+.pickCargoBtn {
+  flex: 1;
+  min-width: 140px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(180, 83, 9, 0.28);
+  background: #fff;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 750;
+  color: #92400e;
+  cursor: pointer;
+}
+
+.pickCargoBtn:hover {
+  background: rgba(180, 83, 9, 0.06);
+}
+
+.cargoPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(180, 83, 9, 0.2);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.cargoPickList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: 10px;
+  border: 1px solid rgba(180, 83, 9, 0.12);
+  background: #fff;
+}
+
+.cargoPickRow {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 0;
+  border-bottom: 1px solid rgba(180, 83, 9, 0.08);
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.cargoPickList li:last-child .cargoPickRow {
+  border-bottom: 0;
+}
+
+.cargoPickRow:hover {
+  background: rgba(180, 83, 9, 0.06);
+}
+
+.cargoPickOn {
+  background: rgba(180, 83, 9, 0.1);
+}
+
+.cargoPickCheck {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  border: 1.5px solid rgba(180, 83, 9, 0.35);
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  background: #fff;
+}
+
+.cargoPickOn .cargoPickCheck {
+  background: #b45309;
+  border-color: #b45309;
+}
+
+.cargoPickTitle {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text-strong, #0f1114);
+  line-height: 1.3;
+}
+
+.cargoPickUnit {
+  font-size: 11px;
+  font-weight: 700;
+  color: #92400e;
+  white-space: nowrap;
+}
+
+.cargoPickerDone {
+  min-height: 38px;
+  border-radius: 10px;
+  border: 0;
+  background: #b45309;
+  color: #fff;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 750;
+  cursor: pointer;
 }
 
 .cargoEmpty {
@@ -574,10 +688,9 @@
 }
 
 .addOwnBtn {
-  align-self: flex-start;
-  min-height: 32px;
+  min-height: 40px;
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px dashed rgba(180, 83, 9, 0.35);
   background: transparent;
   font: inherit;
