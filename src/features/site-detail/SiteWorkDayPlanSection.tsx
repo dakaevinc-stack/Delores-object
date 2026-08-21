@@ -215,11 +215,11 @@ export function SiteWorkDayPlanSection({
           <div className={styles.headInner}>
             <p className={styles.kicker}>
               <img className={styles.kickerMark} alt="" aria-hidden src="/brand-chevron.svg" />
-              Ежедневный план
+              Задания дня
             </p>
             <div className={styles.titleRow}>
               <h2 className={styles.title} id="work-day-plan-heading">
-                План работ
+                План смены
               </h2>
             </div>
             <p className={styles.lead}>{WORK_DAY_LEAD[role](siteName)}</p>
@@ -234,7 +234,7 @@ export function SiteWorkDayPlanSection({
               <img className={styles.kickerMark} alt="" aria-hidden src="/brand-chevron.svg" />
               Задания дня
             </p>
-            <h3 className={styles.embeddedTitle}>Календарь заданий</h3>
+            <h3 className={styles.embeddedTitle}>План смены</h3>
             <p className={styles.embeddedLead}>{WORK_DAY_LEAD[role](siteName)}</p>
           </div>
         </div>
@@ -252,7 +252,7 @@ export function SiteWorkDayPlanSection({
             Задания дня
           </p>
           <h3 className={styles.moduleTitle} id="work-day-plan-heading">
-            План работ
+            План смены
           </h3>
           <p className={styles.moduleLead}>{WORK_DAY_LEAD[role](siteName)}</p>
         </header>
