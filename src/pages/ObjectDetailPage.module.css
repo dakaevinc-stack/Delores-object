@@ -94,7 +94,7 @@
 .midGrid {
   display: grid;
   gap: var(--block-gap);
-  margin-bottom: var(--block-gap);
+  margin-bottom: 0;
 }
 
 @media (min-width: 960px) {
@@ -102,6 +102,36 @@
     grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.85fr);
     align-items: stretch;
   }
+}
+
+.summaryBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--block-gap);
+}
+
+.summaryHead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 2px;
+}
+
+.summaryTitle {
+  margin: 0;
+  font-size: var(--heading-block-size);
+  font-weight: var(--heading-block-weight);
+  letter-spacing: var(--heading-block-tracking);
+  line-height: var(--heading-block-line);
+  color: var(--text-strong);
+}
+
+.summaryLead {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--muted);
 }
 
 .footer {

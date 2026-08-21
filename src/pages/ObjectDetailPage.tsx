@@ -361,22 +361,30 @@ export function ObjectDetailPage() {
             zone="manager"
             actions={<SiteProjectHeaderCard siteId={site.id} canUpload />}
           >
-            <SiteDetailKpiGrid kpis={liveKpis} embedded />
-            <div className={styles.midGrid}>
-              <SiteScheduleSection
-                kpis={liveKpis}
-                basePlan={basePlan}
-                reports={brigadierReports}
-              />
-              <SiteReportingSection reports={brigadierReports} todayIso={liveKpis.todayIso} />
+            <div className={styles.summaryBlock}>
+              <div className={styles.summaryHead}>
+                <h3 className={styles.summaryTitle}>Сводка по объекту</h3>
+                <p className={styles.summaryLead}>
+                  Прогресс, сроки и отклонение от плана — по графику работ и отчётам бригадира.
+                </p>
+              </div>
+              <SiteDetailKpiGrid kpis={liveKpis} embedded />
+              <div className={styles.midGrid}>
+                <SiteScheduleSection
+                  kpis={liveKpis}
+                  basePlan={basePlan}
+                  reports={brigadierReports}
+                />
+                <SiteReportingSection reports={brigadierReports} todayIso={liveKpis.todayIso} />
+              </div>
+              {workPlan ? (
+                <SiteWorkPlanSection
+                  plan={workPlan}
+                  windowStartIso={liveKpis.startIso}
+                  windowEndIso={liveKpis.endIso}
+                />
+              ) : null}
             </div>
-            {workPlan ? (
-              <SiteWorkPlanSection
-                plan={workPlan}
-                windowStartIso={liveKpis.startIso}
-                windowEndIso={liveKpis.endIso}
-              />
-            ) : null}
           </SiteRoleZone>
         )
 
@@ -404,11 +412,6 @@ export function ObjectDetailPage() {
               </>
             }
           >
-            <ReportDeadlineBanner
-              reports={brigadierReports}
-              todayIso={liveKpis.todayIso}
-              onOpenComposer={openBrigadierComposer}
-            />
             {workPlan ? (
               <SiteWorkDayPlanSection
                 siteId={site.id}
@@ -537,6 +540,12 @@ export function ObjectDetailPage() {
   return (
     <div className={styles.page}>
       <SiteDetailHeader site={site} dashboard={dashboard} />
+
+      <ReportDeadlineBanner
+        reports={brigadierReports}
+        todayIso={liveKpis.todayIso}
+        onOpenComposer={openBrigadierComposer}
+      />
 
       {formsApiMessage ? (
         <div className={styles.syncBanner} role="alert">

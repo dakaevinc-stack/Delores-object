@@ -38,8 +38,8 @@ describe('sitePageZone', () => {
   })
 
   it('у зон есть подписи для шапки страницы', () => {
-    expect(SITE_PAGE_ZONES.manager.kicker).toBe('')
-    expect(SITE_PAGE_ZONES.manager.title).toBe('Сводка по объекту')
+    expect(SITE_PAGE_ZONES.manager.kicker).toBe('Проект')
+    expect(SITE_PAGE_ZONES.manager.title).toBe('Документы проекта')
     expect(SITE_PAGE_ZONES.brigadier.kicker).toBe('Бригадир')
     expect(SITE_PAGE_ZONES.supply.kicker).toBe('Снабжение')
     expect(SITE_PAGE_ZONES.dispatcher.kicker).toBe('Диспетчер')
