@@ -165,63 +165,66 @@ export function SiteProcurementRequestsSection({
       aria-labelledby="procurement-heading"
     >
       <header className={styles.head}>
-        <h2 className={styles.title} id="procurement-heading">
-          Заявки
-        </h2>
-        {showCreateButton ? (
-          <button type="button" className={styles.createBtn} onClick={onCreate}>
-            Создать
-          </button>
+        <div className={styles.headCopy}>
+          <p className={styles.kicker}>
+            <span className={styles.kickerMark} aria-hidden />
+            Снабжение
+          </p>
+          <div className={styles.titleRow}>
+            <h2 className={styles.title} id="procurement-heading">
+              Заявки
+            </h2>
+            {showCreateButton ? (
+              <button type="button" className={styles.createBtn} onClick={onCreate}>
+                Создать
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        {requests.length > 0 ? (
+          <dl className={styles.previewStats} aria-label="Сводка по заявкам">
+            <div>
+              <dt>Всего</dt>
+              <dd>{summary.totalRequests}</dd>
+            </div>
+            <div className={styles.statWait}>
+              <dt>Ждут</dt>
+              <dd>{waiting}</dd>
+            </div>
+            <div className={styles.statOk}>
+              <dt>На объекте</dt>
+              <dd>{summary.byStatus.accepted}</dd>
+            </div>
+          </dl>
         ) : null}
       </header>
 
-      {requests.length > 0 ? (
-        <div className={styles.toolbar}>
-          <p className={styles.stats} aria-label="Сводка по заявкам">
-            <span>
-              <strong>{summary.totalRequests}</strong> всего
-            </span>
-            <span className={styles.statSep} aria-hidden>
-              ·
-            </span>
-            <span>
-              <strong className={styles.statWait}>{waiting}</strong> ждут
-            </span>
-            <span className={styles.statSep} aria-hidden>
-              ·
-            </span>
-            <span>
-              <strong className={styles.statOk}>{summary.byStatus.accepted}</strong> на объекте
-            </span>
-          </p>
-
-          {summary.authors.length > 1 || selectedAuthor ? (
-            <div className={styles.filters} role="group" aria-label="Фильтр по заявителю">
+      {requests.length > 0 && (summary.authors.length > 1 || selectedAuthor) ? (
+        <div className={styles.filters} role="group" aria-label="Фильтр по заявителю">
+          <button
+            type="button"
+            className={`${styles.chip} ${!selectedAuthor ? styles.chipOn : ''}`}
+            aria-pressed={!selectedAuthor}
+            onClick={() => onSelectAuthor(null)}
+          >
+            Все
+          </button>
+          {summary.authors.map((author) => {
+            const on = selectedAuthor === author.name
+            return (
               <button
+                key={author.name}
                 type="button"
-                className={`${styles.chip} ${!selectedAuthor ? styles.chipOn : ''}`}
-                aria-pressed={!selectedAuthor}
-                onClick={() => onSelectAuthor(null)}
+                className={`${styles.chip} ${on ? styles.chipOn : ''}`}
+                aria-pressed={on}
+                onClick={() => onSelectAuthor(on ? null : author.name)}
               >
-                Все
+                {author.name}
+                <span className={styles.chipCount}>{author.requestCount}</span>
               </button>
-              {summary.authors.map((author) => {
-                const on = selectedAuthor === author.name
-                return (
-                  <button
-                    key={author.name}
-                    type="button"
-                    className={`${styles.chip} ${on ? styles.chipOn : ''}`}
-                    aria-pressed={on}
-                    onClick={() => onSelectAuthor(on ? null : author.name)}
-                  >
-                    {author.name}
-                    <span className={styles.chipCount}>{author.requestCount}</span>
-                  </button>
-                )
-              })}
-            </div>
-          ) : null}
+            )
+          })}
         </div>
       ) : null}
 
@@ -247,11 +250,15 @@ export function SiteProcurementRequestsSection({
       ) : (
         <ul className={styles.list}>
           {visible.map((req) => (
-            <li key={req.id} className={styles.card}>
+            <li
+              key={req.id}
+              className={`${styles.card} ${req.urgent ? styles.cardUrgent : ''}`}
+            >
               <header className={styles.cardHead}>
                 <div className={styles.cardHeadText}>
-                  <p className={styles.cardTitle}>
-                    № {req.shortCode}
+                  <p className={styles.cardCode}>
+                    <span className={styles.cardCodeMark}>№</span>
+                    {req.shortCode}
                     {req.urgent ? (
                       <span className={styles.urgentBadge} title="Срочная заявка">
                         Срочно
@@ -259,13 +266,22 @@ export function SiteProcurementRequestsSection({
                     ) : null}
                   </p>
                   <p className={styles.cardMeta}>
-                    {formatDateTime(req.createdAtIso)} · {req.createdBy}
-                    {req.neededByIso ? ` · нужно к ${formatDateTime(req.neededByIso)}` : ''}
+                    <time dateTime={req.createdAtIso}>{formatDateTime(req.createdAtIso)}</time>
+                    <span className={styles.metaDot} aria-hidden>
+                      ·
+                    </span>
+                    <span className={styles.cardAuthor}>{req.createdBy}</span>
+                    {req.neededByIso ? (
+                      <>
+                        <span className={styles.metaDot} aria-hidden>
+                          ·
+                        </span>
+                        <span>к {formatDateTime(req.neededByIso)}</span>
+                      </>
+                    ) : null}
                   </p>
                 </div>
-                <span
-                  className={`${styles.statusBadge} ${styles[`status_${req.status}`]}`}
-                >
+                <span className={`${styles.statusBadge} ${styles[`status_${req.status}`]}`}>
                   {PROCUREMENT_STATUS_LABELS[req.status]}
                 </span>
               </header>
@@ -282,7 +298,11 @@ export function SiteProcurementRequestsSection({
                     </button>
                   ) : null}
                   {canSupplyEdit(req) ? (
-                    <button type="button" className={styles.actionBtn} onClick={() => onEdit(req)}>
+                    <button
+                      type="button"
+                      className={styles.ghostBtn}
+                      onClick={() => onEdit(req)}
+                    >
                       Изменить
                     </button>
                   ) : null}
@@ -300,39 +320,31 @@ export function SiteProcurementRequestsSection({
                 </div>
               )}
 
-              <div className={styles.tableWrap}>
-                <table className={styles.table}>
-                  <thead>
-                    <tr>
-                      <th className={styles.colN}>№</th>
-                      <th className={styles.colTitle}>Материал</th>
-                      <th className={styles.colQty}>Кол-во</th>
-                      <th className={styles.colUnit}>Ед.</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {req.items.map((it, i) => (
-                      <tr key={`${i}-${it.title}`}>
-                        <td className={styles.colN}>{i + 1}</td>
-                        <td className={styles.colTitle}>{it.title}</td>
-                        <td className={styles.colQty}>{formatQty(it.quantity)}</td>
-                        <td className={styles.colUnit}>{unitLabel(it.unitId)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ul className={styles.lines} aria-label="Позиции заявки">
+                {req.items.map((it, i) => (
+                  <li key={`${i}-${it.title}`} className={styles.line}>
+                    <span className={styles.lineIndex} aria-hidden>
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <span className={styles.lineTitle}>{it.title}</span>
+                    <span className={styles.lineQty}>
+                      {formatQty(it.quantity)}
+                      <span className={styles.lineUnit}>{unitLabel(it.unitId)}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
 
               {req.note ? (
                 <p className={styles.cardNote}>
-                  <span className={styles.cardNoteLabel}>Комментарий: </span>
+                  <span className={styles.cardNoteLabel}>Комментарий</span>
                   {req.note}
                 </p>
               ) : null}
 
               {req.unloadPoint ? (
                 <p className={styles.cardNote}>
-                  <span className={styles.cardNoteLabel}>Разгрузка: </span>
+                  <span className={styles.cardNoteLabel}>Разгрузка</span>
                   {req.unloadPoint.address ||
                     `${req.unloadPoint.lat.toFixed(5)}, ${req.unloadPoint.lng.toFixed(5)}`}
                   {req.unloadPoint.hint ? ` · ${req.unloadPoint.hint}` : ''}
@@ -409,46 +421,48 @@ export function SiteProcurementRequestsSection({
                 </div>
               ) : null}
 
-              <div className={styles.cardActions}>
+              <footer className={styles.cardFooter}>
+                <div className={styles.cardActions}>
+                  <button
+                    type="button"
+                    className={styles.ghostBtn}
+                    onClick={() => handleDownloadTxt(req)}
+                  >
+                    TXT
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.ghostBtn}
+                    onClick={() => handleDownloadCsv(req)}
+                  >
+                    CSV
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.ghostBtn}
+                    onClick={() => handleCopy(req)}
+                    aria-live="polite"
+                  >
+                    {copiedId === req.id ? 'Скопировано' : 'Копировать'}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.ghostBtn}
+                    onClick={() => handleShare(req)}
+                    aria-live="polite"
+                  >
+                    {sharedId === req.id ? 'Отправлено' : 'Поделиться'}
+                  </button>
+                </div>
                 <button
                   type="button"
-                  className={styles.actionBtn}
-                  onClick={() => handleDownloadTxt(req)}
-                >
-                  TXT
-                </button>
-                <button
-                  type="button"
-                  className={styles.actionBtn}
-                  onClick={() => handleDownloadCsv(req)}
-                >
-                  CSV
-                </button>
-                <button
-                  type="button"
-                  className={styles.actionBtn}
-                  onClick={() => handleCopy(req)}
-                  aria-live="polite"
-                >
-                  {copiedId === req.id ? 'Скопировано ✓' : 'Копировать'}
-                </button>
-                <button
-                  type="button"
-                  className={styles.actionBtn}
-                  onClick={() => handleShare(req)}
-                  aria-live="polite"
-                >
-                  {sharedId === req.id ? 'Отправлено ✓' : 'Поделиться'}
-                </button>
-                <button
-                  type="button"
-                  className={styles.actionBtnDanger}
+                  className={styles.dangerBtn}
                   onClick={() => onRemove(req.id)}
                   aria-label={`Удалить заявку № ${req.shortCode}`}
                 >
                   Удалить
                 </button>
-              </div>
+              </footer>
             </li>
           ))}
         </ul>
@@ -477,6 +491,11 @@ export function SiteProcurementRequestsSection({
                         <span className={styles.materialPct}>{pct}%</span>
                       ) : null}
                     </div>
+                    {m.acceptedQty > 0 ? (
+                      <div className={styles.progressTrack} aria-hidden>
+                        <div className={styles.progressFill} style={{ width: `${pct}%` }} />
+                      </div>
+                    ) : null}
                     <p className={styles.materialQty}>
                       {formatQty(m.requestedQty)} {unitLabel(m.unitId)}
                       {m.acceptedQty > 0
