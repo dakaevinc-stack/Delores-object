@@ -525,17 +525,22 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
       <aside className={styles.card} aria-labelledby={`${uid}-title`}>
         <div className={styles.rail}>
           <div className={styles.railLabel}>
-            <p className={styles.kicker}>Проект</p>
-            <p className={styles.title} id={`${uid}-title`}>
-              PDF / DWG
-            </p>
-            {busyText ? (
-              <span className={styles.statusBusy}>{busyText}</span>
-            ) : hasAny ? (
-              <span className={styles.statusReady}>Готово</span>
-            ) : (
-              <span className={styles.statusEmpty}>Пусто</span>
-            )}
+            <div className={styles.brandMark} aria-hidden>
+              <span className={styles.brandMarkGlyph}>Пр</span>
+            </div>
+            <div className={styles.railCopy}>
+              <p className={styles.kicker}>Проект</p>
+              <p className={styles.title} id={`${uid}-title`}>
+                PDF <span className={styles.titleSep}>·</span> DWG
+              </p>
+              {busyText ? (
+                <span className={`${styles.status} ${styles.statusBusy}`}>{busyText}</span>
+              ) : hasAny ? (
+                <span className={`${styles.status} ${styles.statusReady}`}>Готово</span>
+              ) : (
+                <span className={`${styles.status} ${styles.statusEmpty}`}>Пусто</span>
+              )}
+            </div>
           </div>
 
           <div className={styles.files}>
