@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import type { CSSProperties } from 'react'
 import { completionPercent } from '../../domain/executiveDashboard'
 import {
   SITE_STATUS_LABEL,
@@ -18,6 +19,8 @@ export function SiteDetailHeader({ site, dashboard }: Props) {
   const status = resolveSiteStatus(site)
   const token = SITE_STATUS_TOKEN[status]
   const pct = completionPercent(site)
+  const planPct = Math.round(site.executive.planPercent)
+  const ring = Math.max(0, Math.min(100, pct))
 
   return (
     <header className={styles.header}>
@@ -46,22 +49,52 @@ export function SiteDetailHeader({ site, dashboard }: Props) {
         </Link>
       </div>
 
-      <div className={styles.hero}>
+      <div className={styles.hero} data-status={token}>
+        <span className={styles.heroRail} aria-hidden />
+        <span className={styles.heroGlow} aria-hidden />
+
         <div className={styles.heroMain}>
-          <div className={styles.statusLine}>
-            <span className={styles.dot} data-status={token} aria-hidden />
+          <div className={styles.statusPill} data-status={token}>
+            <span className={styles.statusDot} aria-hidden />
             <span className={styles.statusLabel}>{SITE_STATUS_LABEL[status]}</span>
           </div>
+
           <h1 className={styles.title}>{site.name}</h1>
+
           <p className={styles.reason}>{dashboard.statusReason}</p>
+
+          {site.address ? (
+            <p className={styles.meta}>
+              <span className={styles.metaLabel}>Адрес</span>
+              <span className={styles.metaValue}>{site.address}</span>
+            </p>
+          ) : null}
         </div>
+
         <div
           className={styles.heroStat}
-          aria-label={`Выполнение ${pct} процентов`}
+          aria-label={`Выполнение ${pct} процентов, план ${planPct} процентов`}
         >
-          <span className={styles.pctValue}>{pct}</span>
-          <span className={styles.pctSuffix}>%</span>
-          <span className={styles.pctCaption}>факт по объекту</span>
+          <div
+            className={styles.ring}
+            style={{ '--ring': `${ring}` } as CSSProperties}
+            aria-hidden
+          >
+            <div className={styles.ringInner}>
+              <span className={styles.pctValue}>{pct}</span>
+              <span className={styles.pctSuffix}>%</span>
+            </div>
+          </div>
+          <div className={styles.statCopy}>
+            <span className={styles.pctCaption}>Факт по объекту</span>
+            <span className={styles.planLine}>
+              План <strong>{planPct}%</strong>
+            </span>
+            <div className={styles.barTrack} aria-hidden>
+              <div className={styles.barPlan} style={{ width: `${Math.min(100, planPct)}%` }} />
+              <div className={styles.barFact} style={{ width: `${ring}%` }} />
+            </div>
+          </div>
         </div>
       </div>
     </header>
