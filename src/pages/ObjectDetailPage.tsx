@@ -378,6 +378,13 @@ export function ObjectDetailPage() {
       </header>
 
       <div className={styles.summaryPanelBody}>
+        {workPlan ? (
+          <SiteWorkPlanSection
+            plan={workPlan}
+            windowStartIso={liveKpis.startIso}
+            windowEndIso={liveKpis.endIso}
+          />
+        ) : null}
         <SiteDetailKpiGrid kpis={liveKpis} embedded />
         <div className={styles.midGrid}>
           <SiteScheduleSection
@@ -387,13 +394,6 @@ export function ObjectDetailPage() {
           />
           <SiteReportingSection reports={brigadierReports} todayIso={liveKpis.todayIso} />
         </div>
-        {workPlan ? (
-          <SiteWorkPlanSection
-            plan={workPlan}
-            windowStartIso={liveKpis.startIso}
-            windowEndIso={liveKpis.endIso}
-          />
-        ) : null}
       </div>
     </section>
   )
