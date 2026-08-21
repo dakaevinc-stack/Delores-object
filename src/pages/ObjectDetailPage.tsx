@@ -5,8 +5,7 @@ import type { ProcurementRequest } from '../domain/procurementRequest'
 import type { SiteDeliveryPoint } from '../domain/siteDeliveryPoint'
 import type { DriverTrip } from '../domain/driverTrip'
 import { applyAcceptedQuantitiesToPlan, applyWorkEntriesToPlan } from '../domain/workPlan'
-import { issuedQtyByPlanItemMap, toDateKey } from '../domain/workDayPlan'
-import { collectTodayDeliveries } from '../domain/todayDeliveries'
+import { issuedQtyByPlanItemMap } from '../domain/workDayPlan'
 import { computeSiteLiveKpis, todayIsoMsk } from '../domain/siteKpis'
 import { getSiteDetailDashboard } from '../data/siteDetail.mock'
 import { getWorkPlanForSite } from '../data/workPlans'
@@ -295,21 +294,6 @@ export function ObjectDetailPage() {
     return applyAcceptedQuantitiesToPlan(withReports, dayQty)
   }, [basePlan, brigadierReports, site, dayPlanRevision])
 
-  const cargoChoices = useMemo(
-    () =>
-      collectTodayDeliveries(procurementRequests, toDateKey(new Date()))
-        .filter((c) => c.status === 'pending')
-        .flatMap((c) =>
-          c.items.map((it, i) => ({
-            id: `${c.requestId}:${i}`,
-            title: it.title,
-            quantity: it.quantity,
-            unitId: it.unitId,
-          })),
-        ),
-    [procurementRequests],
-  )
-
   const procurementRequestsFiltered = useMemo(() => {
     if (!procurementFilterAuthor) return procurementRequests
     return procurementRequests.filter(
@@ -519,7 +503,6 @@ export function ObjectDetailPage() {
           onSave={handleSaveDeliveryPoint}
           onAssignTrip={handleAssignTrip}
           assignerRole="dispatcher"
-          cargoChoices={cargoChoices}
         />
       </SiteRoleZone>
 

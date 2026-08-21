@@ -8,21 +8,35 @@ import {
 } from '../../domain/siteDeliveryPoint'
 import type { AddressHit } from '../../domain/addressSearch'
 import { driverCabinetUrl, renderDriverShareText } from '../../domain/driverShare'
-import { type DriverTrip, type DriverTripAssignerRole } from '../../domain/driverTrip'
-import { formatQty, unitLabel } from '../../domain/procurementRequest'
+import { type DriverTrip, type DriverTripAssignerRole, type DriverTripCargo } from '../../domain/driverTrip'
+import { unitLabel } from '../../domain/procurementRequest'
 import type { MeasurementUnitId } from '../../domain/brigadierReport'
+import {
+  findProcurementPreset,
+  searchProcurementPresets,
+} from '../../domain/procurementCatalog'
 import { toDateKey } from '../../domain/workDayPlan'
+import { getMaterialBudgetForSite } from '../../data/materialBudgets'
 import { reverseGeocodeRemote, searchAddressRemote } from '../../lib/siteFormsApi'
 import { DriverMessengerShare } from '../driver/DriverMessengerShare'
 import { useFleetRegistry } from '../fleet/useFleetRegistry'
 import { DeliveryPointMap } from './DeliveryPointMap'
 import styles from './SiteDeliveryPointSection.module.css'
 
-type DriverTripCargoChoice = {
+type MapTarget = 'unload' | 'pickup'
+
+type MaterialChoice = {
   id: string
   title: string
-  quantity: number
   unitId: MeasurementUnitId
+}
+
+type PickedCargoRow = {
+  id: string
+  title: string
+  quantity: string
+  unitId: MeasurementUnitId
+  custom: boolean
 }
 
 type Props = {
@@ -31,7 +45,6 @@ type Props = {
   address?: string
   point: SiteDeliveryPoint | null
   serverBacked?: boolean
-  cargoChoices?: readonly DriverTripCargoChoice[]
   onSave?: (point: SiteDeliveryPoint | null) => void | Promise<void>
   onAssignTrip?: (
     trip: DriverTrip,
@@ -46,13 +59,17 @@ function newId(): string {
     : `trip-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+function parseQty(raw: string): number | null {
+  const n = Number(String(raw).trim().replace(',', '.'))
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
 export function SiteDeliveryPointSection({
   siteName,
   siteId,
   address,
   point,
   serverBacked = false,
-  cargoChoices = [],
   onSave,
   onAssignTrip,
   assignerRole = 'dispatcher',
@@ -62,6 +79,7 @@ export function SiteDeliveryPointSection({
   const canEditPoint = Boolean(onSave)
   const canAssignTrip = Boolean(onAssignTrip)
   const { vehicles } = useFleetRegistry()
+  const [mapTarget, setMapTarget] = useState<MapTarget>('unload')
   const [query, setQuery] = useState(() => displayDeliveryAddress(point?.address ?? ''))
   const [hits, setHits] = useState<AddressHit[]>([])
   const [searching, setSearching] = useState(false)
@@ -74,7 +92,8 @@ export function SiteDeliveryPointSection({
   const [pickupAddress, setPickupAddress] = useState('')
   const [alreadyLoaded, setAlreadyLoaded] = useState(false)
   const [cargoNote, setCargoNote] = useState('')
-  const [pickedCargo, setPickedCargo] = useState<string[]>([])
+  const [cargoSearch, setCargoSearch] = useState('')
+  const [pickedCargo, setPickedCargo] = useState<PickedCargoRow[]>([])
   const skipDebounce = useRef(false)
   const queryFocused = useRef(false)
   const strippedJunkAddress = useRef(false)
@@ -88,14 +107,55 @@ export function SiteDeliveryPointSection({
     return [...names].sort((a, b) => a.localeCompare(b, 'ru'))
   }, [vehicles])
 
+  const siteMaterials = useMemo((): MaterialChoice[] => {
+    const budget = getMaterialBudgetForSite(siteId)
+    if (budget?.articles.length) {
+      return budget.articles.map((a) => {
+        const preset = findProcurementPreset(a.presetId)
+        return {
+          id: a.presetId || a.id,
+          title: preset?.title ?? a.title,
+          unitId: preset?.defaultUnit ?? a.unit,
+        }
+      })
+    }
+    return searchProcurementPresets('').map((p) => ({
+      id: p.id,
+      title: p.title,
+      unitId: p.defaultUnit,
+    }))
+  }, [siteId])
+
+  const cargoSuggestions = useMemo((): MaterialChoice[] => {
+    const q = cargoSearch.trim()
+    const pickedIds = new Set(pickedCargo.map((c) => c.id))
+    if (!q) {
+      return siteMaterials.filter((m) => !pickedIds.has(m.id)).slice(0, 24)
+    }
+    const fromCatalog = searchProcurementPresets(q).map((p) => ({
+      id: p.id,
+      title: p.title,
+      unitId: p.defaultUnit,
+    }))
+    const fromSite = siteMaterials.filter((m) =>
+      m.title.toLocaleLowerCase('ru-RU').includes(q.toLocaleLowerCase('ru-RU')),
+    )
+    const byId = new Map<string, MaterialChoice>()
+    for (const m of [...fromSite, ...fromCatalog]) {
+      if (!pickedIds.has(m.id)) byId.set(m.id, m)
+    }
+    return [...byId.values()].slice(0, 24)
+  }, [cargoSearch, siteMaterials, pickedCargo])
+
   useEffect(() => {
     setHint(point?.hint ?? '')
   }, [point?.hint])
 
   useEffect(() => {
     if (queryFocused.current) return
+    if (mapTarget !== 'unload') return
     setQuery(displayDeliveryAddress(point?.address ?? ''))
-  }, [point?.lat, point?.lng, point?.address])
+  }, [point?.lat, point?.lng, point?.address, mapTarget])
 
   useEffect(() => {
     if (strippedJunkAddress.current || !onSave || !point) return
@@ -106,7 +166,11 @@ export function SiteDeliveryPointSection({
   }, [onSave, point])
 
   useEffect(() => {
-    if (!canEditPoint) {
+    if (!canEditPoint && mapTarget === 'unload') {
+      setHits([])
+      return
+    }
+    if (mapTarget === 'pickup' && alreadyLoaded) {
       setHits([])
       return
     }
@@ -115,7 +179,11 @@ export function SiteDeliveryPointSection({
       skipDebounce.current = false
       return
     }
-    if (q.length < 3 || q === displayDeliveryAddress(point?.address ?? '')) {
+    const currentLabel =
+      mapTarget === 'unload'
+        ? displayDeliveryAddress(point?.address ?? '')
+        : pickupAddress.trim()
+    if (q.length < 3 || q === currentLabel) {
       setHits([])
       return
     }
@@ -126,7 +194,8 @@ export function SiteDeliveryPointSection({
         try {
           const found = await searchAddressRemote(q)
           setHits(found)
-          if (found.length === 0) setGeoError('Адрес не нашёлся. Проверьте написание или поставьте точку на карте.')
+          if (found.length === 0)
+            setGeoError('Адрес не нашёлся. Проверьте написание или поставьте точку на карте.')
         } catch {
           setGeoError('Поиск адреса сейчас недоступен. Поставьте точку на карте.')
         } finally {
@@ -135,7 +204,7 @@ export function SiteDeliveryPointSection({
       })()
     }, 400)
     return () => window.clearTimeout(t)
-  }, [canEditPoint, query, point?.address])
+  }, [canEditPoint, query, point?.address, mapTarget, pickupAddress, alreadyLoaded])
 
   const commit = async (next: SiteDeliveryPoint | null) => {
     if (!onSave) return
@@ -147,11 +216,12 @@ export function SiteDeliveryPointSection({
     }
   }
 
-  const placeAt = (lat: number, lng: number, foundAddress: string, nextHint = hint) => {
+  const placeUnload = (lat: number, lng: number, foundAddress: string, nextHint = hint) => {
     skipDebounce.current = true
     queryFocused.current = false
     const label = displayDeliveryAddress(foundAddress)
     if (label) setQuery(label)
+    else setQuery(formatLatLng(lat, lng))
     setHits([])
     void commit({
       lat,
@@ -162,13 +232,28 @@ export function SiteDeliveryPointSection({
     })
   }
 
+  const placePickup = (foundAddress: string, lat?: number, lng?: number) => {
+    skipDebounce.current = true
+    queryFocused.current = false
+    const label = displayDeliveryAddress(foundAddress) || (lat != null && lng != null ? formatLatLng(lat, lng) : '')
+    setPickupAddress(label)
+    if (mapTarget === 'pickup') setQuery(label)
+    setHits([])
+    setAlreadyLoaded(false)
+  }
+
   const pickHit = (hit: AddressHit) => {
     setGeoError(null)
-    placeAt(hit.lat, hit.lng, hit.label)
+    if (mapTarget === 'pickup') placePickup(hit.label, hit.lat, hit.lng)
+    else placeUnload(hit.lat, hit.lng, hit.label)
   }
 
   const handleSearchNow = async () => {
-    const q = query.trim() || siteName
+    const q = query.trim() || (mapTarget === 'unload' ? siteName : '')
+    if (!q) {
+      setGeoError('Введите адрес или ткните карту.')
+      return
+    }
     setSearching(true)
     setGeoError(null)
     try {
@@ -188,7 +273,11 @@ export function SiteDeliveryPointSection({
 
   const handleMapPick = async (lat: number, lng: number) => {
     const found = (await reverseGeocodeRemote(lat, lng)) ?? ''
-    placeAt(lat, lng, found)
+    if (mapTarget === 'pickup') {
+      placePickup(found, lat, lng)
+      return
+    }
+    placeUnload(lat, lng, found)
   }
 
   const handleHere = () => {
@@ -210,17 +299,67 @@ export function SiteDeliveryPointSection({
     void commit({ ...point, hint: hint.trim(), updatedAtIso: new Date().toISOString() })
   }
 
+  const switchMapTarget = (next: MapTarget) => {
+    setMapTarget(next)
+    setHits([])
+    setGeoError(null)
+    skipDebounce.current = true
+    if (next === 'unload') {
+      setQuery(displayDeliveryAddress(point?.address ?? ''))
+    } else {
+      setQuery(pickupAddress)
+    }
+  }
+
+  const addMaterial = (m: MaterialChoice) => {
+    setPickedCargo((prev) => {
+      if (prev.some((r) => r.id === m.id)) return prev
+      return [
+        ...prev,
+        {
+          id: m.id,
+          title: m.title,
+          quantity: '',
+          unitId: m.unitId,
+          custom: false,
+        },
+      ]
+    })
+    setCargoSearch('')
+  }
+
+  const addCustomCargo = () => {
+    setPickedCargo((prev) => [
+      ...prev,
+      {
+        id: `custom-${newId()}`,
+        title: '',
+        quantity: '',
+        unitId: 't',
+        custom: true,
+      },
+    ])
+  }
+
+  const updateCargoRow = (id: string, patch: Partial<PickedCargoRow>) => {
+    setPickedCargo((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))
+  }
+
+  const removeCargoRow = (id: string) => {
+    setPickedCargo((prev) => prev.filter((r) => r.id !== id))
+  }
+
   const handleAssign = async () => {
     if (!point || !onAssignTrip || !driverName.trim()) return
     const plate =
       vehicles.find((v) => v.specs?.responsibleOperator?.trim() === driverName.trim())?.plate ?? ''
-    const cargo = cargoChoices
-      .filter((c) => pickedCargo.includes(c.id))
+    const cargo: DriverTripCargo[] = pickedCargo
       .map((c) => ({
-        title: c.title,
-        quantity: c.quantity,
+        title: c.title.trim(),
+        quantity: parseQty(c.quantity),
         unitLabel: unitLabel(c.unitId),
       }))
+      .filter((c) => c.title)
     const trip: DriverTrip = {
       id: newId(),
       dateKey: toDateKey(new Date()),
@@ -245,6 +384,7 @@ export function SiteDeliveryPointSection({
     window.setTimeout(() => setAssignedOk('off'), 3200)
     setPickedCargo([])
     setCargoNote('')
+    setCargoSearch('')
   }
 
   const sharePoint = point ? { ...point, hint: hint.trim() || point.hint } : null
@@ -254,6 +394,11 @@ export function SiteDeliveryPointSection({
     ? renderDriverShareText(siteName, sharePoint, lastTrip, cabinetUrl)
     : ''
   const captionAddr = displayDeliveryAddress(point?.address ?? '') || null
+  const searchEnabled = canEditPoint || (canAssignTrip && mapTarget === 'pickup' && !alreadyLoaded)
+  const searchPlaceholder =
+    mapTarget === 'pickup'
+      ? 'Склад, карьер, база…'
+      : address?.trim() || 'Улица, дом, посёлок'
 
   return (
     <section className={styles.section} aria-labelledby={titleId}>
@@ -280,10 +425,29 @@ export function SiteDeliveryPointSection({
       <div className={styles.sheet}>
         <div className={styles.split}>
           <div className={styles.mapPane}>
-            {canEditPoint ? (
+            {searchEnabled ? (
               <div className={styles.searchOverlay}>
+                {canAssignTrip ? (
+                  <div className={styles.mapMode} role="group" aria-label="Что ставим на карте">
+                    <button
+                      type="button"
+                      className={`${styles.mapModeBtn} ${mapTarget === 'unload' ? styles.mapModeOn : ''}`}
+                      onClick={() => switchMapTarget('unload')}
+                    >
+                      Куда везти
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.mapModeBtn} ${mapTarget === 'pickup' ? styles.mapModeOn : ''}`}
+                      onClick={() => switchMapTarget('pickup')}
+                      disabled={alreadyLoaded}
+                    >
+                      Откуда грузить
+                    </button>
+                  </div>
+                ) : null}
                 <label className={styles.searchLabel} htmlFor={`${fieldId}-address`}>
-                  Адрес разгрузки
+                  {mapTarget === 'pickup' ? 'Адрес погрузки' : 'Адрес разгрузки'}
                 </label>
                 <div className={styles.searchRow}>
                   <input
@@ -292,7 +456,7 @@ export function SiteDeliveryPointSection({
                     type="text"
                     autoComplete="street-address"
                     value={query}
-                    placeholder={address?.trim() || 'Улица, дом, посёлок'}
+                    placeholder={searchPlaceholder}
                     onFocus={() => {
                       queryFocused.current = true
                     }}
@@ -302,6 +466,7 @@ export function SiteDeliveryPointSection({
                     onChange={(e) => {
                       queryFocused.current = true
                       setQuery(e.target.value)
+                      if (mapTarget === 'pickup') setPickupAddress(e.target.value)
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
@@ -339,13 +504,17 @@ export function SiteDeliveryPointSection({
                 compact
                 lat={point?.lat ?? null}
                 lng={point?.lng ?? null}
-                editable={canEditPoint}
-                onPick={canEditPoint ? (lat, lng) => void handleMapPick(lat, lng) : undefined}
+                editable={searchEnabled}
+                onPick={searchEnabled ? (lat, lng) => void handleMapPick(lat, lng) : undefined}
               />
             </div>
 
             <div className={styles.mapFooter}>
-              {point ? (
+              {mapTarget === 'pickup' && canAssignTrip ? (
+                <span className={styles.captionAddr}>
+                  {pickupAddress.trim() || 'Ткните карту — адрес попадёт в «Откуда грузить»'}
+                </span>
+              ) : point ? (
                 <>
                   <span className={styles.captionAddr}>{captionAddr ?? 'Точка на карте'}</span>
                   <span className={styles.captionMeta}>{formatLatLng(point.lat, point.lng)}</span>
@@ -358,12 +527,12 @@ export function SiteDeliveryPointSection({
               ) : (
                 <span className={styles.captionAddr}>Точка ещё не выбрана</span>
               )}
-              {canEditPoint ? (
+              {searchEnabled ? (
                 <div className={styles.mapActions}>
                   <button type="button" className={styles.ghostBtn} onClick={handleHere} disabled={busy}>
                     Я здесь
                   </button>
-                  {point ? (
+                  {mapTarget === 'unload' && point ? (
                     <button
                       type="button"
                       className={styles.ghostBtnDanger}
@@ -388,8 +557,15 @@ export function SiteDeliveryPointSection({
                     ? serverBacked
                       ? 'Рейс уйдёт на сервер и появится в кабинете на любом устройстве.'
                       : 'Рейс появится в кабинете. Точка пока только на этом устройстве.'
-                    : 'Сначала поставьте точку на карте.'}
+                    : 'Сначала поставьте точку разгрузки на карте («Куда везти»).'}
                 </p>
+
+                <div className={`${styles.zone} ${styles.zoneRoute}`}>
+                  <p className={styles.zoneLabel}>Куда везти</p>
+                  <p className={styles.destValue}>
+                    {captionAddr || (point ? 'Точка на карте без адреса' : 'Ещё не выбрано — ткните карту')}
+                  </p>
+                </div>
 
                 <div className={`${styles.zone} ${styles.zoneDriver}`}>
                   <p className={styles.zoneLabel}>Водитель</p>
@@ -409,53 +585,105 @@ export function SiteDeliveryPointSection({
 
                 <div className={`${styles.zone} ${styles.zoneCargo}`}>
                   <p className={styles.zoneLabel}>Груз</p>
-                  {cargoChoices.length > 0 ? (
-                    <div className={styles.cargoChips} role="group" aria-label="Что грузить">
-                      {cargoChoices.map((c) => {
-                        const on = pickedCargo.includes(c.id)
-                        return (
-                          <button
-                            key={c.id}
-                            type="button"
-                            className={`${styles.roleBtn} ${on ? styles.roleOn : ''}`}
-                            onClick={() =>
-                              setPickedCargo((prev) =>
-                                prev.includes(c.id)
-                                  ? prev.filter((id) => id !== c.id)
-                                  : [...prev, c.id],
-                              )
-                            }
-                          >
-                            {c.title} · {formatQty(c.quantity)} {unitLabel(c.unitId)}
-                          </button>
-                        )
-                      })}
+                  <input
+                    className={styles.fieldInput}
+                    value={cargoSearch}
+                    placeholder="Найти материал…"
+                    onChange={(e) => setCargoSearch(e.target.value)}
+                    aria-label="Поиск материала"
+                  />
+                  {cargoSuggestions.length > 0 ? (
+                    <div className={styles.cargoChips} role="group" aria-label="Материалы объекта">
+                      {cargoSuggestions.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          className={styles.roleBtn}
+                          onClick={() => addMaterial(c)}
+                        >
+                          {c.title}
+                        </button>
+                      ))}
                     </div>
+                  ) : (
+                    <p className={styles.cargoEmpty}>
+                      {cargoSearch.trim()
+                        ? 'Ничего не найдено — добавьте свой груз ниже.'
+                        : 'Все материалы из списка уже выбраны.'}
+                    </p>
+                  )}
+                  {pickedCargo.length > 0 ? (
+                    <ul className={styles.cargoList}>
+                      {pickedCargo.map((row) => (
+                        <li key={row.id} className={styles.cargoRow}>
+                          {row.custom ? (
+                            <input
+                              className={styles.cargoTitle}
+                              value={row.title}
+                              placeholder="Название груза"
+                              onChange={(e) => updateCargoRow(row.id, { title: e.target.value })}
+                            />
+                          ) : (
+                            <span className={styles.cargoTitleText}>{row.title}</span>
+                          )}
+                          <input
+                            className={styles.cargoQty}
+                            inputMode="decimal"
+                            value={row.quantity}
+                            placeholder="Кол-во"
+                            aria-label={`Количество: ${row.title || 'груз'}`}
+                            onChange={(e) => updateCargoRow(row.id, { quantity: e.target.value })}
+                          />
+                          <span className={styles.cargoUnit}>{unitLabel(row.unitId)}</span>
+                          <button
+                            type="button"
+                            className={styles.cargoRemove}
+                            aria-label="Убрать"
+                            onClick={() => removeCargoRow(row.id)}
+                          >
+                            ×
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   ) : null}
+                  <button type="button" className={styles.addOwnBtn} onClick={addCustomCargo}>
+                    + Свой груз
+                  </button>
                   <input
                     className={styles.fieldInput}
                     value={cargoNote}
-                    placeholder={cargoChoices.length ? 'Или свой груз' : 'Что грузить'}
+                    placeholder="Комментарий к грузу (необязательно)"
                     onChange={(e) => setCargoNote(e.target.value)}
                   />
                 </div>
 
                 <div className={`${styles.zone} ${styles.zoneRoute}`}>
-                  <p className={styles.zoneLabel}>Маршрут</p>
+                  <p className={styles.zoneLabel}>Откуда грузить</p>
                   <label className={styles.check}>
                     Уже в кузове
                     <input
                       type="checkbox"
                       checked={alreadyLoaded}
-                      onChange={(e) => setAlreadyLoaded(e.target.checked)}
+                      onChange={(e) => {
+                        const on = e.target.checked
+                        setAlreadyLoaded(on)
+                        if (on && mapTarget === 'pickup') switchMapTarget('unload')
+                      }}
                     />
                   </label>
                   {alreadyLoaded ? null : (
                     <input
                       className={styles.fieldInput}
                       value={pickupAddress}
-                      placeholder="Откуда грузить"
-                      onChange={(e) => setPickupAddress(e.target.value)}
+                      placeholder="Адрес или ткните карту в режиме «Откуда грузить»"
+                      onChange={(e) => {
+                        setPickupAddress(e.target.value)
+                        if (mapTarget === 'pickup') setQuery(e.target.value)
+                      }}
+                      onFocus={() => {
+                        if (mapTarget !== 'pickup') switchMapTarget('pickup')
+                      }}
                     />
                   )}
                   {canEditPoint ? (
