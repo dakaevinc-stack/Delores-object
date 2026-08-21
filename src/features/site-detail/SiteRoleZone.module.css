@@ -98,6 +98,32 @@
   justify-content: flex-end;
 }
 
+.zone[data-site-zone='manager'] .head {
+  background:
+    radial-gradient(110% 90% at 0% 0%, rgba(23, 42, 77, 0.14) 0%, transparent 52%),
+    radial-gradient(100% 80% at 100% 0%, rgba(238, 45, 58, 0.12) 0%, transparent 50%),
+    linear-gradient(180deg, #ffffff 0%, #f3f5f9 100%);
+  border-color: rgba(23, 42, 77, 0.14);
+}
+
+.zone[data-site-zone='manager'] .headRail {
+  background: linear-gradient(
+    180deg,
+    var(--brand-navy, #172a4d) 0%,
+    var(--brand-navy, #172a4d) 45%,
+    var(--brand-red, #ee2d3a) 100%
+  );
+  width: 6px;
+}
+
+.zone[data-site-zone='manager'] .headGlow {
+  background: radial-gradient(circle, rgba(238, 45, 58, 0.18) 0%, transparent 68%);
+}
+
+.zone[data-site-zone='manager'] .kicker {
+  color: var(--brand-red, #ee2d3a);
+}
+
 .zone[data-site-zone='brigadier'] .head {
   background:
     radial-gradient(110% 90% at 0% 0%, rgba(180, 83, 9, 0.14) 0%, transparent 52%),
@@ -142,17 +168,23 @@
 
 .zone[data-site-zone='dispatcher'] .head {
   background:
-    radial-gradient(110% 90% at 0% 0%, rgba(29, 78, 216, 0.1) 0%, transparent 50%),
-    radial-gradient(100% 80% at 100% 0%, rgba(238, 45, 58, 0.09) 0%, transparent 52%),
-    linear-gradient(180deg, #ffffff 0%, #f5f7fb 100%);
+    radial-gradient(110% 90% at 0% 0%, rgba(29, 78, 216, 0.14) 0%, transparent 52%),
+    radial-gradient(100% 80% at 100% 0%, rgba(238, 45, 58, 0.1) 0%, transparent 50%),
+    linear-gradient(180deg, #ffffff 0%, #f2f5fb 100%);
+  border-color: rgba(29, 78, 216, 0.16);
 }
 
 .zone[data-site-zone='dispatcher'] .headRail {
   background: linear-gradient(180deg, #1d4ed8 0%, #172a4d 45%, #ee2d3a 100%);
+  width: 6px;
 }
 
 .zone[data-site-zone='dispatcher'] .headGlow {
-  background: radial-gradient(circle, rgba(29, 78, 216, 0.16) 0%, transparent 68%);
+  background: radial-gradient(circle, rgba(29, 78, 216, 0.2) 0%, transparent 68%);
+}
+
+.zone[data-site-zone='dispatcher'] .kicker {
+  color: #1d4ed8;
 }
 
 @media (max-width: 860px) {
