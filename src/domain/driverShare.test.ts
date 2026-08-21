@@ -57,16 +57,20 @@ describe('driverShare', () => {
     expect(maxShareUrl(text)).toContain(encodeURIComponent(text))
   })
 
-  it('текст рейса — кабинет, забрать, груз и Яндекс.Карты', () => {
+  it('текст рейса — простые шаги: забрать → груз → везти → навигатор', () => {
     const text = renderDriverTripShareText(trip, 'http://example.test/driver')
-    expect(text).toContain('Рейс для Иванов')
-    expect(text).toContain('http://example.test/driver')
-    expect(text).toContain('Забрать: Карьер Щербинка')
+    expect(text).toContain('РЕЙС ДЛЯ: Иванов')
+    expect(text).toContain('ШАГ 1. ЗАБРАТЬ ГРУЗ')
+    expect(text).toContain('Карьер Щербинка')
+    expect(text).toContain('ШАГ 2. ЧТО ГРУЗИТЬ')
     expect(text).toContain('Щебень — 12 м³')
-    expect(text).toContain('Везти: ул. Вокзальная, 12')
-    expect(text).toContain('Объект: Брусилова')
-    expect(text).not.toContain('Везти: Брусилова')
-    expect(text).toContain('yandex.ru/maps')
+    expect(text).toContain('ШАГ 3. ВЕЗТИ СЮДА')
+    expect(text).toContain('ул. Вокзальная, 12')
+    expect(text).toContain('объект работ: Брусилова')
+    expect(text).not.toMatch(/ВЕЗТИ СЮДА[\s\S]*Брусилова\n/)
+    expect(text).toContain('ШАГ 4. ОТКРЫТЬ ДОРОГУ')
+    expect(text).toContain('yandex.ru')
+    expect(text).toContain('http://example.test/driver')
   })
 
   it('без рейса остаётся короткая точка разгрузки', () => {

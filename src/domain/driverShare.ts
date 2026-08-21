@@ -2,6 +2,7 @@ import { tripCargoLines, type DriverTrip } from './driverTrip'
 import {
   renderDriverDirections,
   yandexMapsRouteUrl,
+  yandexNaviUrl,
   type SiteDeliveryPoint,
 } from './siteDeliveryPoint'
 
@@ -60,6 +61,12 @@ export function maxShareUrl(text: string): string {
   return `https://max.ru/:share?text=${encodeURIComponent(text)}`
 }
 
+const SEP = '——————'
+
+/**
+ * Текст рейса в мессенджер: короткие шаги, крупные подписи.
+ * Водитель должен понять маршрут с телефона за несколько секунд.
+ */
 export function renderDriverTripShareText(trip: DriverTrip, cabinetUrl: string): string {
   const cargo = tripCargoLines(trip)
   const pickup = trip.pickup.address.trim()
@@ -67,21 +74,63 @@ export function renderDriverTripShareText(trip: DriverTrip, cabinetUrl: string):
   const address = trip.point.address.trim()
   const hint = trip.point.hint.trim()
   const site = trip.siteName.trim()
-  const destination = address || site || 'точка на карте'
-  const lines = [
-    `Рейс для ${trip.driverName}`,
-    `Кабинет водителя: ${cabinetUrl}`,
-    pickup ? `Забрать: ${pickup}` : 'Груз уже в кузове — сразу на разгрузку',
-    pickupHint ? `Погрузка: ${pickupHint}` : null,
-    cargo.length ? `Что везти:` : null,
-    ...cargo.map((line) => `• ${line}`),
-    `Везти: ${destination}`,
-    // Название объекта — только если адрес уже указан отдельно (иначе destination = site).
-    address && site ? `Объект: ${site}` : null,
-    hint ? `Разгрузка: ${hint}` : null,
-    `Яндекс.Карты:`,
-    yandexMapsRouteUrl(trip.point),
+  const plate = trip.vehiclePlate.trim()
+
+  const lines: Array<string | null> = [
+    `РЕЙС ДЛЯ: ${trip.driverName}`,
+    plate ? `Машина: ${plate}` : null,
+    '',
+    SEP,
+    'ШАГ 1. ЗАБРАТЬ ГРУЗ',
   ]
+
+  if (pickup) {
+    lines.push('Адрес погрузки:')
+    lines.push(pickup)
+    if (pickupHint) lines.push(`Подсказка: ${pickupHint}`)
+  } else {
+    lines.push('Груз уже в кузове.')
+    lines.push('Сразу езжай на разгрузку (шаг 3).')
+  }
+
+  lines.push('')
+  lines.push(SEP)
+  lines.push('ШАГ 2. ЧТО ГРУЗИТЬ')
+  if (cargo.length > 0) {
+    for (const line of cargo) lines.push(`• ${line}`)
+  } else {
+    lines.push('Скажет диспетчер / уже в кузове.')
+  }
+
+  lines.push('')
+  lines.push(SEP)
+  lines.push('ШАГ 3. ВЕЗТИ СЮДА (разгрузить)')
+  if (address) {
+    lines.push('Адрес разгрузки:')
+    lines.push(address)
+  } else if (site) {
+    lines.push('Адрес разгрузки:')
+    lines.push(site)
+  } else {
+    lines.push('Точка на карте — открой ссылку ниже.')
+  }
+  if (hint) lines.push(`Как подъехать: ${hint}`)
+  if (address && site) lines.push(`(объект работ: ${site})`)
+
+  lines.push('')
+  lines.push(SEP)
+  lines.push('ШАГ 4. ОТКРЫТЬ ДОРОГУ')
+  lines.push('Нажми ссылку — откроется Яндекс.Навигатор:')
+  lines.push(yandexNaviUrl(trip.point))
+  lines.push('Или карты:')
+  lines.push(yandexMapsRouteUrl(trip.point))
+
+  lines.push('')
+  lines.push(SEP)
+  lines.push('Все рейсы на сегодня:')
+  lines.push(cabinetUrl)
+  lines.push('Открой ссылку и напиши свою фамилию.')
+
   return lines.filter((x): x is string => x !== null).join('\n')
 }
 
