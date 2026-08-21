@@ -79,8 +79,10 @@ export function SiteDeliveryPointSection({
   const canEditPoint = Boolean(onSave)
   const canAssignTrip = Boolean(onAssignTrip)
   const { vehicles } = useFleetRegistry()
-  const [mapTarget, setMapTarget] = useState<MapTarget>('unload')
-  const [query, setQuery] = useState(() => displayDeliveryAddress(point?.address ?? ''))
+  const [mapTarget, setMapTarget] = useState<MapTarget>(() => (onAssignTrip ? 'pickup' : 'unload'))
+  const [query, setQuery] = useState(() =>
+    onAssignTrip ? '' : displayDeliveryAddress(point?.address ?? ''),
+  )
   const [hits, setHits] = useState<AddressHit[]>([])
   const [searching, setSearching] = useState(false)
   const [hint, setHint] = useState(point?.hint ?? '')
@@ -90,6 +92,8 @@ export function SiteDeliveryPointSection({
   const [lastTrip, setLastTrip] = useState<DriverTrip | null>(null)
   const [assignedOk, setAssignedOk] = useState<'off' | 'saved' | 'telegram'>('off')
   const [pickupAddress, setPickupAddress] = useState('')
+  const [pickupLat, setPickupLat] = useState<number | null>(null)
+  const [pickupLng, setPickupLng] = useState<number | null>(null)
   const [alreadyLoaded, setAlreadyLoaded] = useState(false)
   const [cargoNote, setCargoNote] = useState('')
   const [cargoSearch, setCargoSearch] = useState('')
@@ -233,8 +237,14 @@ export function SiteDeliveryPointSection({
   const placePickup = (foundAddress: string, lat?: number, lng?: number) => {
     skipDebounce.current = true
     queryFocused.current = false
-    const label = displayDeliveryAddress(foundAddress) || (lat != null && lng != null ? formatLatLng(lat, lng) : '')
+    const label =
+      displayDeliveryAddress(foundAddress) ||
+      (lat != null && lng != null ? formatLatLng(lat, lng) : '')
     setPickupAddress(label)
+    if (lat != null && lng != null) {
+      setPickupLat(lat)
+      setPickupLng(lng)
+    }
     if (mapTarget === 'pickup') setQuery(label)
     setHits([])
     setAlreadyLoaded(false)
@@ -270,12 +280,16 @@ export function SiteDeliveryPointSection({
   }
 
   const handleMapPick = async (lat: number, lng: number) => {
-    const found = (await reverseGeocodeRemote(lat, lng)) ?? ''
     if (mapTarget === 'pickup') {
-      placePickup(found, lat, lng)
+      // Сразу в поле «Откуда грузить», затем уточняем адрес по геокоду.
+      placePickup(formatLatLng(lat, lng), lat, lng)
+      const found = (await reverseGeocodeRemote(lat, lng)) ?? ''
+      if (found.trim()) placePickup(found, lat, lng)
       return
     }
-    placeUnload(lat, lng, found)
+    placeUnload(lat, lng, formatLatLng(lat, lng))
+    const found = (await reverseGeocodeRemote(lat, lng)) ?? ''
+    if (found.trim()) placeUnload(lat, lng, found)
   }
 
   const handleHere = () => {
@@ -509,10 +523,16 @@ export function SiteDeliveryPointSection({
 
             <div className={styles.mapGrow}>
               <DeliveryPointMap
-                compact
+                fill
                 lat={point?.lat ?? null}
                 lng={point?.lng ?? null}
+                accentLat={alreadyLoaded ? null : pickupLat}
+                accentLng={alreadyLoaded ? null : pickupLng}
                 editable={searchEnabled}
+                draggable={searchEnabled && mapTarget === 'unload'}
+                ariaLabel={
+                  mapTarget === 'pickup' ? 'Карта точки погрузки' : 'Карта точки разгрузки'
+                }
                 onPick={searchEnabled ? (lat, lng) => void handleMapPick(lat, lng) : undefined}
               />
             </div>
@@ -520,7 +540,7 @@ export function SiteDeliveryPointSection({
             <div className={styles.mapFooter}>
               {mapTarget === 'pickup' && canAssignTrip ? (
                 <span className={styles.captionAddr}>
-                  {pickupAddress.trim() || 'Ткните карту — адрес попадёт в «Откуда грузить»'}
+                  {pickupAddress.trim() || 'Ткните карту — адрес сразу попадёт в «Откуда грузить»'}
                 </span>
               ) : point ? (
                 <>
@@ -707,7 +727,11 @@ export function SiteDeliveryPointSection({
                       onChange={(e) => {
                         const on = e.target.checked
                         setAlreadyLoaded(on)
-                        if (on && mapTarget === 'pickup') switchMapTarget('unload')
+                        if (on) {
+                          setPickupLat(null)
+                          setPickupLng(null)
+                          if (mapTarget === 'pickup') switchMapTarget('unload')
+                        }
                       }}
                     />
                   </label>
@@ -715,7 +739,7 @@ export function SiteDeliveryPointSection({
                     <input
                       className={styles.fieldInput}
                       value={pickupAddress}
-                      placeholder="Адрес или ткните карту в режиме «Откуда грузить»"
+                      placeholder="Ткните карту — адрес подставится сам"
                       onChange={(e) => {
                         setPickupAddress(e.target.value)
                         if (mapTarget === 'pickup') setQuery(e.target.value)

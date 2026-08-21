@@ -7,21 +7,56 @@ import styles from './DeliveryPointMap.module.css'
 type Props = {
   lat: number | null
   lng: number | null
-  /** Если false — только смотрим, пин не двигаем. */
+  /** Вторая метка (погрузка) — синяя. */
+  accentLat?: number | null
+  accentLng?: number | null
+  /** Если false — клики по карте не принимают. */
   editable?: boolean
+  /** Можно ли тащить основную метку. */
+  draggable?: boolean
   compact?: boolean
+  /** Растянуть на всю высоту родителя (один экран карты). */
+  fill?: boolean
+  ariaLabel?: string
   onPick?: (lat: number, lng: number) => void
 }
 
-export function DeliveryPointMap({ lat, lng, editable = true, compact = false, onPick }: Props) {
+function makeIcon(accent: boolean) {
+  return L.divIcon({
+    className: styles.pinWrap,
+    html: `<span class="${accent ? styles.pinAccent : styles.pin}"></span>`,
+    iconSize: [28, 40],
+    iconAnchor: [14, 38],
+  })
+}
+
+export function DeliveryPointMap({
+  lat,
+  lng,
+  accentLat = null,
+  accentLng = null,
+  editable = true,
+  draggable,
+  compact = false,
+  fill = false,
+  ariaLabel = 'Карта',
+  onPick,
+}: Props) {
   const rootRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const markerRef = useRef<L.Marker | null>(null)
+  const accentRef = useRef<L.Marker | null>(null)
   const onPickRef = useRef(onPick)
+  const editableRef = useRef(editable)
+  const canDrag = draggable ?? editable
 
   useEffect(() => {
     onPickRef.current = onPick
   }, [onPick])
+
+  useEffect(() => {
+    editableRef.current = editable
+  }, [editable])
 
   useEffect(() => {
     const el = rootRef.current
@@ -41,10 +76,10 @@ export function DeliveryPointMap({ lat, lng, editable = true, compact = false, o
       lat != null && lng != null
         ? L.latLng(lat, lng)
         : L.latLng(MOSCOW_MAP_CENTER.lat, MOSCOW_MAP_CENTER.lng)
-    map.setView(start, lat != null ? 16 : 10)
+    map.setView(start, lat != null ? 16 : 11)
 
     map.on('click', (e: L.LeafletMouseEvent) => {
-      if (!editable) return
+      if (!editableRef.current) return
       onPickRef.current?.(e.latlng.lat, e.latlng.lng)
     })
 
@@ -52,16 +87,19 @@ export function DeliveryPointMap({ lat, lng, editable = true, compact = false, o
     const syncSize = () => map.invalidateSize({ animate: false })
     const t = window.setTimeout(syncSize, 0)
     const t2 = window.setTimeout(syncSize, 200)
+    const t3 = window.setTimeout(syncSize, 600)
     const ro = new ResizeObserver(syncSize)
     ro.observe(el)
 
     return () => {
       window.clearTimeout(t)
       window.clearTimeout(t2)
+      window.clearTimeout(t3)
       ro.disconnect()
       map.remove()
       mapRef.current = null
       markerRef.current = null
+      accentRef.current = null
     }
     // Карту создаём один раз; координаты двигают маркер отдельным эффектом.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -78,15 +116,10 @@ export function DeliveryPointMap({ lat, lng, editable = true, compact = false, o
     }
 
     const here = L.latLng(lat, lng)
-    const icon = L.divIcon({
-      className: styles.pinWrap,
-      html: `<span class="${styles.pin}"></span>`,
-      iconSize: [28, 40],
-      iconAnchor: [14, 38],
-    })
+    const icon = makeIcon(false)
 
     if (!markerRef.current) {
-      const marker = L.marker(here, { icon, draggable: editable })
+      const marker = L.marker(here, { icon, draggable: canDrag })
       marker.addTo(map)
       marker.on('dragend', () => {
         const p = marker.getLatLng()
@@ -95,19 +128,41 @@ export function DeliveryPointMap({ lat, lng, editable = true, compact = false, o
       markerRef.current = marker
     } else {
       markerRef.current.setLatLng(here)
+      markerRef.current.setIcon(icon)
       if (markerRef.current.dragging) {
-        if (editable) markerRef.current.dragging.enable()
+        if (canDrag) markerRef.current.dragging.enable()
         else markerRef.current.dragging.disable()
       }
     }
 
     const z = map.getZoom()
     map.setView(here, z < 14 ? 16 : z, { animate: true })
-  }, [lat, lng, editable])
+  }, [lat, lng, canDrag])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+
+    if (accentLat == null || accentLng == null) {
+      accentRef.current?.remove()
+      accentRef.current = null
+      return
+    }
+
+    const here = L.latLng(accentLat, accentLng)
+    const icon = makeIcon(true)
+
+    if (!accentRef.current) {
+      accentRef.current = L.marker(here, { icon, interactive: false }).addTo(map)
+    } else {
+      accentRef.current.setLatLng(here)
+      accentRef.current.setIcon(icon)
+    }
+  }, [accentLat, accentLng])
 
   return (
-    <div className={`${styles.frame} ${compact ? styles.compact : ''}`}>
-      <div ref={rootRef} className={styles.map} role="application" aria-label="Карта точки разгрузки" />
+    <div className={`${styles.frame} ${compact ? styles.compact : ''} ${fill ? styles.fill : ''}`}>
+      <div ref={rootRef} className={styles.map} role="application" aria-label={ariaLabel} />
     </div>
   )
 }
