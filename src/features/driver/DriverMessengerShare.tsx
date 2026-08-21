@@ -197,7 +197,7 @@ export function DriverMessengerShare({ text, mapsUrl, compact = false, disabled 
     <div className={compact ? styles.wrapCompact : styles.wrap}>
       <div className={styles.head}>
         <p className={styles.label}>Отправить водителю</p>
-        <p className={styles.hint}>Готовый текст рейса в мессенджер или на карту</p>
+        <p className={styles.hint}>Текст рейса готов — выберите, куда отправить</p>
       </div>
       <div className={styles.grid} aria-disabled={disabled}>
         <ShareTile
