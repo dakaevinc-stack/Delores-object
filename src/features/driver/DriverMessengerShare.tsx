@@ -202,13 +202,18 @@ export function DriverMessengerShare({ text, mapsUrl, compact = false, disabled 
   return (
     <div className={compact ? styles.wrapCompact : styles.wrap}>
       <div className={styles.head}>
-        <p className={styles.label}>Отправить водителю</p>
-        <p className={styles.hint}>Текст рейса готов — выберите канал</p>
+        <p className={styles.kicker}>
+          <span className={styles.kickerMark} aria-hidden />
+          Маршрут
+        </p>
+        <div className={styles.headCopy}>
+          <p className={styles.title}>Передать водителю</p>
+          <p className={styles.lead}>Адрес объекта и ссылка на карту — одним сообщением</p>
+        </div>
       </div>
       {tgReady ? (
         <p className={styles.tgTip} role="status">
-          Текст скопирован. В Telegram выберите чат водителя и вставьте: ⌘V (на телефоне — «Вставить»), затем
-          отправьте.
+          Сообщение скопировано. Откройте Telegram, выберите чат водителя и вставьте текст.
         </p>
       ) : null}
       <div className={styles.grid} aria-disabled={disabled}>
