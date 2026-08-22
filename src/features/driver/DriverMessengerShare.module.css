@@ -2,105 +2,98 @@
 .wrapCompact {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
+/* Компактная панель — одна стеклянная рамка, без вложенного «лотка» */
 .wrapCompact {
-  gap: 10px;
-  padding: 14px;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.78);
+  gap: 8px;
+  padding: 10px 10px 11px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
   background:
-    radial-gradient(120% 90% at 0% 0%, rgba(29, 78, 216, 0.14) 0%, transparent 52%),
-    radial-gradient(100% 80% at 100% 100%, rgba(23, 42, 77, 0.12) 0%, transparent 48%),
-    radial-gradient(80% 60% at 50% 0%, rgba(238, 45, 58, 0.06) 0%, transparent 55%),
-    rgba(255, 255, 255, 0.28);
-  backdrop-filter: blur(22px) saturate(1.65);
-  -webkit-backdrop-filter: blur(22px) saturate(1.65);
+    radial-gradient(120% 90% at 0% 0%, rgba(29, 78, 216, 0.12) 0%, transparent 52%),
+    radial-gradient(100% 80% at 100% 100%, rgba(23, 42, 77, 0.1) 0%, transparent 48%),
+    rgba(255, 255, 255, 0.26);
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.92) inset,
-    0 0 0 1px rgba(255, 255, 255, 0.28),
-    0 14px 36px rgba(15, 23, 42, 0.08);
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 10px 28px rgba(15, 23, 42, 0.07);
 }
 
 .head {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .wrapCompact .head {
-  padding: 0 2px 2px;
+  padding: 0 1px;
 }
 
 .label {
   margin: 0;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   width: fit-content;
-  padding: 4px 11px 4px 8px;
+  padding: 3px 9px 3px 7px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  background: rgba(255, 255, 255, 0.42);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  font-size: 10.5px;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.38);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
   color: var(--brand-navy, #172a4d);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
 .hint {
   margin: 0;
-  font-size: 12.5px;
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.35;
   color: var(--muted, #6b7280);
 }
 
 .wrapCompact .hint {
-  padding: 0 2px;
+  font-size: 11.5px;
+  padding: 0 1px;
 }
 
 .tgTip {
   margin: 0;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(34, 158, 217, 0.32);
+  padding: 9px 11px;
+  border-radius: 11px;
+  border: 1px solid rgba(34, 158, 217, 0.3);
   background: linear-gradient(180deg, rgba(238, 248, 253, 0.82) 0%, rgba(247, 252, 255, 0.68) 100%);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  font-size: 13px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-size: 12.5px;
   font-weight: 650;
   line-height: 1.4;
   color: #0c4a6e;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.85) inset;
 }
 
+/* Сетка: в compact всегда 4 в ряд */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
 }
 
 .wrapCompact .grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  padding: 10px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.58);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.16) 100%);
-  backdrop-filter: blur(14px) saturate(1.4);
-  -webkit-backdrop-filter: blur(14px) saturate(1.4);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.72) inset,
-    inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
 }
 
-/* ─── Стеклянные плитки каналов ─────────────────────────────────── */
+/* ─── Стеклянные плитки ─────────────────────────────────────────── */
 
 .tile {
   position: relative;
@@ -109,27 +102,26 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 88px;
-  padding: 12px 10px 10px;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.82);
-  background: rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(20px) saturate(1.55);
-  -webkit-backdrop-filter: blur(20px) saturate(1.55);
+  gap: 6px;
+  min-height: 84px;
+  padding: 10px 6px 8px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(18px) saturate(1.5);
+  -webkit-backdrop-filter: blur(18px) saturate(1.5);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.98) inset,
-    0 0 0 1px rgba(255, 255, 255, 0.24),
-    0 12px 28px rgba(15, 23, 42, 0.08);
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 8px 20px rgba(15, 23, 42, 0.07);
   font: inherit;
   text-decoration: none;
   cursor: pointer;
   overflow: hidden;
   transition:
-    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.2s ease,
-    border-color 0.2s ease,
-    background 0.2s ease;
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
 }
 
 .tile::before {
@@ -139,34 +131,21 @@
   border-radius: inherit;
   background: linear-gradient(
     155deg,
-    rgba(255, 255, 255, 0.72) 0%,
-    rgba(255, 255, 255, 0.12) 38%,
-    rgba(255, 255, 255, 0) 62%,
-    rgba(255, 255, 255, 0.14) 100%
+    rgba(255, 255, 255, 0.68) 0%,
+    rgba(255, 255, 255, 0.08) 42%,
+    rgba(255, 255, 255, 0) 100%
   );
   pointer-events: none;
   z-index: 0;
 }
 
-.tile::after {
-  content: '';
-  position: absolute;
-  inset: 1px;
-  border-radius: calc(18px - 1px);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.85;
-}
-
 .tile:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   border-color: rgba(255, 255, 255, 0.95);
-  background: rgba(255, 255, 255, 0.32);
+  background: rgba(255, 255, 255, 0.3);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 1) inset,
-    0 0 0 1px rgba(255, 255, 255, 0.42),
-    0 18px 40px rgba(15, 23, 42, 0.12);
+    0 14px 28px rgba(15, 23, 42, 0.1);
 }
 
 .tile:active {
@@ -176,9 +155,8 @@
 .tile:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 3px rgba(28, 75, 130, 0.24),
-    0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 12px 28px rgba(15, 23, 42, 0.08);
+    0 0 0 3px rgba(28, 75, 130, 0.22),
+    0 1px 0 rgba(255, 255, 255, 0.95) inset;
 }
 
 .glyph {
@@ -190,159 +168,127 @@
   width: 44px;
   height: 44px;
   flex-shrink: 0;
-  border-radius: 14px;
+  border-radius: 13px;
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.45);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.5) inset,
-    0 10px 22px rgba(15, 23, 42, 0.2);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+    0 1px 0 rgba(255, 255, 255, 0.48) inset,
+    0 8px 18px rgba(15, 23, 42, 0.18);
+  transition: transform 0.18s ease;
 }
 
 .tile:hover .glyph {
-  transform: scale(1.05);
+  transform: scale(1.04);
 }
 
 .tileLabel {
   position: relative;
   z-index: 1;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 750;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   color: var(--text-strong, #0f1114);
-  line-height: 1.2;
+  line-height: 1.15;
   text-align: center;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Compact: иконка — главный акцент, подпись компактная */
+.wrapCompact .tile {
+  min-height: 0;
+  padding: 7px 4px 5px;
+  gap: 4px;
+  border-radius: 13px;
+}
+
+.wrapCompact .glyph {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+}
+
+.wrapCompact .tileLabel {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 .wa {
-  border-color: rgba(37, 211, 102, 0.38);
-  background: linear-gradient(
-    165deg,
-    rgba(37, 211, 102, 0.28) 0%,
-    rgba(255, 255, 255, 0.24) 52%,
-    rgba(255, 255, 255, 0.14) 100%
-  );
+  border-color: rgba(37, 211, 102, 0.42);
+  background: linear-gradient(165deg, rgba(37, 211, 102, 0.32) 0%, rgba(255, 255, 255, 0.18) 100%);
 }
 
 .wa:hover {
-  border-color: rgba(37, 211, 102, 0.55);
+  border-color: rgba(37, 211, 102, 0.58);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 1) inset,
-    0 0 0 1px rgba(37, 211, 102, 0.18),
-    0 18px 40px rgba(18, 140, 126, 0.2),
-    0 0 28px rgba(37, 211, 102, 0.16);
+    0 0 22px rgba(37, 211, 102, 0.18);
 }
 
 .wa .glyph {
-  background: linear-gradient(145deg, rgba(37, 211, 102, 0.94) 0%, rgba(18, 140, 126, 0.98) 100%);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.42) inset,
-    0 10px 22px rgba(18, 140, 126, 0.42);
+  background: linear-gradient(145deg, #25d366 0%, #128c7e 100%);
 }
 
 .tg {
-  border-color: rgba(34, 158, 217, 0.38);
-  background: linear-gradient(
-    165deg,
-    rgba(55, 174, 226, 0.28) 0%,
-    rgba(255, 255, 255, 0.24) 52%,
-    rgba(255, 255, 255, 0.14) 100%
-  );
+  border-color: rgba(34, 158, 217, 0.42);
+  background: linear-gradient(165deg, rgba(55, 174, 226, 0.32) 0%, rgba(255, 255, 255, 0.18) 100%);
 }
 
 .tg:hover {
-  border-color: rgba(34, 158, 217, 0.55);
+  border-color: rgba(34, 158, 217, 0.58);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 1) inset,
-    0 0 0 1px rgba(34, 158, 217, 0.16),
-    0 18px 40px rgba(34, 158, 217, 0.18),
-    0 0 28px rgba(34, 158, 217, 0.12);
+    0 0 22px rgba(34, 158, 217, 0.16);
 }
 
 .tg .glyph {
-  background: linear-gradient(145deg, rgba(55, 174, 226, 0.96) 0%, rgba(30, 150, 200, 0.98) 55%, rgba(34, 158, 217, 1) 100%);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.42) inset,
-    0 10px 22px rgba(34, 158, 217, 0.4);
+  background: linear-gradient(145deg, #37aee2 0%, #229ed9 100%);
 }
 
 .max {
-  border-color: rgba(110, 26, 255, 0.36);
-  background: linear-gradient(
-    165deg,
-    rgba(110, 26, 255, 0.24) 0%,
-    rgba(255, 255, 255, 0.24) 52%,
-    rgba(255, 255, 255, 0.14) 100%
-  );
+  border-color: rgba(110, 26, 255, 0.4);
+  background: linear-gradient(165deg, rgba(110, 26, 255, 0.28) 0%, rgba(255, 255, 255, 0.18) 100%);
 }
 
 .max:hover {
-  border-color: rgba(110, 26, 255, 0.52);
+  border-color: rgba(110, 26, 255, 0.55);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 1) inset,
-    0 0 0 1px rgba(110, 26, 255, 0.14),
-    0 18px 40px rgba(110, 26, 255, 0.18),
-    0 0 28px rgba(149, 0, 255, 0.12);
+    0 0 22px rgba(149, 0, 255, 0.14);
 }
 
 .max .glyph {
-  background: linear-gradient(145deg, rgba(71, 26, 255, 0.96) 0%, rgba(110, 26, 255, 0.98) 45%, rgba(149, 0, 255, 1) 100%);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.42) inset,
-    0 10px 22px rgba(110, 26, 255, 0.4);
+  background: linear-gradient(145deg, #471aff 0%, #9500ff 100%);
 }
 
 .copy {
-  border-color: rgba(23, 42, 77, 0.28);
-  background: linear-gradient(
-    165deg,
-    rgba(23, 42, 77, 0.18) 0%,
-    rgba(255, 255, 255, 0.24) 52%,
-    rgba(255, 255, 255, 0.14) 100%
-  );
+  border-color: rgba(23, 42, 77, 0.32);
+  background: linear-gradient(165deg, rgba(23, 42, 77, 0.22) 0%, rgba(255, 255, 255, 0.18) 100%);
 }
 
 .copy:hover {
-  border-color: rgba(23, 42, 77, 0.42);
+  border-color: rgba(23, 42, 77, 0.45);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 1) inset,
-    0 0 0 1px rgba(23, 42, 77, 0.1),
-    0 18px 40px rgba(23, 42, 77, 0.14),
-    0 0 24px rgba(23, 42, 77, 0.08);
+    0 0 20px rgba(23, 42, 77, 0.1);
 }
 
 .copy .glyph {
   color: #fff;
-  background: linear-gradient(145deg, rgba(42, 63, 102, 0.96) 0%, rgba(23, 42, 77, 1) 100%);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.32) inset,
-    0 10px 22px rgba(23, 42, 77, 0.36);
+  background: linear-gradient(145deg, #2a3f66 0%, #172a4d 100%);
 }
 
 .more {
-  border-color: rgba(100, 116, 139, 0.28);
-  background: linear-gradient(
-    165deg,
-    rgba(100, 116, 139, 0.16) 0%,
-    rgba(255, 255, 255, 0.24) 52%,
-    rgba(255, 255, 255, 0.14) 100%
-  );
-}
-
-.more:hover {
-  border-color: rgba(100, 116, 139, 0.42);
+  border-color: rgba(100, 116, 139, 0.3);
+  background: linear-gradient(165deg, rgba(100, 116, 139, 0.18) 0%, rgba(255, 255, 255, 0.18) 100%);
 }
 
 .more .glyph {
   color: #fff;
-  background: linear-gradient(145deg, rgba(100, 116, 139, 0.94) 0%, rgba(71, 85, 105, 0.98) 100%);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.32) inset,
-    0 10px 22px rgba(71, 85, 105, 0.32);
+  background: linear-gradient(145deg, #64748b 0%, #475569 100%);
 }
 
 .tileOff {
@@ -351,70 +297,78 @@
   cursor: not-allowed;
   transform: none !important;
   filter: grayscale(0.35);
-  box-shadow: none;
 }
 
-.wrapCompact .tile {
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  min-height: 56px;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 14px;
-}
-
-.wrapCompact .tile::after {
-  border-radius: calc(14px - 1px);
-}
-
-.wrapCompact .glyph {
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
-}
-
-.wrapCompact .tileLabel {
-  font-size: 12px;
-  text-align: left;
-  flex: 1;
-  min-width: 0;
-}
-
-@media (max-width: 560px) {
+/* Мобилка: 4 в ряд, крупные стеклянные иконки, без подписей */
+@media (max-width: 640px) {
   .wrapCompact {
-    padding: 12px;
-    border-radius: 16px;
+    padding: 8px 8px 9px;
+    gap: 6px;
+    border-radius: 14px;
+  }
+
+  .wrapCompact .hint {
+    font-size: 11px;
+    line-height: 1.3;
   }
 
   .wrapCompact .grid {
-    grid-template-columns: 1fr;
-    padding: 8px;
-    gap: 7px;
+    gap: 5px;
   }
 
   .wrapCompact .tile {
-    min-height: 52px;
-    padding: 9px 11px;
+    padding: 5px 2px 4px;
+    gap: 0;
+    border-radius: 12px;
+  }
+
+  .wrapCompact .glyph {
+    width: 48px;
+    height: 48px;
+    border-radius: 13px;
+  }
+
+  .wrapCompact .tileLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 7px;
   }
 
   .tile {
-    min-height: 80px;
-    border-radius: 16px;
+    min-height: 76px;
+    padding: 9px 5px 7px;
+    border-radius: 14px;
   }
 
-  .tile::after {
-    border-radius: calc(16px - 1px);
+  .glyph {
+    width: 42px;
+    height: 42px;
+  }
+
+  .tileLabel {
+    font-size: 10px;
   }
 }
 
-@media (min-width: 720px) {
+/* Очень узкий экран (iPhone SE) — чуть плотнее, иконки чуть меньше */
+@media (max-width: 360px) {
   .wrapCompact .grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .wrapCompact .glyph {
+    width: 44px;
+    height: 44px;
   }
 }

@@ -1041,7 +1041,7 @@
 
 .shareBar {
   position: relative;
-  padding: 12px 14px 14px;
+  padding: 10px 10px 11px;
   border-top: 1px solid rgba(255, 255, 255, 0.62);
   background:
     radial-gradient(120% 100% at 0% 0%, rgba(29, 78, 216, 0.1) 0%, transparent 52%),
@@ -1069,6 +1069,10 @@
 
 @media (max-width: 560px) {
   .formPane {
-    padding: 14px;
+    padding: 14px 10px 0;
+  }
+
+  .shareBar {
+    padding: 8px 8px 9px;
   }
 }

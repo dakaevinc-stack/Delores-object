@@ -129,7 +129,7 @@ function ShareTile({
 
   if (asButton) {
     return (
-      <button type="button" className={cls} disabled={disabled} onClick={onClick}>
+      <button type="button" className={cls} disabled={disabled} onClick={onClick} title={label}>
         {body}
       </button>
     )
@@ -144,6 +144,7 @@ function ShareTile({
       href={disabled ? undefined : href}
       target={customProtocol ? '_self' : '_blank'}
       rel="noreferrer"
+      title={label}
       aria-disabled={disabled}
       onClick={(e) => {
         if (disabled) e.preventDefault()
