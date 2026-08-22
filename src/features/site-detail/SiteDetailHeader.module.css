@@ -339,10 +339,16 @@
 
   .back {
     align-self: flex-start;
+    min-height: 44px;
   }
 
   .hero {
-    padding: 18px 16px 16px 18px;
+    padding:
+      18px
+      max(16px, env(safe-area-inset-right, 0px))
+      16px
+      max(18px, env(safe-area-inset-left, 0px));
+    border-radius: 18px;
   }
 
   .heroTop {

@@ -423,3 +423,31 @@
     gap: 14px;
   }
 }
+
+@media (max-width: 640px) {
+  .zonePanel {
+    border-radius: 18px;
+  }
+
+  .panelHead {
+    padding:
+      14px
+      max(14px, env(safe-area-inset-right, 0px))
+      12px
+      max(18px, env(safe-area-inset-left, 0px));
+  }
+
+  .panelBody {
+    padding:
+      12px
+      max(10px, env(safe-area-inset-right, 0px))
+      14px
+      max(14px, env(safe-area-inset-left, 0px));
+    gap: 12px;
+  }
+
+  .zonePanel .panelBody > :global(section) {
+    padding: 14px 12px 12px;
+    border-radius: 14px;
+  }
+}

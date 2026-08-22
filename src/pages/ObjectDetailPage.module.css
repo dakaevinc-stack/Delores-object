@@ -8,9 +8,9 @@
 @media (max-width: 640px) {
   .page {
     padding-top: 20px;
-    padding-right: max(16px, env(safe-area-inset-right, 0px));
-    padding-bottom: max(56px, calc(40px + env(safe-area-inset-bottom, 0px)));
-    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(var(--page-pad-x), env(safe-area-inset-right, 0px));
+    padding-bottom: var(--page-pad-bottom);
+    padding-left: max(var(--page-pad-x), env(safe-area-inset-left, 0px));
   }
 
   .toolbarCta {

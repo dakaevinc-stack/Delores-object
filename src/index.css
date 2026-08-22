@@ -30,6 +30,8 @@
 
   /* Одинаковый зазор между крупными блоками по всему приложению */
   --block-gap: 24px;
+  --page-pad-x: 24px;
+  --page-pad-bottom: 72px;
 
   /* Заголовки зон и секций — один вид везде */
   --heading-block-size: 22px;
@@ -116,6 +118,13 @@ img.leaflet-tile {
    поднимая минимум до 16px на телефонах. Ничего не ломает
    визуально, потому что применяется только на <= 640px. */
 @media (max-width: 640px) {
+  :root {
+    --block-gap: 18px;
+    --page-pad-x: max(16px, env(safe-area-inset-left, 0px));
+    --page-pad-bottom: max(48px, calc(32px + env(safe-area-inset-bottom, 0px)));
+    --heading-block-size: 20px;
+  }
+
   input,
   select,
   textarea {
@@ -143,7 +152,22 @@ img.leaflet-tile {
 
   button,
   [role='button'] {
-    min-height: 40px;
+    min-height: 44px;
+  }
+}
+
+/* iPhone SE / узкие Android (~320–375px) */
+@media (max-width: 390px) {
+  :root {
+    --block-gap: 16px;
+    --heading-block-size: 19px;
+  }
+}
+
+/* iPhone Pro Max и крупные телефоны — чуть больше воздуха по краям */
+@media (min-width: 391px) and (max-width: 640px) {
+  :root {
+    --page-pad-x: max(18px, env(safe-area-inset-left, 0px));
   }
 }
 

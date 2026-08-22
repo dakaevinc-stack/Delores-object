@@ -429,6 +429,58 @@
 }
 
 @media (max-width: 640px) {
+  .card {
+    padding: 10px 10px 10px 12px;
+    border-radius: 14px;
+  }
+
+  .fileRow {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      'tag body'
+      'actions actions';
+    row-gap: 8px;
+    align-items: start;
+    min-height: 0;
+    padding: 10px;
+  }
+
+  .fileTag {
+    grid-area: tag;
+  }
+
+  .fileRowBody {
+    grid-area: body;
+  }
+
+  .fileRowActions {
+    grid-area: actions;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .actionBtn,
+  .actionBtnPrimary {
+    min-height: 40px;
+    padding: 0 12px;
+  }
+
+  .actionBtnSecondary,
+  .actionBtnDanger {
+    width: 40px;
+    min-height: 40px;
+  }
+
+  .backdrop {
+    align-items: flex-end;
+    padding:
+      max(8px, env(safe-area-inset-top, 0px))
+      max(8px, env(safe-area-inset-right, 0px))
+      max(8px, env(safe-area-inset-bottom, 0px))
+      max(8px, env(safe-area-inset-left, 0px));
+  }
+
   .viewerHead,
   .viewerHeadDark,
   .viewerActions {
@@ -437,6 +489,23 @@
   }
 
   .viewer {
-    height: 92vh;
+    width: 100%;
+    height: min(94dvh, 100%);
+    border-radius: 16px 16px 0 0;
+  }
+
+  .viewerBtn {
+    min-height: 44px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 390px) {
+  .fileNameText {
+    font-size: 12px;
+  }
+
+  .actionBtnPrimary {
+    width: 100%;
   }
 }
