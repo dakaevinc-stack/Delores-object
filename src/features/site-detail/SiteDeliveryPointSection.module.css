@@ -1039,8 +1039,11 @@
 
 .shareBar {
   padding: 14px 16px 16px;
-  border-top: 1px solid rgba(15, 23, 42, 0.06);
-  background: #fff;
+  border-top: 1px solid rgba(255, 255, 255, 0.45);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(248, 250, 253, 0.55) 100%);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
 }
 
 /* legacy class names kept for any residual refs */
