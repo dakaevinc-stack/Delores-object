@@ -42,7 +42,7 @@ export function ArenaGame() {
     <div className={styles.root}>
       <div ref={hostRef} className={styles.canvasHost} />
 
-      <div className={styles.crosshair} aria-hidden />
+      {!hud.locked ? null : <div className={styles.crosshair} aria-hidden />}
 
       <header className={styles.topBar}>
         <Link className={styles.back} to="/">
@@ -98,7 +98,7 @@ export function ArenaGame() {
             </button>
             <ul className={styles.help}>
               <li>WASD — движение</li>
-              <li>Пробел — прыжок</li>
+              <li>Пробел — прыжок · ракета — отброс</li>
               <li>ЛКМ — огонь</li>
               <li>1 / 2 — оружие</li>
               <li>Esc — пауза</li>
