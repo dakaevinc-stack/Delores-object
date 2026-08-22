@@ -81,6 +81,12 @@ export function ArenaGame() {
         <span className={hud.weapon === 'mg' ? styles.weaponOn : styles.weaponOff}>1 · Пулемёт</span>
       </div>
 
+      {hud.locked ? (
+        <p className={styles.fireHint} aria-live="polite">
+          <kbd>F</kbd> или <kbd>Enter</kbd> — огонь · трекпад — клик
+        </p>
+      ) : null}
+
       {!hud.locked ? (
         <div className={styles.overlay}>
           <div className={styles.overlayCard}>
@@ -98,8 +104,11 @@ export function ArenaGame() {
             </button>
             <ul className={styles.help}>
               <li>WASD — движение</li>
-              <li>Пробел — прыжок · ракета — отброс</li>
-              <li>ЛКМ — огонь</li>
+              <li>Пробел — прыжок</li>
+              <li>
+                <strong>F</strong> или <strong>Enter</strong> — огонь (без мыши)
+              </li>
+              <li>Трекпад — клик / тап по экрану</li>
               <li>1 / 2 — оружие</li>
               <li>Esc — пауза</li>
             </ul>

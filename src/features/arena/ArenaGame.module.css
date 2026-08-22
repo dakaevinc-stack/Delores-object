@@ -187,6 +187,39 @@
   color: rgba(180, 200, 220, 0.65);
 }
 
+.fireHint {
+  position: absolute;
+  left: 50%;
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 5;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(120, 200, 255, 0.35);
+  background: rgba(8, 18, 36, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(220, 240, 255, 0.92);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.fireHint kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 1px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(47, 140, 255, 0.25);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+}
+
 .overlay {
   position: absolute;
   inset: 0;

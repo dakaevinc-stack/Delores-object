@@ -52,6 +52,7 @@ const GROUND_SPEED = 14
 const AIR_SPEED = 9
 const MAX_HVEL = 22
 const BOT_FEET = 0.92
+const FIRE_KEYS = ['KeyF', 'Enter', 'ControlLeft', 'ControlRight'] as const
 
 export function createArenaEngine(
   container: HTMLElement,
@@ -452,6 +453,26 @@ export function createArenaEngine(
     }
   }
 
+  function wantsFire() {
+    if (mouseDown) return true
+    return FIRE_KEYS.some((code) => keys.has(code))
+  }
+
+  function tryPlayerFire() {
+    const dir = new THREE.Vector3()
+    camera.getWorldDirection(dir)
+    const origin = muzzleOrigin()
+    if (weapon === 'rocket' && rocketCd <= 0 && ammoRocket > 0) {
+      ammoRocket -= 1
+      rocketCd = 0.8
+      fireRocket('player', origin, dir)
+    } else if (weapon === 'mg' && mgCd <= 0 && ammoMg > 0) {
+      ammoMg -= 1
+      mgCd = 0.085
+      fireMg(origin, dir, 'player')
+    }
+  }
+
   function pushHud(locked: boolean) {
     onHud({
       health: Math.max(0, Math.round(health)),
@@ -475,6 +496,9 @@ export function createArenaEngine(
     if (e.code === 'Digit2' && weapon !== 'rocket') {
       weapon = 'rocket'
       audio.weaponSwitch()
+    }
+    if (controls.isLocked && FIRE_KEYS.includes(e.code as (typeof FIRE_KEYS)[number])) {
+      e.preventDefault()
     }
   }
   const onKeyUp = (e: KeyboardEvent) => keys.delete(e.code)
@@ -502,6 +526,12 @@ export function createArenaEngine(
   const onMouseUp = (e: MouseEvent) => {
     if (e.button === 0) mouseDown = false
   }
+  const onTouchStart = (e: TouchEvent) => {
+    if (e.touches.length === 1 && controls.isLocked) mouseDown = true
+  }
+  const onTouchEnd = () => {
+    mouseDown = false
+  }
 
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('keyup', onKeyUp)
@@ -510,7 +540,10 @@ export function createArenaEngine(
   controls.addEventListener('unlock', onUnlock)
   renderer.domElement.addEventListener('click', onClick)
   renderer.domElement.addEventListener('mousedown', onMouseDown)
+  renderer.domElement.addEventListener('touchstart', onTouchStart, { passive: true })
   window.addEventListener('mouseup', onMouseUp)
+  window.addEventListener('touchend', onTouchEnd)
+  window.addEventListener('touchcancel', onTouchEnd)
 
   let last = performance.now()
   let raf = 0
@@ -572,20 +605,7 @@ export function createArenaEngine(
 
       onGround = moveCapsule(controls.object.position, vel, colliders, RADIUS, EYE, dt)
 
-      if (mouseDown) {
-        const dir = new THREE.Vector3()
-        camera.getWorldDirection(dir)
-        const origin = muzzleOrigin()
-        if (weapon === 'rocket' && rocketCd <= 0 && ammoRocket > 0) {
-          ammoRocket -= 1
-          rocketCd = 0.8
-          fireRocket('player', origin, dir)
-        } else if (weapon === 'mg' && mgCd <= 0 && ammoMg > 0) {
-          ammoMg -= 1
-          mgCd = 0.085
-          fireMg(origin, dir, 'player')
-        }
-      }
+      if (wantsFire()) tryPlayerFire()
     }
 
     for (const bot of bots) {
@@ -686,7 +706,10 @@ export function createArenaEngine(
       controls.removeEventListener('unlock', onUnlock)
       renderer.domElement.removeEventListener('click', onClick)
       renderer.domElement.removeEventListener('mousedown', onMouseDown)
+      renderer.domElement.removeEventListener('touchstart', onTouchStart)
       window.removeEventListener('mouseup', onMouseUp)
+      window.removeEventListener('touchend', onTouchEnd)
+      window.removeEventListener('touchcancel', onTouchEnd)
       controls.disconnect()
       floorTex.dispose()
       renderer.dispose()
