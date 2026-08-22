@@ -368,6 +368,173 @@
   color: var(--brand-red, #ee2d3a);
 }
 
+/* ─── Arena III — стеклянная кнопка ИГРАТЬ ─────────────────────────── */
+
+.playRow {
+  margin: 0 0 var(--block-gap);
+}
+
+.playLink {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: clamp(14px, 2vw, 20px);
+  width: 100%;
+  padding: clamp(16px, 2.4vw, 20px) clamp(18px, 2.8vw, 26px);
+  border-radius: 22px;
+  border: 1px solid rgba(47, 140, 255, 0.42);
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(47, 140, 255, 0.35) 0%, transparent 52%),
+    radial-gradient(100% 90% at 100% 100%, rgba(15, 80, 200, 0.22) 0%, transparent 48%),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.55) 0%, rgba(220, 238, 255, 0.35) 100%);
+  backdrop-filter: blur(20px) saturate(1.55);
+  -webkit-backdrop-filter: blur(20px) saturate(1.55);
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.92) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.28),
+    0 16px 44px rgba(47, 140, 255, 0.22),
+    0 0 32px rgba(47, 140, 255, 0.12);
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
+}
+
+.playLink::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, #2f8cff 0%, #0b4fd4 55%, #172a4d 100%);
+  border-radius: 0 4px 4px 0;
+}
+
+.playLink:hover {
+  transform: translateY(-2px);
+  border-color: rgba(80, 170, 255, 0.62);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 1) inset,
+    0 0 0 1px rgba(120, 200, 255, 0.35),
+    0 22px 56px rgba(47, 140, 255, 0.32),
+    0 0 48px rgba(47, 140, 255, 0.2);
+}
+
+.playLink:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(47, 140, 255, 0.35),
+    0 16px 44px rgba(47, 140, 255, 0.22);
+}
+
+.playGlow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    240px 120px at 12% 0%,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0) 70%
+  );
+}
+
+.playIcon {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: linear-gradient(180deg, rgba(47, 140, 255, 0.95) 0%, rgba(15, 80, 200, 0.98) 100%);
+  color: #fff;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.35) inset,
+    0 12px 28px rgba(47, 140, 255, 0.45);
+}
+
+.playCopy {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.playKicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(15, 80, 200, 0.85);
+}
+
+.playTitle {
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  color: #0f1724;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.playLead {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.playArrow {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(47, 140, 255, 0.25);
+  background: rgba(255, 255, 255, 0.55);
+  color: #0b4fd4;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  transition: transform 0.22s ease, background 0.22s ease;
+}
+
+.playLink:hover .playArrow {
+  transform: translate(2px, -2px);
+  background: rgba(47, 140, 255, 0.15);
+}
+
+@media (max-width: 640px) {
+  .playLink {
+    padding: 14px 16px;
+    border-radius: 18px;
+  }
+
+  .playIcon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+  }
+
+  .playLead {
+    font-size: 12.5px;
+  }
+
+  .playArrow {
+    width: 36px;
+    height: 36px;
+  }
+}
+
 /* Парк техники + внешняя панель приёмки (две колонки на широких экранах) */
 .fleetHubRow {
   display: grid;

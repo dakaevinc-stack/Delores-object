@@ -356,6 +356,39 @@ export function HomePage() {
         </div>
       </header>
 
+      <div className={styles.playRow}>
+        <Link className={styles.playLink} to="/play" aria-label="Играть в Arena III">
+          <span className={styles.playGlow} aria-hidden />
+          <span className={styles.playIcon} aria-hidden>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+              <path
+                d="M8 5.5v13l10-6.5-10-6.5z"
+                fill="currentColor"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <span className={styles.playCopy}>
+            <span className={styles.playKicker}>Arena III</span>
+            <span className={styles.playTitle}>Играть</span>
+            <span className={styles.playLead}>Арена-шутер в браузере — ракеты, боты, фраги</span>
+          </span>
+          <span className={styles.playArrow} aria-hidden>
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none">
+              <path
+                d="M7 13 13 7M7 7h6v6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+        </Link>
+      </div>
+
       <TodayDeliveriesBoard
         requests={deliveryRequests}
         variant="home"

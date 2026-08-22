@@ -22,6 +22,9 @@ const ObjectDetailPage = lazy(() =>
 const DriverCabinetPage = lazy(() =>
   import('../pages/DriverCabinetPage').then((m) => ({ default: m.DriverCabinetPage })),
 )
+const ArenaPage = lazy(() =>
+  import('../pages/ArenaPage').then((m) => ({ default: m.ArenaPage })),
+)
 
 function RouteFallback() {
   return (
@@ -43,6 +46,7 @@ export function App() {
         <Route path="/objects/new" element={<AddObjectPage />} />
         <Route path="/objects/:siteId" element={<ObjectDetailPage />} />
         <Route path="/driver" element={<DriverCabinetPage />} />
+        <Route path="/play" element={<ArenaPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
