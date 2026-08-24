@@ -26,11 +26,45 @@ function UserIcon() {
   )
 }
 
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="15" height="15" fill="none" aria-hidden focusable="false">
+      <rect x="4.5" y="8.5" width="11" height="7.5" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M7.2 8.5V6.8a2.8 2.8 0 0 1 5.6 0v1.7"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function EyeIcon({ off }: { off: boolean }) {
+  return (
+    <svg viewBox="0 0 20 20" width="15" height="15" fill="none" aria-hidden focusable="false">
+      <path
+        d="M2 10s3-4.6 8-4.6S18 10 18 10s-3 4.6-8 4.6S2 10 2 10z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <circle cx="10" cy="10" r="2.1" stroke="currentColor" strokeWidth="1.4" />
+      {off && (
+        <path d="M4 16 16 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      )}
+    </svg>
+  )
+}
+
 export function MastheadSignIn({ className }: Props) {
   const uid = useId()
   const loginId = `${uid}-login`
+  const passwordId = `${uid}-password`
   const [session, setSession] = useState<LocalSession | null>(() => loadLocalSession())
   const [login, setLogin] = useState('')
+  const [password, setPassword] = useState('')
+  const [reveal, setReveal] = useState(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -38,17 +72,18 @@ export function MastheadSignIn({ className }: Props) {
     e.preventDefault()
     const user = login.trim()
     if (!user) {
-      setMessage('Укажите ФИО или логин')
+      setMessage('Укажите логин')
       return
     }
     setBusy(true)
     setMessage(null)
-    // Пока нет корпоративных учёток — достаточно имени на этом устройстве.
+    // Пароль в UI оставлен; пока учёток нет — достаточно логина.
     window.setTimeout(() => {
       const next = saveLocalSession(user)
       setSession(next)
+      setPassword('')
       setBusy(false)
-    }, 220)
+    }, 280)
   }
 
   function onSignOut() {
@@ -82,11 +117,11 @@ export function MastheadSignIn({ className }: Props) {
       className={[styles.form, className].filter(Boolean).join(' ')}
       onSubmit={onSubmit}
       noValidate
-      aria-label="Представиться в системе"
+      aria-label="Вход в систему"
     >
       <div className={styles.field}>
         <label className={styles.srOnly} htmlFor={loginId}>
-          ФИО или логин
+          Логин
         </label>
         <span className={styles.fieldIcon} aria-hidden>
           <UserIcon />
@@ -96,7 +131,7 @@ export function MastheadSignIn({ className }: Props) {
           className={styles.input}
           name="login"
           type="text"
-          placeholder="ФИО или логин"
+          placeholder="Логин"
           autoComplete="username"
           inputMode="text"
           spellCheck={false}
@@ -107,6 +142,39 @@ export function MastheadSignIn({ className }: Props) {
           }}
           disabled={busy}
         />
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.srOnly} htmlFor={passwordId}>
+          Пароль
+        </label>
+        <span className={styles.fieldIcon} aria-hidden>
+          <LockIcon />
+        </span>
+        <input
+          id={passwordId}
+          className={`${styles.input} ${styles.inputWithAction}`}
+          name="password"
+          type={reveal ? 'text' : 'password'}
+          placeholder="Пароль"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => {
+            setPassword(e.target.value)
+            if (message) setMessage(null)
+          }}
+          disabled={busy}
+        />
+        <button
+          className={styles.reveal}
+          type="button"
+          onClick={() => setReveal((v) => !v)}
+          aria-label={reveal ? 'Скрыть пароль' : 'Показать пароль'}
+          aria-pressed={reveal}
+          disabled={busy}
+        >
+          <EyeIcon off={reveal} />
+        </button>
       </div>
 
       <div className={styles.actions}>
@@ -130,7 +198,7 @@ export function MastheadSignIn({ className }: Props) {
             {message}
           </p>
         ) : (
-          <p className={styles.hint}>Пароль пока не нужен</p>
+          <p className={styles.hint}>Корпоративный доступ</p>
         )}
       </div>
     </form>
