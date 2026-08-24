@@ -1,0 +1,266 @@
+/* ============================================================
+   Вход в шапке. Иконка внутри поля вместо внешнего лейбла —
+   форма занимает меньше вертикали и читается как один узел.
+   Кнопка компактная: действие, а не полоса на всю ширину.
+   ============================================================ */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
+  width: 100%;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.fieldIcon {
+  position: absolute;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(23, 42, 77, 0.42);
+  pointer-events: none;
+  transition: color 0.2s ease;
+}
+
+.field:focus-within .fieldIcon {
+  color: var(--brand-navy);
+}
+
+.input {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px 0 38px;
+  border-radius: 11px;
+  border: 1px solid rgba(23, 42, 77, 0.12);
+  background: linear-gradient(180deg, #ffffff 0%, #f6f7fa 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 1px 2px rgba(15, 23, 42, 0.035);
+  color: var(--text-strong);
+  font-family: var(--display);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.inputWithAction {
+  padding-right: 42px;
+}
+
+.input::placeholder {
+  color: rgba(23, 42, 77, 0.38);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.input:hover:not(:disabled) {
+  border-color: rgba(23, 42, 77, 0.22);
+}
+
+.input:focus {
+  border-color: rgba(28, 75, 130, 0.5);
+  box-shadow:
+    0 0 0 3px var(--accent-ring),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  background: #ffffff;
+}
+
+.input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Показать / скрыть пароль */
+.reveal {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: rgba(23, 42, 77, 0.4);
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease;
+}
+
+.reveal:hover:not(:disabled) {
+  color: var(--brand-navy);
+  background: rgba(23, 42, 77, 0.06);
+}
+
+.reveal:focus-visible {
+  outline: none;
+  color: var(--brand-navy);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+.reveal:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* --- строка действия ---------------------------------------- */
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+  min-width: 0;
+}
+
+.submit {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  height: 42px;
+  padding: 0 6px 0 18px;
+  border: 1px solid rgba(15, 28, 54, 0.9);
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--brand-navy) 0%, var(--brand-navy-2) 100%);
+  color: #ffffff;
+  font-family: var(--display);
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 8px 18px rgba(15, 28, 54, 0.2);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 12px 24px rgba(15, 28, 54, 0.26);
+}
+
+.submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.submit:disabled {
+  opacity: 0.72;
+  cursor: wait;
+}
+
+.submit:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px var(--accent-ring),
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 8px 18px rgba(15, 28, 54, 0.2);
+}
+
+.submitArrow {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.submit:hover:not(:disabled) .submitArrow {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.hint,
+.message {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--display);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.35;
+  color: rgba(23, 42, 77, 0.45);
+  white-space: nowrap;
+}
+
+.message {
+  color: var(--brand-navy);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-size: 11px;
+}
+
+/* --- планшет / мобилка -------------------------------------- */
+
+@media (max-width: 959px) {
+  .hint {
+    display: none;
+  }
+}
+
+@media (max-width: 719px) {
+  .form {
+    gap: 8px;
+  }
+
+  .input {
+    height: 44px;
+    padding-left: 40px;
+    font-size: 16px; /* iOS: без авто-зума */
+  }
+
+  .actions {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .submit {
+    width: auto;
+    flex: none;
+    height: 44px;
+    padding: 0 8px 0 18px;
+  }
+
+  .submitArrow {
+    width: 30px;
+    height: 30px;
+  }
+}

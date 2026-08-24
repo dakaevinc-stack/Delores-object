@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useMemo, useState } from 'react'
 import { useAllSites } from '../lib/useAllSites'
-import { completionPercent, countSitesByStatus } from '../domain/executiveDashboard'
-import { ExecutiveAnalyticsSection } from '../features/dashboard/ExecutiveAnalyticsSection'
+import { countSitesByStatus } from '../domain/executiveDashboard'
 import { ExecutiveKpiStrip } from '../features/dashboard/ExecutiveKpiStrip'
 import { ObjectCardGrid } from '../features/objects/ObjectCardGrid'
 import { ObjectSearch } from '../features/objects/ObjectSearch'
@@ -12,10 +10,8 @@ import {
 } from '../features/objects/ObjectStatusFilter'
 import { resolveSiteStatus } from '../domain/objectStatus'
 import { useFleetRegistry } from '../features/fleet/useFleetRegistry'
-import { TodayDeliveriesBoard } from '../features/deliveries/TodayDeliveriesBoard'
-import { loadProcurementRequests, loadProcurementRequestsForSites, saveProcurementRequests } from '../lib/procurementRequestsRepository'
-import { fetchProcurementRequestsRemote } from '../lib/siteFormsApi'
-import { loadSiteDeliveryPointsForSites } from '../lib/siteDeliveryPointsRepository'
+import { HubCard } from '../features/home/HubCard'
+import { MastheadSignIn } from '../features/home/MastheadSignIn'
 import styles from './HomePage.module.css'
 
 function pluralizeUnits(n: number): string {
@@ -43,145 +39,120 @@ function capitalize(s: string): string {
   return s.charAt(0).toLocaleUpperCase('ru-RU') + s.slice(1)
 }
 
-function InspectionAdminCardBody({ interactive }: { interactive: boolean }) {
-  return (
-    <>
-      <span className={styles.inspectionAdminGlow} aria-hidden />
-      <span className={styles.inspectionAdminIcon} aria-hidden>
-        <span className={styles.inspectionAdminIconHalo} aria-hidden />
-        <svg viewBox="0 0 32 32" width="26" height="26" fill="none">
-          <path
-            d="M10 6h12v22H10V6z"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinejoin="round"
-            fill="currentColor"
-            fillOpacity="0.15"
-          />
-          <path d="M12 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" strokeWidth="2" />
-          <path d="M10 12h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          <path d="M13 17h2M13 21h6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        </svg>
-      </span>
-      <span className={styles.inspectionAdminText}>
-        <span className={styles.inspectionAdminKicker}>
-          <span className={styles.inspectionAdminKickerBar} aria-hidden />
-          Веб-панель
-        </span>
-        <span className={styles.inspectionAdminTitleRow}>
-          <span className={styles.inspectionAdminTitle}>Приём и учёт спецтехники</span>
-          <span className={styles.inspectionAdminBadge} aria-label="Открывается в новой вкладке">
-            <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden focusable="false">
-              <path
-                d="M4.5 2.5h5v5M9.5 2.5l-6 6"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            Внешняя панель
-          </span>
-        </span>
-        <span className={styles.inspectionAdminLead}>
-          Поиск и просмотр актов приёмки: фото, чек-листы, история и решения механиков.
-        </span>
-        <ul className={styles.inspectionAdminTags} aria-label="Разделы панели">
-          <li>
-            <span className={styles.inspectionAdminTagDot} aria-hidden />
-            Чек-листы
-          </li>
-          <li>
-            <span className={styles.inspectionAdminTagDot} aria-hidden />
-            Фото
-          </li>
-          <li>
-            <span className={styles.inspectionAdminTagDot} aria-hidden />
-            История
-          </li>
-          <li>
-            <span className={styles.inspectionAdminTagDot} aria-hidden />
-            Решения
-          </li>
-          <li>
-            <span className={styles.inspectionAdminTagDot} aria-hidden />
-            Отчёты
-          </li>
-        </ul>
-      </span>
-      {interactive ? (
-        <span className={styles.inspectionAdminCta} aria-hidden>
-          <span className={styles.inspectionAdminCtaLabel}>Открыть панель</span>
-          <span className={styles.inspectionAdminCtaArrow}>
-            <svg viewBox="0 0 20 20" width="14" height="14" fill="none">
-              <path
-                d="M7 13L13 7M7 7h6v6"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-        </span>
-      ) : (
-        <p className={styles.inspectionAdminFoot}>
-          {import.meta.env.DEV
-            ? 'Укажите VITE_AMEDA_INSPECTION_DASHBOARD_URL (URL запущенного streamlit run admin_dashboard.py).'
-            : 'Ссылка на панель задаётся при сборке или на сервере. Обратитесь к администратору.'}
-        </p>
-      )}
-    </>
-  )
-}
+const FLEET_ICON = (
+  <svg
+    viewBox="0 0 48 32"
+    width="30"
+    height="20"
+    fill="none"
+    aria-hidden
+    focusable="false"
+  >
+    <path
+      d="M6 22h32a3 3 0 0 0 3-3v-2h-9l-2-4h-9a5 5 0 0 0-5 5v4z"
+      fill="currentColor"
+      opacity="0.95"
+    />
+    <path
+      d="M30 13l-13-5-2 4"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      opacity="0.95"
+    />
+    <path
+      d="M14 10l-4 2"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      opacity="0.78"
+    />
+    <circle cx="13" cy="25" r="4" fill="currentColor" />
+    <circle cx="33" cy="25" r="4" fill="currentColor" />
+    <circle cx="13" cy="25" r="1.4" fill="#0b1a33" />
+    <circle cx="33" cy="25" r="1.4" fill="#0b1a33" />
+  </svg>
+)
+
+const INSPECTION_ICON = (
+  <svg
+    viewBox="0 0 32 32"
+    width="26"
+    height="26"
+    fill="none"
+    aria-hidden
+    focusable="false"
+  >
+    <rect
+      x="7"
+      y="6"
+      width="18"
+      height="23"
+      rx="3.5"
+      fill="currentColor"
+      fillOpacity="0.16"
+    />
+    <rect
+      x="7"
+      y="6"
+      width="18"
+      height="23"
+      rx="3.5"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M13 6V5a3 3 0 0 1 6 0v1"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <path
+      d="M11.5 14.5l1.8 1.8 3.2-3.2"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M11.5 22l1.8 1.8 3.2-3.2"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M19 15h2.5M19 22.5h2.5"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+)
 
 const inspectionDashboardUrl = (
   import.meta.env.VITE_AMEDA_INSPECTION_DASHBOARD_URL as string | undefined
 )?.trim()
 
+if (import.meta.env.DEV && !inspectionDashboardUrl) {
+  // Имя переменной — информация для разработчика, в интерфейсе её быть не должно.
+  console.warn(
+    '[HomePage] VITE_AMEDA_INSPECTION_DASHBOARD_URL не задан: карточка веб-панели показана без ссылки. Укажите URL запущенного `streamlit run admin_dashboard.py`.',
+  )
+}
+
 export function HomePage() {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<StatusFilterValue>('all')
   const sites = useAllSites()
-  const { vehicles: fleetVehicles, categories: fleetCategories } = useFleetRegistry()
+  const { vehicles: fleetVehicles, categories: fleetCategories } =
+    useFleetRegistry()
   const fleetUnits = fleetVehicles.length
   const fleetClasses = fleetCategories.length
 
   const portfolioCounts = useMemo(() => countSitesByStatus(sites), [sites])
-  const [deliveryRequests, setDeliveryRequests] = useState(() =>
-    loadProcurementRequestsForSites(sites.map((s) => s.id)),
-  )
-  const deliveryPoints = useMemo(
-    () => loadSiteDeliveryPointsForSites(sites.map((s) => s.id)),
-    [sites],
-  )
-
-  useEffect(() => {
-    const ids = sites.map((s) => s.id)
-    const refresh = async () => {
-      const lists = await Promise.all(
-        ids.map(async (id) => {
-          const remote = await fetchProcurementRequestsRemote(id)
-          if (remote) {
-            saveProcurementRequests(id, remote)
-            return remote
-          }
-          return loadProcurementRequests(id)
-        }),
-      )
-      setDeliveryRequests(lists.flat())
-    }
-    void refresh()
-    const t = window.setInterval(() => void refresh(), 12_000)
-    return () => window.clearInterval(t)
-  }, [sites])
-
-  const averageCompletion = useMemo(() => {
-    if (sites.length === 0) return 0
-    const sum = sites.reduce((acc, site) => acc + completionPercent(site), 0)
-    return Math.round(sum / sites.length)
-  }, [sites])
 
   const filtered = useMemo(() => {
     const nq = normalizeQuery(query)
@@ -192,339 +163,89 @@ export function HomePage() {
     })
   }, [query, status, sites])
 
+  const todayDate = new Date().toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+  })
+  const todayWeekday = capitalize(
+    new Date().toLocaleDateString('ru-RU', { weekday: 'long' }),
+  )
+
   return (
     <div className={styles.page}>
+      <h1 className={styles.srOnly}>Управленческий обзор</h1>
+
       <header className={styles.masthead}>
         <div className={styles.mastheadInner}>
           <span className={styles.mastheadStripe} aria-hidden />
 
-          <div className={styles.brandCell}>
-            <img
-              className={styles.brandLogo}
-              src="/delovye-resheniya-logo.png"
-              alt="Деловые Решения. Когда бизнес — личное."
-              width={1024}
-              height={1024}
-              decoding="async"
-              fetchPriority="high"
-            />
-          </div>
-
-          <div className={styles.intro}>
-            <p className={styles.kicker}>
+          <div className={styles.brandAuth}>
+            <div className={styles.brandCell}>
               <img
-                className={styles.kickerMark}
-                src="/brand-chevron.svg"
-                alt=""
-                aria-hidden="true"
+                className={styles.brandLogo}
+                src="/brand-logotype.png"
+                alt="Деловые Решения. Когда бизнес — личное."
+                width={681}
+                height={376}
+                decoding="async"
+                fetchPriority="high"
               />
-              <span>Управленческий обзор</span>
-            </p>
-            <h1 className={styles.title}>Деловые Решения</h1>
-            <p className={styles.lead}>
-              Видеть всё. Понимать сразу. Решать на фактах.
-            </p>
+            </div>
 
-            <dl className={styles.metaStrip}>
-              <div className={styles.metaItem}>
-                <dt className={styles.metaLabel}>
-                  <svg
-                    className={styles.metaIcon}
-                    viewBox="0 0 20 20"
-                    aria-hidden
-                    focusable="false"
-                  >
-                    <rect
-                      x="3.5"
-                      y="5"
-                      width="13"
-                      height="11"
-                      rx="2"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.3"
-                    />
-                    <path
-                      d="M3.5 8.5h13M7 3.5v3M13 3.5v3"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.3"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <span>Сегодня</span>
-                </dt>
-                <dd className={styles.metaValue}>
-                  {new Date().toLocaleDateString('ru-RU', {
-                    day: '2-digit',
-                    month: 'long',
-                  })}
-                </dd>
-                <div className={styles.metaMeta}>
-                  <span className={styles.metaMetaText}>
-                    {capitalize(
-                      new Date().toLocaleDateString('ru-RU', { weekday: 'long' }),
-                    )}
-                    <span className={styles.metaMetaDot} aria-hidden>·</span>
-                    {new Date().getFullYear()}
-                  </span>
-                </div>
+            <div className={styles.mastheadToday} aria-label="Сегодняшняя дата">
+              <span className={styles.todayRail} aria-hidden />
+              <div className={styles.todayCore}>
+                <span className={styles.todayLabel}>Сегодня</span>
+                <span className={styles.todayValue}>{todayDate}</span>
+                <span className={styles.todayMeta}>{todayWeekday}</span>
               </div>
+              <span className={styles.todayRail} aria-hidden />
+            </div>
 
-              <div className={styles.metaItem}>
-                <dt className={styles.metaLabel}>
-                  <svg
-                    className={styles.metaIcon}
-                    viewBox="0 0 20 20"
-                    aria-hidden
-                    focusable="false"
-                  >
-                    <path
-                      d="M4 17V7.5L10 4l6 3.5V17"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.3"
-                      strokeLinejoin="round"
-                    />
-                    <path
-                      d="M4 17h12M8 17v-5h4v5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  <span>Объектов в работе</span>
-                </dt>
-                <dd className={styles.metaValue}>{portfolioCounts.all}</dd>
-                <div className={styles.metaMeta}>
-                  <span className={styles.metaMetaText}>
-                    активные стройплощадки
-                  </span>
-                </div>
-              </div>
-
-              <div className={styles.metaItem}>
-                <dt className={styles.metaLabel}>
-                  <svg
-                    className={styles.metaIcon}
-                    viewBox="0 0 20 20"
-                    aria-hidden
-                    focusable="false"
-                  >
-                    <circle
-                      cx="10"
-                      cy="10"
-                      r="7"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeOpacity="0.3"
-                      strokeWidth="1.4"
-                    />
-                    <path
-                      d="M10 3a7 7 0 0 1 0 14"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.6"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <span>Среднее выполнение</span>
-                </dt>
-                <dd className={styles.metaValue}>
-                  {averageCompletion}
-                  <span className={styles.metaValueUnit}>%</span>
-                </dd>
-                <div
-                  className={styles.metaMeta}
-                  role="img"
-                  aria-label={`Прогресс портфеля: ${averageCompletion} процентов`}
-                >
-                  <span className={styles.metaProgress} aria-hidden>
-                    <span
-                      className={styles.metaProgressFill}
-                      style={{
-                        width: `${Math.max(0, Math.min(100, averageCompletion))}%`,
-                      }}
-                    />
-                  </span>
-                </div>
-              </div>
-            </dl>
+            <MastheadSignIn className={styles.signIn} />
           </div>
         </div>
       </header>
 
-      <div className={styles.playRow}>
-        <Link className={styles.playLink} to="/play" aria-label="Играть в Arena III">
-          <span className={styles.playGlow} aria-hidden />
-          <span className={styles.playIcon} aria-hidden>
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
-              <path
-                d="M8 5.5v13l10-6.5-10-6.5z"
-                fill="currentColor"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <span className={styles.playCopy}>
-            <span className={styles.playKicker}>Arena III</span>
-            <span className={styles.playTitle}>Играть</span>
-            <span className={styles.playLead}>Арена-шутер в браузере — ракеты, боты, фраги</span>
-          </span>
-          <span className={styles.playArrow} aria-hidden>
-            <svg viewBox="0 0 20 20" width="16" height="16" fill="none">
-              <path
-                d="M7 13 13 7M7 7h6v6"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-        </Link>
-      </div>
+      <div className={styles.hubRow}>
+        <HubCard
+          to="/spectehnika"
+          ariaLabel="Открыть парк техники"
+          kicker="Парк техники"
+          title="Спецтехника"
+          badge={{
+            kind: 'stats',
+            items: [
+              { num: fleetUnits, unit: pluralizeUnits(fleetUnits) },
+              { num: fleetClasses, unit: pluralizeClasses(fleetClasses) },
+            ],
+          }}
+          icon={FLEET_ICON}
+          lead="Каждая единица техники — под рукой. Один клик до ТО, страховки и журнала ремонтов."
+          tags={['ТО', 'Страховки', 'Пропуска', 'Ремонты', 'Расходы']}
+          cta="Открыть"
+        />
 
-      <TodayDeliveriesBoard
-        requests={deliveryRequests}
-        variant="home"
-        deliveryPoints={deliveryPoints}
-      />
-
-      <p className={styles.driverEntry}>
-        <Link className={styles.driverEntryLink} to="/driver">
-          Кабинет водителя — маршруты
-        </Link>
-      </p>
-
-      <div className={styles.fleetHubRow}>
-        <div className={styles.fleetHubMain}>
-          <div className={styles.fleetEntry}>
-            <Link className={styles.fleetEntryLink} to="/spectehnika" aria-label="Открыть парк техники">
-              <span className={styles.fleetEntryGlow} aria-hidden />
-              <span className={styles.fleetEntryIcon} aria-hidden>
-                <span className={styles.fleetEntryIconHalo} aria-hidden />
-                {/* Силуэт фронтального погрузчика — читается как «строительная техника» без подписи */}
-                <svg viewBox="0 0 48 32" width="46" height="30" fill="none">
-                  <path
-                    d="M6 22h32a3 3 0 0 0 3-3v-2h-9l-2-4h-9a5 5 0 0 0-5 5v4z"
-                    fill="currentColor"
-                    opacity="0.95"
-                  />
-                  <path
-                    d="M30 13l-13-5-2 4"
-                    stroke="currentColor"
-                    strokeWidth="2.4"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    opacity="0.95"
-                  />
-                  <path
-                    d="M14 10l-4 2"
-                    stroke="currentColor"
-                    strokeWidth="2.4"
-                    strokeLinecap="round"
-                    opacity="0.78"
-                  />
-                  <circle cx="13" cy="25" r="4" fill="currentColor" />
-                  <circle cx="33" cy="25" r="4" fill="currentColor" />
-                  <circle cx="13" cy="25" r="1.4" fill="#0b1a33" />
-                  <circle cx="33" cy="25" r="1.4" fill="#0b1a33" />
-                </svg>
-              </span>
-              <span className={styles.fleetEntryText}>
-                <span className={styles.fleetEntryKicker}>
-                  <span className={styles.fleetEntryKickerBar} aria-hidden />
-                  Парк техники
-                </span>
-                <span className={styles.fleetEntryTitleRow}>
-                  <span className={styles.fleetEntryTitle}>Спецтехника</span>
-                  <span
-                    className={styles.fleetEntryStat}
-                    aria-label={`${fleetUnits} ${pluralizeUnits(fleetUnits)}, ${fleetClasses} ${pluralizeClasses(fleetClasses)}`}
-                  >
-                    <span className={styles.fleetEntryStatNum}>{fleetUnits}</span>
-                    <span className={styles.fleetEntryStatLabel}>{pluralizeUnits(fleetUnits)}</span>
-                    <span className={styles.fleetEntryStatSep} aria-hidden>
-                      ·
-                    </span>
-                    <span className={styles.fleetEntryStatNum}>{fleetClasses}</span>
-                    <span className={styles.fleetEntryStatLabel}>{pluralizeClasses(fleetClasses)}</span>
-                  </span>
-                </span>
-                <span className={styles.fleetEntryLead}>
-                  Каждая единица техники — под рукой. Один клик до ТО, страховки и журнала ремонтов.
-                </span>
-                <ul className={styles.fleetEntryFeatures} aria-label="Что внутри раздела">
-                  <li>
-                    <span className={styles.fleetEntryFeatureDot} aria-hidden />
-                    ТО
-                  </li>
-                  <li>
-                    <span className={styles.fleetEntryFeatureDot} aria-hidden />
-                    Страховки
-                  </li>
-                  <li>
-                    <span className={styles.fleetEntryFeatureDot} aria-hidden />
-                    Пропуска
-                  </li>
-                  <li>
-                    <span className={styles.fleetEntryFeatureDot} aria-hidden />
-                    Ремонты
-                  </li>
-                  <li>
-                    <span className={styles.fleetEntryFeatureDot} aria-hidden />
-                    Расходы
-                  </li>
-                </ul>
-              </span>
-              <span className={styles.fleetEntryCta} aria-hidden>
-                <span className={styles.fleetEntryCtaLabel}>Открыть</span>
-                <span className={styles.fleetEntryCtaArrow}>
-                  <svg viewBox="0 0 20 20" width="14" height="14" fill="none">
-                    <path
-                      d="M4 10h11M10 5l5 5-5 5"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-              </span>
-            </Link>
-          </div>
-        </div>
-
-        <aside className={styles.fleetHubAside} aria-label="Приём и учёт спецтехники">
-          {inspectionDashboardUrl ? (
-            <a
-              className={styles.inspectionAdminLink}
-              href={inspectionDashboardUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Открыть панель приёма и учёта спецтехники в новой вкладке"
-            >
-              <InspectionAdminCardBody interactive />
-            </a>
-          ) : (
-            <div
-              className={`${styles.inspectionAdminLink} ${styles.inspectionAdminLink_static}`}
-              role="note"
-            >
-              <InspectionAdminCardBody interactive={false} />
-            </div>
-          )}
-        </aside>
+        <HubCard
+          href={inspectionDashboardUrl || undefined}
+          ariaLabel="Открыть панель приёма и учёта спецтехники в новой вкладке"
+          kicker="Веб-панель"
+          title="Приём и учёт спецтехники"
+          badge={{ kind: 'external', label: 'Внешняя панель' }}
+          icon={INSPECTION_ICON}
+          lead="Поиск и просмотр актов приёмки: фото, чек-листы, история и решения механиков."
+          tags={['Чек-листы', 'Фото', 'История', 'Решения', 'Отчёты']}
+          cta="Открыть"
+          unavailableReason="Панель пока не подключена — обратитесь к администратору."
+        />
       </div>
 
       <ExecutiveKpiStrip counts={portfolioCounts} />
 
-      <section className={styles.objectsSection} aria-labelledby="objects-heading">
+      <section
+        className={styles.objectsSection}
+        aria-labelledby="objects-heading"
+      >
         <div className={styles.objectsHead}>
           <h2 className={styles.objectsTitle} id="objects-heading">
             Действующие объекты
@@ -538,8 +259,6 @@ export function HomePage() {
 
         <ObjectCardGrid sites={filtered} />
       </section>
-
-      <ExecutiveAnalyticsSection sites={sites} counts={portfolioCounts} />
     </div>
   )
 }

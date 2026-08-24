@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 5173 --strictPort",
+    "dev": "vite --host --port 5173 --strictPort",
     "dev:site-forms-api": "node server/site-forms.mjs",
     "dev:mobile": "bash scripts/mobile-dev.sh",
     "prebuild": "node scripts/generate-pwa-icons.mjs",
@@ -25,8 +25,7 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.14.1",
-    "recharts": "^3.8.1",
-    "three": "^0.185.1"
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
@@ -36,13 +35,13 @@
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@types/three": "^0.185.4",
     "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
     "jsdom": "^29.0.2",
+    "playwright-core": "^1.62.1",
     "pngjs": "^7.0.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.0",

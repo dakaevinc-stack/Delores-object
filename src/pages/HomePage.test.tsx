@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { HomePage } from './HomePage'
 
 describe('Маршрут главной', () => {
-  it('рендерит заголовок «Деловые Решения»', () => {
+  it('рендерит бренд и форму входа', () => {
     render(
       <MemoryRouter initialEntries={['/']}>
         <Routes>
@@ -13,7 +13,13 @@ describe('Маршрут главной', () => {
       </MemoryRouter>,
     )
     expect(
-      screen.getByRole('heading', { level: 1, name: /Деловые Решения/i }),
+      screen.getByRole('img', { name: /Деловые Решения/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 1, name: /Управленческий обзор/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('form', { name: /Вход в систему/i }),
     ).toBeInTheDocument()
   })
 })

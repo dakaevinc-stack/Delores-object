@@ -47,6 +47,13 @@
     Roboto,
     sans-serif;
 
+  /* Display для героев и крупных заголовков — плотнее и характернее Inter */
+  --display:
+    'Manrope',
+    'Inter',
+    system-ui,
+    sans-serif;
+
   font-family: var(--sans);
   font-size: 16px;
   line-height: 1.5;
