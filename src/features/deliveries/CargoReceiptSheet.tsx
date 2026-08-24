@@ -92,7 +92,10 @@ export function CargoReceiptSheet({ request, onClose, onSubmit }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const mediaRef = useRef(media)
-  mediaRef.current = media
+
+  useEffect(() => {
+    mediaRef.current = media
+  }, [media])
 
   useEffect(() => {
     const t = window.setInterval(() => setNowIso(new Date().toISOString()), 15_000)
