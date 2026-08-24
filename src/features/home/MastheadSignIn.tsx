@@ -12,6 +12,13 @@ type Props = {
   className?: string
 }
 
+/**
+ * Пока нет корпоративных учёток — пароль в форме есть, но не обязателен.
+ * Когда подключим SSO/серверную сессию: поставить `true` и убрать локальный
+ * saveLocalSession — вход только по логину и паролю.
+ */
+const REQUIRE_PASSWORD = false
+
 function UserIcon() {
   return (
     <svg viewBox="0 0 20 20" width="15" height="15" fill="none" aria-hidden focusable="false">
@@ -75,9 +82,14 @@ export function MastheadSignIn({ className }: Props) {
       setMessage('Укажите логин')
       return
     }
+    if (REQUIRE_PASSWORD && !password) {
+      setMessage('Укажите логин и пароль')
+      return
+    }
     setBusy(true)
     setMessage(null)
-    // Пароль в UI оставлен; пока учёток нет — достаточно логина.
+    // TODO(auth): заменить на корпоративный вход (логин+пароль обязательны).
+    // Локальный профиль — временный режим до серверной сессии.
     window.setTimeout(() => {
       const next = saveLocalSession(user)
       setSession(next)
