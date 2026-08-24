@@ -1,4 +1,11 @@
 import { useId, useState, type FormEvent } from 'react'
+import {
+  clearLocalSession,
+  loadLocalSession,
+  saveLocalSession,
+  sessionInitials,
+  type LocalSession,
+} from '../../lib/localSession'
 import styles from './MastheadSignIn.module.css'
 
 type Props = {
@@ -54,6 +61,7 @@ export function MastheadSignIn({ className }: Props) {
   const uid = useId()
   const loginId = `${uid}-login`
   const passwordId = `${uid}-password`
+  const [session, setSession] = useState<LocalSession | null>(() => loadLocalSession())
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [reveal, setReveal] = useState(false)
@@ -69,11 +77,39 @@ export function MastheadSignIn({ className }: Props) {
     }
     setBusy(true)
     setMessage(null)
-    // Пока нет серверной сессии — форма готова к подключению auth.
+    // Клиентский профиль до корпоративного SSO/сессии на сервере.
     window.setTimeout(() => {
+      const next = saveLocalSession(user)
+      setSession(next)
+      setPassword('')
       setBusy(false)
-      setMessage('Сервис входа подключается. Обратитесь к администратору.')
-    }, 420)
+    }, 280)
+  }
+
+  function onSignOut() {
+    clearLocalSession()
+    setSession(null)
+    setMessage(null)
+  }
+
+  if (session) {
+    return (
+      <div
+        className={[styles.session, className].filter(Boolean).join(' ')}
+        aria-label={`Профиль: ${session.login}`}
+      >
+        <span className={styles.sessionAvatar} aria-hidden>
+          {sessionInitials(session.login)}
+        </span>
+        <div className={styles.sessionCopy}>
+          <p className={styles.sessionKicker}>В системе</p>
+          <p className={styles.sessionName}>{session.login}</p>
+        </div>
+        <button className={styles.signOut} type="button" onClick={onSignOut}>
+          Выйти
+        </button>
+      </div>
+    )
   }
 
   return (
