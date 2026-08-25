@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { isFleetUnitOnControl } from '../domain/fleet'
 import { FleetCategoryIcon } from '../features/fleet/FleetCategoryIcon'
 import { FleetAddVehicleModal } from '../features/fleet/FleetAddVehicleModal'
 import { useFleetRegistry } from '../features/fleet/useFleetRegistry'
@@ -21,13 +22,48 @@ function pluralizeClasses(n: number): string {
   return 'классов'
 }
 
+type CatalogFilter = 'all' | 'control'
+
 export function FleetHubPage() {
   const { countByCategory, add, ensureCustomCategory, vehicles, categories } =
     useFleetRegistry()
   const [isAdding, setAdding] = useState(false)
+  const [params, setParams] = useSearchParams()
+  const filter: CatalogFilter =
+    params.get('filter') === 'control' ? 'control' : 'all'
+
+  const onControlIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const v of vehicles) {
+      if (isFleetUnitOnControl(v)) ids.add(v.id)
+    }
+    return ids
+  }, [vehicles])
+
+  const onControlCount = onControlIds.size
+
+  const occupiedClasses = useMemo(() => {
+    const used = new Set(vehicles.map((v) => v.categoryId))
+    return categories.filter((c) => used.has(c.id))
+  }, [vehicles, categories])
+
+  const visibleCategories = useMemo(() => {
+    if (filter !== 'control') return occupiedClasses.length > 0 ? occupiedClasses : categories
+    return categories.filter((c) =>
+      vehicles.some((v) => v.categoryId === c.id && onControlIds.has(v.id)),
+    )
+  }, [filter, occupiedClasses, categories, vehicles, onControlIds])
 
   const totalVehicles = vehicles.length
-  const totalClasses = categories.length
+  const totalClasses =
+    occupiedClasses.length > 0 ? occupiedClasses.length : categories.length
+
+  function setFilter(next: CatalogFilter) {
+    const p = new URLSearchParams(params)
+    if (next === 'all') p.delete('filter')
+    else p.set('filter', 'control')
+    setParams(p, { replace: true })
+  }
 
   return (
     <div className={styles.page}>
@@ -68,8 +104,8 @@ export function FleetHubPage() {
             <p className={styles.kicker}>Парк техники</p>
             <h1 className={styles.title}>Спецтехника</h1>
             <p className={styles.lead}>
-              Выберите класс — откроется парк с госномерами, ТО, страховками и журналом
-              ремонтов.
+              Пока можно вести парк вручную: добавляйте единицы — счётчики на главной
+              обновятся. Полный импорт подключим, когда будут списки.
             </p>
 
             <div className={styles.heroStats} aria-label="Сводка парка">
@@ -81,6 +117,11 @@ export function FleetHubPage() {
               <div className={styles.stat}>
                 <span className={styles.statValue}>{totalClasses}</span>
                 <span className={styles.statLabel}>{pluralizeClasses(totalClasses)}</span>
+              </div>
+              <span className={styles.statDivider} aria-hidden />
+              <div className={styles.stat}>
+                <span className={styles.statValue}>{onControlCount}</span>
+                <span className={styles.statLabel}>на контроле</span>
               </div>
             </div>
           </div>
@@ -114,53 +155,98 @@ export function FleetHubPage() {
               Выберите класс — ниже откроется перечень единиц парка
             </p>
           </div>
-          <div className={styles.catalogBadge} aria-label={`${totalClasses} ${pluralizeClasses(totalClasses)}`}>
-            <span className={styles.catalogBadgeNum}>{totalClasses}</span>
-            <span className={styles.catalogBadgeLabel}>{pluralizeClasses(totalClasses)}</span>
+          <div
+            className={styles.catalogBadge}
+            aria-label={`${visibleCategories.length} ${pluralizeClasses(visibleCategories.length)}`}
+          >
+            <span className={styles.catalogBadgeNum}>{visibleCategories.length}</span>
+            <span className={styles.catalogBadgeLabel}>
+              {pluralizeClasses(visibleCategories.length)}
+            </span>
           </div>
         </div>
 
-        <div className={styles.grid}>
-          {categories.map((c, index) => {
-            const n = countByCategory(c.id)
-            const unitWord = pluralizeUnits(n)
-            return (
-              <Link
-                key={c.id}
-                className={`${styles.card} ${c.custom ? styles.cardCustom : ''}`}
-                to={`/spectehnika/${c.id}`}
-                style={{ ['--card-i' as string]: String(index) }}
-              >
-                <span className={styles.cardIcon} aria-hidden>
-                  <FleetCategoryIcon id={c.id} size={30} />
-                </span>
-                <span className={styles.cardBody}>
-                  <span className={styles.cardTitle}>
-                    {c.title}
-                    {c.custom ? (
-                      <span className={styles.cardCustomTag}>свой</span>
-                    ) : null}
-                  </span>
-                  <span className={styles.cardMeta}>
-                    <span className={styles.cardCount}>{n}</span>
-                    {unitWord}
-                  </span>
-                </span>
-                <span className={styles.cardChevron} aria-hidden>
-                  <svg viewBox="0 0 20 20" width="16" height="16" fill="none">
-                    <path
-                      d="M7 4l6 6-6 6"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-              </Link>
-            )
-          })}
+        <div className={styles.filterRow} role="group" aria-label="Фильтр каталога">
+          <button
+            type="button"
+            className={`${styles.filterChip} ${filter === 'all' ? styles.filterChipOn : ''}`}
+            aria-pressed={filter === 'all'}
+            onClick={() => setFilter('all')}
+          >
+            Все классы
+          </button>
+          <button
+            type="button"
+            className={`${styles.filterChip} ${filter === 'control' ? styles.filterChipOn : ''}`}
+            aria-pressed={filter === 'control'}
+            onClick={() => setFilter('control')}
+          >
+            На контроле
+            <span className={styles.filterChipNum}>{onControlCount}</span>
+          </button>
         </div>
+
+        {visibleCategories.length === 0 ? (
+          <div className={styles.catalogEmpty} role="status">
+            <p className={styles.catalogEmptyTitle}>
+              {filter === 'control'
+                ? 'Сейчас нет единиц на контроле'
+                : 'Классов пока нет'}
+            </p>
+            <p className={styles.catalogEmptyText}>
+              {filter === 'control'
+                ? 'Когда появятся просрочки ДК, страховки, открытые ремонты или пропуска — классы покажутся здесь'
+                : 'Нажмите «Добавить технику», чтобы завести первую единицу'}
+            </p>
+          </div>
+        ) : (
+          <div className={styles.grid}>
+            {visibleCategories.map((c, index) => {
+              const n =
+                filter === 'control'
+                  ? vehicles.filter(
+                      (v) => v.categoryId === c.id && onControlIds.has(v.id),
+                    ).length
+                  : countByCategory(c.id)
+              const unitWord = pluralizeUnits(n)
+              return (
+                <Link
+                  key={c.id}
+                  className={`${styles.card} ${c.custom ? styles.cardCustom : ''}`}
+                  to={`/spectehnika/${c.id}${filter === 'control' ? '?focus=control' : ''}`}
+                  style={{ ['--card-i' as string]: String(index) }}
+                >
+                  <span className={styles.cardIcon} aria-hidden>
+                    <FleetCategoryIcon id={c.id} size={30} />
+                  </span>
+                  <span className={styles.cardBody}>
+                    <span className={styles.cardTitle}>
+                      {c.title}
+                      {c.custom ? (
+                        <span className={styles.cardCustomTag}>свой</span>
+                      ) : null}
+                    </span>
+                    <span className={styles.cardMeta}>
+                      <span className={styles.cardCount}>{n}</span>
+                      {filter === 'control' ? 'на контроле' : unitWord}
+                    </span>
+                  </span>
+                  <span className={styles.cardChevron} aria-hidden>
+                    <svg viewBox="0 0 20 20" width="16" height="16" fill="none">
+                      <path
+                        d="M7 4l6 6-6 6"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                </Link>
+              )
+            })}
+          </div>
+        )}
       </section>
 
       <FleetAddVehicleModal

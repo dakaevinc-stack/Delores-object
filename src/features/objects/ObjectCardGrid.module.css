@@ -39,6 +39,12 @@
   height: 100%;
 }
 
+.emptyWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .empty {
   border-radius: 22px;
   padding: 1.5px;
