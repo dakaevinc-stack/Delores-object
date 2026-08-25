@@ -10,10 +10,7 @@ import {
   type StatusFilterValue,
 } from '../features/objects/ObjectStatusFilter'
 import { resolveSiteStatus } from '../domain/objectStatus'
-import {
-  insuranceUrgency,
-  technicalInspectionUrgency,
-} from '../domain/fleet'
+import { isFleetUnitOnControl } from '../domain/fleet'
 import { useFleetRegistry } from '../features/fleet/useFleetRegistry'
 import { HubCard } from '../features/home/HubCard'
 import { MastheadSignIn } from '../features/home/MastheadSignIn'
@@ -159,21 +156,14 @@ export function HomePage() {
   const { vehicles: fleetVehicles, categories: fleetCategories } =
     useFleetRegistry()
   const fleetUnits = fleetVehicles.length
-  const fleetClasses = fleetCategories.length
-  /** Единицы с просрочкой/критичным ДК или страховкой — зона контроля приёмки. */
+  /** Классы, в которых сейчас есть хотя бы одна единица. */
+  const fleetClasses = useMemo(() => {
+    const used = new Set(fleetVehicles.map((v) => v.categoryId))
+    return fleetCategories.filter((c) => used.has(c.id)).length
+  }, [fleetVehicles, fleetCategories])
+  /** На контроле: ДК/страховка/открытый ремонт/просроченный пропуск. */
   const fleetOnControl = useMemo(
-    () =>
-      fleetVehicles.filter((v) => {
-        const dk = technicalInspectionUrgency(v.technicalInspection?.validUntilIso)
-        const ins = insuranceUrgency(v.insurance.validUntilIso)
-        return (
-          dk === 'expired' ||
-          dk === 'critical' ||
-          dk === 'missing' ||
-          ins === 'expired' ||
-          ins === 'critical'
-        )
-      }).length,
+    () => fleetVehicles.filter((v) => isFleetUnitOnControl(v)).length,
     [fleetVehicles],
   )
 
@@ -224,12 +214,15 @@ export function HomePage() {
       <header className={styles.masthead}>
         <div className={styles.mastheadInner}>
           <span className={styles.mastheadStripe} aria-hidden />
+          <span className={styles.mastheadSpecular} aria-hidden />
+          <span className={styles.mastheadCaustic} aria-hidden />
+          <span className={styles.mastheadCausticAlt} aria-hidden />
 
           <div className={styles.brandAuth}>
             <div className={styles.brandCell}>
               <img
                 className={styles.brandLogo}
-                src="/brand-logotype.png"
+                src="/brand-logotype.png?v=4"
                 alt="Деловые Решения. Когда бизнес — личное."
                 width={681}
                 height={376}
@@ -240,10 +233,15 @@ export function HomePage() {
 
             <div className={styles.mastheadToday} aria-label="Сегодняшняя дата">
               <span className={styles.todayRail} aria-hidden />
-              <div className={styles.todayCore}>
-                <span className={styles.todayLabel}>Сегодня</span>
-                <span className={styles.todayValue}>{todayDate}</span>
-                <span className={styles.todayMeta}>{todayWeekday}</span>
+              <div className={styles.todayGlass}>
+                <span className={styles.todayRim} aria-hidden />
+                <span className={styles.todaySpecular} aria-hidden />
+                <span className={styles.todayCaustic} aria-hidden />
+                <div className={styles.todayCore}>
+                  <span className={styles.todayLabel}>Сегодня</span>
+                  <span className={styles.todayValue}>{todayDate}</span>
+                  <span className={styles.todayMeta}>{todayWeekday}</span>
+                </div>
               </div>
               <span className={styles.todayRail} aria-hidden />
             </div>

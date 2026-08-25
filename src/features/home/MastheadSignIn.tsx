@@ -112,7 +112,7 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
         aria-label={`Профиль: ${session.fullName}`}
       >
         <span className={styles.sessionAvatar} aria-hidden>
-          {sessionInitials(session.fullName)}
+          <span className={styles.sessionInitials}>{sessionInitials(session.fullName)}</span>
         </span>
         <div className={styles.sessionCopy}>
           <p className={styles.sessionKicker}>{session.dutyLabel}</p>

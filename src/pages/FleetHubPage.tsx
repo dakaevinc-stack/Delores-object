@@ -91,7 +91,7 @@ export function FleetHubPage() {
             <div className={styles.logoPlaque}>
               <img
                 className={styles.logoImg}
-                src="/brand-logotype.png"
+                src="/brand-logotype.png?v=4"
                 alt="Деловые Решения. Когда бизнес — личное."
                 width={681}
                 height={376}

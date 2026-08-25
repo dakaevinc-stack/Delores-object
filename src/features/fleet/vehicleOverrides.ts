@@ -6,6 +6,7 @@ import type {
   FleetSpecs,
   FleetVehicle,
 } from '../../domain/fleet'
+import { emitFleetChange } from './fleetEvents'
 
 /**
  * Локальные правки по единице парка, которые менеджер вносит в карточке.
@@ -50,32 +51,34 @@ export function loadOverrides(id: string): VehicleOverrides {
 
 export function saveOverrides(id: string, ov: VehicleOverrides): void {
   const ls = safeStorage()
-  if (!ls) return
   try {
-    if (
-      (!ov.insurance || Object.keys(ov.insurance).length === 0) &&
-      (!ov.maintenance || Object.keys(ov.maintenance).length === 0) &&
-      (!ov.specs || Object.keys(ov.specs).length === 0) &&
-      !ov.repairs &&
-      !ov.passes
-    ) {
-      ls.removeItem(KEY(id))
-      return
+    if (ls) {
+      if (
+        (!ov.insurance || Object.keys(ov.insurance).length === 0) &&
+        (!ov.maintenance || Object.keys(ov.maintenance).length === 0) &&
+        (!ov.specs || Object.keys(ov.specs).length === 0) &&
+        !ov.repairs &&
+        !ov.passes
+      ) {
+        ls.removeItem(KEY(id))
+      } else {
+        ls.setItem(KEY(id), JSON.stringify(ov))
+      }
     }
-    ls.setItem(KEY(id), JSON.stringify(ov))
   } catch {
     /* storage недоступен — молча игнорируем, UI продолжает работать в памяти */
   }
+  emitFleetChange()
 }
 
 export function clearOverrides(id: string): void {
   const ls = safeStorage()
-  if (!ls) return
   try {
-    ls.removeItem(KEY(id))
+    if (ls) ls.removeItem(KEY(id))
   } catch {
     /* noop */
   }
+  emitFleetChange()
 }
 
 /** Накладываем правки на базовую запись из mock/бэка. */

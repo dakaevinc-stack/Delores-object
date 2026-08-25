@@ -71,7 +71,9 @@ export function HubCard({
   const body = (
     <>
       <span className={styles.stripe} aria-hidden />
-      <span className={styles.glow} aria-hidden />
+      <span className={styles.specular} aria-hidden />
+      <span className={styles.caustic} aria-hidden />
+      <span className={styles.causticAlt} aria-hidden />
 
       <div className={styles.shell}>
         <div className={styles.primary}>

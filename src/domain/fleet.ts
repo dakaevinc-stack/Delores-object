@@ -256,6 +256,36 @@ export function technicalInspectionUrgency(
   return insuranceUrgency(validUntilIso, from)
 }
 
+/**
+ * Единица «на контроле»: критичный/просроченный ДК или страховка,
+ * открытый ремонт, либо просроченный обязательный пропуск.
+ */
+export function isFleetUnitOnControl(vehicle: FleetVehicle, from = new Date()): boolean {
+  const dk = technicalInspectionUrgency(vehicle.technicalInspection?.validUntilIso, from)
+  if (dk === 'expired' || dk === 'critical' || dk === 'missing') return true
+
+  if (!vehicle.insurance.notRequired) {
+    const ins = insuranceUrgency(vehicle.insurance.validUntilIso, from)
+    if (ins === 'expired' || ins === 'critical') return true
+  }
+
+  if (vehicle.repairs.some((r) => r.open)) return true
+
+  if (
+    vehicle.passes.some(
+      (p) =>
+        p.required &&
+        typeof p.validUntilIso === 'string' &&
+        p.validUntilIso.length > 0 &&
+        daysUntil(p.validUntilIso, from) < 0,
+    )
+  ) {
+    return true
+  }
+
+  return false
+}
+
 export function activeFaultParts(vehicle: FleetVehicle): FleetSchematicPartId[] {
   const open = vehicle.repairs.filter((r) => r.open)
   if (open.length === 0) return []

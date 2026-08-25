@@ -46,21 +46,25 @@ function StatusCard({
         onClick={onSelect}
       >
         <span className={styles.stripe} aria-hidden />
-        <div className={styles.head}>
-          <span className={styles.headLead}>
-            <span className={styles.dot} aria-hidden />
-            <p className={styles.label}>{label}</p>
-          </span>
-        </div>
-        <p className={styles.value}>{value}</p>
-        <p className={styles.hint}>{hint}</p>
-        <div className={styles.foot}>
-          <div className={styles.footRow}>
-            <span className={styles.footLabel}>Доля портфеля</span>
-            <span className={styles.footVal}>{share}%</span>
+        <span className={styles.specular} aria-hidden />
+        <span className={styles.caustic} aria-hidden />
+        <div className={styles.face}>
+          <div className={styles.head}>
+            <span className={styles.headLead}>
+              <span className={styles.dot} aria-hidden />
+              <p className={styles.label}>{label}</p>
+            </span>
           </div>
-          <div className={styles.track} aria-hidden>
-            <span className={styles.fill} style={{ width: `${share}%` }} />
+          <p className={styles.value}>{value}</p>
+          <p className={styles.hint}>{hint}</p>
+          <div className={styles.foot}>
+            <div className={styles.footRow}>
+              <span className={styles.footLabel}>Доля портфеля</span>
+              <span className={styles.footVal}>{share}%</span>
+            </div>
+            <div className={styles.track} aria-hidden>
+              <span className={styles.fill} style={{ width: `${share}%` }} />
+            </div>
           </div>
         </div>
       </button>
@@ -99,32 +103,36 @@ export function ExecutiveKpiStrip({
             onClick={() => onSelectStatus('all')}
           >
             <span className={styles.stripe} aria-hidden />
-            <div className={styles.head}>
-              <span className={styles.headLead}>
-                <span className={styles.dot} aria-hidden />
-                <p className={styles.label}>Портфель</p>
-              </span>
-              <span className={styles.heroChip}>Сегодня</span>
-            </div>
-            <p className={styles.value}>{total}</p>
-            <p className={styles.hint}>Действующих объектов в работе</p>
-            <div className={styles.foot}>
-              <div className={styles.footRow}>
-                <span className={styles.footLabel}>Структура</span>
-                <span className={styles.footVal}>
-                  {counts.normal} / {counts.attention} / {counts.critical}
+            <span className={styles.specular} aria-hidden />
+            <span className={styles.caustic} aria-hidden />
+            <div className={styles.face}>
+              <div className={styles.head}>
+                <span className={styles.headLead}>
+                  <span className={styles.dot} aria-hidden />
+                  <p className={styles.label}>Портфель</p>
                 </span>
+                <span className={styles.heroChip}>Сегодня</span>
               </div>
-              <div className={styles.track} aria-hidden>
-                {segments
-                  .filter((segment) => segment.count > 0)
-                  .map((segment) => (
-                    <span
-                      key={segment.tone}
-                      className={`${styles.fill} ${segmentClass[segment.tone]}`}
-                      style={{ flex: `${segment.count} 0 0` }}
-                    />
-                  ))}
+              <p className={styles.value}>{total}</p>
+              <p className={styles.hint}>Действующих объектов в работе</p>
+              <div className={styles.foot}>
+                <div className={styles.footRow}>
+                  <span className={styles.footLabel}>Структура</span>
+                  <span className={styles.footVal}>
+                    {counts.normal} / {counts.attention} / {counts.critical}
+                  </span>
+                </div>
+                <div className={styles.track} aria-hidden>
+                  {segments
+                    .filter((segment) => segment.count > 0)
+                    .map((segment) => (
+                      <span
+                        key={segment.tone}
+                        className={`${styles.fill} ${segmentClass[segment.tone]}`}
+                        style={{ flex: `${segment.count} 0 0` }}
+                      />
+                    ))}
+                </div>
               </div>
             </div>
           </button>

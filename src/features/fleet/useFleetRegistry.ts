@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FleetCategory, FleetCategoryId, FleetVehicle } from '../../domain/fleet'
 import { FLEET_CATEGORIES, FLEET_VEHICLES } from '../../data/fleet.mock'
+import { FLEET_CHANGE_EVENT } from './fleetEvents'
 import {
   loadRegistry,
   saveRegistry,
@@ -8,6 +9,7 @@ import {
   slugifyCategory,
   type FleetRegistry,
 } from './fleetRegistry'
+import { loadOverrides, mergeOverrides } from './vehicleOverrides'
 
 export type UseFleetRegistry = {
   vehicles: FleetVehicle[]
@@ -27,34 +29,49 @@ export type UseFleetRegistry = {
 
 /**
  * Хук даёт «эффективный» список единиц парка и классов:
- *   базовый mock без удалённых + добавленные пользователем + кастомные классы.
+ *   базовый mock без удалённых + добавленные пользователем + кастомные классы,
+ *   с локальными правками карточки (страховка, ремонты, пропуска…).
  *
- * Подписан на `storage`-событие, чтобы изменения реестра, сделанные
- * в другой вкладке, сразу подхватывались в текущей.
+ * Подписан на `storage` и `deloresh-fleet-change`, чтобы цифры на главной
+ * и в хабах обновлялись сразу после добавления/удаления/правок.
  */
 export function useFleetRegistry(): UseFleetRegistry {
   const [reg, setReg] = useState<FleetRegistry>(() => loadRegistry())
+  /** Бамп при любом изменении парка — перечитываем overrides. */
+  const [epoch, setEpoch] = useState(0)
 
   useEffect(() => {
+    const refresh = () => {
+      setReg(loadRegistry())
+      setEpoch((n) => n + 1)
+    }
     const onStorage = (e: StorageEvent) => {
-      if (e.key === null || e.key === 'fleet:registry') {
-        setReg(loadRegistry())
+      if (
+        e.key === null ||
+        e.key === 'fleet:registry' ||
+        (typeof e.key === 'string' && e.key.startsWith('fleet:overrides:'))
+      ) {
+        refresh()
       }
     }
     window.addEventListener('storage', onStorage)
-    return () => window.removeEventListener('storage', onStorage)
+    window.addEventListener(FLEET_CHANGE_EVENT, refresh)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener(FLEET_CHANGE_EVENT, refresh)
+    }
   }, [])
 
   const vehicles = useMemo<FleetVehicle[]>(() => {
     const removed = new Set(reg.removedIds)
     const base = FLEET_VEHICLES.filter((v) => !removed.has(v.id))
-    /* Добавленные — в конец списка, чтобы их было легко найти и не путать порядок. */
-    return [...base, ...reg.added]
-  }, [reg])
+    const list = [...base, ...reg.added]
+    return list.map((v) => mergeOverrides(v, loadOverrides(v.id)))
+    // epoch — явная зависимость на правки overrides
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reg, epoch])
 
   const categories = useMemo<FleetCategory[]>(() => {
-    /* Кастомные категории — только те, у которых есть хотя бы одна техника
-       (или они были явно сохранены). Чтобы случайные дубли не замусоривали UI. */
     return [...FLEET_CATEGORIES, ...reg.customCategories]
   }, [reg])
 
@@ -79,14 +96,14 @@ export function useFleetRegistry(): UseFleetRegistry {
           ? reg.removedIds
           : [...reg.removedIds, id]
 
-      /* Подчищаем кастомную категорию, если после удаления в ней не осталось техники
-         (ни в mock, ни среди пользовательских — кастомных в mock нет). */
       const allRemaining = [
         ...FLEET_VEHICLES.filter((v) => !nextRemovedIds.includes(v.id)),
         ...nextAdded,
       ]
       const usedCustomIds = new Set(allRemaining.map((v) => v.categoryId))
-      const nextCustomCategories = reg.customCategories.filter((c) => usedCustomIds.has(c.id))
+      const nextCustomCategories = reg.customCategories.filter((c) =>
+        usedCustomIds.has(c.id),
+      )
 
       persist({
         added: nextAdded,
@@ -120,8 +137,6 @@ export function useFleetRegistry(): UseFleetRegistry {
   const ensureCustomCategory = useCallback(
     (title: string): FleetCategory => {
       const cleaned = title.trim()
-      /* Если такой уже есть среди preset — вернём preset, иначе ищем в кастомных
-         по нормализованному названию. */
       const norm = cleaned.toLowerCase()
       const preset = FLEET_CATEGORIES.find((c) => c.title.toLowerCase() === norm)
       if (preset) return preset
@@ -130,7 +145,6 @@ export function useFleetRegistry(): UseFleetRegistry {
       )
       if (existing) return existing
       const id = slugifyCategory(cleaned)
-      /* Если слаг уже занят (коллизия), добавим числовой суффикс. */
       const usedIds = new Set([
         ...FLEET_CATEGORIES.map((c) => c.id),
         ...reg.customCategories.map((c) => c.id),

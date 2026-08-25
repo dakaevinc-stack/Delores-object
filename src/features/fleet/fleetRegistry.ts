@@ -1,4 +1,5 @@
 import type { FleetCategory, FleetVehicle } from '../../domain/fleet'
+import { emitFleetChange } from './fleetEvents'
 
 /**
  * Локальный реестр парка.
@@ -58,20 +59,22 @@ export function loadRegistry(): FleetRegistry {
 
 export function saveRegistry(reg: FleetRegistry): void {
   const ls = safeStorage()
-  if (!ls) return
   try {
-    if (
-      reg.added.length === 0 &&
-      reg.removedIds.length === 0 &&
-      reg.customCategories.length === 0
-    ) {
-      ls.removeItem(KEY)
-      return
+    if (ls) {
+      if (
+        reg.added.length === 0 &&
+        reg.removedIds.length === 0 &&
+        reg.customCategories.length === 0
+      ) {
+        ls.removeItem(KEY)
+      } else {
+        ls.setItem(KEY, JSON.stringify(reg))
+      }
     }
-    ls.setItem(KEY, JSON.stringify(reg))
   } catch {
     /* quota или приватный режим — не ломаем UI */
   }
+  emitFleetChange()
 }
 
 /** Генерация уникального id для новой единицы. */

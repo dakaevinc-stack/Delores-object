@@ -1,102 +1,166 @@
 /* ============================================================
-   Люкс-вход в раздел.
-   Desktop: две колонки [заголовок + метрики | теги + CTA],
-   волосяной разделитель, без пустоты справа.
+   Hub — белое люкс-стекло.
+   Desktop: [заголовок + метрики | теги + CTA]
    ============================================================ */
 
 .card {
   --hub-pad-x: clamp(18px, 2vw, 24px);
   --hub-pad-y: clamp(18px, 2vw, 22px);
+  --hub-r: 22px;
+  --hub-rim: 2px;
 
   position: relative;
   display: block;
   width: 100%;
   min-height: 100%;
-  padding: var(--hub-pad-y) var(--hub-pad-x);
-  border-radius: 20px;
-  border: 1px solid rgba(23, 42, 77, 0.1);
-  background:
-    radial-gradient(120% 100% at 100% 0%, rgba(186, 33, 38, 0.07) 0%, transparent 48%),
-    radial-gradient(90% 80% at 0% 100%, rgba(23, 42, 77, 0.04) 0%, transparent 50%),
-    linear-gradient(165deg, #ffffff 0%, #f3f6fb 100%);
+  padding: var(--hub-rim);
+  border-radius: var(--hub-r);
+  border: none;
   color: inherit;
   text-decoration: none;
   overflow: hidden;
   isolation: isolate;
+  box-sizing: border-box;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 1) 0%,
+      rgba(255, 255, 255, 0.75) 14%,
+      rgba(220, 235, 255, 0.55) 32%,
+      rgba(255, 255, 255, 0.9) 48%,
+      rgba(255, 240, 235, 0.4) 66%,
+      rgba(230, 242, 255, 0.55) 82%,
+      rgba(255, 255, 255, 1) 100%
+    );
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 14px 40px rgba(15, 23, 42, 0.08);
+    0 0 0 1px rgba(255, 255, 255, 0.95),
+    0 1px 0 rgba(255, 255, 255, 1),
+    0 0 48px rgba(255, 255, 255, 0.55),
+    0 22px 52px rgba(15, 28, 54, 0.12),
+    0 6px 16px rgba(15, 28, 54, 0.06);
   transition:
     transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1),
-    border-color 0.28s ease,
     box-shadow 0.28s ease;
 }
 
 .stripe {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, var(--brand-red) 0%, rgba(238, 45, 58, 0) 70%);
+  top: var(--hub-rim);
+  bottom: var(--hub-rim);
+  left: var(--hub-rim);
+  width: 3px;
+  border-radius: calc(var(--hub-r) - var(--hub-rim)) 0 0 calc(var(--hub-r) - var(--hub-rim));
+  background: linear-gradient(180deg, var(--brand-red) 0%, rgba(238, 45, 58, 0) 72%);
+  z-index: 4;
+  opacity: 0.9;
+}
+
+.specular {
+  position: absolute;
+  inset: var(--hub-rim) var(--hub-rim) auto;
+  height: 52%;
+  border-radius: calc(var(--hub-r) - var(--hub-rim)) calc(var(--hub-r) - var(--hub-rim)) 40% 40%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.88) 0%,
+    rgba(255, 255, 255, 0.28) 45%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.caustic {
+  position: absolute;
+  right: -10%;
+  top: -38%;
+  width: 55%;
+  height: 110%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 40% 40%,
+    rgba(255, 255, 255, 0.85) 0%,
+    rgba(255, 255, 255, 0.22) 36%,
+    transparent 70%
+  );
+  pointer-events: none;
   z-index: 1;
 }
 
-.glow {
+.causticAlt {
   position: absolute;
-  top: -35%;
-  right: -8%;
-  width: 48%;
-  height: 90%;
-  pointer-events: none;
-  z-index: 0;
-  background: radial-gradient(closest-side, rgba(238, 45, 58, 0.1), transparent 72%);
-}
-
-.card::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  bottom: 0;
+  left: -14%;
+  bottom: -48%;
   width: 46%;
-  height: 70%;
+  height: 95%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 55% 40%,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(238, 45, 58, 0.06) 42%,
+    transparent 70%
+  );
   pointer-events: none;
-  z-index: 0;
-  background-image:
-    linear-gradient(rgba(23, 42, 77, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(23, 42, 77, 0.04) 1px, transparent 1px);
-  background-size: 22px 22px;
-  -webkit-mask-image: radial-gradient(70% 70% at 100% 100%, #000 0%, transparent 72%);
-  mask-image: radial-gradient(70% 70% at 100% 100%, #000 0%, transparent 72%);
+  z-index: 1;
 }
-
-.interactive:hover {
-  transform: translateY(-3px);
-  border-color: rgba(28, 75, 130, 0.2);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 1) inset,
-    0 22px 52px rgba(15, 23, 42, 0.13);
-}
-
-.interactive:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--accent-ring), 0 14px 40px rgba(15, 23, 42, 0.1);
-}
-
-.static {
-  cursor: default;
-}
-
-/* --- скелет двух колонок ------------------------------------ */
 
 .shell {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) auto minmax(0, 1fr);
   align-items: stretch;
   gap: 0;
   min-height: 148px;
+  height: 100%;
+  padding: var(--hub-pad-y) var(--hub-pad-x);
+  padding-left: calc(var(--hub-pad-x) + 6px);
+  border-radius: calc(var(--hub-r) - var(--hub-rim));
+  box-sizing: border-box;
+  background:
+    linear-gradient(
+      165deg,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.18) 42%,
+      rgba(255, 255, 255, 0.12) 100%
+    );
+  backdrop-filter: blur(36px) saturate(1.6);
+  -webkit-backdrop-filter: blur(36px) saturate(1.6);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -6px 18px rgba(15, 28, 54, 0.04),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+.interactive:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 1),
+    0 1px 0 rgba(255, 255, 255, 1),
+    0 0 56px rgba(255, 255, 255, 0.7),
+    0 28px 60px rgba(15, 28, 54, 0.16),
+    0 10px 22px rgba(15, 28, 54, 0.08);
+}
+
+.interactive:hover .shell {
+  background:
+    linear-gradient(
+      165deg,
+      rgba(255, 255, 255, 0.68) 0%,
+      rgba(255, 255, 255, 0.28) 45%,
+      rgba(255, 255, 255, 0.18) 100%
+    );
+}
+
+.interactive:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px var(--accent-ring),
+    0 22px 52px rgba(15, 28, 54, 0.12);
+}
+
+.static {
+  cursor: default;
 }
 
 .primary {
@@ -123,8 +187,9 @@
   background: linear-gradient(
     180deg,
     transparent 0%,
-    rgba(23, 42, 77, 0.14) 14%,
-    rgba(23, 42, 77, 0.14) 86%,
+    rgba(255, 255, 255, 0.85) 14%,
+    rgba(23, 42, 77, 0.12) 50%,
+    rgba(255, 255, 255, 0.85) 86%,
     transparent 100%
   );
 }
@@ -148,14 +213,16 @@
   border-radius: 15px;
   overflow: hidden;
   background:
-    radial-gradient(90% 90% at 50% 0%, rgba(255, 255, 255, 0.2) 0%, transparent 68%),
+    radial-gradient(90% 90% at 50% 0%, rgba(255, 255, 255, 0.28) 0%, transparent 68%),
     linear-gradient(180deg, var(--brand-navy) 0%, var(--brand-navy-2) 100%);
   color: #f4f7fc;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.2) inset,
-    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
-    0 10px 22px rgba(15, 28, 54, 0.28);
-  transition: transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1), box-shadow 0.28s ease;
+    0 1px 0 rgba(255, 255, 255, 0.28) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset,
+    0 10px 22px rgba(15, 28, 54, 0.22);
+  transition:
+    transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1),
+    box-shadow 0.28s ease;
 }
 
 .icon::after {
@@ -165,7 +232,7 @@
   background: linear-gradient(
     100deg,
     rgba(255, 255, 255, 0) 38%,
-    rgba(255, 255, 255, 0.24) 50%,
+    rgba(255, 255, 255, 0.28) 50%,
     rgba(255, 255, 255, 0) 62%
   );
   transform: translateX(-120%);
@@ -179,9 +246,9 @@
 .interactive:hover .icon {
   transform: translateY(-1px);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.24) inset,
-    0 0 0 1px rgba(255, 255, 255, 0.1) inset,
-    0 14px 28px rgba(15, 28, 54, 0.34);
+    0 1px 0 rgba(255, 255, 255, 0.32) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset,
+    0 14px 28px rgba(15, 28, 54, 0.3);
 }
 
 .title {
@@ -193,24 +260,31 @@
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.15;
-  color: var(--text-strong);
+  color: var(--brand-navy-2, #0f1c36);
   text-wrap: balance;
 }
 
-/* Метрики — стеклянная плакета на всю ширину левой колонки */
+/* Метрики — вложенное белое стекло */
 .stats {
   display: flex;
   align-items: stretch;
   width: 100%;
   padding: 12px 4px;
   border-radius: 14px;
-  border: 1px solid rgba(23, 42, 77, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.75);
   background:
-    radial-gradient(120% 100% at 0% 0%, rgba(238, 45, 58, 0.06) 0%, transparent 55%),
-    linear-gradient(160deg, var(--brand-navy) 0%, var(--brand-navy-2) 100%);
+    linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.65) 0%,
+      rgba(255, 255, 255, 0.28) 55%,
+      rgba(255, 255, 255, 0.2) 100%
+    );
+  backdrop-filter: blur(16px) saturate(1.35);
+  -webkit-backdrop-filter: blur(16px) saturate(1.35);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.12) inset,
-    0 12px 28px rgba(15, 28, 54, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(15, 28, 54, 0.04),
+    0 8px 20px rgba(15, 28, 54, 0.06);
 }
 
 .stat {
@@ -232,8 +306,8 @@
   background: linear-gradient(
     180deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.22) 20%,
-    rgba(255, 255, 255, 0.22) 80%,
+    rgba(23, 42, 77, 0.14) 20%,
+    rgba(23, 42, 77, 0.14) 80%,
     transparent 100%
   );
 }
@@ -243,7 +317,7 @@
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1;
-  color: #ffffff;
+  color: var(--brand-navy-2, #0f1c36);
   font-variant-numeric: tabular-nums;
 }
 
@@ -252,13 +326,13 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(243, 245, 249, 0.55);
+  color: rgba(23, 42, 77, 0.48);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* --- правая колонка: кикер + меню + тонкий CTA -------------- */
+/* --- правая колонка ----------------------------------------- */
 
 .asideBlock {
   display: flex;
@@ -293,7 +367,7 @@
   gap: 10px;
   min-height: 28px;
   padding: 0;
-  border-bottom: 1px solid rgba(23, 42, 77, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.45);
   transition: transform 0.22s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
@@ -326,9 +400,11 @@
   height: 5px;
   border-radius: 999px;
   background: var(--brand-red, #ba2126);
-  box-shadow: 0 0 0 3px rgba(186, 33, 38, 0.1);
+  box-shadow: 0 0 0 3px rgba(186, 33, 38, 0.12);
   opacity: 0.85;
-  transition: opacity 0.22s ease, transform 0.22s ease;
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
 }
 
 .interactive:hover .menuDot {
@@ -355,7 +431,7 @@
   gap: 8px;
   margin-top: auto;
   padding-top: 4px;
-  border-top: 1px solid rgba(23, 42, 77, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 .cta {
@@ -398,16 +474,21 @@
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  background: rgba(23, 42, 77, 0.06);
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.85);
   color: var(--brand-navy);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 1);
   transition:
     transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1),
     background 0.28s ease,
-    color 0.28s ease;
+    color 0.28s ease,
+    box-shadow 0.28s ease,
+    border-color 0.28s ease;
 }
 
 .interactive:hover .ctaArrow {
   transform: translateX(3px);
+  border-color: transparent;
   background: linear-gradient(180deg, var(--brand-red) 0%, #8e191d 100%);
   color: #ffffff;
   box-shadow: 0 4px 12px rgba(186, 33, 38, 0.3);
@@ -422,7 +503,7 @@
 }
 
 .ctaOff .ctaArrow {
-  background: rgba(23, 42, 77, 0.05);
+  background: rgba(255, 255, 255, 0.4);
   color: var(--muted);
 }
 
@@ -435,7 +516,7 @@
   color: var(--muted);
 }
 
-/* --- tablet / mobile: одна колонка -------------------------- */
+/* --- tablet / mobile ---------------------------------------- */
 
 @media (max-width: 819px) {
   .shell {
@@ -471,7 +552,7 @@
   .card {
     --hub-pad-x: 14px;
     --hub-pad-y: 14px;
-    border-radius: 16px;
+    --hub-r: 18px;
   }
 
   .icon {
