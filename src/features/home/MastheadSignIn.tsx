@@ -1,23 +1,20 @@
 import { useId, useState, type FormEvent } from 'react'
 import {
-  clearLocalSession,
-  loadLocalSession,
-  saveLocalSession,
   sessionInitials,
   type LocalSession,
 } from '../../lib/localSession'
+import {
+  signInWithCredentials,
+  signOutLocalSession,
+  useLocalSession,
+} from '../../lib/useLocalSession'
 import styles from './MastheadSignIn.module.css'
 
 type Props = {
   className?: string
+  /** После успешного входа / выхода (например, чтобы показать контент главной). */
+  onSessionChange?: (session: LocalSession | null) => void
 }
-
-/**
- * Пока нет корпоративных учёток — пароль в форме есть, но не обязателен.
- * Когда подключим SSO/серверную сессию: поставить `true` и убрать локальный
- * saveLocalSession — вход только по логину и паролю.
- */
-const REQUIRE_PASSWORD = false
 
 function UserIcon() {
   return (
@@ -64,11 +61,11 @@ function EyeIcon({ off }: { off: boolean }) {
   )
 }
 
-export function MastheadSignIn({ className }: Props) {
+export function MastheadSignIn({ className, onSessionChange }: Props) {
   const uid = useId()
   const loginId = `${uid}-login`
   const passwordId = `${uid}-password`
-  const [session, setSession] = useState<LocalSession | null>(() => loadLocalSession())
+  const session = useLocalSession()
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [reveal, setReveal] = useState(false)
@@ -82,40 +79,44 @@ export function MastheadSignIn({ className }: Props) {
       setMessage('Укажите логин')
       return
     }
-    if (REQUIRE_PASSWORD && !password) {
+    if (!password) {
       setMessage('Укажите логин и пароль')
       return
     }
     setBusy(true)
     setMessage(null)
-    // TODO(auth): заменить на корпоративный вход (логин+пароль обязательны).
-    // Локальный профиль — временный режим до серверной сессии.
     window.setTimeout(() => {
-      const next = saveLocalSession(user)
-      setSession(next)
+      const result = signInWithCredentials(user, password)
+      if (!result.ok) {
+        setMessage(result.message)
+        setBusy(false)
+        return
+      }
       setPassword('')
+      setLogin('')
       setBusy(false)
-    }, 280)
+      onSessionChange?.(result.session)
+    }, 180)
   }
 
   function onSignOut() {
-    clearLocalSession()
-    setSession(null)
+    signOutLocalSession()
     setMessage(null)
+    onSessionChange?.(null)
   }
 
   if (session) {
     return (
       <div
         className={[styles.session, className].filter(Boolean).join(' ')}
-        aria-label={`Профиль: ${session.login}`}
+        aria-label={`Профиль: ${session.fullName}`}
       >
         <span className={styles.sessionAvatar} aria-hidden>
-          {sessionInitials(session.login)}
+          {sessionInitials(session.fullName)}
         </span>
         <div className={styles.sessionCopy}>
-          <p className={styles.sessionKicker}>В системе</p>
-          <p className={styles.sessionName}>{session.login}</p>
+          <p className={styles.sessionKicker}>{session.dutyLabel}</p>
+          <p className={styles.sessionName}>{session.fullName}</p>
         </div>
         <button className={styles.signOut} type="button" onClick={onSignOut}>
           Выйти

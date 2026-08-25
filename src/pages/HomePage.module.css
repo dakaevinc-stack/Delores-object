@@ -367,31 +367,44 @@
 .hubRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: clamp(14px, 2vw, 20px);
+  gap: 12px;
   align-items: stretch;
-  margin: 0 0 28px;
+  margin: 0 0 22px;
 }
 
 @media (min-width: 820px) {
   .hubRow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
   }
 }
 
 @media (min-width: 1440px) {
   .hubRow {
-    gap: 22px;
-    margin: 0 0 32px;
+    gap: 16px;
+    margin: 0 0 26px;
   }
 }
 
 .objectsSection {
+  position: relative;
   margin-top: 8px;
+  scroll-margin-top: 20px;
+  padding: 20px 18px 18px;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background:
+    radial-gradient(70% 60% at 8% 12%, rgba(120, 170, 255, 0.14) 0%, transparent 55%),
+    radial-gradient(55% 50% at 92% 8%, rgba(238, 45, 58, 0.08) 0%, transparent 50%),
+    radial-gradient(80% 70% at 50% 100%, rgba(23, 42, 77, 0.08) 0%, transparent 55%),
+    linear-gradient(165deg, #d8e0ec 0%, #e8edf5 45%, #f0f3f8 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.75),
+    0 22px 56px rgba(10, 18, 36, 0.08);
 }
 
 .objectsHead {
-  margin-bottom: 16px;
-  max-width: 72ch;
+  margin-bottom: 12px;
 }
 
 .objectsTitle {
@@ -406,8 +419,8 @@
 .toolbar {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: var(--block-gap);
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 @media (min-width: 900px) {

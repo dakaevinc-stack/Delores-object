@@ -126,7 +126,7 @@ export function AddObjectPage() {
       executive: {
         planPercent: 0,
         factPercent: 0,
-        summaryLine: 'Объект заведён — ожидает первый отчёт с площадки.',
+        summaryLine: 'Объект заведён',
         hasOpenRisks: false,
         stages,
       },

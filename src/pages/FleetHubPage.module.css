@@ -1,73 +1,124 @@
 .page {
-  width: min(1120px, 100%);
+  width: min(1280px, 100%);
   margin: 0 auto;
-  padding: 32px max(24px, env(safe-area-inset-right, 0px)) 72px
+  padding: 32px max(24px, env(safe-area-inset-right, 0px)) 80px
     max(24px, env(safe-area-inset-left, 0px));
   box-sizing: border-box;
 }
 
+@media (min-width: 1440px) {
+  .page {
+    width: min(1440px, 100%);
+    padding-top: 36px;
+  }
+}
+
 @media (max-width: 640px) {
   .page {
-    padding-top: 20px;
+    padding-top: 16px;
     padding-bottom: max(56px, calc(40px + env(safe-area-inset-bottom, 0px)));
   }
 }
 
-.top {
+/* ============================================================
+   Hero — тёмная люкс-планка раздела
+   ============================================================ */
+
+.hero {
+  position: relative;
+  margin-bottom: 36px;
+  padding: clamp(22px, 2.6vw, 32px) clamp(22px, 3vw, 36px) clamp(24px, 2.8vw, 34px);
+  border-radius: 24px;
+  border: 1px solid rgba(15, 28, 54, 0.88);
+  background:
+    radial-gradient(130% 100% at 100% 0%, rgba(238, 45, 58, 0.22) 0%, rgba(238, 45, 58, 0) 52%),
+    radial-gradient(90% 80% at 0% 100%, rgba(255, 255, 255, 0.06) 0%, transparent 50%),
+    linear-gradient(155deg, var(--brand-navy) 0%, var(--brand-navy-2) 100%);
+  color: #f3f5f9;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 22px 56px rgba(15, 28, 54, 0.28);
+  overflow: hidden;
+  isolation: isolate;
+  animation: heroIn 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.heroGlow {
+  position: absolute;
+  top: -40%;
+  right: -12%;
+  width: 55%;
+  height: 120%;
+  background: radial-gradient(closest-side, rgba(238, 45, 58, 0.18), transparent 72%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.heroGrid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 28px 28px;
+  -webkit-mask-image: radial-gradient(80% 90% at 100% 0%, #000 0%, transparent 70%);
+  mask-image: radial-gradient(80% 90% at 100% 0%, #000 0%, transparent 70%);
+}
+
+.heroStripe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand-red) 0%, rgba(238, 45, 58, 0) 72%);
+  z-index: 1;
+}
+
+.heroTop {
+  position: relative;
+  z-index: 1;
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px 24px;
-  margin-bottom: var(--block-gap);
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin-bottom: clamp(22px, 3vw, 30px);
 }
 
 .back {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px 8px 10px;
+  padding: 8px 14px 8px 12px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: linear-gradient(180deg, #fff 0%, #f7f8fb 100%);
-  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(243, 245, 249, 0.92);
   text-decoration: none;
   font-size: 13px;
   font-weight: 600;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 4px 12px rgba(15, 17, 20, 0.05);
+  backdrop-filter: blur(8px);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
 }
 
+.back:hover,
 .back:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.28);
   outline: none;
-  box-shadow: 0 0 0 3px var(--accent-ring);
+  transform: translateX(-1px);
 }
 
-/* ============================================================
-   Шапка раздела
-   ============================================================ */
-
-.head {
-  min-width: 0;
-  margin-bottom: var(--block-gap);
+.backArrow {
+  opacity: 0.75;
 }
-
-.headTopRow {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 14px 24px;
-  margin-bottom: 8px;
-}
-
-.headText {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-/* ============================================================
-   Кнопка «Добавить технику» — основной CTA раздела
-   ============================================================ */
 
 .addBtn {
   font: inherit;
@@ -77,20 +128,18 @@
   gap: 10px;
   padding: 10px 18px 10px 10px;
   border-radius: 999px;
-  border: 1px solid transparent;
-  background: linear-gradient(180deg, #0f2850 0%, #152c58 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.01em;
   line-height: 1;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.14) inset,
-    0 8px 20px rgba(15, 28, 54, 0.25);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset;
   transition:
-    transform 0.18s ease,
-    box-shadow 0.18s ease,
-    background 0.18s ease;
+    transform 0.2s cubic-bezier(0.22, 0.61, 0.36, 1),
+    background 0.2s ease,
+    box-shadow 0.2s ease;
   flex-shrink: 0;
 }
 
@@ -98,9 +147,10 @@
 .addBtn:focus-visible {
   outline: none;
   transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.16);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.18) inset,
-    0 12px 28px rgba(15, 28, 54, 0.32);
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 12px 28px rgba(0, 0, 0, 0.22);
 }
 
 .addBtnIcon {
@@ -113,135 +163,382 @@
   background: linear-gradient(180deg, var(--brand-red, #ee2d3a) 0%, #c81b29 100%);
   color: #fff;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.2) inset,
-    0 2px 6px rgba(198, 40, 40, 0.35);
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 4px 10px rgba(198, 40, 40, 0.4);
 }
 
 .addBtnLabel {
   white-space: nowrap;
 }
 
+.heroMain {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: clamp(20px, 3vw, 40px);
+}
+
+.heroCopy {
+  min-width: 0;
+}
+
 .kicker {
-  margin: 0 0 8px;
-  font-size: 10px;
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(243, 245, 249, 0.55);
+}
+
+.title {
+  margin: 0 0 12px;
+  font-family: var(--display, inherit);
+  font-size: clamp(34px, 4.2vw, 48px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  color: #ffffff;
+}
+
+.lead {
+  margin: 0;
+  max-width: 42ch;
+  font-size: 15.5px;
+  line-height: 1.5;
+  color: rgba(243, 245, 249, 0.68);
+}
+
+.heroStats {
+  margin-top: clamp(22px, 3vw, 30px);
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 14px 4px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  animation: statsIn 0.65s 0.12s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 22px;
+  min-width: 112px;
+}
+
+.statValue {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.statLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(243, 245, 249, 0.5);
+}
+
+.statDivider {
+  width: 1px;
+  align-self: stretch;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.22) 20%,
+    rgba(255, 255, 255, 0.22) 80%,
+    transparent 100%
+  );
+}
+
+/* Логотип в рамке справа в hero */
+
+.logoFrame {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(220px, 24vw, 320px);
+  padding: 10px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(255, 255, 255, 0.1) 0%, transparent 55%),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 18px 40px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+  animation: logoIn 0.7s 0.15s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.logoPlaque {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: clamp(14px, 1.8vw, 20px) clamp(16px, 2vw, 24px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 62%),
+    linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 1) inset,
+    0 10px 28px rgba(15, 23, 42, 0.14);
+}
+
+.logoImg {
+  display: block;
+  width: clamp(168px, 16vw, 220px);
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.logoFrameGlow {
+  position: absolute;
+  inset: -30% -10% auto;
+  height: 70%;
+  background: radial-gradient(closest-side, rgba(238, 45, 58, 0.28), transparent 70%);
+  pointer-events: none;
+}
+
+.logoFrameRail {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--brand-red) 0%, rgba(238, 45, 58, 0.2) 100%);
+  z-index: 2;
+}
+
+/* ============================================================
+   Каталог классов
+   ============================================================ */
+
+.catalog {
+  animation: catalogIn 0.55s 0.08s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.catalogHead {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin-bottom: 20px;
+  padding: 18px 20px 18px 22px;
+  border-radius: 18px;
+  border: 1px solid rgba(23, 42, 77, 0.1);
+  background:
+    radial-gradient(110% 120% at 100% 0%, rgba(186, 33, 38, 0.05) 0%, transparent 50%),
+    linear-gradient(180deg, #ffffff 0%, #f5f7fb 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 10px 28px rgba(15, 23, 42, 0.05);
+  overflow: hidden;
+}
+
+.catalogAccent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(
+    180deg,
+    var(--brand-navy) 0%,
+    var(--brand-navy) 55%,
+    var(--brand-red) 55%,
+    var(--brand-red) 100%
+  );
+}
+
+.catalogHeadText {
+  min-width: 0;
+  padding-left: 6px;
+}
+
+.catalogKicker {
+  margin: 0 0 6px;
+  font-size: 10.5px;
   font-weight: 800;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--brand-red, #ee2d3a);
 }
 
-.title {
-  margin: 0 0 10px;
-  font-size: var(--heading-block-size);
-  font-weight: var(--heading-block-weight);
-  letter-spacing: var(--heading-block-tracking);
-  line-height: var(--heading-block-line);
+.catalogTitle {
+  margin: 0 0 6px;
+  font-family: var(--display, inherit);
+  font-size: clamp(22px, 2.4vw, 28px);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
   color: var(--text-strong);
 }
 
-.lead {
+.catalogLead {
   margin: 0;
-  max-width: 52ch;
-  font-size: 15px;
-  line-height: 1.55;
-  color: var(--text);
-}
-
-/* Блок сводки под лидом — две короткие метрики со встроенной разделительной линией */
-.summary {
-  margin: 20px 0 0;
-  padding: 14px 0 0;
-  display: grid;
-  gap: 0;
-  grid-template-columns: repeat(2, minmax(0, max-content));
-  column-gap: 28px;
-  border-top: 1px solid var(--border);
-}
-
-.summaryItem {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 0;
-}
-
-.summaryItem dt {
-  margin: 0;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 14px;
+  line-height: 1.45;
   color: var(--muted);
 }
 
-.summaryItem dd {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--text-strong);
-  font-variant-numeric: tabular-nums;
+.catalogBadge {
+  position: relative;
+  flex: none;
+  display: grid;
+  grid-template-rows: auto auto;
+  justify-items: center;
+  align-content: center;
+  gap: 5px;
+  min-width: 112px;
+  min-height: 76px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(238, 45, 58, 0.18) 0%, transparent 58%),
+    linear-gradient(160deg, var(--brand-navy) 0%, var(--brand-navy-2) 100%);
+  color: #fff;
+  text-align: center;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 12px 28px rgba(15, 28, 54, 0.2);
+  overflow: hidden;
 }
 
-/* ============================================================
-   Сетка категорий
-   ============================================================ */
+.catalogBadge::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--brand-red) 0%, rgba(238, 45, 58, 0.25) 100%);
+}
+
+.catalogBadgeNum {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+.catalogBadgeLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: rgba(243, 245, 249, 0.62);
+  white-space: nowrap;
+}
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 14px;
 }
 
 .card {
+  --card-i: 0;
   position: relative;
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 16px;
-  padding: 16px 18px;
-  border-radius: 16px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  background: linear-gradient(165deg, #ffffff 0%, #f5f7fb 100%);
+  min-height: 92px;
+  padding: 18px 18px 18px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(23, 42, 77, 0.1);
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(28, 75, 130, 0.06) 0%, transparent 55%),
+    linear-gradient(168deg, #ffffff 0%, #f3f6fa 100%);
   text-decoration: none;
   color: inherit;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 8px 22px rgba(15, 23, 42, 0.06);
-  transition:
-    transform 0.18s ease,
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    background 0.18s ease;
+    0 10px 28px rgba(15, 23, 42, 0.06);
   overflow: hidden;
   isolation: isolate;
+  transition:
+    transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1),
+    border-color 0.28s ease,
+    box-shadow 0.28s ease;
+  animation: cardIn 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation-delay: calc(0.04s * var(--card-i));
 }
 
-/* Тонкий фирменный акцент слева — появляется на hover/focus */
 .card::before {
   content: '';
   position: absolute;
-  top: 14px;
-  bottom: 14px;
+  top: 16px;
+  bottom: 16px;
   left: 0;
   width: 3px;
   border-radius: 0 3px 3px 0;
   background: linear-gradient(180deg, var(--brand-navy) 0%, var(--brand-red) 100%);
-  opacity: 0;
-  transition: opacity 0.18s ease;
+  opacity: 0.35;
+  transition: opacity 0.28s ease, width 0.28s ease;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 46%;
+  height: 70%;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(23, 42, 77, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(23, 42, 77, 0.04) 1px, transparent 1px);
+  background-size: 18px 18px;
+  -webkit-mask-image: radial-gradient(70% 70% at 100% 100%, #000 0%, transparent 72%);
+  mask-image: radial-gradient(70% 70% at 100% 100%, #000 0%, transparent 72%);
+  opacity: 0.7;
+  transition: opacity 0.28s ease;
 }
 
 .card:hover,
 .card:focus-visible {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   border-color: rgba(28, 75, 130, 0.22);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 1) inset,
-    0 16px 36px rgba(15, 23, 42, 0.1);
+    0 20px 44px rgba(15, 23, 42, 0.12);
 }
 
 .card:hover::before,
 .card:focus-visible::before {
+  opacity: 1;
+  width: 4px;
+}
+
+.card:hover::after,
+.card:focus-visible::after {
   opacity: 1;
 }
 
@@ -249,49 +546,55 @@
   outline: none;
   box-shadow:
     0 0 0 3px var(--accent-ring),
-    0 14px 32px rgba(15, 23, 42, 0.08);
+    0 18px 40px rgba(15, 23, 42, 0.1);
 }
 
 .cardIcon {
+  position: relative;
+  z-index: 1;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 13px;
-  background: linear-gradient(180deg, #0f2850 0%, #152c58 100%);
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background:
+    radial-gradient(90% 90% at 50% 0%, rgba(255, 255, 255, 0.18) 0%, transparent 65%),
+    linear-gradient(180deg, var(--brand-navy) 0%, var(--brand-navy-2) 100%);
   color: #f4f7fc;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.14) inset,
-    0 6px 14px rgba(15, 28, 54, 0.22);
-  transition: transform 0.2s ease;
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 10px 22px rgba(15, 28, 54, 0.28);
+  transition: transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .card:hover .cardIcon {
-  transform: scale(1.04);
+  transform: scale(1.05) rotate(-2deg);
 }
 
 .cardBody {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 6px;
   min-width: 0;
 }
 
 .cardTitle {
-  font-size: 15.5px;
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
   color: var(--text-strong);
   line-height: 1.25;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cardCustom {
@@ -315,48 +618,237 @@
 }
 
 .cardMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--muted);
-  font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
 }
 
-.cardChevron {
-  font-size: 18px;
-  font-weight: 600;
+.cardCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgba(23, 42, 77, 0.07);
   color: var(--brand-navy);
-  opacity: 0.45;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.cardChevron {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(23, 42, 77, 0.1);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--brand-navy);
+  opacity: 0.55;
   transform: translateX(0);
   transition:
-    transform 0.2s ease,
-    opacity 0.2s ease;
+    transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 0.28s ease,
+    background 0.28s ease,
+    border-color 0.28s ease;
 }
 
 .card:hover .cardChevron,
 .card:focus-visible .cardChevron {
   opacity: 1;
   transform: translateX(3px);
+  background: #ffffff;
+  border-color: rgba(28, 75, 130, 0.2);
+}
+
+@keyframes heroIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes statsIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes catalogIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes logoIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero,
+  .heroStats,
+  .logoFrame,
+  .catalog,
+  .card {
+    animation: none;
+  }
+
+  .card:hover,
+  .card:focus-visible,
+  .addBtn:hover,
+  .back:hover {
+    transform: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .heroMain {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .logoFrame {
+    width: min(280px, 100%);
+    justify-self: stretch;
+    order: -1;
+  }
+
+  .logoPlaque {
+    padding: 12px 16px;
+  }
+
+  .logoImg {
+    width: min(200px, 100%);
+  }
 }
 
 @media (max-width: 640px) {
-  .grid {
-    grid-template-columns: 1fr;
+  .hero {
+    margin-bottom: 24px;
+    border-radius: 18px;
+    padding: 18px 16px 20px;
   }
 
-  .card {
-    padding: 14px 16px;
+  .title {
+    font-size: 30px;
+  }
+
+  .lead {
+    font-size: 14.5px;
+  }
+
+  .logoFrame {
+    width: 100%;
+    max-width: none;
+    padding: 8px;
+    border-radius: 16px;
+  }
+
+  .logoPlaque {
+    padding: 10px 14px;
+    border-radius: 12px;
+  }
+
+  .logoImg {
+    width: min(188px, 78vw);
+  }
+
+  .heroStats {
+    width: 100%;
+    display: flex;
+  }
+
+  .stat {
+    flex: 1;
+    min-width: 0;
+    padding: 2px 14px;
+  }
+
+  .statValue {
+    font-size: 24px;
+  }
+
+  .catalogHead {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px 16px 16px 18px;
     gap: 14px;
   }
 
+  .catalogBadge {
+    justify-self: start;
+    min-width: 104px;
+    min-height: 72px;
+    padding: 12px 16px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .card {
+    min-height: 0;
+    padding: 14px 14px 14px 16px;
+    gap: 14px;
+    border-radius: 16px;
+  }
+
   .cardIcon {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
   }
 
   .cardTitle {
     font-size: 15px;
     white-space: normal;
+  }
+
+  .cardChevron {
+    width: 32px;
+    height: 32px;
   }
 }

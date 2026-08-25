@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAllSites } from '../lib/useAllSites'
 import { countSitesByStatus } from '../domain/executiveDashboard'
 import { ExecutiveKpiStrip } from '../features/dashboard/ExecutiveKpiStrip'
@@ -9,9 +10,15 @@ import {
   type StatusFilterValue,
 } from '../features/objects/ObjectStatusFilter'
 import { resolveSiteStatus } from '../domain/objectStatus'
+import {
+  insuranceUrgency,
+  technicalInspectionUrgency,
+} from '../domain/fleet'
 import { useFleetRegistry } from '../features/fleet/useFleetRegistry'
 import { HubCard } from '../features/home/HubCard'
 import { MastheadSignIn } from '../features/home/MastheadSignIn'
+import { useLocalSession } from '../lib/useLocalSession'
+import { homeShowsHubs, homeShowsPortfolioKpi } from '../domain/sitePageZone'
 import styles from './HomePage.module.css'
 
 function pluralizeUnits(n: number): string {
@@ -144,13 +151,31 @@ if (import.meta.env.DEV && !inspectionDashboardUrl) {
 }
 
 export function HomePage() {
+  const session = useLocalSession()
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<StatusFilterValue>('all')
+  const objectsSectionRef = useRef<HTMLElement>(null)
   const sites = useAllSites()
   const { vehicles: fleetVehicles, categories: fleetCategories } =
     useFleetRegistry()
   const fleetUnits = fleetVehicles.length
   const fleetClasses = fleetCategories.length
+  /** Единицы с просрочкой/критичным ДК или страховкой — зона контроля приёмки. */
+  const fleetOnControl = useMemo(
+    () =>
+      fleetVehicles.filter((v) => {
+        const dk = technicalInspectionUrgency(v.technicalInspection?.validUntilIso)
+        const ins = insuranceUrgency(v.insurance.validUntilIso)
+        return (
+          dk === 'expired' ||
+          dk === 'critical' ||
+          dk === 'missing' ||
+          ins === 'expired' ||
+          ins === 'critical'
+        )
+      }).length,
+    [fleetVehicles],
+  )
 
   const portfolioCounts = useMemo(() => countSitesByStatus(sites), [sites])
 
@@ -163,6 +188,21 @@ export function HomePage() {
     })
   }, [query, status, sites])
 
+  const scrollToObjects = useCallback(() => {
+    objectsSectionRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }, [])
+
+  const selectStatusFromKpi = useCallback(
+    (next: StatusFilterValue) => {
+      setStatus((prev) => (next !== 'all' && prev === next ? 'all' : next))
+      scrollToObjects()
+    },
+    [scrollToObjects],
+  )
+
   const todayDate = new Date().toLocaleDateString('ru-RU', {
     day: 'numeric',
     month: 'long',
@@ -171,9 +211,15 @@ export function HomePage() {
     new Date().toLocaleDateString('ru-RU', { weekday: 'long' }),
   )
 
+  if (session?.duty === 'driver') {
+    return <Navigate to="/driver" replace />
+  }
+
   return (
     <div className={styles.page}>
-      <h1 className={styles.srOnly}>Управленческий обзор</h1>
+      <h1 className={styles.srOnly}>
+        {session ? 'Управленческий обзор' : 'Вход в систему'}
+      </h1>
 
       <header className={styles.masthead}>
         <div className={styles.mastheadInner}>
@@ -207,58 +253,73 @@ export function HomePage() {
         </div>
       </header>
 
-      <div className={styles.hubRow}>
-        <HubCard
-          to="/spectehnika"
-          ariaLabel="Открыть парк техники"
-          kicker="Парк техники"
-          title="Спецтехника"
-          badge={{
-            kind: 'stats',
-            items: [
-              { num: fleetUnits, unit: pluralizeUnits(fleetUnits) },
-              { num: fleetClasses, unit: pluralizeClasses(fleetClasses) },
-            ],
-          }}
-          icon={FLEET_ICON}
-          lead="Каждая единица техники — под рукой. Один клик до ТО, страховки и журнала ремонтов."
-          tags={['ТО', 'Страховки', 'Пропуска', 'Ремонты', 'Расходы']}
-          cta="Открыть"
-        />
+      {session ? (
+        <>
+          {homeShowsHubs(session.duty) ? (
+            <div className={styles.hubRow}>
+              <HubCard
+                to="/spectehnika"
+                ariaLabel="Открыть парк техники"
+                title="Спецтехника"
+                badge={{
+                  kind: 'stats',
+                  items: [
+                    { num: fleetUnits, unit: pluralizeUnits(fleetUnits) },
+                    { num: fleetClasses, unit: pluralizeClasses(fleetClasses) },
+                  ],
+                }}
+                icon={FLEET_ICON}
+                tags={['ТО', 'Страховки', 'Пропуска', 'Ремонты', 'Расходы']}
+                cta="В парк"
+              />
 
-        <HubCard
-          href={inspectionDashboardUrl || undefined}
-          ariaLabel="Открыть панель приёма и учёта спецтехники в новой вкладке"
-          kicker="Веб-панель"
-          title="Приём и учёт спецтехники"
-          badge={{ kind: 'external', label: 'Внешняя панель' }}
-          icon={INSPECTION_ICON}
-          lead="Поиск и просмотр актов приёмки: фото, чек-листы, история и решения механиков."
-          tags={['Чек-листы', 'Фото', 'История', 'Решения', 'Отчёты']}
-          cta="Открыть"
-          unavailableReason="Панель пока не подключена — обратитесь к администратору."
-        />
-      </div>
+              <HubCard
+                href={inspectionDashboardUrl || undefined}
+                ariaLabel="Открыть панель приёма и учёта спецтехники в новой вкладке"
+                title="Приём и учёт спецтехники"
+                badge={{
+                  kind: 'stats',
+                  items: [
+                    { num: fleetUnits, unit: 'на учёте' },
+                    { num: fleetOnControl, unit: 'на контроле' },
+                  ],
+                }}
+                icon={INSPECTION_ICON}
+                tags={['Чек-листы', 'Фото', 'История', 'Решения', 'Отчёты']}
+                cta="К приёмке"
+                unavailableReason="Панель пока не подключена — обратитесь к администратору."
+              />
+            </div>
+          ) : null}
 
-      <ExecutiveKpiStrip counts={portfolioCounts} />
+          {homeShowsPortfolioKpi(session.duty) ? (
+            <ExecutiveKpiStrip
+              counts={portfolioCounts}
+              activeStatus={status}
+              onSelectStatus={selectStatusFromKpi}
+            />
+          ) : null}
 
-      <section
-        className={styles.objectsSection}
-        aria-labelledby="objects-heading"
-      >
-        <div className={styles.objectsHead}>
-          <h2 className={styles.objectsTitle} id="objects-heading">
-            Действующие объекты
-          </h2>
-        </div>
+          <section
+            ref={objectsSectionRef}
+            className={styles.objectsSection}
+            aria-labelledby="objects-heading"
+          >
+            <div className={styles.objectsHead}>
+              <h2 className={styles.objectsTitle} id="objects-heading">
+                Действующие объекты
+              </h2>
+            </div>
 
-        <div className={styles.toolbar} aria-label="Поиск и фильтры по списку">
-          <ObjectSearch value={query} onChange={setQuery} />
-          <ObjectStatusFilter value={status} onChange={setStatus} />
-        </div>
+            <div className={styles.toolbar} aria-label="Поиск и фильтры по списку">
+              <ObjectSearch value={query} onChange={setQuery} />
+              <ObjectStatusFilter value={status} onChange={setStatus} />
+            </div>
 
-        <ObjectCardGrid sites={filtered} />
-      </section>
+            <ObjectCardGrid sites={filtered} />
+          </section>
+        </>
+      ) : null}
     </div>
   )
 }

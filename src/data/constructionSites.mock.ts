@@ -14,7 +14,7 @@ export const MOCK_CONSTRUCTION_SITES: readonly ConstructionSite[] = [
     executive: {
       planPercent: 64,
       factPercent: 62,
-      summaryLine: 'Лёгкое отклонение по сетям и колодцам, в целом в графике.',
+      summaryLine: 'Сети и колодцы: −2 п.п. к плану',
       hasOpenRisks: false,
       stages: [
         { id: 'prep', name: 'Подготовка площадки', planPercent: 100, factPercent: 100 },
@@ -31,7 +31,7 @@ export const MOCK_CONSTRUCTION_SITES: readonly ConstructionSite[] = [
     executive: {
       planPercent: 71,
       factPercent: 63,
-      summaryLine: 'Отставание по бортовому камню и выходу на асфальтобетон.',
+      summaryLine: 'Бордюр 48/70 · асфальт 12/18',
       hasOpenRisks: true,
       stages: [
         { id: 'prep', name: 'Подготовка', planPercent: 100, factPercent: 100 },
@@ -49,7 +49,7 @@ export const MOCK_CONSTRUCTION_SITES: readonly ConstructionSite[] = [
     executive: {
       planPercent: 58,
       factPercent: 59,
-      summaryLine: 'Факт опережает план; риски по срокам поставки люков закрыты.',
+      summaryLine: 'Опережение плана · люки закрыты',
       hasOpenRisks: false,
       stages: [
         { id: 'prep', name: 'Подготовка', planPercent: 100, factPercent: 100 },
@@ -65,7 +65,7 @@ export const MOCK_CONSTRUCTION_SITES: readonly ConstructionSite[] = [
     executive: {
       planPercent: 55,
       factPercent: 38,
-      summaryLine: 'Критическое отклонение по срокам и объёму работ на покрытии.',
+      summaryLine: 'Покрытие: критическое отставание',
       hasOpenRisks: true,
       stages: [
         { id: 'prep', name: 'Подготовка', planPercent: 100, factPercent: 95 },
@@ -81,7 +81,7 @@ export const MOCK_CONSTRUCTION_SITES: readonly ConstructionSite[] = [
     executive: {
       planPercent: 49,
       factPercent: 44,
-      summaryLine: 'Риск по срокам на этапе прокладки инженерных сетей.',
+      summaryLine: 'Инжсети: риск по срокам',
       hasOpenRisks: true,
       stages: [
         { id: 'prep', name: 'Подготовка', planPercent: 100, factPercent: 100 },
@@ -100,7 +100,7 @@ export const MOCK_CONSTRUCTION_SITES: readonly ConstructionSite[] = [
     executive: {
       planPercent: 41,
       factPercent: 41,
-      summaryLine: 'План и факт совпадают; отклонений по ключевым этапам нет.',
+      summaryLine: 'План = факт',
       hasOpenRisks: false,
       stages: [
         { id: 'prep', name: 'Подготовка', planPercent: 100, factPercent: 100 },
@@ -116,7 +116,7 @@ export const MOCK_CONSTRUCTION_SITES: readonly ConstructionSite[] = [
     executive: {
       planPercent: 68,
       factPercent: 51,
-      summaryLine: 'Сильное отставание по покрытию и дефицит бригад на участке.',
+      summaryLine: 'Покрытие · дефицит бригад',
       hasOpenRisks: true,
       stages: [
         { id: 'prep', name: 'Подготовка', planPercent: 100, factPercent: 100 },

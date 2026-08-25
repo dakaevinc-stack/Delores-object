@@ -11,12 +11,14 @@ export type SitePageZoneId = 'manager' | 'brigadier' | 'supply' | 'dispatcher'
 
 /**
  * Должность на входе.
- * `deputy` = те же зоны и права, что у руководителя.
+ * `deputy` = те же зоны и права, что у руководителя / гендиректора.
+ * `pto` = документы проекта и сводка (ПТО / инженеры).
  * `driver` = только кабинет рейсов, зоны объекта пустые.
  */
 export type SiteDutyRole =
   | 'manager'
   | 'deputy'
+  | 'pto'
   | 'brigadier'
   | 'supply'
   | 'dispatcher'
@@ -85,6 +87,7 @@ const FULL_ACCESS = {
 export const SITE_DUTY_CAPABILITIES = {
   manager: FULL_ACCESS,
   deputy: FULL_ACCESS,
+  pto: FULL_ACCESS,
   brigadier: {
     seeAllZones: false,
     orderMaterial: true,
@@ -120,18 +123,32 @@ export const SITE_DUTY_CAPABILITIES = {
  * Порядок внутри массива = порядок на экране.
  */
 export const ZONES_BY_DUTY: Record<SiteDutyRole, readonly SitePageZoneId[]> = {
+  /** Гендиректор, нач. участка, нач. отдела — весь объект. */
   manager: SITE_PAGE_ZONE_ORDER,
+  /** Замгендиректора — весь объект. */
   deputy: SITE_PAGE_ZONE_ORDER,
+  /** ПТО / инженеры — весь объект (как руководство). */
+  pto: SITE_PAGE_ZONE_ORDER,
   brigadier: ['brigadier'],
   supply: ['supply'],
   dispatcher: ['dispatcher'],
-  /** Водитель работает в `/driver`, не на карточке объекта. */
+  /** Водитель / машинист / тракторист / механизатор — кабинет `/driver`. */
   driver: [],
 }
 
 /** Зоны для должности — единая точка для фильтра страницы объекта. */
 export function zonesForDuty(duty: SiteDutyRole): readonly SitePageZoneId[] {
   return ZONES_BY_DUTY[duty]
+}
+
+/** Главная: портфельные KPI — руководству и ПТО. */
+export function homeShowsPortfolioKpi(duty: SiteDutyRole): boolean {
+  return duty === 'manager' || duty === 'deputy' || duty === 'pto'
+}
+
+/** Главная: хабы парка и приёмки — руководству и ПТО. */
+export function homeShowsHubs(duty: SiteDutyRole): boolean {
+  return duty === 'manager' || duty === 'deputy' || duty === 'pto'
 }
 
 /** @deprecated используйте ZONES_BY_DUTY / zonesForDuty */

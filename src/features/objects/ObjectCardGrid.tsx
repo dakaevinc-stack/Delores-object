@@ -11,10 +11,10 @@ export function ObjectCardGrid({ sites }: Props) {
   if (sites.length === 0) {
     return (
       <div className={styles.empty} role="status">
-        <p className={styles.emptyTitle}>Объекты не найдены</p>
-        <p className={styles.emptyText}>
-          Измените поиск или фильтр по статусу.
-        </p>
+        <div className={styles.emptyInner}>
+          <p className={styles.emptyTitle}>Нет объектов</p>
+          <p className={styles.emptyText}>Сбросьте поиск или фильтр</p>
+        </div>
       </div>
     )
   }

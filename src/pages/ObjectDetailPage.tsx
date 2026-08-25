@@ -58,14 +58,15 @@ import { TodayDeliveriesBoard } from '../features/deliveries/TodayDeliveriesBoar
 import { getMaterialBudgetForSite } from '../data/materialBudgets'
 import { loadWorkDayPlan } from '../lib/workDayPlanRepository'
 import {
-  SITE_PAGE_PREVIEW_DUTY,
   zonesForDuty,
   type SitePageZoneId,
 } from '../domain/sitePageZone'
+import { useLocalSession } from '../lib/useLocalSession'
 import styles from './ObjectDetailPage.module.css'
 
 export function ObjectDetailPage() {
   const { siteId } = useParams()
+  const session = useLocalSession()
   const sites = useAllSites()
   const site = sites.find((s) => s.id === siteId)
 
@@ -330,8 +331,8 @@ export function ObjectDetailPage() {
     return computeSiteLiveKpis(workPlan, startIso, endIso, todayIsoMsk())
   })()
 
-  // Пока нет входа — полный экран руководителя. После auth: zonesForDuty(session.duty).
-  const visibleZones = zonesForDuty(SITE_PAGE_PREVIEW_DUTY)
+  // Зоны по должности из сессии; без сессии RequireAuth уже уводит на /.
+  const visibleZones = zonesForDuty(session?.duty ?? 'manager')
   const showObjectSummary = visibleZones.includes('manager')
 
   const openProcurementComposer = () => {

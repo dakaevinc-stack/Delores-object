@@ -20,6 +20,7 @@ describe('sitePageZone', () => {
   it('руководитель и зам видят все зоны, остальные — только свою', () => {
     expect(zonesForDuty('manager')).toEqual(SITE_PAGE_ZONE_ORDER)
     expect(zonesForDuty('deputy')).toEqual(SITE_PAGE_ZONE_ORDER)
+    expect(ZONES_BY_DUTY.pto).toEqual(SITE_PAGE_ZONE_ORDER)
     expect(ZONES_BY_DUTY.brigadier).toEqual(['brigadier'])
     expect(ZONES_BY_DUTY.supply).toEqual(['supply'])
     expect(ZONES_BY_DUTY.dispatcher).toEqual(['dispatcher'])

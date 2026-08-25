@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { RequireAuth, RequireFleetAccess } from './RequireAuth'
 
 const HomePage = lazy(() =>
   import('../pages/HomePage').then((m) => ({ default: m.HomePage })),
@@ -36,12 +37,60 @@ export function App() {
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/spectehnika" element={<FleetHubPage />} />
-        <Route path="/spectehnika/unit/:vehicleId" element={<FleetVehiclePage />} />
-        <Route path="/spectehnika/:categoryId" element={<FleetCategoryPage />} />
-        <Route path="/objects/new" element={<AddObjectPage />} />
-        <Route path="/objects/:siteId" element={<ObjectDetailPage />} />
-        <Route path="/driver" element={<DriverCabinetPage />} />
+        <Route
+          path="/spectehnika"
+          element={
+            <RequireAuth>
+              <RequireFleetAccess>
+                <FleetHubPage />
+              </RequireFleetAccess>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/spectehnika/unit/:vehicleId"
+          element={
+            <RequireAuth>
+              <RequireFleetAccess>
+                <FleetVehiclePage />
+              </RequireFleetAccess>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/spectehnika/:categoryId"
+          element={
+            <RequireAuth>
+              <RequireFleetAccess>
+                <FleetCategoryPage />
+              </RequireFleetAccess>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/objects/new"
+          element={
+            <RequireAuth>
+              <AddObjectPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/objects/:siteId"
+          element={
+            <RequireAuth>
+              <ObjectDetailPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/driver"
+          element={
+            <RequireAuth>
+              <DriverCabinetPage />
+            </RequireAuth>
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

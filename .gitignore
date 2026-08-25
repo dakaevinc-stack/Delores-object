@@ -10,6 +10,11 @@ lerna-debug.log*
 node_modules
 .env
 
+# Учётки сотрудников (пароли) — только локально
+docs/STAFF-CREDENTIALS.local.md
+docs/Учётные_записи_Deloresh.xlsx
+docs/*учётные*
+
 # JSON заявок и отчётов (server/site-forms.mjs)
 data/site-forms/
 

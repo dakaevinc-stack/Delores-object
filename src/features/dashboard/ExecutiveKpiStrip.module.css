@@ -29,6 +29,10 @@
    чтобы лейблы, цифры, подписи и футеры стояли по одним линиям.
    ============================================================ */
 
+.grid > li {
+  min-width: 0;
+}
+
 .item {
   --kpi-pad: 22px;
   --kpi-head: 22px;
@@ -39,6 +43,9 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  height: 100%;
+  margin: 0;
   border-radius: 18px;
   border: 1px solid var(--border);
   background:
@@ -51,9 +58,16 @@
     0 16px 40px rgba(15, 17, 20, 0.06);
   overflow: hidden;
   min-height: 196px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
   transition:
     transform 0.25s cubic-bezier(0.22, 0.61, 0.36, 1),
-    box-shadow 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
+    box-shadow 0.25s cubic-bezier(0.22, 0.61, 0.36, 1),
+    border-color 0.2s ease;
 }
 
 .item:hover {
@@ -62,6 +76,26 @@
     0 1px 0 rgba(255, 255, 255, 0.7) inset,
     0 1px 2px rgba(15, 17, 20, 0.05),
     0 22px 52px rgba(15, 17, 20, 0.09);
+}
+
+.item:focus-visible {
+  outline: 2px solid var(--kpi-accent);
+  outline-offset: 3px;
+}
+
+.itemActive {
+  border-color: var(--kpi-accent);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 0 0 2px color-mix(in srgb, var(--kpi-accent) 28%, transparent),
+    0 18px 44px rgba(15, 17, 20, 0.08);
+}
+
+.itemActive:hover {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 0 0 2px color-mix(in srgb, var(--kpi-accent) 34%, transparent),
+    0 22px 52px rgba(15, 17, 20, 0.1);
 }
 
 .stripe {
@@ -253,6 +287,24 @@
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.10) inset,
     0 22px 56px rgba(15, 28, 54, 0.34);
+}
+
+.itemHero:focus-visible {
+  outline-color: rgba(243, 245, 249, 0.85);
+}
+
+.itemHero.itemActive {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 0 0 2px rgba(238, 45, 58, 0.45),
+    0 18px 48px rgba(15, 28, 54, 0.32);
+}
+
+.itemHero.itemActive:hover {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 0 0 2px rgba(238, 45, 58, 0.55),
+    0 22px 56px rgba(15, 28, 54, 0.36);
 }
 
 .itemHero .stripe {

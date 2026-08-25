@@ -1,43 +1,35 @@
 import { Link } from 'react-router-dom'
-import card from './ObjectCard.module.css'
-import styles from './AddObjectCard.module.css'
+import styles from './ObjectCard.module.css'
 
+/** Та же стеклянная карточка: слоты как у объектов, брендовые акценты. */
 export function AddObjectCard() {
   return (
     <Link
-      className={`${card.card} ${styles.addRoot}`}
+      className={`${styles.card} ${styles.cardAdd}`}
       to="/objects/new"
-      aria-label="Добавить новый объект в портфель"
+      aria-label="Добавить объект"
     >
-      <div className={`${card.top} ${styles.addTop}`}>
-        <div className={card.leftMeta}>
-          <span className={styles.addMark} aria-hidden>
-            <svg
-              width="13"
-              height="13"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M12 5v14M5 12h14"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </span>
-          <span className={`${card.status} ${styles.addEyebrow}`}>Новая площадка</span>
+      <span className={styles.face}>
+        <span className={styles.specular} aria-hidden />
+        <span className={styles.caustic} aria-hidden />
+
+        <div className={styles.head}>
+          <span className={`${styles.dot} ${styles.dotAdd}`} aria-hidden />
+          <span className={`${styles.status} ${styles.statusAdd}`}>Новый</span>
+          <span className={`${styles.pct} ${styles.pctAdd}`}>+</span>
         </div>
-      </div>
 
-      <h2 className={`${card.title} ${styles.addTitle}`}>Добавить объект</h2>
+        <h2 className={styles.title}>Добавить объект</h2>
 
-      <div className={styles.rule} aria-hidden />
+        <div className={styles.track} aria-hidden>
+          <span className={styles.trackFact} style={{ width: '42%' }} />
+        </div>
 
-      <p className={styles.addSummary}>
-        Заведите карточку нового объекта, когда он появится в портфеле.
-      </p>
+        <div className={styles.foot}>
+          <p className={styles.meta}>Срок не задан</p>
+          <p className={`${styles.delta} ${styles.deltaAdd}`}>План не задан</p>
+        </div>
+      </span>
     </Link>
   )
 }
