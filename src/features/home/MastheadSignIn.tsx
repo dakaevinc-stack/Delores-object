@@ -11,6 +11,27 @@ import {
 import { LoginIntroOverlay, preloadLoginIntro } from './LoginIntroOverlay'
 import styles from './MastheadSignIn.module.css'
 
+const REMEMBERED_LOGIN_KEY = 'deloresh-remembered-login:v1'
+
+function loadRememberedLogin(): string {
+  try {
+    if (typeof localStorage === 'undefined') return ''
+    return (localStorage.getItem(REMEMBERED_LOGIN_KEY) ?? '').trim()
+  } catch {
+    return ''
+  }
+}
+
+function saveRememberedLogin(login: string): void {
+  try {
+    if (typeof localStorage === 'undefined') return
+    const t = login.trim()
+    if (t) localStorage.setItem(REMEMBERED_LOGIN_KEY, t)
+  } catch {
+    /* private mode */
+  }
+}
+
 type Props = {
   className?: string
   /** После успешного входа / выхода (например, чтобы показать контент главной). */
@@ -67,7 +88,7 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
   const loginId = `${uid}-login`
   const passwordId = `${uid}-password`
   const session = useLocalSession()
-  const [login, setLogin] = useState('')
+  const [login, setLogin] = useState(() => loadRememberedLogin())
   const [password, setPassword] = useState('')
   const [reveal, setReveal] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -75,7 +96,11 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
   const [showIntro, setShowIntro] = useState(false)
 
   useEffect(() => {
-    if (!session) preloadLoginIntro()
+    if (!session) {
+      preloadLoginIntro()
+      const remembered = loadRememberedLogin()
+      if (remembered) setLogin(remembered)
+    }
   }, [session])
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -98,8 +123,9 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
         setBusy(false)
         return
       }
+      saveRememberedLogin(user)
       setPassword('')
-      setLogin('')
+      setLogin(user)
       setBusy(false)
       setShowIntro(true)
       onSessionChange?.(result.session)
