@@ -14,7 +14,7 @@ const FAILSAFE_MS = 12_000
 
 /**
  * Полноэкранная брендовая анимация после успешного «Войти».
- * Подгоняется под любое устройство через object-fit: cover.
+ * Весь кадр целиком (contain) — телефон, планшет, ноут, монитор.
  */
 export function LoginIntroOverlay({ src = DEFAULT_SRC, onDone }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)

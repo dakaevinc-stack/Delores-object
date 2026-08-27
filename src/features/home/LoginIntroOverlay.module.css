@@ -1,16 +1,25 @@
-/* Полноэкранный вход: ролик кроет весь экран устройства, без полос. */
+/* Полноэкранный вход: весь кадр ролика виден на любом устройстве.
+   object-fit: contain — без обрезки центра на телефоне;
+   поля по краям — фирменный navy. */
 
 .screen {
   position: fixed;
   inset: 0;
   z-index: 10000;
-  display: grid;
-  place-items: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   margin: 0;
-  padding: 0;
+  padding:
+    max(0px, env(safe-area-inset-top))
+    max(0px, env(safe-area-inset-right))
+    max(0px, env(safe-area-inset-bottom))
+    max(0px, env(safe-area-inset-left));
   background: #0a1224;
-  /* safe-area: видео всё равно cover, но кликабельная зона полная */
-  width: 100vw;
+  width: 100%;
+  height: 100%;
+  width: 100dvw;
   height: 100dvh;
   min-height: 100vh;
   overflow: hidden;
@@ -26,29 +35,38 @@
 }
 
 .video {
-  grid-area: 1 / 1;
+  display: block;
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   margin: 0;
   padding: 0;
   border: 0;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center center;
-  background: #0a1224;
+  background: transparent;
   pointer-events: none;
 }
 
+/* Широкие мониторы / TV: не раздувать ролик сверх естественной плотности. */
+@media (min-width: 1400px) and (min-aspect-ratio: 16/9) {
+  .video {
+    width: min(100%, 1600px);
+    height: min(100%, calc(1600px * 9 / 16));
+  }
+}
+
 .skip {
-  grid-area: 1 / 1;
-  place-self: end end;
+  position: absolute;
   z-index: 1;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
   margin: 0;
-  margin-right: max(16px, env(safe-area-inset-right));
-  margin-bottom: max(18px, env(safe-area-inset-bottom));
   padding: 10px 16px;
   border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 999px;
-  background: rgba(10, 18, 36, 0.45);
+  background: rgba(10, 18, 36, 0.55);
   color: rgba(255, 255, 255, 0.92);
   font-family: var(--display, system-ui, sans-serif);
   font-size: 13px;
@@ -65,7 +83,7 @@
 
 .skip:hover,
 .skip:focus-visible {
-  background: rgba(10, 18, 36, 0.7);
+  background: rgba(10, 18, 36, 0.78);
   border-color: rgba(255, 255, 255, 0.5);
   outline: none;
 }
