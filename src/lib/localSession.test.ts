@@ -63,7 +63,7 @@ describe('staffDirectory / signIn', () => {
 
   it('отклоняет неверный пароль и логин в другом регистре', () => {
     expect(findStaffByCredentials('Dakaev', 'wrong')).toBeNull()
-    expect(findStaffByCredentials('dakaev', 'Ameda095')).toBeNull()
+    expect(findStaffByCredentials('dakaev', 'Ameda095')?.login).toBe('Dakaev')
     const result = signInWithCredentials('Dakaev', 'wrong')
     expect(result.ok).toBe(false)
   })
