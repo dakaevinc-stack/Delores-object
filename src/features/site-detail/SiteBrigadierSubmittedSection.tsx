@@ -282,7 +282,7 @@ export function SiteBrigadierSubmittedReportsSection({
             Журнал
           </p>
           <h2 className={styles.title} id="brigadier-submitted-heading">
-            Фото и отчёты
+            Фото / Отчёты
           </h2>
           <p className={styles.lead}>
             {metaBits.length > 0
