@@ -14,8 +14,8 @@ type Props = {
 const FAILSAFE_MS = 12_000
 
 /**
- * Интро как splash WB: вертикальный ролик на весь экран,
- * без blur/рамок, слоган целиком.
+ * Интро без центральной рамки: оригинальный кадр contain
+ * на фоне студии на весь экран.
  */
 export function LoginIntroOverlay({ onDone }: Props) {
   const stageRef = useRef<HTMLDivElement>(null)

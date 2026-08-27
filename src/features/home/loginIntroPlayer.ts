@@ -1,5 +1,5 @@
-const INTRO_SRC = '/login-intro.mp4?v=wb-fullscreen'
-const INTRO_POSTER = '/login-intro-poster.jpg?v=wb-fullscreen'
+const INTRO_SRC = '/login-intro.mp4?v=no-frame-contain'
+const INTRO_POSTER = '/login-intro-poster.jpg?v=no-frame-contain'
 
 let player: HTMLVideoElement | null = null
 

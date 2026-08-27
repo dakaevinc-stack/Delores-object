@@ -1,4 +1,4 @@
-/* Как splash WB: ролик edge-to-edge, без blur и без рамок. */
+/* Интро без «рамки»: оригинал по центру, фон студии на весь экран. */
 
 .screen {
   position: fixed;
@@ -7,7 +7,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  background: #c5c8cb;
+  background: #c7cacd;
   width: 100dvw;
   height: 100dvh;
   min-height: 100vh;
@@ -23,34 +23,29 @@
   pointer-events: none;
 }
 
-.stage {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  background: #c5c8cb;
-}
-
+.stage,
 .frame {
   position: absolute;
   inset: 0;
-  z-index: 1;
   margin: 0;
   padding: 0;
   overflow: hidden;
+  background: #c7cacd;
 }
 
 .video {
+  position: absolute;
+  inset: 0;
   display: block;
   margin: 0;
   padding: 0;
   border: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* Весь бренд-кадр целиком — без кропа и без композитной рамки */
+  object-fit: contain;
   object-position: center center;
-  background: #c5c8cb;
+  background: transparent;
   pointer-events: none;
 }
 
