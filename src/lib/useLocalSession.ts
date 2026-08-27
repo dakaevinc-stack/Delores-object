@@ -7,6 +7,7 @@ import {
   type LocalSession,
 } from './localSession'
 import { findStaffByCredentials } from '../domain/staffDirectory'
+import { saveRememberedLogin } from './rememberedLogin'
 
 const SESSION_CHANGE_EVENT = 'deloresh-local-session-change'
 
@@ -83,6 +84,7 @@ export function signInWithCredentials(login: string, password: string): SignInRe
     duty: member.duty,
     dutyLabel: member.dutyLabel,
   })
+  saveRememberedLogin(member.login)
   emitSessionChange()
   return { ok: true, session }
 }

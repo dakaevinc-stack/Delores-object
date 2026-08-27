@@ -10,28 +10,11 @@ import {
 } from '../../lib/useLocalSession'
 import { requestLoginIntro, clearLoginIntroPending } from './loginIntroPending'
 import { preloadLoginIntro } from './LoginIntroOverlay'
+import {
+  loadRememberedLogin,
+  saveRememberedLogin,
+} from '../../lib/rememberedLogin'
 import styles from './MastheadSignIn.module.css'
-
-const REMEMBERED_LOGIN_KEY = 'deloresh-remembered-login:v1'
-
-function loadRememberedLogin(): string {
-  try {
-    if (typeof localStorage === 'undefined') return ''
-    return (localStorage.getItem(REMEMBERED_LOGIN_KEY) ?? '').trim()
-  } catch {
-    return ''
-  }
-}
-
-function saveRememberedLogin(login: string): void {
-  try {
-    if (typeof localStorage === 'undefined') return
-    const t = login.trim()
-    if (t) localStorage.setItem(REMEMBERED_LOGIN_KEY, t)
-  } catch {
-    /* private mode */
-  }
-}
 
 type Props = {
   className?: string
@@ -114,6 +97,8 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
       setMessage('Укажите логин и пароль')
       return
     }
+    // Сразу, ещё до ответа — чтобы после «Выйти» поле уже было заполнено.
+    saveRememberedLogin(user)
     setBusy(true)
     setMessage(null)
     window.setTimeout(() => {
@@ -125,16 +110,20 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
         setBusy(false)
         return
       }
-      saveRememberedLogin(user)
+      saveRememberedLogin(result.session.login)
       setPassword('')
-      setLogin(user)
+      setLogin(result.session.login)
       setBusy(false)
       onSessionChange?.(result.session)
     }, 180)
   }
 
   function onSignOut() {
+    if (session?.login) saveRememberedLogin(session.login)
+    const keep = session?.login || loadRememberedLogin()
     signOutLocalSession()
+    setLogin(keep)
+    setPassword('')
     setMessage(null)
     onSessionChange?.(null)
   }
@@ -186,6 +175,9 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
           onChange={(e) => {
             setLogin(e.target.value)
             if (message) setMessage(null)
+          }}
+          onBlur={() => {
+            if (login.trim()) saveRememberedLogin(login)
           }}
           disabled={busy}
         />

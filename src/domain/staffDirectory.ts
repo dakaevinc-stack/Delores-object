@@ -220,9 +220,12 @@ export function findStaffByCredentials(
 ): StaffMember | null {
   const user = login.trim()
   if (!user || !password) return null
+  const userLower = user.toLocaleLowerCase('en-US')
   return (
     STAFF_DIRECTORY.find(
-      (member) => member.login === user && member.password === password,
+      (member) =>
+        member.login.toLocaleLowerCase('en-US') === userLower &&
+        member.password === password,
     ) ?? null
   )
 }
