@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import styles from './LoginIntroOverlay.module.css'
 import {
   getLoginIntroPlayer,
-  loginIntroPoster,
   preloadLoginIntroPlayer,
   stopLoginIntroPlayback,
 } from './loginIntroPlayer'
@@ -15,8 +14,8 @@ type Props = {
 const FAILSAFE_MS = 12_000
 
 /**
- * Интро на весь экран: вертикальный мастер 9:16
- * (кроп по логотипу + слогану, текст не режется).
+ * Интро как splash WB: вертикальный ролик на весь экран,
+ * без blur/рамок, слоган целиком.
  */
 export function LoginIntroOverlay({ onDone }: Props) {
   const stageRef = useRef<HTMLDivElement>(null)
@@ -111,11 +110,6 @@ export function LoginIntroOverlay({ onDone }: Props) {
       onClick={finish}
     >
       <div className={styles.stage}>
-        <div
-          className={styles.backdrop}
-          style={{ backgroundImage: `url(${loginIntroPoster()})` }}
-          aria-hidden
-        />
         <div ref={stageRef} className={styles.frame} />
       </div>
       <button
