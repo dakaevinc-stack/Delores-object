@@ -7,12 +7,11 @@ import type {
   FleetVehicle,
 } from '../../domain/fleet'
 import { emitFleetChange } from './fleetEvents'
+import { putFleetOverridesRemote } from '../../lib/siteFormsApi'
 
 /**
  * Локальные правки по единице парка, которые менеджер вносит в карточке.
- * Хранятся в `localStorage` до появления бэка — это позволяет фиксировать
- * реальные суммы (ТО, страховка, ремонты, пропуска) прямо сейчас и не терять
- * их между перезагрузками.
+ * Кэш — localStorage; карта целиком уходит на сервер (`/api/fleet/overrides`).
  */
 export type VehicleOverrides = {
   insurance?: Partial<FleetInsurance>
@@ -26,6 +25,7 @@ export type VehicleOverrides = {
 }
 
 const KEY = (id: string) => `fleet:overrides:${id}`
+const KEY_PREFIX = 'fleet:overrides:'
 
 function safeStorage(): Storage | null {
   try {
@@ -34,6 +34,16 @@ function safeStorage(): Storage | null {
   } catch {
     return null
   }
+}
+
+function isEmptyOverrides(ov: VehicleOverrides): boolean {
+  return (
+    (!ov.insurance || Object.keys(ov.insurance).length === 0) &&
+    (!ov.maintenance || Object.keys(ov.maintenance).length === 0) &&
+    (!ov.specs || Object.keys(ov.specs).length === 0) &&
+    !ov.repairs &&
+    !ov.passes
+  )
 }
 
 export function loadOverrides(id: string): VehicleOverrides {
@@ -49,17 +59,64 @@ export function loadOverrides(id: string): VehicleOverrides {
   }
 }
 
-export function saveOverrides(id: string, ov: VehicleOverrides): void {
+export function loadAllOverrides(): Record<string, VehicleOverrides> {
+  const ls = safeStorage()
+  if (!ls) return {}
+  const out: Record<string, VehicleOverrides> = {}
+  try {
+    for (let i = 0; i < ls.length; i += 1) {
+      const k = ls.key(i)
+      if (!k || !k.startsWith(KEY_PREFIX)) continue
+      const id = k.slice(KEY_PREFIX.length)
+      if (!id) continue
+      const ov = loadOverrides(id)
+      if (!isEmptyOverrides(ov)) out[id] = ov
+    }
+  } catch {
+    return out
+  }
+  return out
+}
+
+function persistMapLocal(map: Record<string, VehicleOverrides>): void {
+  const ls = safeStorage()
+  if (!ls) return
+  try {
+    const toRemove: string[] = []
+    for (let i = 0; i < ls.length; i += 1) {
+      const k = ls.key(i)
+      if (k && k.startsWith(KEY_PREFIX)) toRemove.push(k)
+    }
+    for (const k of toRemove) ls.removeItem(k)
+    for (const [id, ov] of Object.entries(map)) {
+      if (isEmptyOverrides(ov)) continue
+      ls.setItem(KEY(id), JSON.stringify(ov))
+    }
+  } catch {
+    /* storage недоступен */
+  }
+}
+
+export function replaceAllOverrides(
+  map: Record<string, VehicleOverrides>,
+  opts?: { syncRemote?: boolean },
+): void {
+  persistMapLocal(map)
+  emitFleetChange()
+  if (opts?.syncRemote !== false) {
+    void putFleetOverridesRemote(map)
+  }
+}
+
+export function saveOverrides(
+  id: string,
+  ov: VehicleOverrides,
+  opts?: { syncRemote?: boolean },
+): void {
   const ls = safeStorage()
   try {
     if (ls) {
-      if (
-        (!ov.insurance || Object.keys(ov.insurance).length === 0) &&
-        (!ov.maintenance || Object.keys(ov.maintenance).length === 0) &&
-        (!ov.specs || Object.keys(ov.specs).length === 0) &&
-        !ov.repairs &&
-        !ov.passes
-      ) {
+      if (isEmptyOverrides(ov)) {
         ls.removeItem(KEY(id))
       } else {
         ls.setItem(KEY(id), JSON.stringify(ov))
@@ -69,9 +126,12 @@ export function saveOverrides(id: string, ov: VehicleOverrides): void {
     /* storage недоступен — молча игнорируем, UI продолжает работать в памяти */
   }
   emitFleetChange()
+  if (opts?.syncRemote !== false) {
+    void putFleetOverridesRemote(loadAllOverrides())
+  }
 }
 
-export function clearOverrides(id: string): void {
+export function clearOverrides(id: string, opts?: { syncRemote?: boolean }): void {
   const ls = safeStorage()
   try {
     if (ls) ls.removeItem(KEY(id))
@@ -79,6 +139,9 @@ export function clearOverrides(id: string): void {
     /* noop */
   }
   emitFleetChange()
+  if (opts?.syncRemote !== false) {
+    void putFleetOverridesRemote(loadAllOverrides())
+  }
 }
 
 /** Накладываем правки на базовую запись из mock/бэка. */
@@ -96,10 +159,5 @@ export function mergeOverrides(base: FleetVehicle, ov: VehicleOverrides): FleetV
 }
 
 export function hasOverrides(ov: VehicleOverrides): boolean {
-  const ins = ov.insurance && Object.keys(ov.insurance).length > 0
-  const mnt = ov.maintenance && Object.keys(ov.maintenance).length > 0
-  const spc = ov.specs && Object.keys(ov.specs).length > 0
-  const rep = ov.repairs !== undefined
-  const pas = ov.passes !== undefined
-  return Boolean(ins || mnt || spc || rep || pas)
+  return !isEmptyOverrides(ov)
 }

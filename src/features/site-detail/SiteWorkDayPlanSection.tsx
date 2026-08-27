@@ -28,6 +28,7 @@ import {
 import type { WorkPlan } from '../../domain/workPlan'
 import {
   loadWorkDayPlan,
+  syncWorkDayPlanFromServer,
   removeAssignment,
   upsertAssignment,
 } from '../../lib/workDayPlanRepository'
@@ -128,8 +129,18 @@ export function SiteWorkDayPlanSection({
   }
 
   useEffect(() => {
+    let cancelled = false
     setAssignments(loadWorkDayPlan(siteId).assignments)
-  }, [siteId, 'v12'])
+    void (async () => {
+      const synced = await syncWorkDayPlanFromServer(siteId)
+      if (cancelled || !synced) return
+      replaceAssignments(synced.assignments)
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- тянем план при смене объекта
+  }, [siteId])
 
   const patchAssignment = (
     assignmentId: string,
@@ -596,30 +607,39 @@ function TaskDetailModal({
     }
   }, [onClose])
 
-  const readFiles = (files: FileList | null): WorkDayMedia[] => {
+  const readFiles = async (files: FileList | null): Promise<WorkDayMedia[]> => {
     if (!files?.length) return []
     const next: WorkDayMedia[] = []
     for (let i = 0; i < files.length; i += 1) {
       const file = files.item(i)
       if (!file) continue
       const kind: 'photo' | 'video' = file.type.startsWith('video/') ? 'video' : 'photo'
+      const previewUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result ?? ''))
+        reader.onerror = () => reject(reader.error)
+        reader.readAsDataURL(file)
+      })
+      if (!previewUrl) continue
       next.push({
         id: newId('media'),
         kind,
         name: file.name,
-        previewUrl: URL.createObjectURL(file),
+        previewUrl,
       })
     }
     return next
   }
 
   const addFactFiles = (stageId: string, files: FileList | null) => {
-    const next = readFiles(files)
-    if (!next.length) return
-    setMediaByStage((prev) => ({
-      ...prev,
-      [stageId]: [...(prev[stageId] ?? []), ...next],
-    }))
+    void (async () => {
+      const next = await readFiles(files)
+      if (!next.length) return
+      setMediaByStage((prev) => ({
+        ...prev,
+        [stageId]: [...(prev[stageId] ?? []), ...next],
+      }))
+    })()
   }
 
   const focusNextOpen = (completedStageId: string) => {
@@ -843,9 +863,13 @@ function TaskDetailModal({
                       multiple
                       className={styles.hiddenFile}
                       onChange={(e) => {
-                        const next = readFiles(e.target.files)
-                        if (next.length) onAttachBrief(assignment.id, stage.id, next)
-                        e.target.value = ''
+                        const input = e.target
+                        const files = input.files
+                        void (async () => {
+                          const next = await readFiles(files)
+                          if (next.length) onAttachBrief(assignment.id, stage.id, next)
+                          input.value = ''
+                        })()
                       }}
                     />
                     <button
@@ -1034,17 +1058,24 @@ function AssignModal({
     setLines((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)))
   }
 
-  const readBriefFiles = (files: FileList | null): WorkDayMedia[] => {
+  const readBriefFiles = async (files: FileList | null): Promise<WorkDayMedia[]> => {
     if (!files?.length) return []
     const next: WorkDayMedia[] = []
     for (let k = 0; k < files.length; k += 1) {
       const file = files.item(k)
       if (!file) continue
+      const previewUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result ?? ''))
+        reader.onerror = () => reject(reader.error)
+        reader.readAsDataURL(file)
+      })
+      if (!previewUrl) continue
       next.push({
         id: newId('media'),
         kind: file.type.startsWith('video/') ? 'video' : 'photo',
         name: file.name,
-        previewUrl: URL.createObjectURL(file),
+        previewUrl,
       })
     }
     return next
@@ -1188,13 +1219,17 @@ function AssignModal({
               multiple
               className={styles.hiddenFile}
               onChange={(e) => {
-                const next = readBriefFiles(e.target.files)
-                if (!next.length) return
-                setBriefByIndex((prev) => ({
-                  ...prev,
-                  [i]: [...(prev[i] ?? []), ...next],
-                }))
-                e.target.value = ''
+                const input = e.target
+                const files = input.files
+                void (async () => {
+                  const next = await readBriefFiles(files)
+                  if (!next.length) return
+                  setBriefByIndex((prev) => ({
+                    ...prev,
+                    [i]: [...(prev[i] ?? []), ...next],
+                  }))
+                  input.value = ''
+                })()
               }}
             />
             <button

@@ -5,8 +5,10 @@ import './index.css'
 import { App } from './app/App.tsx'
 import { ErrorBoundary } from './app/ErrorBoundary.tsx'
 import { installDeloreshBackupBridge } from './lib/deloreshLocalStorageBackup.ts'
+import { bootstrapCrossDeviceSync } from './lib/crossDeviceSync.ts'
 
 installDeloreshBackupBridge()
+void bootstrapCrossDeviceSync()
 
 if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
   window.history.scrollRestoration = 'manual'

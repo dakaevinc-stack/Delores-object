@@ -146,6 +146,49 @@ async function writeJsonFile(filePath, obj) {
   await fs.writeFile(filePath, JSON.stringify(obj, null, 2), 'utf8')
 }
 
+/** @param {string} filePath */
+async function readJsonObject(filePath) {
+  try {
+    const raw = await fs.readFile(filePath, 'utf8')
+    const j = JSON.parse(raw)
+    return j && typeof j === 'object' && !Array.isArray(j) ? j : null
+  } catch (e) {
+    if (/** @type {NodeJS.ErrnoException} */ (e).code === 'ENOENT') return null
+    throw e
+  }
+}
+
+/** @param {unknown} x */
+function isFleetRegistry(x) {
+  if (!x || typeof x !== 'object' || Array.isArray(x)) return false
+  const r = /** @type {Record<string, unknown>} */ (x)
+  return (
+    Array.isArray(r.added) &&
+    Array.isArray(r.removedIds) &&
+    Array.isArray(r.customCategories)
+  )
+}
+
+/** @param {unknown} x */
+function isUserSiteRow(x) {
+  if (!x || typeof x !== 'object') return false
+  const r = /** @type {Record<string, unknown>} */ (x)
+  return (
+    typeof r.id === 'string' &&
+    typeof r.name === 'string' &&
+    typeof r.status === 'string' &&
+    r.executive != null &&
+    typeof r.executive === 'object'
+  )
+}
+
+/** @param {unknown} x */
+function isWorkDayPlanBundle(x, siteId) {
+  if (!x || typeof x !== 'object' || Array.isArray(x)) return false
+  const r = /** @type {Record<string, unknown>} */ (x)
+  return r.siteId === siteId && Array.isArray(r.assignments)
+}
+
 /** @param {unknown} x */
 function isDeliveryPointRow(x) {
   if (!x || typeof x !== 'object') return false
@@ -542,6 +585,115 @@ const server = http.createServer(async (req, res) => {
       await writeJsonArray(file, next)
       sendJson(res, 200, { ok: true })
       return
+    }
+
+    if (parts[0] === 'api' && parts[1] === 'fleet' && parts[2] === 'registry' && parts.length === 3) {
+      const file = path.join(DATA_ROOT, 'fleet-registry.json')
+      if (req.method === 'GET') {
+        const obj = await readJsonObject(file)
+        sendJson(
+          res,
+          200,
+          isFleetRegistry(obj)
+            ? obj
+            : { added: [], removedIds: [], customCategories: [] },
+        )
+        return
+      }
+      if (req.method === 'PUT') {
+        if (!checkWrite(req, res)) return
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        if (!isFleetRegistry(body)) {
+          sendJson(res, 400, { error: 'invalid_fleet_registry' })
+          return
+        }
+        await writeJsonFile(file, {
+          added: body.added,
+          removedIds: body.removedIds,
+          customCategories: body.customCategories,
+        })
+        sendJson(res, 200, { ok: true })
+        return
+      }
+    }
+
+    if (parts[0] === 'api' && parts[1] === 'fleet' && parts[2] === 'overrides' && parts.length === 3) {
+      const file = path.join(DATA_ROOT, 'fleet-overrides.json')
+      if (req.method === 'GET') {
+        const obj = await readJsonObject(file)
+        sendJson(res, 200, obj && typeof obj === 'object' ? obj : {})
+        return
+      }
+      if (req.method === 'PUT') {
+        if (!checkWrite(req, res)) return
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        if (!body || typeof body !== 'object' || Array.isArray(body)) {
+          sendJson(res, 400, { error: 'invalid_fleet_overrides' })
+          return
+        }
+        await writeJsonFile(file, body)
+        sendJson(res, 200, { ok: true })
+        return
+      }
+    }
+
+    if (parts[0] === 'api' && parts[1] === 'user-sites' && parts.length === 2) {
+      const file = path.join(DATA_ROOT, 'user-sites.json')
+      if (req.method === 'GET') {
+        const list = await readJsonArray(file)
+        sendJson(res, 200, list.filter(isUserSiteRow))
+        return
+      }
+      if (req.method === 'PUT') {
+        if (!checkWrite(req, res)) return
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        if (!Array.isArray(body) || !body.every(isUserSiteRow)) {
+          sendJson(res, 400, { error: 'invalid_user_sites' })
+          return
+        }
+        await writeJsonArray(file, body)
+        sendJson(res, 200, { ok: true })
+        return
+      }
+    }
+
+    if (
+      parts[0] === 'api' &&
+      parts[1] === 'sites' &&
+      parts[2] &&
+      parts[3] === 'work-day-plan' &&
+      parts.length === 4
+    ) {
+      const siteId = safeSiteId(parts[2])
+      if (!siteId) {
+        sendJson(res, 400, { error: 'bad_site_id' })
+        return
+      }
+      const file = path.join(DATA_ROOT, 'sites', siteId, 'work-day-plan.json')
+      if (req.method === 'GET') {
+        const obj = await readJsonObject(file)
+        if (!isWorkDayPlanBundle(obj, siteId)) {
+          sendJson(res, 200, { siteId, assignments: [] })
+          return
+        }
+        sendJson(res, 200, obj)
+        return
+      }
+      if (req.method === 'PUT') {
+        if (!checkWrite(req, res)) return
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        if (!isWorkDayPlanBundle(body, siteId)) {
+          sendJson(res, 400, { error: 'invalid_work_day_plan' })
+          return
+        }
+        await writeJsonFile(file, { siteId, assignments: body.assignments })
+        sendJson(res, 200, { ok: true })
+        return
+      }
     }
 
     if (

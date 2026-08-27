@@ -1,16 +1,16 @@
 import type { FleetCategory, FleetVehicle } from '../../domain/fleet'
 import { emitFleetChange } from './fleetEvents'
+import { putFleetRegistryRemote } from '../../lib/siteFormsApi'
 
 /**
- * Локальный реестр парка.
+ * Реестр парка поверх базового mock.
  *
  *   — `added`             — единицы, созданные пользователем (не из mock).
  *   — `removedIds`        — id единиц из базового mock, которые пользователь удалил.
  *   — `customCategories`  — пользовательские классы техники (например, «Автокраны»).
  *
- * Хранение — `localStorage`, чтобы изменения сохранялись между перезагрузками
- * страницы до появления бэкенда. Структура защищена от старых/сломанных
- * значений — парсер молча возвращает пустой реестр при ошибке.
+ * Локальный кэш — localStorage; при доступном API дублируется на сервер
+ * (`/api/fleet/registry`), чтобы парк совпадал на всех устройствах.
  */
 export type FleetRegistry = {
   added: FleetVehicle[]
@@ -57,7 +57,10 @@ export function loadRegistry(): FleetRegistry {
   }
 }
 
-export function saveRegistry(reg: FleetRegistry): void {
+export function saveRegistry(
+  reg: FleetRegistry,
+  opts?: { syncRemote?: boolean },
+): void {
   const ls = safeStorage()
   try {
     if (ls) {
@@ -75,6 +78,9 @@ export function saveRegistry(reg: FleetRegistry): void {
     /* quota или приватный режим — не ломаем UI */
   }
   emitFleetChange()
+  if (opts?.syncRemote !== false) {
+    void putFleetRegistryRemote(reg)
+  }
 }
 
 /** Генерация уникального id для новой единицы. */

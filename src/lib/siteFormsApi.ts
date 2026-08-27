@@ -333,6 +333,129 @@ export async function fetchDriverTripsRemote(): Promise<DriverTrip[] | null> {
   }
 }
 
+export type FleetRegistryRemote = {
+  added: unknown[]
+  removedIds: string[]
+  customCategories: unknown[]
+}
+
+export async function fetchFleetRegistryRemote(): Promise<FleetRegistryRemote | null> {
+  try {
+    const res = await fetch(`${apiBase()}/api/fleet/registry`)
+    if (!res.ok) return null
+    const json: unknown = await res.json()
+    if (!json || typeof json !== 'object' || Array.isArray(json)) return null
+    const r = json as Record<string, unknown>
+    return {
+      added: Array.isArray(r.added) ? r.added : [],
+      removedIds: Array.isArray(r.removedIds)
+        ? r.removedIds.filter((x): x is string => typeof x === 'string')
+        : [],
+      customCategories: Array.isArray(r.customCategories) ? r.customCategories : [],
+    }
+  } catch {
+    return null
+  }
+}
+
+export async function putFleetRegistryRemote(registry: FleetRegistryRemote): Promise<boolean> {
+  try {
+    const res = await fetch(`${apiBase()}/api/fleet/registry`, {
+      method: 'PUT',
+      headers: writeHeaders(true),
+      body: JSON.stringify(registry),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+export async function fetchFleetOverridesRemote(): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetch(`${apiBase()}/api/fleet/overrides`)
+    if (!res.ok) return null
+    const json: unknown = await res.json()
+    if (!json || typeof json !== 'object' || Array.isArray(json)) return {}
+    return json as Record<string, unknown>
+  } catch {
+    return null
+  }
+}
+
+export async function putFleetOverridesRemote(
+  overrides: Record<string, unknown>,
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${apiBase()}/api/fleet/overrides`, {
+      method: 'PUT',
+      headers: writeHeaders(true),
+      body: JSON.stringify(overrides),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+export async function fetchUserSitesRemote(): Promise<unknown[] | null> {
+  try {
+    const res = await fetch(`${apiBase()}/api/user-sites`)
+    if (!res.ok) return null
+    const json: unknown = await res.json()
+    return Array.isArray(json) ? json : []
+  } catch {
+    return null
+  }
+}
+
+export async function putUserSitesRemote(sites: unknown[]): Promise<boolean> {
+  try {
+    const res = await fetch(`${apiBase()}/api/user-sites`, {
+      method: 'PUT',
+      headers: writeHeaders(true),
+      body: JSON.stringify(sites),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+export async function fetchWorkDayPlanRemote(
+  siteId: string,
+): Promise<{ siteId: string; assignments: unknown[] } | null> {
+  try {
+    const res = await fetch(siteUrl(siteId, '/work-day-plan'))
+    if (!res.ok) return null
+    const json: unknown = await res.json()
+    if (!json || typeof json !== 'object' || Array.isArray(json)) return null
+    const r = json as Record<string, unknown>
+    if (r.siteId !== siteId || !Array.isArray(r.assignments)) {
+      return { siteId, assignments: [] }
+    }
+    return { siteId, assignments: r.assignments }
+  } catch {
+    return null
+  }
+}
+
+export async function putWorkDayPlanRemote(
+  siteId: string,
+  bundle: { siteId: string; assignments: unknown[] },
+): Promise<boolean> {
+  try {
+    const res = await fetch(siteUrl(siteId, '/work-day-plan'), {
+      method: 'PUT',
+      headers: writeHeaders(true),
+      body: JSON.stringify(bundle),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
 export type DriverTripPutResult = {
   ok: boolean
   telegramNotified: boolean

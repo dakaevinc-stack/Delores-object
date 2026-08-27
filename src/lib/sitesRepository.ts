@@ -1,11 +1,11 @@
 /**
  * Пользовательские объекты (созданные через форму «Добавить объект»).
- * Живут в localStorage и «докладываются» к справочнику `MOCK_CONSTRUCTION_SITES`.
- * Позже этот слой уедет в HTTP-API без изменений в подписчиках.
+ * Кэш в localStorage + синхронизация на сервер (`/api/user-sites`).
  */
 
 import { MOCK_CONSTRUCTION_SITES } from '../data/constructionSites.mock'
 import type { ConstructionSite } from '../types/constructionSite'
+import { putUserSitesRemote } from './siteFormsApi'
 
 const STORAGE_KEY = 'deloresh-user-sites:v1'
 
@@ -35,12 +35,16 @@ function readFromStorage(): ConstructionSite[] {
   }
 }
 
-function persist(next: ConstructionSite[]) {
-  if (typeof localStorage === 'undefined') return
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-  } catch {
-    /* квота/приватный режим — пропускаем */
+function persist(next: ConstructionSite[], syncRemote: boolean) {
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    } catch {
+      /* квота/приватный режим — пропускаем */
+    }
+  }
+  if (syncRemote) {
+    void putUserSitesRemote(next)
   }
 }
 
@@ -64,17 +68,25 @@ export function listUserSites(): readonly ConstructionSite[] {
   return cachedUserSites ?? []
 }
 
+export function replaceUserSites(
+  sites: ConstructionSite[],
+  opts?: { syncRemote?: boolean },
+): void {
+  persist(sites, opts?.syncRemote !== false)
+  refresh()
+}
+
 export function addUserSite(site: ConstructionSite): void {
   ensureInitialized()
   const next = [site, ...(cachedUserSites ?? [])]
-  persist(next)
+  persist(next, true)
   refresh()
 }
 
 export function removeUserSite(id: string): void {
   ensureInitialized()
   const next = (cachedUserSites ?? []).filter((s) => s.id !== id)
-  persist(next)
+  persist(next, true)
   refresh()
 }
 

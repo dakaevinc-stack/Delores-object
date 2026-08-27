@@ -7,6 +7,10 @@ import {
   type WorkDayPlanBundle,
   type WorkDayStage,
 } from '../domain/workDayPlan'
+import {
+  fetchWorkDayPlanRemote,
+  putWorkDayPlanRemote,
+} from './siteFormsApi'
 
 /** v12 — один пункт справки = один шаг, без дублей одной работы. */
 const storageKey = (siteId: string) => `deloresh.work-day-plan.v12.${siteId}`
@@ -25,8 +29,25 @@ function readRaw(siteId: string): WorkDayPlanBundle | null {
   }
 }
 
-function writeRaw(bundle: WorkDayPlanBundle): void {
-  localStorage.setItem(storageKey(bundle.siteId), JSON.stringify(bundle))
+function writeRaw(bundle: WorkDayPlanBundle, syncRemote: boolean): void {
+  try {
+    localStorage.setItem(storageKey(bundle.siteId), JSON.stringify(bundle))
+  } catch {
+    /* quota — сервер остаётся источником правды */
+  }
+  if (syncRemote) {
+    void putWorkDayPlanRemote(bundle.siteId, bundle)
+  }
+}
+
+function normalizeBundle(siteId: string, raw: unknown): WorkDayPlanBundle | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as WorkDayPlanBundle
+  if (r.siteId !== siteId || !Array.isArray(r.assignments)) return null
+  return {
+    siteId,
+    assignments: r.assignments.map(settleAssignment),
+  }
 }
 
 function briefPhoto(label: string, sub: string): WorkDayMedia {
@@ -300,19 +321,71 @@ export function loadWorkDayPlan(siteId: string): WorkDayPlanBundle {
     const changed = settled.assignments.some(
       (a, i) => a !== existing.assignments[i],
     )
-    if (changed) writeRaw(settled)
+    if (changed) writeRaw(settled, true)
     return settled
   }
-  const seed: WorkDayPlanBundle = {
+  // Пустой снимок: демо/сид пишем только после sync (иначе новый браузер
+  // затрёт сервер локальным демо до получения данных с других устройств).
+  return { siteId, assignments: [] }
+}
+
+export function saveWorkDayPlan(
+  bundle: WorkDayPlanBundle,
+  opts?: { syncRemote?: boolean },
+): void {
+  writeRaw(bundle, opts?.syncRemote !== false)
+}
+
+function seedBundle(siteId: string): WorkDayPlanBundle {
+  return {
     siteId,
     assignments: siteId === 'brusilova' ? buildDemoAssignments(siteId) : [],
   }
-  writeRaw(seed)
-  return seed
 }
 
-export function saveWorkDayPlan(bundle: WorkDayPlanBundle): void {
-  writeRaw(bundle)
+/**
+ * Подтянуть план дня с сервера. Если сервер пуст, а локально есть данные —
+ * один раз заливаем локальный снимок. Возвращает актуальный bundle.
+ * `null` только при недоступности API — тогда вызывающий код остаётся на локальном.
+ */
+export async function syncWorkDayPlanFromServer(
+  siteId: string,
+): Promise<WorkDayPlanBundle | null> {
+  const remote = await fetchWorkDayPlanRemote(siteId)
+  if (!remote) {
+    const local = readRaw(siteId)
+    if (local) {
+      return {
+        ...local,
+        assignments: local.assignments.map(settleAssignment),
+      }
+    }
+    const seed = seedBundle(siteId)
+    writeRaw(seed, false)
+    return seed
+  }
+  const local = readRaw(siteId)
+  const remoteEmpty = remote.assignments.length === 0
+  if (remoteEmpty && local && local.assignments.length > 0) {
+    writeRaw(local, true)
+    return {
+      ...local,
+      assignments: local.assignments.map(settleAssignment),
+    }
+  }
+  if (remoteEmpty) {
+    const seed = seedBundle(siteId)
+    writeRaw(seed, true)
+    return seed
+  }
+  const normalized = normalizeBundle(siteId, remote)
+  if (!normalized) {
+    const seed = seedBundle(siteId)
+    writeRaw(seed, true)
+    return seed
+  }
+  writeRaw(normalized, false)
+  return normalized
 }
 
 export function upsertAssignment(
