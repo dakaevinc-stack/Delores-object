@@ -201,22 +201,24 @@ export function DriverMessengerShare({ text, mapsUrl, compact = false, disabled 
 
   return (
     <div className={compact ? styles.wrapCompact : styles.wrap}>
-      <div className={styles.head}>
-        <p className={styles.kicker}>
-          <span className={styles.kickerMark} aria-hidden />
-          Маршрут
-        </p>
-        <div className={styles.headCopy}>
-          <p className={styles.title}>Передать водителю</p>
-          <p className={styles.lead}>Адрес объекта и ссылка на карту — одним сообщением</p>
+      {compact ? null : (
+        <div className={styles.head}>
+          <p className={styles.kicker}>
+            <span className={styles.kickerMark} aria-hidden />
+            Маршрут
+          </p>
+          <div className={styles.headCopy}>
+            <p className={styles.title}>Передать водителю</p>
+            <p className={styles.lead}>Адрес объекта и ссылка на карту — одним сообщением</p>
+          </div>
         </div>
-      </div>
+      )}
       {tgReady ? (
         <p className={styles.tgTip} role="status">
           Сообщение скопировано. Откройте Telegram, выберите чат водителя и вставьте текст.
         </p>
       ) : null}
-      <div className={styles.grid} aria-disabled={disabled}>
+      <div className={styles.grid} aria-label={compact ? 'Отправить водителю' : undefined} aria-disabled={disabled}>
         <ShareTile
           className={styles.wa}
           href={whatsappShareUrl(text)}

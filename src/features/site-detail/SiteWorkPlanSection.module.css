@@ -7,6 +7,14 @@
   margin-bottom: var(--block-gap);
 }
 
+.sectionEmbedded {
+  margin-bottom: 0;
+}
+
+.sectionEmbedded .expandedBody {
+  margin-top: 0;
+}
+
 /* ─── Шапка ─────────────────────────────────────────────────────────── */
 
 .head {

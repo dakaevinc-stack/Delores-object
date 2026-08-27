@@ -1,215 +1,468 @@
-.section {
-  margin-bottom: var(--block-gap);
-}
+/* Одна панель журнала: шапка + шаги внутри. */
 
-/* ─── Шапка с rail-градиентом, kicker, source-badge и summary ─────────
-   Перенесено из ленты Telegram-сводок и адаптировано под акцент
-   бригадирских отчётов (navy + red, без sky). */
-
-.head {
+.shell {
   position: relative;
-  margin-bottom: 22px;
-  padding: 22px 24px 20px;
-  border-radius: 22px;
+  margin-bottom: var(--block-gap);
+  border-radius: 20px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   background:
-    radial-gradient(120% 90% at 100% 0%, rgba(238, 45, 58, 0.07) 0%, rgba(238, 45, 58, 0) 55%),
-    linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+    radial-gradient(110% 80% at 100% 0%, rgba(238, 45, 58, 0.05) 0%, transparent 50%),
+    linear-gradient(180deg, #ffffff 0%, #f6f8fc 100%);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 18px 40px rgba(15, 23, 42, 0.06);
+    0 16px 36px rgba(15, 23, 42, 0.05);
   overflow: hidden;
 }
 
-.head::before {
-  content: '';
+.shellRail {
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  width: 5px;
+  width: 4px;
   background: linear-gradient(
     180deg,
     var(--brand-navy, #172a4d) 0%,
     var(--brand-navy, #172a4d) 55%,
     var(--brand-red, #ee2d3a) 100%
   );
+  z-index: 2;
 }
 
-.headInner {
+.shellHead {
   position: relative;
   z-index: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 16px;
+  row-gap: 12px;
+  /* Как у zonePanel / summary — одна вертикаль «Открыть» */
+  padding: 22px 24px 18px 28px;
+}
+
+.shell[data-collapsed='true'] .shellHead {
+  padding-bottom: 16px;
+}
+
+.shellOpen .shellHead {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+  padding-bottom: 14px;
+}
+
+.shellHeadCopy {
+  min-width: 0;
 }
 
 .kicker {
-  margin: 0;
+  margin: 0 0 4px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--brand-red, #ee2d3a);
 }
 
 .kickerMark {
   display: block;
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-
-.titleRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
+  width: 16px;
+  height: 16px;
 }
 
 .title {
-  margin: 0;
-  font-size: var(--heading-block-size);
-  font-weight: var(--heading-block-weight);
-  letter-spacing: var(--heading-block-tracking);
-  line-height: var(--heading-block-line);
-  color: var(--text-strong);
-}
-
-.sourceBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 11px;
-  border-radius: 999px;
-  font-size: 10px;
+  margin: 0 0 4px;
+  font-size: clamp(1.15rem, 1.05rem + 0.4vw, 1.35rem);
   font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--brand-navy, #172a4d);
-  background: linear-gradient(180deg, rgba(23, 42, 77, 0.12) 0%, rgba(23, 42, 77, 0.04) 100%);
-  border: 1px solid rgba(23, 42, 77, 0.22);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
-}
-
-.sourceBadgeIcon {
-  display: block;
-}
-
-/* Прижимаем общий CollapseToggle к правому краю title-row.
- * Вся стилистика самой кнопки живёт в `CollapseToggle.module.css`. */
-.headToggle {
-  margin-left: auto;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--text-strong);
 }
 
 .lead {
   margin: 0;
-  max-width: 78ch;
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--text);
-}
-
-.summary {
-  margin: 8px 0 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px;
-}
-
-.summaryItem {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
-  backdrop-filter: blur(6px);
-}
-
-.summaryItemWide {
-  grid-column: span 2;
-}
-
-.summaryLabel {
-  margin: 0;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 13px;
+  line-height: 1.4;
   color: var(--muted);
 }
 
-.summaryValue {
+.headToggle {
+  flex-shrink: 0;
+  justify-self: end;
+  align-self: center;
   margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--text-strong);
-  font-variant-numeric: tabular-nums;
-  line-height: 1.05;
 }
 
-/* ─── Лента карточек ───────────────────────────────────────────────── */
-
-.list {
+.shellBody {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
+  padding: 14px 14px 16px 16px;
 }
 
-.empty {
-  padding: 22px 20px;
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  overflow: hidden;
+}
+
+.blockPhotos,
+.blockReports {
+  border: 1px solid rgba(23, 42, 77, 0.1);
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(238, 45, 58, 0.05) 0%, transparent 52%),
+    radial-gradient(110% 80% at 0% 0%, rgba(23, 42, 77, 0.07) 0%, transparent 55%),
+    linear-gradient(180deg, #ffffff 0%, #f5f7fb 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 14px 32px rgba(15, 23, 42, 0.05);
+}
+
+.block + .block {
+  margin-top: 12px;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.blockBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 12px 12px 14px;
+}
+
+.rail,
+.railStatic {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px 14px;
+  width: 100%;
+  min-height: 72px;
+  padding: 14px 14px 14px 18px;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid transparent;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.28) 100%
+  );
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  overflow: hidden;
+}
+
+.railOpen {
+  border-bottom-color: rgba(15, 23, 42, 0.07);
+}
+
+.rail {
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.rail:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(248, 250, 252, 0.55) 100%
+  );
+}
+
+.rail:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px rgba(23, 42, 77, 0.2);
+}
+
+.railAccent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(
+    180deg,
+    var(--brand-navy, #172a4d) 0%,
+    var(--brand-navy, #172a4d) 52%,
+    var(--brand-red, #ee2d3a) 100%
+  );
+  z-index: 1;
+}
+
+.railGlow {
+  position: absolute;
+  right: -40px;
+  top: -48px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(238, 45, 58, 0.12) 0%, transparent 68%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.railIcon {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
   border-radius: 14px;
-  border: 1px dashed var(--border-strong);
-  background: var(--surface);
+  color: #f8fafc;
+  background:
+    radial-gradient(120% 100% at 80% 0%, rgba(238, 45, 58, 0.35) 0%, transparent 55%),
+    linear-gradient(160deg, #1a335c 0%, #0f1f3a 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 10px 20px rgba(15, 28, 54, 0.22);
+  flex-shrink: 0;
 }
 
-.emptyTitle {
-  margin: 0 0 6px;
-  font-size: 15px;
-  font-weight: 600;
+.railIconReports {
+  background:
+    radial-gradient(120% 100% at 80% 0%, rgba(238, 45, 58, 0.28) 0%, transparent 55%),
+    linear-gradient(160deg, #243a63 0%, #13233f 100%);
+}
+
+.railCopy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+
+.railKicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brand-red, #ee2d3a);
+}
+
+.railTitle {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
   color: var(--text-strong);
 }
 
-.emptyText {
+.railMeta {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.railPill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(23, 42, 77, 0.12);
+  background: rgba(23, 42, 77, 0.05);
+  font-size: 12px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--brand-navy, #172a4d);
+  white-space: nowrap;
+}
+
+.railAction {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 5px 6px 5px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(23, 42, 77, 0.18);
+  background: linear-gradient(
+    180deg,
+    rgba(23, 42, 77, 0.08) 0%,
+    rgba(23, 42, 77, 0.02) 100%
+  );
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 6px 14px rgba(15, 23, 42, 0.05);
+  color: var(--brand-navy, #172a4d);
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.rail:hover .railAction {
+  color: var(--brand-red, #ee2d3a);
+  border-color: rgba(238, 45, 58, 0.35);
+  background: linear-gradient(
+    180deg,
+    rgba(238, 45, 58, 0.1) 0%,
+    rgba(238, 45, 58, 0.03) 100%
+  );
+}
+
+.railActionLabel {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.railChevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55);
+  transition: transform 0.18s ease;
+}
+
+.railChevronOpen {
+  transform: rotate(180deg);
+}
+
+.railStatic {
+  cursor: default;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+@media (max-width: 720px) {
+  .rail,
+  .railStatic {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    min-height: 0;
+    padding: 12px 12px 12px 16px;
+    column-gap: 10px;
+    row-gap: 8px;
+  }
+
+  .railIcon {
+    grid-column: 1;
+    grid-row: 1;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+  }
+
+  .railCopy {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .railMeta {
+    grid-column: 2;
+    grid-row: 2;
+    justify-content: flex-start;
+  }
+
+  .railAction {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    align-self: center;
+    padding-left: 6px;
+    padding-right: 5px;
+  }
+
+  .railActionLabel {
+    display: none;
+  }
+
+  .blockBody {
+    padding: 0 10px 10px 12px;
+  }
+}
+
+.dayList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 2px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.reportList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.emptyHint {
   margin: 0;
-  max-width: 62ch;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text);
+  padding: 4px 2px 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* Вложенный upload: без второй рамки и высокой кнопки */
+.shellBody :global(#site-object-media) {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.shellBody :global([class*='embeddedHead']) {
+  display: none;
+}
+
+.shellBody :global([class*='mediaShell']) {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.shellBody :global([class*='mediaShellRail']) {
+  display: none;
+}
+
+.shellBody :global([class*='panelInShell']) {
+  padding: 0 !important;
 }
 
 @media (max-width: 640px) {
-  .head {
-    padding: 16px max(14px, env(safe-area-inset-right, 0px)) 14px
-      max(18px, env(safe-area-inset-left, 0px));
-    border-radius: 16px;
+  .shellHead {
+    padding: 16px 16px 14px 18px;
   }
 
-  .headInner {
-    gap: 8px;
-  }
-
-  .summary {
-    gap: 8px;
-  }
-
-  .summaryItem {
-    padding: 8px 10px;
-  }
-
-  .summaryItemWide {
-    grid-column: span 1;
-  }
-
-  .list {
+  .shellBody {
+    padding: 12px 10px 14px 12px;
     gap: 12px;
+  }
+
+  .headToggle {
+    justify-self: start;
+    align-self: center;
   }
 }

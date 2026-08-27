@@ -1,0 +1,138 @@
+.line {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 34px;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  transition: background 0.12s ease;
+}
+
+.line:hover {
+  background: rgba(23, 42, 77, 0.05);
+}
+
+.line:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(238, 45, 58, 0.35);
+}
+
+.copy {
+  min-width: 0;
+}
+
+.count {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text-strong, #0f172a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.date {
+  flex-shrink: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--muted, #64748b);
+  white-space: nowrap;
+}
+
+.line:hover .date {
+  color: var(--brand-navy, #172a4d);
+}
+
+.viewerBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(14px, 3vw, 36px);
+  background: rgba(15, 23, 42, 0.86);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.viewerBody {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: min(1000px, 100%);
+}
+
+.viewerClose {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.viewerNav {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.viewerNav:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.viewerNavPrev {
+  left: 0;
+}
+
+.viewerNavNext {
+  right: 0;
+}
+
+.viewerStage {
+  max-width: 100%;
+  max-height: min(76vh, 820px);
+}
+
+.viewerMedia {
+  max-width: 100%;
+  max-height: min(76vh, 820px);
+  border-radius: 10px;
+  object-fit: contain;
+  background: #0b1220;
+}
+
+.viewerCount {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+}

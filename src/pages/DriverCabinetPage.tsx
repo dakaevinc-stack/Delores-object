@@ -3,8 +3,10 @@ import { Link, useSearchParams } from 'react-router-dom'
 import {
   collectTodayTripsForDriver,
   collectUnreadTrips,
+  DRIVER_TRIP_STATUS_LABELS,
   formatTripAssignedTime,
   isTripUnread,
+  resolveTripStatus,
   tripCargoPreview,
   tripPickupLabel,
   tripUnloadLabel,
@@ -13,6 +15,7 @@ import {
 import { DriverTripSheet } from '../features/driver/DriverTripSheet'
 import {
   loadDriverTrips,
+  markDriverTripDone,
   markDriverTripSeen,
   mergeDriverTrips,
   saveDriverTrips,
@@ -21,6 +24,7 @@ import {
   fetchDriverNotifyConfig,
   fetchDriverNotifyStatus,
   fetchDriverTripsRemote,
+  markDriverTripDoneRemote,
   markDriverTripSeenRemote,
 } from '../lib/siteFormsApi'
 import styles from './DriverCabinetPage.module.css'
@@ -154,6 +158,12 @@ export function DriverCabinetPage() {
     void markDriverTripSeenRemote(openTrip.id)
   }, [openTrip])
 
+  const completeOpenTrip = async (id: string) => {
+    setTrips(markDriverTripDone(id))
+    await markDriverTripDoneRemote(id)
+    closeTrip()
+  }
+
   const botHref = botUsername ? `https://t.me/${botUsername}` : ''
   const todayLabel = new Intl.DateTimeFormat('ru-RU', {
     day: 'numeric',
@@ -234,7 +244,7 @@ export function DriverCabinetPage() {
             {unread.length > 0 ? (
               <span className={styles.summaryNew}>{unread.length} новых</span>
             ) : (
-              <span className={styles.summaryOk}>Все просмотрены</span>
+              <span className={styles.summaryOk}>Новых нет</span>
             )}
           </div>
 
@@ -260,7 +270,8 @@ export function DriverCabinetPage() {
           <ol className={styles.list}>
             {today.map((trip, i) => {
               const preview = tripCargoPreview(trip)
-              const unreadTrip = isTripUnread(trip)
+              const status = resolveTripStatus(trip)
+              const unreadTrip = status === 'waiting'
               const time = formatTripAssignedTime(trip.createdAtIso)
               const from = tripPickupLabel(trip)
               const to = tripUnloadLabel(trip)
@@ -268,13 +279,15 @@ export function DriverCabinetPage() {
                 <li key={trip.id}>
                   <button
                     type="button"
-                    className={`${styles.card} ${unreadTrip ? styles.cardNew : ''}`}
+                    className={`${styles.card} ${unreadTrip ? styles.cardNew : ''} ${status === 'done' ? styles.cardDone : ''}`}
                     onClick={() => openTripById(trip.id)}
                   >
                     <div className={styles.cardTop}>
                       <span className={styles.cardNum}>Рейс {i + 1}</span>
                       <span className={styles.cardTopRight}>
-                        {unreadTrip ? <span className={styles.badgeNew}>Новый</span> : null}
+                        <span className={styles.badgeStatus} data-tone={status}>
+                          {DRIVER_TRIP_STATUS_LABELS[status]}
+                        </span>
                         {time ? <span className={styles.cardTime}>{time}</span> : null}
                       </span>
                     </div>
@@ -300,7 +313,9 @@ export function DriverCabinetPage() {
                       <p className={styles.cardPlate}>{trip.vehiclePlate}</p>
                     ) : null}
 
-                    <span className={styles.cardOpen}>Открыть маршрут</span>
+                    <span className={styles.cardOpen}>
+                      {status === 'done' ? 'Смотреть' : 'Открыть маршрут'}
+                    </span>
                   </button>
                 </li>
               )
@@ -309,7 +324,13 @@ export function DriverCabinetPage() {
         </>
       )}
 
-      {openTrip ? <DriverTripSheet trip={openTrip} onClose={closeTrip} /> : null}
+      {openTrip ? (
+        <DriverTripSheet
+          trip={openTrip}
+          onClose={closeTrip}
+          onComplete={completeOpenTrip}
+        />
+      ) : null}
     </div>
   )
 }

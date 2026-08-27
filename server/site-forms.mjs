@@ -103,22 +103,14 @@ function parseProjectFileRecordHeader(raw) {
  * @param {string} baseDir
  * @param {string} manifestPath
  * @param {string} siteId
- * @param {{ id: string, siteId: string, kind: 'pdf'|'dwg', name: string, mime: string, sizeBytes: number, uploadedAtIso: string }} record
+ * @param {{ id: string, siteId: string, kind: 'pdf'|'dwg'|'file', name: string, mime: string, sizeBytes: number, uploadedAtIso: string }} record
  * @param {Buffer} buf
  */
 async function saveProjectFileMetadata(baseDir, manifestPath, siteId, record) {
   if (record.siteId !== siteId) throw new Error('site_mismatch')
   const list = await readJsonArray(manifestPath)
   const valid = list.filter(isProjectFileRecord)
-  const sameKind = valid.find((x) => /** @type {{kind:'pdf'|'dwg'}} */ (x).kind === record.kind)
-  if (sameKind && /** @type {{id:string}} */ (sameKind).id !== record.id) {
-    try {
-      await fs.unlink(path.join(baseDir, 'blobs', /** @type {{id:string}} */ (sameKind).id))
-    } catch (e) {
-      if (/** @type {NodeJS.ErrnoException} */ (e).code !== 'ENOENT') throw e
-    }
-  }
-  const next = [record, ...valid.filter((x) => /** @type {{kind:'pdf'|'dwg'}} */ (x).kind !== record.kind)]
+  const next = [record, ...valid.filter((x) => /** @type {{id:string}} */ (x).id !== record.id)]
   await writeJsonArray(manifestPath, next)
 }
 
@@ -224,10 +216,15 @@ function isObjectMediaRecord(x) {
 function isProjectFileRecord(x) {
   if (!x || typeof x !== 'object') return false
   const r = /** @type {Record<string, unknown>} */ (x)
+  const kindOk =
+    r.kind === 'pdf' || r.kind === 'dwg' || r.kind === 'file' || r.kind === 'folder'
+  const parentOk =
+    r.parentId === undefined || r.parentId === null || typeof r.parentId === 'string'
   return (
     typeof r.id === 'string' &&
     typeof r.siteId === 'string' &&
-    (r.kind === 'pdf' || r.kind === 'dwg') &&
+    kindOk &&
+    parentOk &&
     typeof r.name === 'string' &&
     typeof r.mime === 'string' &&
     typeof r.sizeBytes === 'number' &&
@@ -435,6 +432,38 @@ const server = http.createServer(async (req, res) => {
       list[idx] = { ...row, seenAtIso }
       await writeJsonArray(file, list)
       sendJson(res, 200, { ok: true, seenAtIso })
+      return
+    }
+
+    if (
+      parts[0] === 'api' &&
+      parts[1] === 'driver-trips' &&
+      parts.length === 4 &&
+      parts[3] === 'complete' &&
+      req.method === 'POST'
+    ) {
+      const id = parts[2]
+      if (!id || id.includes('..')) {
+        sendJson(res, 400, { error: 'bad_id' })
+        return
+      }
+      const file = path.join(DATA_ROOT, 'driver-trips.json')
+      const list = await readJsonArray(file)
+      const idx = list.findIndex((x) => x && /** @type {{id?:unknown}} */ (x).id === id)
+      if (idx === -1) {
+        sendJson(res, 404, { error: 'not_found' })
+        return
+      }
+      const row = /** @type {Record<string, unknown>} */ (list[idx] && typeof list[idx] === 'object' ? list[idx] : {})
+      const alreadyDone =
+        typeof row.completedAtIso === 'string' && row.completedAtIso ? String(row.completedAtIso) : ''
+      const completedAtIso = alreadyDone || new Date().toISOString()
+      const alreadySeen =
+        typeof row.seenAtIso === 'string' && row.seenAtIso ? String(row.seenAtIso) : ''
+      const seenAtIso = alreadySeen || completedAtIso
+      list[idx] = { ...row, seenAtIso, completedAtIso }
+      await writeJsonArray(file, list)
+      sendJson(res, 200, { ok: true, seenAtIso, completedAtIso })
       return
     }
 

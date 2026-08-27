@@ -66,7 +66,7 @@ export function formatDriverTripNotifyText(trip) {
     'Новый маршрут',
     hasPickup ? `Забрать: ${String(pickup.address).trim()}` : null,
     pickup.hint ? `Погрузка: ${pickup.hint}` : null,
-    cargoLines.length ? (hasPickup ? 'Что грузить:' : 'Что везти:') : null,
+    cargoLines.length ? 'Задание:' : null,
     ...cargoLines,
     trip.siteName ? `Везти: ${trip.siteName}` : null,
     trip.vehiclePlate ? `Машина: ${trip.vehiclePlate}` : null,

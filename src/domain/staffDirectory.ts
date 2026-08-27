@@ -226,3 +226,31 @@ export function findStaffByCredentials(
     ) ?? null
   )
 }
+
+/** ФИО водителей / машинистов из штатного списка (для назначения рейса). */
+export function listStaffDriverNames(): string[] {
+  return STAFF_DIRECTORY.filter((m) => m.duty === 'driver')
+    .map((m) => m.fullName)
+    .sort((a, b) => a.localeCompare(b, 'ru'))
+}
+
+export type StaffFieldLeaderOption = {
+  readonly fullName: string
+  readonly dutyLabel: string
+  readonly group: 'brigadier' | 'site_manager'
+}
+
+/**
+ * Бригадиры и начальники участков — для выбора ФИО в заявке на материалы.
+ */
+export function listStaffBrigadierAndSiteManagerOptions(): StaffFieldLeaderOption[] {
+  return STAFF_DIRECTORY.filter(
+    (m) => m.duty === 'brigadier' || m.dutyLabel === 'Начальник участка',
+  )
+    .map((m) => ({
+      fullName: m.fullName,
+      dutyLabel: m.dutyLabel,
+      group: m.duty === 'brigadier' ? ('brigadier' as const) : ('site_manager' as const),
+    }))
+    .sort((a, b) => a.fullName.localeCompare(b.fullName, 'ru'))
+}

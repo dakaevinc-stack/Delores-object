@@ -10,39 +10,37 @@ import type { AddressHit } from '../../domain/addressSearch'
 import { driverCabinetUrl, renderDriverShareText } from '../../domain/driverShare'
 import {
   driverNameMatchesQuery,
+  buildDriverLineStats,
+  buildFleetLineStats,
+  collectActiveTrips,
+  collectDoneTrips,
+  collectTripsForDate,
+  collectTripsForSite,
+  DRIVER_TRIP_STATUS_LABELS,
+  formatTripAssignedDate,
+  formatTripAssignedTime,
+  resolveTripStatus,
+  tripCargoPreview,
+  tripPickupLabel,
+  tripUnloadLabel,
   type DriverTrip,
   type DriverTripAssignerRole,
-  type DriverTripCargo,
 } from '../../domain/driverTrip'
-import { unitLabel } from '../../domain/procurementRequest'
-import type { MeasurementUnitId } from '../../domain/brigadierReport'
 import {
-  findProcurementPreset,
-  searchProcurementPresets,
-} from '../../domain/procurementCatalog'
-import { toDateKey } from '../../domain/workDayPlan'
-import { getMaterialBudgetForSite } from '../../data/materialBudgets'
+  loadDriverTrips,
+  markDriverTripDone,
+} from '../../lib/driverTripsRepository'
+import { downloadDriverTripsExcel } from '../../lib/downloadDriverTripsExcel'
+import { markDriverTripDoneRemote } from '../../lib/siteFormsApi'
+import { toDateKey, addDays } from '../../domain/workDayPlan'
 import { reverseGeocodeRemote, searchAddressRemote } from '../../lib/siteFormsApi'
 import { DriverMessengerShare } from '../driver/DriverMessengerShare'
 import { useFleetRegistry } from '../fleet/useFleetRegistry'
+import { listStaffDriverNames } from '../../domain/staffDirectory'
 import { DeliveryPointMap } from './DeliveryPointMap'
 import styles from './SiteDeliveryPointSection.module.css'
 
 type MapTarget = 'unload' | 'pickup'
-
-type MaterialChoice = {
-  id: string
-  title: string
-  unitId: MeasurementUnitId
-}
-
-type PickedCargoRow = {
-  id: string
-  title: string
-  quantity: string
-  unitId: MeasurementUnitId
-  custom: boolean
-}
 
 type Props = {
   siteName: string
@@ -64,9 +62,16 @@ function newId(): string {
     : `trip-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
-function parseQty(raw: string): number | null {
-  const n = Number(String(raw).trim().replace(',', '.'))
-  return Number.isFinite(n) && n > 0 ? n : null
+/** Фамилия и инициалы — короче и читаемее в списке. */
+function shortPersonName(full: string): string {
+  const parts = full.trim().split(/\s+/).filter(Boolean)
+  if (parts.length < 2) return full.trim()
+  const [sur, ...rest] = parts
+  const initials = rest
+    .map((p) => (p[0] ? `${p[0]!.toLocaleUpperCase('ru-RU')}.` : ''))
+    .filter(Boolean)
+    .join(' ')
+  return `${sur} ${initials}`.trim()
 }
 
 export function SiteDeliveryPointSection({
@@ -94,75 +99,101 @@ export function SiteDeliveryPointSection({
   const [busy, setBusy] = useState(false)
   const [driverName, setDriverName] = useState('')
   const [driverMenuOpen, setDriverMenuOpen] = useState(false)
+  const [exportFrom, setExportFrom] = useState(() => toDateKey(addDays(new Date(), -30)))
+  const [exportTo, setExportTo] = useState(() => toDateKey(new Date()))
+  const [exportNote, setExportNote] = useState<string | null>(null)
   const [lastTrip, setLastTrip] = useState<DriverTrip | null>(null)
   const [assignedOk, setAssignedOk] = useState<'off' | 'saved' | 'telegram'>('off')
+  const [siteTrips, setSiteTrips] = useState<DriverTrip[]>(() =>
+    collectTripsForSite(loadDriverTrips(), siteId),
+  )
+  const [todayTrips, setTodayTrips] = useState<DriverTrip[]>(() =>
+    collectTripsForDate(loadDriverTrips()),
+  )
+  const activeTrips = useMemo(() => collectActiveTrips(siteTrips), [siteTrips])
+  const doneTrips = useMemo(() => collectDoneTrips(siteTrips), [siteTrips])
+  const tripStats = useMemo(() => {
+    let waiting = 0
+    let accepted = 0
+    for (const t of activeTrips) {
+      if (resolveTripStatus(t) === 'waiting') waiting += 1
+      else accepted += 1
+    }
+    return { waiting, accepted, done: doneTrips.length }
+  }, [activeTrips, doneTrips])
+  const fleetStats = useMemo(
+    () => buildFleetLineStats(vehicles, todayTrips),
+    [vehicles, todayTrips],
+  )
+  const driverStats = useMemo(
+    () => buildDriverLineStats(listStaffDriverNames(), todayTrips),
+    [todayTrips],
+  )
   const [pickupAddress, setPickupAddress] = useState('')
   const [pickupLat, setPickupLat] = useState<number | null>(null)
   const [pickupLng, setPickupLng] = useState<number | null>(null)
   const [alreadyLoaded, setAlreadyLoaded] = useState(false)
-  const [cargoNote, setCargoNote] = useState('')
-  const [cargoSearch, setCargoSearch] = useState('')
-  const [cargoPickerOpen, setCargoPickerOpen] = useState(false)
-  const [pickedCargo, setPickedCargo] = useState<PickedCargoRow[]>([])
+  const [tripComment, setTripComment] = useState('')
   const skipDebounce = useRef(false)
   const queryFocused = useRef(false)
   const strippedJunkAddress = useRef(false)
 
-  const operators = useMemo(() => {
-    const names = new Set<string>()
-    for (const v of vehicles) {
-      const n = v.specs?.responsibleOperator?.trim()
-      if (n) names.add(n)
-    }
-    return [...names].sort((a, b) => a.localeCompare(b, 'ru'))
-  }, [vehicles])
+  const operators = useMemo(() => listStaffDriverNames(), [])
 
   const driverHits = useMemo(() => {
     const q = driverName.trim()
-    if (!q) return operators.slice(0, 12)
-    return operators.filter((n) => driverNameMatchesQuery(n, q)).slice(0, 12)
+    if (!q) return operators
+    return operators.filter((n) => driverNameMatchesQuery(n, q))
   }, [operators, driverName])
-
-  const siteMaterials = useMemo((): MaterialChoice[] => {
-    const budget = getMaterialBudgetForSite(siteId)
-    if (budget?.articles.length) {
-      return budget.articles.map((a) => {
-        const preset = findProcurementPreset(a.presetId)
-        return {
-          id: a.presetId || a.id,
-          title: preset?.title ?? a.title,
-          unitId: preset?.defaultUnit ?? a.unit,
-        }
-      })
-    }
-    return searchProcurementPresets('').map((p) => ({
-      id: p.id,
-      title: p.title,
-      unitId: p.defaultUnit,
-    }))
-  }, [siteId])
-
-  const cargoList = useMemo((): MaterialChoice[] => {
-    const q = cargoSearch.trim()
-    if (!q) return siteMaterials
-    const fromCatalog = searchProcurementPresets(q).map((p) => ({
-      id: p.id,
-      title: p.title,
-      unitId: p.defaultUnit,
-    }))
-    const fromSite = siteMaterials.filter((m) =>
-      m.title.toLocaleLowerCase('ru-RU').includes(q.toLocaleLowerCase('ru-RU')),
-    )
-    const byId = new Map<string, MaterialChoice>()
-    for (const m of [...fromSite, ...fromCatalog]) byId.set(m.id, m)
-    return [...byId.values()]
-  }, [cargoSearch, siteMaterials])
-
-  const pickedIds = useMemo(() => new Set(pickedCargo.map((c) => c.id)), [pickedCargo])
 
   useEffect(() => {
     setHint(point?.hint ?? '')
   }, [point?.hint])
+
+  useEffect(() => {
+    const all = loadDriverTrips()
+    setSiteTrips(collectTripsForSite(all, siteId))
+    setTodayTrips(collectTripsForDate(all))
+  }, [siteId])
+
+  useEffect(() => {
+    if (!canAssignTrip) return
+    const tick = () => {
+      const all = loadDriverTrips()
+      setSiteTrips(collectTripsForSite(all, siteId))
+      setTodayTrips(collectTripsForDate(all))
+    }
+    const t = window.setInterval(tick, 8_000)
+    const onFocus = () => tick()
+    window.addEventListener('focus', onFocus)
+    return () => {
+      window.clearInterval(t)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [canAssignTrip, siteId])
+
+  const refreshSiteTrips = () => {
+    const all = loadDriverTrips()
+    setSiteTrips(collectTripsForSite(all, siteId))
+    setTodayTrips(collectTripsForDate(all))
+  }
+
+  const handleCompleteTrip = async (id: string) => {
+    markDriverTripDone(id)
+    refreshSiteTrips()
+    await markDriverTripDoneRemote(id)
+    refreshSiteTrips()
+  }
+
+  const handleExportExcel = () => {
+    const result = downloadDriverTripsExcel(loadDriverTrips(), exportFrom, exportTo)
+    if (!result.ok) {
+      setExportNote(result.reason)
+      return
+    }
+    setExportNote(`Скачано: ${result.count} рейс.`)
+    window.setTimeout(() => setExportNote(null), 3200)
+  }
 
   useEffect(() => {
     if (queryFocused.current) return
@@ -345,90 +376,35 @@ export function SiteDeliveryPointSection({
     }
   }
 
-  const toggleMaterial = (m: MaterialChoice) => {
-    setPickedCargo((prev) => {
-      if (prev.some((r) => r.id === m.id)) return prev.filter((r) => r.id !== m.id)
-      return [
-        ...prev,
-        {
-          id: m.id,
-          title: m.title,
-          quantity: '',
-          unitId: m.unitId,
-          custom: false,
-        },
-      ]
-    })
-  }
-
-  const openCargoPicker = () => {
-    setCargoPickerOpen(true)
-    setCargoSearch('')
-  }
-
-  const closeCargoPicker = () => {
-    setCargoPickerOpen(false)
-    setCargoSearch('')
-  }
-
-  const addCustomCargo = () => {
-    setPickedCargo((prev) => [
-      ...prev,
-      {
-        id: `custom-${newId()}`,
-        title: '',
-        quantity: '',
-        unitId: 'm3',
-        custom: true,
-      },
-    ])
-  }
-
-  const updateCargoRow = (id: string, patch: Partial<PickedCargoRow>) => {
-    setPickedCargo((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))
-  }
-
-  const removeCargoRow = (id: string) => {
-    setPickedCargo((prev) => prev.filter((r) => r.id !== id))
-  }
-
   const handleAssign = async () => {
     if (!point || !onAssignTrip || !driverName.trim()) return
-    const plate =
-      vehicles.find((v) => v.specs?.responsibleOperator?.trim() === driverName.trim())?.plate ?? ''
-    const cargo: DriverTripCargo[] = pickedCargo
-      .map((c) => ({
-        title: c.title.trim(),
-        quantity: parseQty(c.quantity),
-        unitLabel: unitLabel(c.unitId),
-      }))
-      .filter((c) => c.title)
+    const note = tripComment.trim()
     const trip: DriverTrip = {
       id: newId(),
       dateKey: toDateKey(new Date()),
       driverName: driverName.trim(),
-      vehiclePlate: plate,
+      vehiclePlate: '',
       siteId,
       siteName,
-      point: { ...point, hint: hint.trim() || point.hint },
+      point,
       pickup: alreadyLoaded
         ? { address: '', hint: '' }
         : { address: pickupAddress.trim(), hint: '' },
-      cargo,
-      cargoNote: cargoNote.trim(),
+      cargo: [],
+      cargoNote: note,
       assignedBy: '',
       assignedByRole: assignerRole,
       createdAtIso: new Date().toISOString(),
       seenAtIso: null,
+      completedAtIso: null,
     }
     const result = await onAssignTrip(trip)
     setLastTrip(trip)
+    refreshSiteTrips()
     setAssignedOk(result && result.telegramNotified ? 'telegram' : 'saved')
     window.setTimeout(() => setAssignedOk('off'), 3200)
-    setPickedCargo([])
-    setCargoNote('')
-    setCargoSearch('')
-    setCargoPickerOpen(false)
+    setTripComment('')
+    setDriverName('')
   }
 
   const sharePoint = point ? { ...point, hint: hint.trim() || point.hint } : null
@@ -447,13 +423,188 @@ export function SiteDeliveryPointSection({
   return (
     <section
       className={styles.section}
-      aria-label={canAssignTrip ? 'Рейс водителю' : 'Куда разгружать'}
+      aria-label={canAssignTrip ? 'Управление рейсами' : 'Куда разгружать'}
     >
-      <div className={styles.toolbar}>
-        <span className={`${styles.syncBadge} ${serverBacked ? styles.syncOn : styles.syncOff}`}>
-          {serverBacked ? 'На сервере' : 'Только здесь'}
-        </span>
-      </div>
+      {canAssignTrip ? (
+        <>
+          <div className={styles.lineStats} aria-label="Ситуация по парку и водителям">
+            <article className={styles.lineCard} data-accent="navy">
+              <span className={styles.lineStripe} aria-hidden />
+              <span className={styles.lineSpecular} aria-hidden />
+              <div className={styles.lineFace}>
+                <div className={styles.lineHead}>
+                  <p className={styles.lineTitle}>Техника сейчас</p>
+                  {fleetStats.alert ? (
+                    <span className={styles.lineAlertChip}>{fleetStats.alert}</span>
+                  ) : (
+                    <span className={styles.lineAlertSlot} aria-hidden />
+                  )}
+                </div>
+                <div className={styles.lineHeroBlock}>
+                  <p className={styles.lineHero}>
+                    <span className={styles.lineHeroOn}>{fleetStats.onLine}</span>
+                    <span className={styles.lineHeroSep}>/</span>
+                    <span className={styles.lineHeroTotal}>{fleetStats.total}</span>
+                  </p>
+                  <p className={styles.lineHeroHint}>{fleetStats.hint}</p>
+                </div>
+                <ul className={styles.linePills}>
+                  {fleetStats.rows.map((row) => (
+                    <li key={row.label} className={styles.linePill} data-tone={row.tone}>
+                      <span className={styles.lineDot} aria-hidden />
+                      <span className={styles.lineLabel}>{row.label}</span>
+                      <span className={styles.lineCount}>{row.count}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </article>
+
+            <article className={styles.lineCard} data-accent="red">
+              <span className={styles.lineStripe} aria-hidden />
+              <span className={styles.lineSpecular} aria-hidden />
+              <div className={styles.lineFace}>
+                <div className={styles.lineHead}>
+                  <p className={styles.lineTitle}>Водители</p>
+                  <span className={styles.lineAlertSlot} aria-hidden />
+                </div>
+                <div className={styles.lineHeroBlock}>
+                  <p className={styles.lineHero}>
+                    <span className={styles.lineHeroOn}>{driverStats.onLine}</span>
+                    <span className={styles.lineHeroSep}>/</span>
+                    <span className={styles.lineHeroTotal}>{driverStats.total}</span>
+                  </p>
+                  <p className={styles.lineHeroHint}>{driverStats.hint}</p>
+                </div>
+                <ul className={styles.linePills}>
+                  {driverStats.rows.map((row) => (
+                    <li key={row.label} className={styles.linePill} data-tone={row.tone}>
+                      <span className={styles.lineDot} aria-hidden />
+                      <span className={styles.lineLabel}>{row.label}</span>
+                      <span className={styles.lineCount}>{row.count}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </article>
+          </div>
+
+          <div className={styles.tripsPanel} aria-label="Ближайшие задачи">
+          <div className={styles.tripsHead}>
+            <p className={styles.tripsTitle}>Ближайшие задачи</p>
+            <div className={styles.tripsStats} aria-label="Сводка статусов">
+              <span className={styles.tripsStat} data-tone="waiting">
+                <span className={styles.tripsStatDot} aria-hidden />
+                Ожидают <b>{tripStats.waiting}</b>
+              </span>
+              <span className={styles.tripsStat} data-tone="accepted">
+                <span className={styles.tripsStatDot} aria-hidden />
+                В работе <b>{tripStats.accepted}</b>
+              </span>
+              <span className={styles.tripsStat} data-tone="done">
+                <span className={styles.tripsStatDot} aria-hidden />
+                Исполнен <b>{tripStats.done}</b>
+              </span>
+            </div>
+          </div>
+
+          <div className={styles.exportBar}>
+            <span className={styles.exportLabel}>Excel за период</span>
+            <label className={styles.exportField}>
+              <span className={styles.exportFieldLabel}>с</span>
+              <input
+                type="date"
+                className={styles.exportInput}
+                value={exportFrom}
+                onChange={(e) => setExportFrom(e.target.value)}
+              />
+            </label>
+            <label className={styles.exportField}>
+              <span className={styles.exportFieldLabel}>по</span>
+              <input
+                type="date"
+                className={styles.exportInput}
+                value={exportTo}
+                onChange={(e) => setExportTo(e.target.value)}
+              />
+            </label>
+            <button type="button" className={styles.exportBtn} onClick={handleExportExcel}>
+              Скачать Excel
+            </button>
+            {exportNote ? <span className={styles.exportNote}>{exportNote}</span> : null}
+          </div>
+
+          {activeTrips.length === 0 && doneTrips.length === 0 ? (
+            <p className={styles.tripsEmpty}>Нет рейсов по объекту.</p>
+          ) : (
+            <ul className={styles.tripsList}>
+              {activeTrips.map((t) => {
+                const status = resolveTripStatus(t)
+                const cargo = tripCargoPreview(t) || 'Рейс'
+                const route = `${tripPickupLabel(t)} → ${tripUnloadLabel(t)}`
+                return (
+                  <li key={t.id} className={styles.tripRow} data-tone={status}>
+                    <span
+                      className={styles.tripDot}
+                      title={DRIVER_TRIP_STATUS_LABELS[status]}
+                      aria-label={DRIVER_TRIP_STATUS_LABELS[status]}
+                    />
+                    <span className={styles.tripWhen}>
+                      <span className={styles.tripDay}>{formatTripAssignedDate(t.createdAtIso)}</span>
+                      <span className={styles.tripTime}>
+                        {formatTripAssignedTime(t.createdAtIso)}
+                      </span>
+                    </span>
+                    <span className={styles.tripTask} title={route}>
+                      {cargo}
+                    </span>
+                    <span className={styles.tripObject}>{t.siteName}</span>
+                    <span className={styles.tripWho} title={t.driverName}>
+                      {shortPersonName(t.driverName)}
+                      {t.vehiclePlate ? (
+                        <span className={styles.tripPlate}>{t.vehiclePlate}</span>
+                      ) : null}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.tripDoneBtn}
+                      title="Отметить исполненным"
+                      onClick={() => void handleCompleteTrip(t.id)}
+                    >
+                      Готово
+                    </button>
+                  </li>
+                )
+              })}
+              {doneTrips.map((t) => {
+                const cargo = tripCargoPreview(t) || 'Рейс'
+                return (
+                  <li key={t.id} className={styles.tripRow} data-tone="done">
+                    <span
+                      className={styles.tripDot}
+                      title="Исполнен"
+                      aria-label="Исполнен"
+                    />
+                    <span className={styles.tripWhen}>
+                      <span className={styles.tripDay}>{formatTripAssignedDate(t.createdAtIso)}</span>
+                      <span className={styles.tripTime}>
+                        {formatTripAssignedTime(t.createdAtIso)}
+                      </span>
+                    </span>
+                    <span className={styles.tripTask}>{cargo}</span>
+                    <span className={styles.tripObject}>{t.siteName}</span>
+                    <span className={styles.tripWho} title={t.driverName}>
+                      {shortPersonName(t.driverName)}
+                    </span>
+                    <span className={styles.tripDoneLabel}>Исполнен</span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+        </>
+      ) : null}
 
       <div className={styles.sheet}>
         <div className={styles.split}>
@@ -701,29 +852,13 @@ export function SiteDeliveryPointSection({
                   </div>
                 </div>
 
-                {canEditPoint ? (
-                  <label className={styles.hintField}>
-                    Как подъехать
-                    <textarea
-                      className={styles.hint}
-                      rows={2}
-                      value={hint}
-                      placeholder="Ворота, штабель, ориентир…"
-                      onChange={(e) => setHint(e.target.value)}
-                      onBlur={saveHint}
-                    />
-                  </label>
-                ) : point?.hint ? (
-                  <p className={styles.hintNote}>{point.hint}</p>
-                ) : null}
-
                 <label className={styles.fieldBlock}>
                   <span className={styles.fieldLabel}>Водитель</span>
                   <div className={styles.driverCombo}>
                     <input
                       className={styles.fieldInput}
                       value={driverName}
-                      placeholder="Фамилия из парка"
+                      placeholder="ФИО из списка или вручную"
                       autoComplete="off"
                       onFocus={() => setDriverMenuOpen(true)}
                       onBlur={() => {
@@ -743,7 +878,7 @@ export function SiteDeliveryPointSection({
                       }}
                     />
                     {driverMenuOpen ? (
-                      <ul className={styles.driverHits} role="listbox" aria-label="Водители из парка">
+                      <ul className={styles.driverHits} role="listbox" aria-label="Водители">
                         {driverHits.length > 0 ? (
                           driverHits.map((n) => (
                             <li key={n}>
@@ -762,7 +897,7 @@ export function SiteDeliveryPointSection({
                           ))
                         ) : (
                           <li className={styles.driverEmpty}>
-                            В парке не найден — можно оставить как напечатали
+                            Нет в списке — будет назначено введённое ФИО
                           </li>
                         )}
                       </ul>
@@ -770,113 +905,16 @@ export function SiteDeliveryPointSection({
                   </div>
                 </label>
 
-                <div className={styles.fieldBlock}>
-                  <div className={styles.cargoHead}>
-                    <span className={styles.fieldLabel}>Груз</span>
-                    <div className={styles.cargoActions}>
-                      <button
-                        type="button"
-                        className={styles.pickCargoBtn}
-                        aria-expanded={cargoPickerOpen}
-                        onClick={() => (cargoPickerOpen ? closeCargoPicker() : openCargoPicker())}
-                      >
-                        {cargoPickerOpen ? 'Скрыть' : 'Выбрать'}
-                      </button>
-                      <button type="button" className={styles.addOwnBtn} onClick={addCustomCargo}>
-                        + Свой
-                      </button>
-                    </div>
-                  </div>
-
-                  {cargoPickerOpen ? (
-                    <div className={styles.cargoPicker} role="listbox" aria-label="Список материалов">
-                      <input
-                        className={styles.fieldInput}
-                        value={cargoSearch}
-                        placeholder="Поиск в списке…"
-                        onChange={(e) => setCargoSearch(e.target.value)}
-                        aria-label="Поиск материала"
-                        autoFocus
-                      />
-                      {cargoList.length > 0 ? (
-                        <ul className={styles.cargoPickList}>
-                          {cargoList.map((c) => {
-                            const on = pickedIds.has(c.id)
-                            return (
-                              <li key={c.id}>
-                                <button
-                                  type="button"
-                                  role="option"
-                                  aria-selected={on}
-                                  className={`${styles.cargoPickRow} ${on ? styles.cargoPickOn : ''}`}
-                                  onClick={() => toggleMaterial(c)}
-                                >
-                                  <span className={styles.cargoPickCheck} aria-hidden>
-                                    {on ? '✓' : ''}
-                                  </span>
-                                  <span className={styles.cargoPickTitle}>{c.title}</span>
-                                  <span className={styles.cargoPickUnit}>{unitLabel(c.unitId)}</span>
-                                </button>
-                              </li>
-                            )
-                          })}
-                        </ul>
-                      ) : (
-                        <p className={styles.cargoEmpty}>Ничего не найдено — добавьте свой груз.</p>
-                      )}
-                      <button type="button" className={styles.cargoPickerDone} onClick={closeCargoPicker}>
-                        Готово
-                        {pickedCargo.filter((r) => !r.custom).length
-                          ? ` · ${pickedCargo.filter((r) => !r.custom).length}`
-                          : ''}
-                      </button>
-                    </div>
-                  ) : null}
-
-                  {pickedCargo.length > 0 ? (
-                    <ul className={styles.cargoList}>
-                      {pickedCargo.map((row) => (
-                        <li key={row.id} className={styles.cargoRow}>
-                          {row.custom ? (
-                            <input
-                              className={styles.cargoTitle}
-                              value={row.title}
-                              placeholder="Название груза"
-                              onChange={(e) => updateCargoRow(row.id, { title: e.target.value })}
-                            />
-                          ) : (
-                            <span className={styles.cargoTitleText}>{row.title}</span>
-                          )}
-                          <input
-                            className={styles.cargoQty}
-                            inputMode="decimal"
-                            value={row.quantity}
-                            placeholder="Кол-во"
-                            aria-label={`Количество: ${row.title || 'груз'}`}
-                            onChange={(e) => updateCargoRow(row.id, { quantity: e.target.value })}
-                          />
-                          <span className={styles.cargoUnit}>{unitLabel(row.unitId)}</span>
-                          <button
-                            type="button"
-                            className={styles.cargoRemove}
-                            aria-label="Убрать"
-                            onClick={() => removeCargoRow(row.id)}
-                          >
-                            ×
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : cargoPickerOpen ? null : (
-                    <p className={styles.cargoEmpty}>Выберите материал или добавьте свой.</p>
-                  )}
-                  <input
-                    className={styles.fieldInput}
-                    value={cargoNote}
-                    placeholder="Комментарий к грузу"
-                    onChange={(e) => setCargoNote(e.target.value)}
+                <label className={styles.hintField}>
+                  Комментарий
+                  <textarea
+                    className={styles.hint}
+                    rows={3}
+                    value={tripComment}
+                    placeholder="Состав груза, ориентир на площадке, порядок подъезда"
+                    onChange={(e) => setTripComment(e.target.value)}
                   />
-                </div>
+                </label>
 
                 <button
                   type="button"

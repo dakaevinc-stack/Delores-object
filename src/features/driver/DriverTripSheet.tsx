@@ -1,6 +1,9 @@
 import {
   DRIVER_TRIP_ROLE_LABELS,
+  DRIVER_TRIP_STATUS_LABELS,
   formatTripAssignedTime,
+  isTripDone,
+  resolveTripStatus,
   tripCargoLines,
   type DriverTrip,
 } from '../../domain/driverTrip'
@@ -10,9 +13,10 @@ import styles from './DriverTripSheet.module.css'
 type Props = {
   trip: DriverTrip
   onClose: () => void
+  onComplete?: (tripId: string) => void | Promise<void>
 }
 
-export function DriverTripSheet({ trip, onClose }: Props) {
+export function DriverTripSheet({ trip, onClose, onComplete }: Props) {
   const cargo = tripCargoLines(trip)
   const pickupAddress = trip.pickup.address.trim()
   const pickupHint = trip.pickup.hint.trim()
@@ -20,6 +24,8 @@ export function DriverTripSheet({ trip, onClose }: Props) {
   const unloadAddress = trip.point.address.trim()
   const unloadHint = trip.point.hint.trim()
   const time = formatTripAssignedTime(trip.createdAtIso)
+  const status = resolveTripStatus(trip)
+  const done = isTripDone(trip)
 
   return (
     <div className={styles.scrim} role="presentation" onClick={onClose}>
@@ -31,8 +37,11 @@ export function DriverTripSheet({ trip, onClose }: Props) {
       >
         <div className={styles.headRow}>
           <p className={styles.kicker}>Маршрут</p>
-          {time ? <p className={styles.time}>назначен в {time}</p> : null}
+          <span className={styles.status} data-tone={status}>
+            {DRIVER_TRIP_STATUS_LABELS[status]}
+          </span>
         </div>
+        {time ? <p className={styles.time}>назначен в {time}</p> : null}
         <h2 className={styles.title} id="driver-trip-title">
           {unloadAddress || trip.siteName}
         </h2>
@@ -63,7 +72,7 @@ export function DriverTripSheet({ trip, onClose }: Props) {
                   ))}
                 </ul>
               ) : (
-                <p className={styles.hint}>Что грузить — уточните у диспетчера.</p>
+                <p className={styles.hint}>Комментарий уточнит диспетчер.</p>
               )}
             </div>
           </li>
@@ -101,9 +110,20 @@ export function DriverTripSheet({ trip, onClose }: Props) {
           Назначил {DRIVER_TRIP_ROLE_LABELS[trip.assignedByRole].toLocaleLowerCase('ru-RU')}
         </p>
 
-        <button type="button" className={styles.close} onClick={onClose}>
-          Понятно
-        </button>
+        <div className={styles.actions}>
+          {!done && onComplete ? (
+            <button
+              type="button"
+              className={styles.done}
+              onClick={() => void onComplete(trip.id)}
+            >
+              Рейс выполнен
+            </button>
+          ) : null}
+          <button type="button" className={styles.close} onClick={onClose}>
+            {done ? 'Закрыть' : 'Понятно'}
+          </button>
+        </div>
       </div>
     </div>
   )

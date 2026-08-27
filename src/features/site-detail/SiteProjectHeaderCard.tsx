@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { CadViewer, type CadViewerRef } from '@cadview/react'
 import { convertDwgToDxf, dwgConverter, initWasm } from '@cadview/dwg'
 import { computeEntitiesBounds, fitToView as coreFitToView } from '@cadview/core'
 import {
+  collectDescendantIds,
   deleteProjectFile,
+  detectProjectFileKind,
   getProjectFileBlob,
   listProjectFilesBySite,
+  projectParentId,
   pruneProjectFilesToRemote,
   putProjectFile,
-  type SiteProjectFileKind,
+  putProjectFileMeta,
   type StoredSiteProjectFile,
 } from '../../lib/siteProjectFilesRepository'
 import {
@@ -25,6 +29,8 @@ import styles from './SiteProjectHeaderCard.module.css'
 type Props = {
   siteId: string
   canUpload: boolean
+  /** Без собственной рамки — внутри шапки объекта. */
+  embedded?: boolean
 }
 
 type ProjectAsset = StoredSiteProjectFile & {
@@ -42,25 +48,45 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`
 }
 
-export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
-  const pdfInputRef = useRef<HTMLInputElement | null>(null)
-  const dwgInputRef = useRef<HTMLInputElement | null>(null)
+function kindLabel(kind: StoredSiteProjectFile['kind']): string {
+  if (kind === 'pdf') return 'PDF'
+  if (kind === 'dwg') return 'DWG'
+  if (kind === 'folder') return 'Папка'
+  return 'Файл'
+}
+
+function formatUploaded(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
+export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: Props) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const assetsRef = useRef<ProjectAsset[]>([])
-  const busyKindRef = useRef<SiteProjectFileKind | null>(null)
+  const busyRef = useRef(false)
   const syncBlockedRef = useRef(false)
   /** Локальные id, которые ещё ждут отправки на сервер (не «воскрешать» удалённые чужие). */
   const pendingSyncIdsRef = useRef<Set<string>>(new Set())
 
   const [assets, setAssets] = useState<ProjectAsset[]>([])
   const [loading, setLoading] = useState(true)
-  const [busyKind, setBusyKind] = useState<SiteProjectFileKind | null>(null)
-  const [viewerOpen, setViewerOpen] = useState(false)
-  const [dwgViewerOpen, setDwgViewerOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [viewerPdf, setViewerPdf] = useState<ProjectAsset | null>(null)
+  const [viewerDwg, setViewerDwg] = useState<ProjectAsset | null>(null)
   const [dwgFile, setDwgFile] = useState<File | null>(null)
   const [dwgDxfText, setDwgDxfText] = useState<string | null>(null)
   const [dwgLoadState, setDwgLoadState] = useState<'idle' | 'loading' | 'error'>('idle')
   const [remoteActive, setRemoteActive] = useState(false)
   const [syncMessage, setSyncMessage] = useState<string | null>(null)
+  const [folderOpen, setFolderOpen] = useState(false)
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
+  const [newFolderOpen, setNewFolderOpen] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
   const dwgLayersLoadedRef = useRef(false)
   const dwgCadRef = useRef<CadViewerRef | null>(null)
   const dwgCanvasWrapRef = useRef<HTMLDivElement | null>(null)
@@ -88,7 +114,6 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
       // Сервер — источник правды: показываем remote + только pending с этого устройства.
       if (remoteAvailable && remoteRows) {
         const remoteIds = new Set(remoteRows.map((row) => row.id))
-        const remoteKinds = new Set(remoteRows.map((row) => row.kind))
 
         await pruneProjectFilesToRemote(siteId, remoteIds, pendingSyncIdsRef.current)
 
@@ -102,19 +127,33 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
             const localRows = await listProjectFilesBySite(siteId)
             const toUpload = localRows.filter(
               (local) =>
-                pendingSyncIdsRef.current.has(local.id) && !remoteKinds.has(local.kind),
+                pendingSyncIdsRef.current.has(local.id) && !remoteIds.has(local.id),
             )
             if (toUpload.length > 0) {
               if (!opts?.silent) setSyncMessage('Отправляем файлы на сервер…')
               let firstError: string | null = null
               for (const local of toUpload) {
                 try {
+                  if (local.kind === 'folder') {
+                    const result = await createProjectFileRemote(siteId, local)
+                    if (result.ok) {
+                      pendingSyncIdsRef.current.delete(local.id)
+                      remoteIds.add(local.id)
+                      syncBlockedRef.current = false
+                    } else if (result.reason === 'forbidden') {
+                      syncBlockedRef.current = true
+                      if (!firstError) firstError = describeRemoteWriteError(result, 'папку')
+                    } else if (!firstError) {
+                      firstError = describeRemoteWriteError(result, 'папку')
+                    }
+                    continue
+                  }
                   const blob = await getProjectFileBlob(local.id)
                   if (!blob) continue
                   const result = await createProjectFileRemote(siteId, local, blob)
                   if (result.ok) {
                     pendingSyncIdsRef.current.delete(local.id)
-                    remoteKinds.add(local.kind)
+                    remoteIds.add(local.id)
                     syncBlockedRef.current = false
                   } else if (result.reason === 'forbidden') {
                     syncBlockedRef.current = true
@@ -139,16 +178,19 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
 
         const resolved: ProjectAsset[] = finalRemote.map((row) => ({
           ...row,
-          url: projectFileBlobUrl(siteId, row.id),
+          url: row.kind === 'folder' ? '' : projectFileBlobUrl(siteId, row.id),
         }))
 
         // Pending, которых ещё нет на сервере — показываем только их (ожидание синка).
         const localRows = await listProjectFilesBySite(siteId)
-        const remoteKindSet = new Set(finalRemote.map((r) => r.kind))
         for (const local of localRows) {
           if (!pendingSyncIdsRef.current.has(local.id)) continue
-          if (remoteKindSet.has(local.kind) || finalIds.has(local.id)) {
+          if (finalIds.has(local.id)) {
             pendingSyncIdsRef.current.delete(local.id)
+            continue
+          }
+          if (local.kind === 'folder') {
+            resolved.push({ ...local, url: '' })
             continue
           }
           const blob = await getProjectFileBlob(local.id)
@@ -167,6 +209,10 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
       const localRows = await listProjectFilesBySite(siteId)
       const resolved: ProjectAsset[] = []
       for (const row of localRows) {
+        if (row.kind === 'folder') {
+          resolved.push({ ...row, url: '' })
+          continue
+        }
         const blob = await getProjectFileBlob(row.id)
         if (!blob) continue
         const url = URL.createObjectURL(blob)
@@ -189,28 +235,29 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
     await pruneProjectFilesToRemote(siteId, remoteIds, pendingSyncIdsRef.current)
 
     setAssets((prev) => {
-      const remoteKinds = new Set(remoteRows.map((row) => row.kind))
       const resolved: ProjectAsset[] = remoteRows.map((row) => ({
         ...row,
-        url: projectFileBlobUrl(siteId, row.id),
+        url: row.kind === 'folder' ? '' : projectFileBlobUrl(siteId, row.id),
       }))
-      // Оставляем только pending с этого устройства, не чужие «старые» blob.
+      const resolvedIds = new Set(resolved.map((r) => r.id))
       for (const row of prev) {
-        if (!row.url.startsWith('blob:')) continue
         if (!pendingSyncIdsRef.current.has(row.id)) {
-          revokeIfBlobUrl(row.url)
+          if (row.url.startsWith('blob:')) revokeIfBlobUrl(row.url)
           continue
         }
-        if (remoteKinds.has(row.kind) || remoteIds.has(row.id)) {
+        if (remoteIds.has(row.id)) {
           pendingSyncIdsRef.current.delete(row.id)
-          revokeIfBlobUrl(row.url)
+          if (row.url.startsWith('blob:')) revokeIfBlobUrl(row.url)
           continue
         }
-        resolved.push(row)
+        if (!resolvedIds.has(row.id)) {
+          resolved.push(row)
+          resolvedIds.add(row.id)
+        }
       }
       resolved.sort((a, b) => b.uploadedAtIso.localeCompare(a.uploadedAtIso))
-      const prevSig = prev.map((r) => `${r.kind}:${r.id}:${r.sizeBytes}`).join('|')
-      const nextSig = resolved.map((r) => `${r.kind}:${r.id}:${r.sizeBytes}`).join('|')
+      const prevSig = prev.map((r) => `${r.kind}:${r.id}:${r.parentId ?? ''}:${r.sizeBytes}`).join('|')
+      const nextSig = resolved.map((r) => `${r.kind}:${r.id}:${r.parentId ?? ''}:${r.sizeBytes}`).join('|')
       if (prevSig === nextSig) return prev
       return resolved
     })
@@ -255,8 +302,8 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
   }, [assets])
 
   useEffect(() => {
-    busyKindRef.current = busyKind
-  }, [busyKind])
+    busyRef.current = busy
+  }, [busy])
 
   useEffect(() => {
     let cancelled = false
@@ -292,8 +339,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
   useEffect(() => {
     const tick = () => {
       if (document.visibilityState !== 'visible') return
-      if (busyKindRef.current) return
-      // Пока есть неотправленные — дожимаем upload; иначе только читаем сервер.
+      if (busyRef.current) return
       if (canUpload && pendingSyncIdsRef.current.size > 0) void loadAssets({ silent: true })
       else void refreshFromRemote()
     }
@@ -302,12 +348,16 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
   }, [canUpload, loadAssets, refreshFromRemote])
 
   useEffect(() => {
-    const anyOpen = viewerOpen || dwgViewerOpen
+    const anyOpen = viewerPdf != null || viewerDwg != null || folderOpen
     if (!anyOpen) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setViewerOpen(false)
-        setDwgViewerOpen(false)
+        if (viewerPdf || viewerDwg) {
+          setViewerPdf(null)
+          setViewerDwg(null)
+        } else {
+          setFolderOpen(false)
+        }
       }
     }
     document.addEventListener('keydown', onKey)
@@ -317,126 +367,217 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = prevOverflow
     }
-  }, [viewerOpen, dwgViewerOpen])
+  }, [viewerPdf, viewerDwg, folderOpen])
 
-  const pdf = useMemo(() => assets.find((row) => row.kind === 'pdf') ?? null, [assets])
-  const dwg = useMemo(() => assets.find((row) => row.kind === 'dwg') ?? null, [assets])
   const hasLocalOnly = useMemo(() => assets.some((row) => row.url.startsWith('blob:')), [assets])
 
-  const replaceAsset = async (kind: SiteProjectFileKind, file: File | null) => {
-    if (!file) return
-    setBusyKind(kind)
+  const featuredDrawing = useMemo(() => {
+    const dwgs = assets.filter((row) => row.kind === 'dwg')
+    if (dwgs.length === 0) return null
+    // Основной чертёж — самый ранний DWG, остальные остаются в папке.
+    return [...dwgs].sort((a, b) => a.uploadedAtIso.localeCompare(b.uploadedAtIso))[0]
+  }, [assets])
+
+  const archiveFiles = useMemo(() => {
+    const inFolder = assets.filter(
+      (row) => row.id !== featuredDrawing?.id && projectParentId(row) === currentFolderId,
+    )
+    return [...inFolder].sort((a, b) => {
+      if (a.kind === 'folder' && b.kind !== 'folder') return -1
+      if (a.kind !== 'folder' && b.kind === 'folder') return 1
+      return a.name.localeCompare(b.name, 'ru')
+    })
+  }, [assets, featuredDrawing, currentFolderId])
+
+  const folderTrail = useMemo(() => {
+    const trail: ProjectAsset[] = []
+    let id = currentFolderId
+    while (id) {
+      const folder = assets.find((row) => row.id === id && row.kind === 'folder')
+      if (!folder) break
+      trail.unshift(folder)
+      id = projectParentId(folder)
+    }
+    return trail
+  }, [assets, currentFolderId])
+
+  const addFiles = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return
+    setBusy(true)
     setSyncMessage(null)
     try {
-      if (kind === 'dwg') {
-        setDwgViewerOpen(false)
-        setDwgFile(null)
-        setDwgDxfText(null)
-        setDwgLoadState('idle')
-        dwgLayersLoadedRef.current = false
-      }
+      for (const file of Array.from(fileList)) {
+        const kind = detectProjectFileKind(file)
+        const record: StoredSiteProjectFile = {
+          id: newId(),
+          siteId,
+          kind,
+          name: file.name,
+          mime:
+            file.type ||
+            (kind === 'pdf'
+              ? 'application/pdf'
+              : kind === 'dwg'
+                ? 'application/acad'
+                : 'application/octet-stream'),
+          sizeBytes: file.size,
+          uploadedAtIso: new Date().toISOString(),
+          parentId: currentFolderId,
+        }
+        await putProjectFile(record, file)
+        pendingSyncIdsRef.current.add(record.id)
 
+        const remoteProbe = await fetchProjectFilesRemote(siteId)
+        const remoteAvailable = remoteProbe !== null
+        if (remoteAvailable) setRemoteActive(true)
+
+        let syncedToRemote = false
+        if (remoteAvailable) {
+          const result = await createProjectFileRemote(siteId, record, file)
+          if (result.ok) {
+            syncedToRemote = true
+            pendingSyncIdsRef.current.delete(record.id)
+            syncBlockedRef.current = false
+          } else if (result.reason === 'network') {
+            setSyncMessage(
+              'Не удалось отправить на сервер — проверьте интернет и нажмите «Отправить».',
+            )
+          } else if (result.reason === 'forbidden') {
+            syncBlockedRef.current = true
+            setSyncMessage(describeRemoteWriteError(result, 'файл'))
+          } else {
+            setSyncMessage(describeRemoteWriteError(result, 'файл'))
+          }
+        } else {
+          setSyncMessage('Сервер недоступен — файлы сохранены только на этом устройстве.')
+        }
+
+        if (syncedToRemote) {
+          await refreshFromRemote()
+        } else {
+          const url = URL.createObjectURL(file)
+          setAssets((prev) =>
+            [{ ...record, url }, ...prev].sort((a, b) =>
+              b.uploadedAtIso.localeCompare(a.uploadedAtIso),
+            ),
+          )
+        }
+      }
+      if (!syncMessage) setSyncMessage(null)
+    } catch {
+      setSyncMessage('Не удалось сохранить файл. Попробуйте ещё раз.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const createFolder = async () => {
+    const name = newFolderName.trim()
+    if (!name) return
+    setBusy(true)
+    setSyncMessage(null)
+    try {
       const record: StoredSiteProjectFile = {
         id: newId(),
         siteId,
-        kind,
-        name: file.name,
-        mime: file.type || (kind === 'pdf' ? 'application/pdf' : 'application/acad'),
-        sizeBytes: file.size,
+        kind: 'folder',
+        name,
+        mime: 'inode/directory',
+        sizeBytes: 0,
         uploadedAtIso: new Date().toISOString(),
+        parentId: currentFolderId,
       }
-      await putProjectFile(record, file)
+      await putProjectFileMeta(record)
       pendingSyncIdsRef.current.add(record.id)
+
       const remoteProbe = await fetchProjectFilesRemote(siteId)
       const remoteAvailable = remoteProbe !== null
       if (remoteAvailable) setRemoteActive(true)
 
-      let syncedToRemote = false
+      let synced = false
       if (remoteAvailable) {
-        const result = await createProjectFileRemote(siteId, record, file)
+        const result = await createProjectFileRemote(siteId, record)
         if (result.ok) {
-          syncedToRemote = true
+          synced = true
           pendingSyncIdsRef.current.delete(record.id)
           syncBlockedRef.current = false
-          setSyncMessage(null)
-        } else if (result.reason === 'network') {
-          setSyncMessage('Не удалось отправить на сервер — проверьте интернет и нажмите «Отправить на сервер».')
-        } else if (result.reason === 'forbidden') {
-          syncBlockedRef.current = true
-          setSyncMessage(describeRemoteWriteError(result, 'файл'))
         } else {
-          setSyncMessage(describeRemoteWriteError(result, 'файл'))
+          setSyncMessage(describeRemoteWriteError(result, 'папку'))
+          if (result.reason === 'forbidden') syncBlockedRef.current = true
         }
-      } else {
-        setSyncMessage('Сервер недоступен — файл сохранён только на этом устройстве.')
       }
-      const url = syncedToRemote
-        ? projectFileBlobUrl(siteId, record.id)
-        : URL.createObjectURL(file)
-      if (syncedToRemote) {
-        await refreshFromRemote()
-      } else {
-        setAssets((prev) => {
-          const replaced = prev.filter((row) => row.kind !== kind)
-          for (const row of prev) {
-            if (row.kind === kind) revokeIfBlobUrl(row.url)
-          }
-          return [{ ...record, url }, ...replaced]
-        })
+
+      if (synced) await refreshFromRemote()
+      else {
+        setAssets((prev) =>
+          [{ ...record, url: '' }, ...prev].sort((a, b) =>
+            b.uploadedAtIso.localeCompare(a.uploadedAtIso),
+          ),
+        )
       }
+      setNewFolderName('')
+      setNewFolderOpen(false)
     } catch {
-      setSyncMessage('Не удалось сохранить файл. Попробуйте ещё раз.')
+      setSyncMessage('Не удалось создать папку.')
     } finally {
-      setBusyKind(null)
+      setBusy(false)
     }
   }
 
-  const removeAsset = async (kind: SiteProjectFileKind) => {
-    const row = assets.find((item) => item.kind === kind)
-    if (!row) return
+  const removeAsset = async (row: ProjectAsset) => {
     setSyncMessage(null)
+    const toRemove =
+      row.kind === 'folder' ? collectDescendantIds(assets, row.id) : [row.id]
     const remoteProbe = await fetchProjectFilesRemote(siteId)
     const serverReachable = remoteProbe !== null
     if (serverReachable) setRemoteActive(true)
     if (serverReachable || remoteActive) {
-      const ok = await deleteProjectFileRemote(siteId, row.id)
-      if (!ok) {
-        setSyncMessage('Не удалось удалить файл на сервере. На других устройствах он может остаться.')
-        return
+      for (const id of toRemove) {
+        const ok = await deleteProjectFileRemote(siteId, id)
+        if (!ok) {
+          setSyncMessage(
+            'Не удалось удалить на сервере. На других устройствах запись может остаться.',
+          )
+          return
+        }
       }
     }
-    pendingSyncIdsRef.current.delete(row.id)
-    await deleteProjectFile(row.id)
-    revokeIfBlobUrl(row.url)
-    setAssets((prev) => prev.filter((item) => item.id !== row.id))
-    if (kind === 'pdf') setViewerOpen(false)
-    if (kind === 'dwg') {
-      setDwgViewerOpen(false)
+    for (const id of toRemove) {
+      pendingSyncIdsRef.current.delete(id)
+      await deleteProjectFile(id)
+    }
+    setAssets((prev) => {
+      for (const item of prev) {
+        if (toRemove.includes(item.id)) revokeIfBlobUrl(item.url)
+      }
+      return prev.filter((item) => !toRemove.includes(item.id))
+    })
+    if (viewerPdf && toRemove.includes(viewerPdf.id)) setViewerPdf(null)
+    if (viewerDwg && toRemove.includes(viewerDwg.id)) {
+      setViewerDwg(null)
       setDwgFile(null)
       setDwgDxfText(null)
       setDwgLoadState('idle')
       dwgLayersLoadedRef.current = false
     }
-    // Сразу подтянуть актуальное состояние сервера (на случай другого id того же kind).
+    if (currentFolderId && toRemove.includes(currentFolderId)) {
+      setCurrentFolderId(null)
+    }
     if (serverReachable) void refreshFromRemote()
   }
 
-  const openDwgViewer = async () => {
-    if (!dwg) return
-    setViewerOpen(false)
-    setDwgViewerOpen(true)
-
-    if (dwgFile || dwgDxfText) return
-
+  const openDwgViewer = async (row: ProjectAsset) => {
+    setViewerPdf(null)
+    setViewerDwg(row)
+    setDwgFile(null)
+    setDwgDxfText(null)
     setDwgLoadState('loading')
     dwgLayersLoadedRef.current = false
     try {
       await initWasm()
-      const blob = await resolveProjectBlob(dwg.id)
+      const blob = await resolveProjectBlob(row.id)
       if (!blob) throw new Error('dwg_blob_missing')
-
-      const file = new File([blob], dwg.name, { type: dwg.mime || 'application/acad' })
-      setDwgDxfText(null)
+      const file = new File([blob], row.name, { type: row.mime || 'application/acad' })
       setDwgFile(file)
     } catch {
       setDwgLoadState('error')
@@ -444,21 +585,19 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
   }
 
   useEffect(() => {
-    if (!dwgViewerOpen) return
+    if (!viewerDwg) return
     if (!dwgFile && !dwgDxfText) return
     const t = window.setTimeout(() => smartFitToRoad(), 180)
     return () => window.clearTimeout(t)
-  }, [dwgViewerOpen, dwgFile, dwgDxfText])
+  }, [viewerDwg, dwgFile, dwgDxfText])
 
-  // Fallback: DWG -> DXF конвертация если прямой путь не отдал слои за 15 сек.
   useEffect(() => {
-    if (!dwgViewerOpen) return
+    if (!viewerDwg) return
     if (dwgLoadState !== 'loading') return
     if (!dwgFile) return
     if (dwgDxfText) return
-    if (!dwg?.id) return
 
-    const currentDwgId = dwg.id
+    const currentDwgId = viewerDwg.id
     let cancelled = false
 
     const t = window.setTimeout(async () => {
@@ -483,134 +622,116 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
       cancelled = true
       window.clearTimeout(t)
     }
-  }, [dwgViewerOpen, dwgLoadState, dwgFile, dwgDxfText, dwg?.id])
-
-  /* ── Рендер карточки ── */
+  }, [viewerDwg, dwgLoadState, dwgFile, dwgDxfText])
 
   return (
     <>
       {canUpload ? (
-        <>
-          <input
-            ref={pdfInputRef}
-            className={styles.hiddenInput}
-            type="file"
-            accept="application/pdf,.pdf"
-            onChange={(e) => {
-              void replaceAsset('pdf', e.target.files?.[0] ?? null)
-              e.target.value = ''
-            }}
-          />
-          <input
-            ref={dwgInputRef}
-            className={styles.hiddenInput}
-            type="file"
-            accept=".dwg,application/acad,application/x-acad,image/vnd.dwg"
-            onChange={(e) => {
-              void replaceAsset('dwg', e.target.files?.[0] ?? null)
-              e.target.value = ''
-            }}
-          />
-        </>
+        <input
+          ref={fileInputRef}
+          className={styles.hiddenInput}
+          type="file"
+          multiple
+          accept=".pdf,.dwg,.dxf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar,.7z,.png,.jpg,.jpeg,.webp,.txt,.csv,application/pdf,image/*"
+          onChange={(e) => {
+            void addFiles(e.target.files)
+            e.target.value = ''
+          }}
+        />
       ) : null}
 
-      <aside className={styles.card} aria-label="Файлы проекта">
-        <div className={styles.files}>
-          <div className={`${styles.fileRow} ${pdf ? styles.fileRowReady : styles.fileRowEmpty}`}>
-            <span className={`${styles.fileTag} ${styles.fileTagPdf}`}>PDF</span>
-            <div className={styles.fileRowBody}>
-              {pdf ? (
-                <span className={styles.fileName} title={pdf.name}>
-                  <span className={styles.fileNameText}>{pdf.name}</span>
-                  <span className={styles.fileMeta}>{formatSize(pdf.sizeBytes)}</span>
-                </span>
-              ) : (
-                <span className={styles.fileEmpty}>Не загружен</span>
-              )}
-            </div>
-            <div className={styles.fileRowActions}>
-              {pdf ? (
-                <>
-                  <button type="button" className={styles.actionBtnPrimary} onClick={() => setViewerOpen(true)}>
-                    Открыть
-                  </button>
-                  <a className={styles.actionBtnSecondary} href={pdf.url} download={pdf.name} title="Скачать">
-                    ↓
-                  </a>
-                  {canUpload ? (
-                    <button
-                      type="button"
-                      className={styles.actionBtnDanger}
-                      onClick={() => void removeAsset('pdf')}
-                      title="Убрать"
-                    >
-                      ×
-                    </button>
-                  ) : null}
-                </>
-              ) : canUpload ? (
-                <button
-                  type="button"
-                  className={styles.actionBtnPrimary}
-                  onClick={() => pdfInputRef.current?.click()}
-                >
-                  Загрузить
-                </button>
-              ) : null}
-            </div>
-          </div>
+      <aside
+        className={`${styles.shell} ${embedded ? styles.shellEmbedded : ''}`}
+        aria-label="Чертёж и файлы проекта"
+      >
+        <span className={styles.shellRail} aria-hidden />
+        <div className={styles.shellInner}>
+          {loading && !featuredDrawing ? (
+            <p className={styles.pending}>Загружаем чертёж…</p>
+          ) : (
+            <>
+              <div className={styles.copy}>
+                <p className={styles.kicker}>
+                  <span className={styles.kickerDot} aria-hidden />
+                  Чертёж
+                </p>
+                {featuredDrawing ? (
+                  <>
+                    <h3 className={styles.title} title={featuredDrawing.name}>
+                      {featuredDrawing.name}
+                    </h3>
+                    <p className={styles.lead}>
+                      <span className={styles.kind}>DWG</span>
+                      <span className={styles.dot} aria-hidden>
+                        ·
+                      </span>
+                      <span>{formatSize(featuredDrawing.sizeBytes)}</span>
+                      <span className={styles.leadSep} aria-hidden />
+                      <a
+                        className={styles.textLink}
+                        href={featuredDrawing.url}
+                        download={featuredDrawing.name}
+                      >
+                        Скачать
+                      </a>
+                      {canUpload ? (
+                        <button
+                          type="button"
+                          className={styles.textLinkDanger}
+                          onClick={() => void removeAsset(featuredDrawing)}
+                        >
+                          Удалить
+                        </button>
+                      ) : null}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className={styles.title}>Чертёж ещё не загружен</h3>
+                    <p className={styles.lead}>
+                      DWG, сметы и акты — в папке файлов
+                    </p>
+                  </>
+                )}
+              </div>
 
-          <div className={`${styles.fileRow} ${dwg ? styles.fileRowReady : styles.fileRowEmpty}`}>
-            <span className={`${styles.fileTag} ${styles.fileTagDwg}`}>DWG</span>
-            <div className={styles.fileRowBody}>
-              {dwg ? (
-                <span className={styles.fileName} title={dwg.name}>
-                  <span className={styles.fileNameText}>{dwg.name}</span>
-                  <span className={styles.fileMeta}>{formatSize(dwg.sizeBytes)}</span>
-                </span>
-              ) : (
-                <span className={styles.fileEmpty}>Не загружен</span>
-              )}
-            </div>
-            <div className={styles.fileRowActions}>
-              {dwg ? (
-                <>
-                  <button type="button" className={styles.actionBtnPrimary} onClick={() => void openDwgViewer()}>
+              <div className={styles.actions}>
+                {featuredDrawing ? (
+                  <button
+                    type="button"
+                    className={styles.ctaPrimary}
+                    onClick={() => void openDwgViewer(featuredDrawing)}
+                  >
                     Открыть
                   </button>
-                  <a className={styles.actionBtnSecondary} href={dwg.url} download={dwg.name} title="Скачать">
-                    ↓
-                  </a>
-                  {canUpload ? (
-                    <button
-                      type="button"
-                      className={styles.actionBtnDanger}
-                      onClick={() => void removeAsset('dwg')}
-                      title="Убрать"
-                    >
-                      ×
-                    </button>
-                  ) : null}
-                </>
-              ) : canUpload ? (
+                ) : canUpload ? (
+                  <button
+                    type="button"
+                    className={styles.ctaPrimary}
+                    onClick={() => setFolderOpen(true)}
+                  >
+                    Загрузить
+                  </button>
+                ) : null}
+
                 <button
                   type="button"
-                  className={styles.actionBtnPrimary}
-                  onClick={() => dwgInputRef.current?.click()}
+                  className={styles.ctaSoft}
+                  onClick={() => setFolderOpen(true)}
                 >
-                  Загрузить
+                  Документы
                 </button>
-              ) : null}
-            </div>
-          </div>
+              </div>
+            </>
+          )}
         </div>
 
         {canUpload && !loading && hasLocalOnly ? (
           <div className={styles.hintRow}>
-            <p className={styles.hint}>Файл ещё не на сервере.</p>
+            <p className={styles.hint}>Есть файлы только на этом устройстве.</p>
             <button
               type="button"
-              className={styles.actionBtnMuted}
+              className={styles.textLink}
               onClick={() => {
                 syncBlockedRef.current = false
                 void loadAssets({ silent: true })
@@ -623,89 +744,431 @@ export function SiteProjectHeaderCard({ siteId, canUpload }: Props) {
         {syncMessage ? <p className={styles.hint}>{syncMessage}</p> : null}
       </aside>
 
-      {/* ── PDF Viewer Modal ── */}
-      {viewerOpen && pdf ? (
-        <div className={styles.backdrop} role="dialog" aria-modal="true" aria-label="Просмотр PDF" onClick={() => setViewerOpen(false)}>
-          <div className={styles.viewer} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.viewerHead}>
-              <div>
-                <p className={styles.viewerKicker}>Проект</p>
-                <p className={styles.viewerTitle}>{pdf.name}</p>
-              </div>
-              <div className={styles.viewerActions}>
-                <a className={styles.viewerBtn} href={pdf.url} download={pdf.name}>
-                  Скачать PDF
-                </a>
-                <button type="button" className={styles.viewerBtnClose} onClick={() => setViewerOpen(false)}>
-                  Закрыть
-                </button>
-              </div>
-            </div>
-            <iframe className={styles.frame} src={pdf.url} title="PDF проекта" />
-          </div>
-        </div>
-      ) : null}
+      {folderOpen
+        ? createPortal(
+            <div
+              className={styles.folderScreen}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Документы объекта"
+            >
+              <header className={styles.folderBar}>
+                <div className={styles.folderBarLeft}>
+                  <span className={styles.folderIcon} aria-hidden>
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+                      <path
+                        d="M3.5 8.2V7a1.8 1.8 0 0 1 1.8-1.8h4.1L11 6.8h8.7A1.8 1.8 0 0 1 21.5 8.6v1"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M3.5 10h17v7.2a1.8 1.8 0 0 1-1.8 1.8H5.3a1.8 1.8 0 0 1-1.8-1.8V10Z"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinejoin="round"
+                        fill="rgba(23,42,77,0.06)"
+                      />
+                    </svg>
+                  </span>
+                  <div className={styles.folderBarCopy}>
+                    <nav className={styles.folderPath} aria-label="Путь">
+                      <button
+                        type="button"
+                        className={styles.pathCrumb}
+                        onClick={() => setCurrentFolderId(null)}
+                      >
+                        Документы
+                      </button>
+                      {folderTrail.map((folder) => (
+                        <span key={folder.id} className={styles.pathSegment}>
+                          <span className={styles.pathSep} aria-hidden>
+                            /
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.pathCrumb}
+                            onClick={() => setCurrentFolderId(folder.id)}
+                          >
+                            {folder.name}
+                          </button>
+                        </span>
+                      ))}
+                    </nav>
+                    <h2 className={styles.folderTitle}>
+                      {folderTrail.length > 0
+                        ? folderTrail[folderTrail.length - 1]!.name
+                        : 'Документы объекта'}
+                    </h2>
+                  </div>
+                </div>
+                <div className={styles.folderBarActions}>
+                  {canUpload ? (
+                    <>
+                      <button
+                        type="button"
+                        className={styles.folderBtnGhost}
+                        disabled={busy}
+                        onClick={() => {
+                          setNewFolderOpen(true)
+                          setNewFolderName('')
+                        }}
+                      >
+                        Новая папка
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.folderBtn}
+                        disabled={busy}
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        {busy ? 'Загрузка…' : 'Загрузить файлы'}
+                      </button>
+                    </>
+                  ) : null}
+                  <button
+                    type="button"
+                    className={styles.folderBtnGhost}
+                    onClick={() => {
+                      setFolderOpen(false)
+                      setCurrentFolderId(null)
+                      setNewFolderOpen(false)
+                    }}
+                  >
+                    Закрыть
+                  </button>
+                </div>
+              </header>
 
-      {/* ── DWG Viewer Modal ── */}
-      {dwgViewerOpen && dwg ? (
-        <div
-          className={styles.backdrop}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Просмотр DWG"
-          onClick={() => setDwgViewerOpen(false)}
-        >
-          <div className={styles.viewer} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.viewerHeadDark}>
-              <div>
-                <p className={styles.viewerKickerDark}>Проект</p>
-                <p className={styles.viewerTitleDark}>{dwg.name}</p>
+              {newFolderOpen ? (
+                <div className={styles.newFolderBar}>
+                  <input
+                    className={styles.newFolderInput}
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    placeholder="Название папки"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void createFolder()
+                      if (e.key === 'Escape') setNewFolderOpen(false)
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className={styles.folderBtn}
+                    disabled={busy || !newFolderName.trim()}
+                    onClick={() => void createFolder()}
+                  >
+                    Создать
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.folderBtnGhost}
+                    onClick={() => setNewFolderOpen(false)}
+                  >
+                    Отмена
+                  </button>
+                </div>
+              ) : null}
+
+              <div className={styles.folderPane}>
+                {loading && assets.length === 0 ? (
+                  <div className={styles.empty}>
+                    <p className={styles.emptyTitle}>Загружаем папку…</p>
+                  </div>
+                ) : null}
+
+                {!loading && archiveFiles.length === 0 ? (
+                  <div className={styles.empty}>
+                    <span className={styles.emptyFolderIcon} aria-hidden>
+                      <svg viewBox="0 0 24 24" width="40" height="40" fill="none">
+                        <path
+                          d="M3.5 8.2V7a1.8 1.8 0 0 1 1.8-1.8h4.1L11 6.8h8.7A1.8 1.8 0 0 1 21.5 8.6v1"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M3.5 10h17v7.2a1.8 1.8 0 0 1-1.8 1.8H5.3a1.8 1.8 0 0 1-1.8-1.8V10Z"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                    <p className={styles.emptyTitle}>Папка пуста</p>
+                    <p className={styles.emptyHint}>
+                      Создайте подпапки (сметы, акты) или загрузите файлы сюда
+                    </p>
+                    {canUpload ? (
+                      <div className={styles.emptyActions}>
+                        <button
+                          type="button"
+                          className={styles.folderBtnGhost}
+                          disabled={busy}
+                          onClick={() => {
+                            setNewFolderOpen(true)
+                            setNewFolderName('')
+                          }}
+                        >
+                          Новая папка
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.folderBtn}
+                          disabled={busy}
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          Загрузить файлы
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {archiveFiles.length > 0 ? (
+                  <div className={styles.browser}>
+                    <div className={styles.browserHead} aria-hidden>
+                      <span className={styles.colName}>Имя</span>
+                      <span className={styles.colType}>Тип</span>
+                      <span className={styles.colSize}>Размер</span>
+                      <span className={styles.colDate}>Дата</span>
+                      <span className={styles.colActions} />
+                    </div>
+                    <ul className={styles.browserList}>
+                      {archiveFiles.map((row) => {
+                        const isFolder = row.kind === 'folder'
+                        const canOpen = row.kind === 'pdf' || row.kind === 'dwg'
+                        return (
+                          <li key={row.id} className={styles.browserRow}>
+                            <button
+                              type="button"
+                              className={styles.fileMain}
+                              disabled={!isFolder && !canOpen}
+                              onClick={() => {
+                                if (isFolder) {
+                                  setCurrentFolderId(row.id)
+                                  return
+                                }
+                                if (row.kind === 'pdf') {
+                                  setViewerDwg(null)
+                                  setViewerPdf(row)
+                                } else if (row.kind === 'dwg') {
+                                  void openDwgViewer(row)
+                                }
+                              }}
+                              title={isFolder ? 'Открыть папку' : canOpen ? 'Открыть' : row.name}
+                            >
+                              <span
+                                className={`${styles.fileIcon} ${
+                                  isFolder
+                                    ? styles.fileIconFolder
+                                    : row.kind === 'pdf'
+                                      ? styles.fileIconPdf
+                                      : row.kind === 'dwg'
+                                        ? styles.fileIconDwg
+                                        : styles.fileIconGeneric
+                                }`}
+                                aria-hidden
+                              >
+                                {isFolder ? (
+                                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+                                    <path
+                                      d="M3.5 8.2V7a1.8 1.8 0 0 1 1.8-1.8h4.1L11 6.8h8.7A1.8 1.8 0 0 1 21.5 8.6v1"
+                                      stroke="currentColor"
+                                      strokeWidth="1.5"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                    <path
+                                      d="M3.5 10h17v7.2a1.8 1.8 0 0 1-1.8 1.8H5.3a1.8 1.8 0 0 1-1.8-1.8V10Z"
+                                      stroke="currentColor"
+                                      strokeWidth="1.5"
+                                      strokeLinejoin="round"
+                                      fill="currentColor"
+                                      fillOpacity="0.12"
+                                    />
+                                  </svg>
+                                ) : (
+                                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+                                    <path
+                                      d="M7 3.5h7l4 4V20a1.5 1.5 0 0 1-1.5 1.5h-9.5A1.5 1.5 0 0 1 5.5 20V5A1.5 1.5 0 0 1 7 3.5Z"
+                                      stroke="currentColor"
+                                      strokeWidth="1.5"
+                                      strokeLinejoin="round"
+                                    />
+                                    <path
+                                      d="M14 3.5V8h4"
+                                      stroke="currentColor"
+                                      strokeWidth="1.5"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                )}
+                              </span>
+                              <span className={styles.fileName}>{row.name}</span>
+                            </button>
+                            <span className={styles.colType}>{kindLabel(row.kind)}</span>
+                            <span className={styles.colSize}>
+                              {isFolder ? '—' : formatSize(row.sizeBytes)}
+                            </span>
+                            <span className={styles.colDate}>
+                              {formatUploaded(row.uploadedAtIso)}
+                            </span>
+                            <span className={styles.colActions}>
+                              {isFolder ? (
+                                <button
+                                  type="button"
+                                  className={styles.rowBtn}
+                                  onClick={() => setCurrentFolderId(row.id)}
+                                >
+                                  Открыть
+                                </button>
+                              ) : null}
+                              {canOpen ? (
+                                <button
+                                  type="button"
+                                  className={styles.rowBtn}
+                                  onClick={() => {
+                                    if (row.kind === 'pdf') {
+                                      setViewerDwg(null)
+                                      setViewerPdf(row)
+                                    } else {
+                                      void openDwgViewer(row)
+                                    }
+                                  }}
+                                >
+                                  Открыть
+                                </button>
+                              ) : null}
+                              {!isFolder ? (
+                                <a className={styles.rowBtn} href={row.url} download={row.name}>
+                                  Скачать
+                                </a>
+                              ) : null}
+                              {canUpload ? (
+                                <button
+                                  type="button"
+                                  className={styles.rowBtnDanger}
+                                  onClick={() => void removeAsset(row)}
+                                >
+                                  Удалить
+                                </button>
+                              ) : null}
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
-              <div className={styles.viewerActions}>
-                <button
-                  type="button"
-                  className={styles.viewerBtn}
-                  onClick={() => smartFitToRoad()}
-                >
-                  Подогнать
-                </button>
-                <a className={styles.viewerBtn} href={dwg.url} download={dwg.name}>
-                  Скачать DWG
-                </a>
-                <button type="button" className={styles.viewerBtnClose} onClick={() => setDwgViewerOpen(false)}>
-                  Закрыть
-                </button>
+            </div>,
+            document.body,
+          )
+        : null}
+
+      {viewerPdf
+        ? createPortal(
+            <div
+              className={styles.viewerScreen}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Просмотр PDF"
+            >
+              <div className={styles.viewer}>
+                <div className={styles.viewerHead}>
+                  <div>
+                    <p className={styles.viewerKicker}>Проект</p>
+                    <p className={styles.viewerTitle}>{viewerPdf.name}</p>
+                  </div>
+                  <div className={styles.viewerActions}>
+                    <a className={styles.viewerBtn} href={viewerPdf.url} download={viewerPdf.name}>
+                      Скачать PDF
+                    </a>
+                    <button
+                      type="button"
+                      className={styles.viewerBtnClose}
+                      onClick={() => setViewerPdf(null)}
+                    >
+                      Закрыть
+                    </button>
+                  </div>
+                </div>
+                <iframe className={styles.frame} src={viewerPdf.url} title="PDF проекта" />
               </div>
-            </div>
-            <div className={styles.dwgCanvasWrap} ref={dwgCanvasWrapRef}>
-              {dwgLoadState === 'error' ? (
-                <p className={styles.dwgLoading}>Не удалось открыть DWG в браузере.</p>
-              ) : !dwgFile && !dwgDxfText ? (
-                <p className={styles.dwgLoading}>Открываем DWG…</p>
-              ) : (
-                <CadViewer
-                  ref={dwgCadRef}
-                  file={dwgDxfText ?? dwgFile}
-                  theme="dark"
-                  tool="pan"
-                  formatConverters={dwgFile ? [dwgConverter] : undefined}
-                  options={{
-                    minZoom: 0.001,
-                    maxZoom: 2000,
-                    zoomSpeed: 1.035,
-                  }}
-                  onLayersLoaded={() => {
-                    dwgLayersLoadedRef.current = true
-                    setDwgLoadState('idle')
-                    smartFitToRoad()
-                  }}
-                  style={{ width: '100%', height: '100%' }}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
+
+      {viewerDwg
+        ? createPortal(
+            <div
+              className={styles.viewerScreen}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Просмотр DWG"
+            >
+              <div className={styles.viewer}>
+                <div className={styles.viewerHeadDark}>
+                  <div>
+                    <p className={styles.viewerKickerDark}>Проект</p>
+                    <p className={styles.viewerTitleDark}>{viewerDwg.name}</p>
+                  </div>
+                  <div className={styles.viewerActions}>
+                    <button
+                      type="button"
+                      className={styles.viewerBtn}
+                      onClick={() => smartFitToRoad()}
+                    >
+                      Подогнать
+                    </button>
+                    <a className={styles.viewerBtn} href={viewerDwg.url} download={viewerDwg.name}>
+                      Скачать DWG
+                    </a>
+                    <button
+                      type="button"
+                      className={styles.viewerBtnClose}
+                      onClick={() => setViewerDwg(null)}
+                    >
+                      Закрыть
+                    </button>
+                  </div>
+                </div>
+                <div className={styles.dwgCanvasWrap} ref={dwgCanvasWrapRef}>
+                  {dwgLoadState === 'error' ? (
+                    <p className={styles.dwgLoading}>Не удалось открыть DWG в браузере.</p>
+                  ) : !dwgFile && !dwgDxfText ? (
+                    <p className={styles.dwgLoading}>Открываем DWG…</p>
+                  ) : (
+                    <CadViewer
+                      ref={dwgCadRef}
+                      file={dwgDxfText ?? dwgFile}
+                      theme="dark"
+                      tool="pan"
+                      formatConverters={dwgFile ? [dwgConverter] : undefined}
+                      options={{
+                        minZoom: 0.001,
+                        maxZoom: 2000,
+                        zoomSpeed: 1.035,
+                      }}
+                      onLayersLoaded={() => {
+                        dwgLayersLoadedRef.current = true
+                        setDwgLoadState('idle')
+                        smartFitToRoad()
+                      }}
+                      style={{ width: '100%', height: '100%' }}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   )
 }

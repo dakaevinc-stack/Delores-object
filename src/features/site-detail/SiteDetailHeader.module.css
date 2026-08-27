@@ -91,8 +91,8 @@
 .hero {
   --hero-accent: var(--brand-navy);
   position: relative;
-  padding: clamp(22px, 3vw, 30px) clamp(22px, 3vw, 32px) clamp(20px, 2.8vw, 26px);
-  border-radius: 22px;
+  padding: clamp(14px, 2vw, 18px) clamp(18px, 2.6vw, 26px) clamp(12px, 1.8vw, 16px);
+  border-radius: 18px;
   border: 1px solid rgba(15, 23, 42, 0.1);
   background:
     radial-gradient(120% 90% at 0% 0%, rgba(23, 42, 77, 0.1) 0%, transparent 52%),
@@ -100,7 +100,7 @@
     linear-gradient(165deg, #ffffff 0%, #f4f6fa 100%);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 18px 44px rgba(15, 23, 42, 0.07);
+    0 14px 32px rgba(15, 23, 42, 0.06);
   overflow: hidden;
 }
 
@@ -144,8 +144,8 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px 24px;
-  margin-bottom: 14px;
+  gap: 12px 20px;
+  margin-bottom: 8px;
 }
 
 .statusLine {
@@ -154,7 +154,7 @@
   align-items: center;
   gap: 8px 10px;
   min-width: 0;
-  padding-top: 6px;
+  padding-top: 2px;
 }
 
 .dot {
@@ -227,7 +227,7 @@
 }
 
 .pctValue {
-  font-size: clamp(40px, 5.5vw, 52px);
+  font-size: clamp(28px, 3.8vw, 36px);
   font-weight: 800;
   letter-spacing: -0.05em;
   font-variant-numeric: tabular-nums;
@@ -235,7 +235,7 @@
 }
 
 .pctSuffix {
-  font-size: clamp(18px, 2.4vw, 22px);
+  font-size: clamp(14px, 1.8vw, 16px);
   font-weight: 800;
   letter-spacing: -0.03em;
   color: var(--muted);
@@ -244,7 +244,7 @@
 }
 
 .pctCaption {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -257,22 +257,11 @@
   z-index: 1;
   margin: 0 0 10px;
   max-width: 18ch;
-  font-size: clamp(28px, 3.8vw, 42px);
+  font-size: clamp(22px, 2.8vw, 30px);
   font-weight: 800;
   letter-spacing: -0.045em;
-  line-height: 1.05;
+  line-height: 1.08;
   color: var(--text-strong);
-}
-
-.reason {
-  position: relative;
-  z-index: 1;
-  margin: 0 0 18px;
-  max-width: 52ch;
-  font-size: 15px;
-  line-height: 1.5;
-  letter-spacing: -0.01em;
-  color: var(--text);
 }
 
 .progressBlock {
@@ -280,9 +269,44 @@
   z-index: 1;
 }
 
+.heroToolbar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin-top: 12px;
+  min-height: 40px;
+}
+
+.heroAlert {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(100%, 28rem);
+  display: flex;
+  align-items: center;
+}
+
+.heroToolbarSpacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-left: auto;
+  min-height: 34px;
+}
+
 .barTrack {
   position: relative;
-  height: 8px;
+  height: 6px;
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.08);
   overflow: visible;
@@ -316,7 +340,7 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 8px;
+  margin-top: 6px;
   font-size: 12px;
   font-weight: 600;
   color: var(--muted);
@@ -326,6 +350,18 @@
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--text-strong);
+}
+
+/* Документы — встроены в hero без отдельного заголовка */
+.heroWithDocs {
+  padding-bottom: clamp(12px, 1.8vw, 16px);
+}
+
+.docs {
+  position: relative;
+  z-index: 1;
+  margin-top: 10px;
+  min-width: 0;
 }
 
 @media (max-width: 640px) {
@@ -344,23 +380,27 @@
 
   .hero {
     padding:
-      18px
-      max(16px, env(safe-area-inset-right, 0px))
-      16px
-      max(18px, env(safe-area-inset-left, 0px));
-    border-radius: 18px;
+      14px
+      max(14px, env(safe-area-inset-right, 0px))
+      12px
+      max(16px, env(safe-area-inset-left, 0px));
+    border-radius: 16px;
+  }
+
+  .heroWithDocs {
+    padding-bottom: 14px;
   }
 
   .heroTop {
     flex-direction: column;
     align-items: stretch;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: 8px;
+    margin-bottom: 8px;
   }
 
   .heroStat {
     text-align: left;
-    padding-top: 10px;
+    padding-top: 8px;
     border-top: 1px solid rgba(15, 23, 42, 0.07);
   }
 
@@ -370,15 +410,35 @@
 
   .title {
     max-width: none;
-    font-size: clamp(26px, 8vw, 32px);
+    font-size: clamp(22px, 6.5vw, 26px);
   }
 
-  .reason {
-    margin-bottom: 14px;
-    font-size: 14px;
+  .heroToolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .heroAlert {
+    max-width: none;
+  }
+
+  .heroActions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .heroActions :global(button) {
+    flex: 1 1 calc(50% - 4px);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .address {
     white-space: normal;
+  }
+
+  .docs {
+    margin-top: 12px;
   }
 }

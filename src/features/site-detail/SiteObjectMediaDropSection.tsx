@@ -17,6 +17,15 @@ import {
   type StoredSiteMedia,
 } from '../../lib/mediaRepository'
 import styles from './SiteObjectMediaDropSection.module.css'
+import { CollapseToggle } from './CollapseToggle'
+import { JournalMediaDayCard } from './JournalMediaDayCard'
+import { useAnchoredExpand } from './useAnchoredExpand'
+
+export type MediaDayArchiveEntry = {
+  dayKey: string
+  dayLabel: string
+  items: readonly StoredSiteMedia[]
+}
 
 type Props = {
   siteId: string
@@ -27,6 +36,19 @@ type Props = {
   onRemoteSyncError?: (message: string) => void
   /** Внутри журнала бригадира — без отдельной шапки секции. */
   embedded?: boolean
+  /**
+   * `upload` — только ФИО + кнопка загрузки (галерея дней скрыта:
+   * фото живут в карточках отчётов / блоках «только медиа»).
+   */
+  mode?: 'full' | 'upload'
+  /** После добавления/удаления файлов — чтобы родитель обновил журнал. */
+  onLibraryChange?: () => void
+  /**
+   * Дни с фото/видео без текстового отчёта — архив внутри блока загрузки
+   * (кнопка «Открыть» → список JournalMediaDayCard).
+   */
+  mediaDayArchive?: readonly MediaDayArchiveEntry[]
+  previewUrlFor?: (mediaId: string) => string
 }
 
 type TypeFilter = 'all' | 'photo' | 'video'
@@ -196,9 +218,19 @@ export function SiteObjectMediaDropSection({
   serverManifest = [],
   onRemoteSyncError,
   embedded = false,
+  mode = 'full',
+  onLibraryChange,
+  mediaDayArchive = [],
+  previewUrlFor,
 }: Props) {
+  const uploadOnly = mode === 'upload'
   const uid = useId()
   const fileRef = useRef<HTMLInputElement>(null)
+  const {
+    expanded: archiveOpen,
+    toggle: toggleArchive,
+    anchorRef: archiveAnchorRef,
+  } = useAnchoredExpand<HTMLDivElement>(false)
 
   const [items, setItems] = useState<SiteObjectMediaItem[]>([])
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -522,6 +554,7 @@ export function SiteObjectMediaDropSection({
               new Date(b.capturedAtIso).getTime() - new Date(a.capturedAtIso).getTime(),
           ),
         )
+        onLibraryChange?.()
         updateSyncStatusBatch(
           added.map(({ record }) => [
             record.id,
@@ -602,6 +635,7 @@ export function SiteObjectMediaDropSection({
     }
     if (row) URL.revokeObjectURL(row.previewUrl)
     setItems((prev) => prev.filter((x) => x.id !== id))
+    onLibraryChange?.()
   }
 
   const authorsInLibrary = useMemo(() => {
@@ -730,20 +764,40 @@ export function SiteObjectMediaDropSection({
     authorFilter !== 'all' ||
     search.trim().length > 0
 
+  const archiveFileCount = useMemo(
+    () => mediaDayArchive.reduce((n, d) => n + d.items.length, 0),
+    [mediaDayArchive],
+  )
+  const archiveBodyId = `${uid}-archive`
+
   return (
     <section
-      className={embedded ? styles.embedded : styles.section}
+      className={[
+        embedded ? styles.embedded : styles.section,
+        uploadOnly ? styles.compact : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       id="site-object-media"
       aria-labelledby={`${uid}-heading`}
     >
       {embedded ? (
         <div className={styles.embeddedHead}>
-          <h3 className={styles.embeddedTitle} id={`${uid}-heading`}>
-            Фото и видео по дням
-          </h3>
-          <p className={styles.embeddedLead}>
-            Материалы объекта. По дате съёмки они же видны во вложениях отчётов журнала.
-          </p>
+          <div className={styles.embeddedHeadRow}>
+            <h3 className={styles.embeddedTitle} id={`${uid}-heading`}>
+              {uploadOnly ? 'Фото с объекта' : 'Фото и видео по дням'}
+            </h3>
+            {uploadOnly ? (
+              <p className={styles.embeddedLeadInline}>
+                Своё ФИО → добавить кадры → отправить
+              </p>
+            ) : null}
+          </div>
+          {uploadOnly ? null : (
+            <p className={styles.embeddedLead}>
+              Материалы объекта. По дате съёмки видны во вложениях отчётов.
+            </p>
+          )}
         </div>
       ) : (
       <header className={styles.head}>
@@ -787,6 +841,247 @@ export function SiteObjectMediaDropSection({
       </header>
       )}
 
+      {uploadOnly ? (
+        <div
+          className={`${styles.mediaShell}${archiveOpen ? ` ${styles.mediaShellOpen}` : ''}`}
+        >
+          <div className={styles.mediaShellRail} aria-hidden />
+          <div className={`${styles.panel} ${styles.panelCompact} ${styles.panelInShell}`}>
+            <div className={styles.author}>
+              <label className={styles.label} htmlFor={`${uid}-fio`}>
+                ФИО
+              </label>
+              <input
+                id={`${uid}-fio`}
+                className={styles.input}
+                type="text"
+                autoComplete="name"
+                placeholder="Иванов Иван Иванович"
+                value={authorFio}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setAuthorFio(v)
+                  setAuthorError(null)
+                  const t = v.trim()
+                  if (knownAuthors.includes(t)) setOtherFioMode(false)
+                  else if (t.length > 0) setOtherFioMode(true)
+                }}
+                list={knownAuthors.length ? `${uid}-fio-list` : undefined}
+                aria-invalid={authorError ? true : undefined}
+              />
+              {knownAuthors.length > 0 ? (
+                <datalist id={`${uid}-fio-list`}>
+                  {knownAuthors.map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
+              ) : null}
+
+              {authorError ? (
+                <p className={styles.fieldError} id={`${uid}-author-err`} role="alert">
+                  {authorError}
+                </p>
+              ) : null}
+            </div>
+
+            <div className={styles.dropActions}>
+              <div className={styles.fileSink} aria-hidden>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  multiple
+                  tabIndex={-1}
+                  className={styles.hiddenFile}
+                  onChange={(e) => {
+                    stageFiles(e.target.files)
+                    e.target.value = ''
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                className={`${styles.uploadCta} ${styles.uploadCtaCompact}`}
+                onClick={() => fileRef.current?.click()}
+              >
+                <span className={styles.uploadCtaShine} aria-hidden />
+                <span className={styles.uploadCtaIcon} aria-hidden>
+                  <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 9.5A2.5 2.5 0 0 1 6.5 7h2.1c.55 0 1.05-.3 1.32-.78l.66-1.18A2 2 0 0 1 12.32 4h3.36a2 2 0 0 1 1.74 1.04l.66 1.18c.27.48.77.78 1.32.78H21.5A2.5 2.5 0 0 1 24 9.5v9.7A2.8 2.8 0 0 1 21.2 22H6.8A2.8 2.8 0 0 1 4 19.2V9.5Z" />
+                    <circle cx="14" cy="14" r="3.6" />
+                    <path d="m12.6 12.7 2.9 1.5-2.9 1.5v-3Z" fill="currentColor" stroke="none" />
+                  </svg>
+                </span>
+                <span className={styles.uploadCtaTitle}>Добавить фото / видео</span>
+                <span className={styles.uploadCtaHint}>Камера или галерея</span>
+                <span className={styles.uploadCtaArrow} aria-hidden>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 5v14" />
+                    <path d="M5 12h14" />
+                  </svg>
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {staged.length > 0 ? (
+            <div
+              className={`${styles.stagedPanel} ${styles.stagedInShell}`}
+              aria-live="polite"
+              aria-label="Подготовлено к отправке"
+            >
+              <div className={styles.stagedHead}>
+                <div className={styles.stagedHeadLeft}>
+                  <span className={styles.stagedKicker}>ГОТОВО К ОТПРАВКЕ</span>
+                  <span className={styles.stagedTitle}>
+                    {formatStagedCount(staged.length)} ·{' '}
+                    {formatBytes(staged.reduce((sum, s) => sum + s.sizeBytes, 0))}
+                  </span>
+                  <span className={styles.stagedHint}>
+                    Проверьте кадры и нажмите «Отправить».
+                  </span>
+                </div>
+                <div className={styles.stagedHeadActions}>
+                  <button
+                    type="button"
+                    className={styles.stagedClear}
+                    onClick={clearStaged}
+                    disabled={sending}
+                  >
+                    Очистить
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.stagedSend}
+                    onClick={() => {
+                      void commitStaged()
+                    }}
+                    disabled={sending}
+                  >
+                    {sending
+                      ? 'Отправляем…'
+                      : `Отправить · ${formatStagedCount(staged.length)}`}
+                  </button>
+                </div>
+              </div>
+
+              <ul className={styles.stagedList}>
+                {staged.map((s) => (
+                  <li key={s.id} className={styles.stagedTile}>
+                    <div className={styles.stagedThumb}>
+                      {s.kind === 'photo' ? (
+                        <img src={s.previewUrl} alt={s.name} loading="lazy" />
+                      ) : (
+                        <video src={s.previewUrl} muted preload="metadata" />
+                      )}
+                      <span className={styles.stagedKindBadge}>
+                        {s.kind === 'photo' ? 'фото' : 'видео'}
+                      </span>
+                    </div>
+                    <div className={styles.stagedMeta}>
+                      <span className={styles.stagedName} title={s.name}>
+                        {s.name}
+                      </span>
+                      <span className={styles.stagedSize}>
+                        {formatBytes(s.sizeBytes)}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.stagedRemove}
+                      onClick={() => removeStaged(s.id)}
+                      disabled={sending}
+                      aria-label={`Убрать ${s.name}`}
+                      title="Убрать из очереди"
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {mediaDayArchive.length > 0 && previewUrlFor ? (
+            <div
+              ref={archiveAnchorRef}
+              className={`${styles.archive} ${styles.archiveInShell}`}
+            >
+              <div className={styles.archiveBar}>
+                <div className={styles.archivePeek} aria-hidden>
+                  {mediaDayArchive
+                    .flatMap((d) => d.items)
+                    .slice(0, 5)
+                    .map((m, i) => {
+                      const src = previewUrlFor(m.id)
+                      return (
+                        <span
+                          key={m.id}
+                          className={styles.archivePeekThumb}
+                          style={{ zIndex: 5 - i }}
+                        >
+                          {src ? (
+                            m.kind === 'video' ? (
+                              <video src={src} muted playsInline preload="metadata" />
+                            ) : (
+                              <img src={src} alt="" />
+                            )
+                          ) : null}
+                        </span>
+                      )
+                    })}
+                </div>
+                <div className={styles.archiveCopy}>
+                  <p className={styles.archiveTitle}>
+                    {archiveFileCount}{' '}
+                    {archiveFileCount % 10 === 1 && archiveFileCount % 100 !== 11
+                      ? 'кадр'
+                      : archiveFileCount % 10 >= 2 &&
+                          archiveFileCount % 10 <= 4 &&
+                          (archiveFileCount % 100 < 12 || archiveFileCount % 100 > 14)
+                        ? 'кадра'
+                        : 'кадров'}
+                    {' · '}
+                    {mediaDayArchive.length}{' '}
+                    {mediaDayArchive.length % 10 === 1 && mediaDayArchive.length % 100 !== 11
+                      ? 'день'
+                      : mediaDayArchive.length % 10 >= 2 &&
+                          mediaDayArchive.length % 10 <= 4 &&
+                          (mediaDayArchive.length % 100 < 12 ||
+                            mediaDayArchive.length % 100 > 14)
+                        ? 'дня'
+                        : 'дней'}
+                  </p>
+                  <p className={styles.archiveMeta}>
+                    {archiveOpen ? 'Лента по дате съёмки' : 'Откройте — увидите все сразу'}
+                  </p>
+                </div>
+                <CollapseToggle
+                  expanded={archiveOpen}
+                  onToggle={toggleArchive}
+                  ariaControls={archiveBodyId}
+                />
+              </div>
+              {archiveOpen ? (
+                <div className={styles.archiveList} id={archiveBodyId}>
+                  {mediaDayArchive.map((day) => (
+                    <JournalMediaDayCard
+                      key={day.dayKey}
+                      dayKey={day.dayKey}
+                      dayLabel={day.dayLabel}
+                      items={day.items}
+                      previewUrlFor={previewUrlFor}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div id={archiveBodyId} hidden />
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <>
       <div className={styles.panel}>
         <div className={styles.author}>
           {knownAuthors.length > 0 ? (
@@ -815,7 +1110,7 @@ export function SiteObjectMediaDropSection({
                   setAuthorFio(v)
                 }}
               >
-                <option value="">— Кто выкладывает —</option>
+                <option value="">— Выберите ФИО —</option>
                 {knownAuthors.map((name) => (
                   <option key={name} value={name}>
                     {name}
@@ -862,8 +1157,7 @@ export function SiteObjectMediaDropSection({
             </p>
           ) : (
             <p className={styles.authorHint} id={`${uid}-fio-hint`}>
-              ФИО подписывается к каждому файлу. Список «быстрый выбор» хранится только на этом
-              устройстве и только для этого объекта.
+              ФИО подписывается к каждому файлу. Быстрый выбор хранится на этом устройстве.
             </p>
           )}
         </div>
@@ -898,7 +1192,7 @@ export function SiteObjectMediaDropSection({
             </span>
             <span className={styles.uploadCtaTitle}>Добавить фото или видео</span>
             <span className={styles.uploadCtaHint}>
-              Камера или галерея — в один клик. Можно выбрать сразу несколько файлов.
+              Камера или галерея — можно выбрать несколько файлов.
             </span>
             <span className={styles.uploadCtaTypes}>JPG · PNG · HEIC · MP4 · MOV</span>
             <span className={styles.uploadCtaArrow} aria-hidden>
@@ -988,23 +1282,25 @@ export function SiteObjectMediaDropSection({
           </ul>
         </div>
       ) : null}
+        </>
+      )}
 
-      {loadState === 'loading' ? (
+      {uploadOnly ? null : loadState === 'loading' ? (
         <p className={styles.empty}>Загружаем сохранённые фото и видео…</p>
       ) : null}
-      {loadState === 'error' ? (
+      {uploadOnly ? null : loadState === 'error' ? (
         <p className={styles.empty}>
           Не удалось прочитать локальное хранилище. Проверьте разрешения браузера.
         </p>
       ) : null}
 
-      {loadState === 'ready' && items.length === 0 ? (
+      {uploadOnly ? null : loadState === 'ready' && items.length === 0 ? (
         <p className={styles.empty}>
           Пока нет материалов по этому объекту — добавьте первое фото или видео.
         </p>
       ) : null}
 
-      {loadState === 'ready' && items.length > 0 ? (
+      {uploadOnly ? null : loadState === 'ready' && items.length > 0 ? (
         <>
           <div className={styles.filterBar} role="group" aria-label="Фильтры материалов">
             <div className={styles.filterRow}>

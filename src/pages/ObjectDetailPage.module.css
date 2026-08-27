@@ -13,7 +13,8 @@
     padding-left: max(var(--page-pad-x), env(safe-area-inset-left, 0px));
   }
 
-  .toolbarCta {
+  .toolbarCta,
+  .toolbarCtaCompact {
     width: 100%;
     justify-content: center;
   }
@@ -75,6 +76,45 @@
   transition:
     transform 0.15s ease,
     box-shadow 0.2s ease;
+}
+
+/* Hero: те же кнопки, ~70% размера — одна линия с оповещением */
+.toolbarCtaCompact {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 15px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 24, 40, 0.88);
+  background: linear-gradient(180deg, #1f3558 0%, #0f1724 100%);
+  color: #f2f4f8;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 8px 20px rgba(12, 18, 32, 0.18);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+.toolbarCtaCompact:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset,
+    0 12px 28px rgba(12, 18, 32, 0.26);
+}
+
+.toolbarCtaCompact:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px var(--accent-ring),
+    0 10px 24px rgba(12, 18, 32, 0.22);
 }
 
 .toolbarCta:hover {
@@ -147,6 +187,11 @@
 .summaryPanelHead {
   position: relative;
   z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 16px;
+  row-gap: 12px;
   padding: 22px 24px 18px 28px;
   border-bottom: 1px solid rgba(15, 23, 42, 0.07);
   background: linear-gradient(
@@ -156,12 +201,21 @@
   );
 }
 
+.summaryPanel:not(.summaryPanelOpen) .summaryPanelHead {
+  border-bottom: 0;
+}
+
 .summaryHeadCopy {
   min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
+}
+
+.summaryToggle {
+  justify-self: end;
+  align-self: center;
 }
 
 .summaryKicker {
@@ -209,6 +263,18 @@
   flex-direction: column;
   gap: 16px;
   padding: 18px 18px 20px 22px;
+  animation: summaryReveal 0.28s ease;
+}
+
+@keyframes summaryReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .summaryPanelBody > :global(*) {
@@ -226,27 +292,18 @@
 
 @media (max-width: 860px) {
   .summaryPanelHead {
+    grid-template-columns: 1fr;
     padding: 16px 16px 14px 18px;
+  }
+
+  .summaryToggle {
+    justify-self: start;
   }
 
   .summaryPanelBody {
     padding: 14px 12px 16px 14px;
     gap: 14px;
   }
-}
-
-.footer {
-  margin-top: var(--block-gap);
-  padding-top: 24px;
-  border-top: 1px solid var(--border);
-}
-
-.footerNote {
-  margin: 0;
-  max-width: 75ch;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--muted);
 }
 
 .notFound {

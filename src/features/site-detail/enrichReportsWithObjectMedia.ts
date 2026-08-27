@@ -28,8 +28,8 @@ function mediaAsAttachment(
 }
 
 /**
- * Подмешивает фото/видео с объекта к отчёту за тот же календарный день.
- * Медиа без отчёта в этот день — к ближайшему отчёту по дате.
+ * Подмешивает фото/видео с объекта только к отчёту того же календарного дня.
+ * Медиа без отчёта за день остаются «сиротами» — см. `listOrphanObjectMediaDays`.
  */
 export function enrichReportsWithObjectMedia(
   reports: readonly BrigadierStoredReport[],
@@ -47,31 +47,12 @@ export function enrichReportsWithObjectMedia(
     reportsByDay.set(key, list)
   }
 
-  const sortedReportDays = [...reportsByDay.keys()].sort()
-
-  const nearestReportDay = (mediaDay: string): string | null => {
-    if (reportsByDay.has(mediaDay)) return mediaDay
-    if (sortedReportDays.length === 0) return null
-    let best = sortedReportDays[0]!
-    let bestDiff = Math.abs(Date.parse(mediaDay) - Date.parse(best))
-    for (const day of sortedReportDays) {
-      const diff = Math.abs(Date.parse(mediaDay) - Date.parse(day))
-      if (diff < bestDiff) {
-        best = day
-        bestDiff = diff
-      }
-    }
-    return best
-  }
-
   const extraByReportId = new Map<string, BrigadierStoredAttachment[]>()
 
   for (const m of media) {
     const mediaDay = calendarDayKey(m.capturedAtIso)
     if (!mediaDay) continue
-    const targetDay = nearestReportDay(mediaDay)
-    if (!targetDay) continue
-    const dayReports = reportsByDay.get(targetDay)
+    const dayReports = reportsByDay.get(mediaDay)
     if (!dayReports?.length) continue
     const target = [...dayReports].sort((a, b) =>
       (b.reportedAtIso ?? '').localeCompare(a.reportedAtIso ?? ''),
@@ -90,4 +71,75 @@ export function enrichReportsWithObjectMedia(
       attachments: [...r.attachments, ...extra.filter((a) => !existing.has(a.id))],
     }
   })
+}
+
+export type OrphanObjectMediaDay = {
+  dayKey: string
+  items: StoredSiteMedia[]
+}
+
+/** Дни с медиа, для которых нет отчёта бригадира. */
+export function listOrphanObjectMediaDays(
+  reports: readonly BrigadierStoredReport[],
+  media: readonly StoredSiteMedia[],
+): OrphanObjectMediaDay[] {
+  const reportDays = new Set<string>()
+  for (const r of reports) {
+    const key = calendarDayKey(r.reportedAtIso)
+    if (key) reportDays.add(key)
+  }
+
+  const byDay = new Map<string, StoredSiteMedia[]>()
+  for (const m of media) {
+    const key = calendarDayKey(m.capturedAtIso)
+    if (!key || reportDays.has(key)) continue
+    const list = byDay.get(key) ?? []
+    list.push(m)
+    byDay.set(key, list)
+  }
+
+  return [...byDay.entries()]
+    .map(([dayKey, items]) => ({
+      dayKey,
+      items: [...items].sort((a, b) => b.capturedAtIso.localeCompare(a.capturedAtIso)),
+    }))
+    .sort((a, b) => b.dayKey.localeCompare(a.dayKey))
+}
+
+/** Одна лента журнала: отчёты и дни только с фото — по дате, сверху новые. */
+export type BrigadierJournalEntry =
+  | {
+      id: string
+      sortKey: string
+      kind: 'report'
+      report: BrigadierStoredReport
+    }
+  | {
+      id: string
+      sortKey: string
+      kind: 'media-day'
+      dayKey: string
+      items: StoredSiteMedia[]
+    }
+
+export function listBrigadierJournalEntries(
+  enrichedReports: readonly BrigadierStoredReport[],
+  orphanDays: readonly OrphanObjectMediaDay[],
+): BrigadierJournalEntry[] {
+  const entries: BrigadierJournalEntry[] = [
+    ...enrichedReports.map((report) => ({
+      id: `report:${report.id}`,
+      sortKey: report.reportedAtIso || calendarDayKey(report.reportedAtIso) || report.id,
+      kind: 'report' as const,
+      report,
+    })),
+    ...orphanDays.map((day) => ({
+      id: `media:${day.dayKey}`,
+      sortKey: day.items[0]?.capturedAtIso ?? `${day.dayKey}T12:00:00`,
+      kind: 'media-day' as const,
+      dayKey: day.dayKey,
+      items: day.items,
+    })),
+  ]
+  return entries.sort((a, b) => b.sortKey.localeCompare(a.sortKey))
 }

@@ -54,6 +54,11 @@
   min-width: 0;
 }
 
+.headToggle {
+  flex-shrink: 0;
+  align-self: center;
+}
+
 .kicker {
   margin: 0 0 8px;
   display: inline-flex;
@@ -97,6 +102,16 @@
   gap: 8px;
   align-items: center;
   justify-content: flex-end;
+}
+
+/* «Открыть» после CTA — отступ слева, правый край совпадает с другими панелями */
+.actions .headToggle {
+  margin-left: 4px;
+  margin-right: 0;
+}
+
+.zonePanel .actions .headToggle {
+  margin-left: 6px;
 }
 
 .zone[data-site-zone='manager'] .head {
@@ -202,6 +217,12 @@
   .actions > * {
     width: 100%;
   }
+
+  .actions .headToggle {
+    width: auto;
+    margin-left: auto;
+    align-self: flex-end;
+  }
 }
 
 @media (max-width: 640px) {
@@ -272,7 +293,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  column-gap: clamp(16px, 2.5vw, 28px);
+  column-gap: 16px;
   row-gap: 12px;
   padding: 22px 24px 18px 28px;
   border-bottom: 1px solid rgba(15, 23, 42, 0.07);
@@ -283,6 +304,16 @@
   );
 }
 
+.panelHead .actions {
+  justify-self: end;
+  align-self: center;
+}
+
+.zonePanel[data-collapsed='true'] .panelHead {
+  border-bottom: 0;
+  padding-bottom: 20px;
+}
+
 .panelBody {
   position: relative;
   z-index: 1;
@@ -290,6 +321,11 @@
   flex-direction: column;
   gap: 18px;
   padding: 18px 18px 20px 22px;
+}
+
+.zonePanel[data-site-zone='brigadier'] .panelBody {
+  gap: 10px;
+  padding: 12px 14px 14px 16px;
 }
 
 .panelBody > :global(*) {
@@ -308,6 +344,11 @@
   overflow: hidden;
 }
 
+.zonePanel[data-site-zone='brigadier'] .panelBody > :global(section) {
+  padding: 11px 12px 10px;
+  border-radius: 14px;
+}
+
 .zonePanel .panelBody > :global(section)::before {
   display: none !important;
 }
@@ -324,6 +365,13 @@
   background: none !important;
   box-shadow: none !important;
   overflow: visible !important;
+}
+
+.zonePanel[data-site-zone='brigadier']
+  .panelBody
+  > :global(section)
+  > :first-child:not([class*='moduleHead']) {
+  margin: 0 0 6px !important;
 }
 
 .zonePanel .panelBody > :global(section) > :first-child:not([class*='moduleHead'])::before {
@@ -370,6 +418,34 @@
 
 .zonePanel[data-site-zone='supply'] .kicker {
   color: #0f766e;
+  margin-bottom: 4px;
+}
+
+.zonePanel[data-site-zone='supply'] .panelHead {
+  padding: 16px 20px 14px 24px;
+  row-gap: 8px;
+}
+
+.zonePanel[data-site-zone='supply'] .title {
+  margin-bottom: 4px;
+}
+
+.zonePanel[data-site-zone='supply'] .lead {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.zonePanel[data-site-zone='supply'] .panelBody {
+  gap: 12px;
+  padding: 12px 14px 14px 16px;
+}
+
+.zonePanel[data-site-zone='supply'] .panelBody > :global(section) {
+  padding: 12px 12px 10px;
+}
+
+.zonePanel[data-site-zone='supply'] .panelBody > :global(section) > :first-child:not([class*='moduleHead']) {
+  margin-bottom: 8px !important;
 }
 
 .zonePanel[data-site-zone='dispatcher'] {

@@ -9,6 +9,7 @@ import {
 } from '../../domain/materialBudget'
 import { formatQty, unitLabel } from '../../domain/procurementRequest'
 import { CollapseToggle } from './CollapseToggle'
+import { useAnchoredExpand } from './useAnchoredExpand'
 import styles from './SiteMaterialConsumptionSection.module.css'
 
 type Props = {
@@ -118,7 +119,7 @@ function MaterialGroup({
 }
 
 export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
-  const [expanded, setExpanded] = useState(false)
+  const { expanded, toggle, anchorRef } = useAnchoredExpand(false)
   const summary = useMemo(
     () => summarizeMaterialBudget(budget, requests),
     [budget, requests],
@@ -126,45 +127,45 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
   const groups = useMemo(() => groupMaterialFacts(summary.facts), [summary.facts])
 
   return (
-    <section className={styles.section} aria-labelledby="material-spend-heading">
+    <section
+      ref={anchorRef}
+      className={styles.section}
+      aria-labelledby="material-spend-heading"
+    >
       <header className={styles.head}>
         <div className={styles.headCopy}>
           <p className={styles.kicker}>
             <img className={styles.kickerMark} src="/brand-chevron.svg" alt="" aria-hidden />
             Смета объекта
           </p>
-          <div className={styles.titleRow}>
-            <h2 className={styles.title} id="material-spend-heading">
-              Расход материала
-            </h2>
-            <CollapseToggle
-              expanded={expanded}
-              onToggle={() => setExpanded((v) => !v)}
-              ariaControls="material-spend-body"
-              expandedLabel="Свернуть расход"
-              collapsedLabel="Открыть расход"
-              className={styles.headToggle}
-            />
-          </div>
+          <h2 className={styles.title} id="material-spend-heading">
+            Расход материала
+          </h2>
           <p className={styles.lead}>Списание при приёмке. Перерасход уходит в минус.</p>
+          {!expanded ? (
+            <dl className={styles.previewStats} aria-hidden>
+              <div>
+                <dt>Статей</dt>
+                <dd>{summary.facts.length}</dd>
+              </div>
+              <div>
+                <dt>Норма</dt>
+                <dd>{summary.okCount}</dd>
+              </div>
+              <div className={summary.overCount ? styles.statBad : undefined}>
+                <dt>Минус</dt>
+                <dd>{summary.overCount}</dd>
+              </div>
+            </dl>
+          ) : null}
         </div>
 
-        {!expanded ? (
-          <dl className={styles.previewStats} aria-hidden>
-            <div>
-              <dt>Статей</dt>
-              <dd>{summary.facts.length}</dd>
-            </div>
-            <div>
-              <dt>Норма</dt>
-              <dd>{summary.okCount}</dd>
-            </div>
-            <div className={summary.overCount ? styles.statBad : undefined}>
-              <dt>Минус</dt>
-              <dd>{summary.overCount}</dd>
-            </div>
-          </dl>
-        ) : null}
+        <CollapseToggle
+          expanded={expanded}
+          onToggle={toggle}
+          ariaControls="material-spend-body"
+          className={styles.headToggle}
+        />
       </header>
 
       {expanded ? (

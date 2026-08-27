@@ -4,17 +4,17 @@
 }
 
 .embedded {
-  margin: 18px 0 8px;
-  padding-top: 16px;
+  margin: 14px 0 6px;
+  padding-top: 14px;
   border-top: 1px dashed rgba(15, 23, 42, 0.12);
   scroll-margin-top: 20px;
 }
 
 .embeddedHead {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .embeddedTitle {
@@ -28,8 +28,255 @@
 .embeddedLead {
   margin: 0;
   font-size: 13px;
-  line-height: 1.45;
+  line-height: 1.4;
   color: var(--muted, #64748b);
+}
+
+.embeddedHeadRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+}
+
+.embeddedLeadInline {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--muted, #64748b);
+}
+
+.compact {
+  margin-top: 8px;
+  padding-top: 10px;
+}
+
+.compact .embeddedHead {
+  margin-bottom: 8px;
+}
+
+.panelCompact .label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+.panelCompact .select,
+.panelCompact .input {
+  min-height: 40px;
+  font-size: 14px;
+  border-radius: 10px;
+}
+
+.panelCompact .author {
+  gap: 4px;
+}
+
+.uploadCtaCompact {
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  min-height: 40px !important;
+  height: 40px;
+  padding: 0 12px 0 8px !important;
+  gap: 8px !important;
+  border-radius: 10px !important;
+  text-align: left !important;
+}
+
+.uploadCtaCompact .uploadCtaIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.uploadCtaCompact .uploadCtaIcon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.uploadCtaCompact .uploadCtaTitle {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.uploadCtaCompact .uploadCtaHint {
+  display: none;
+}
+
+.uploadCtaCompact .uploadCtaArrow {
+  position: static;
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  top: auto;
+  right: auto;
+}
+
+.uploadCtaCompact .uploadCtaShine {
+  display: none;
+}
+
+.mediaShell {
+  position: relative;
+  margin-top: 2px;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(23, 42, 77, 0.07) 0%, transparent 55%),
+    linear-gradient(180deg, #ffffff 0%, #f5f7fb 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 14px 32px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.mediaShellRail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(
+    180deg,
+    var(--brand-navy, #172a4d) 0%,
+    var(--brand-navy, #172a4d) 55%,
+    var(--brand-red, #ee2d3a) 100%
+  );
+  z-index: 2;
+}
+
+.panelInShell {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 12px 14px 12px 16px !important;
+}
+
+.stagedInShell {
+  margin: 0 12px 12px 16px;
+  border-radius: 12px;
+}
+
+.archive {
+  margin-top: 12px;
+  padding: 12px 12px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(246, 248, 252, 0.88) 100%);
+}
+
+.archiveInShell {
+  margin: 0;
+  padding: 10px 14px 10px 16px;
+  border: 0;
+  border-radius: 0;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  background:
+    linear-gradient(180deg, rgba(23, 42, 77, 0.04) 0%, rgba(23, 42, 77, 0.015) 100%);
+  position: relative;
+}
+
+.archiveInShell::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(23, 42, 77, 0.16) 25%,
+    rgba(238, 45, 58, 0.18) 50%,
+    rgba(23, 42, 77, 0.16) 75%,
+    transparent 100%
+  );
+}
+
+.mediaShellOpen .archiveInShell {
+  background:
+    linear-gradient(180deg, rgba(23, 42, 77, 0.05) 0%, rgba(248, 250, 252, 0.98) 22%);
+  padding-bottom: 12px;
+}
+
+.archiveBar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.archivePeek {
+  display: flex;
+  align-items: center;
+  padding-left: 2px;
+}
+
+.archivePeekThumb {
+  width: 32px;
+  height: 32px;
+  margin-left: -9px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1.5px solid #fff;
+  background: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
+}
+
+.archivePeekThumb:first-child {
+  margin-left: 0;
+}
+
+.archivePeekThumb img,
+.archivePeekThumb video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.archiveCopy {
+  min-width: 0;
+}
+
+.archiveTitle {
+  margin: 0 0 1px;
+  font-size: 13.5px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--text-strong, #0f172a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.archiveMeta {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 550;
+  color: var(--muted, #64748b);
+}
+
+.archiveList {
+  margin-top: 12px;
+  padding-top: 2px;
+}
+
+@media (min-width: 720px) {
+  .panelCompact {
+    gap: 14px;
+  }
+
+  .panelInShell {
+    padding: 14px 16px 14px 18px !important;
+  }
+
+  .archiveInShell {
+    padding: 12px 16px 12px 18px;
+  }
 }
 
 /* ============================================================
@@ -179,42 +426,91 @@
 }
 
 .panel {
-  border-radius: 18px;
+  border-radius: 16px;
   border: 1px solid var(--border);
   background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
   box-shadow: var(--shadow-sm);
-  padding: clamp(16px, 2.5vw, 22px);
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
 }
 
 @media (min-width: 720px) {
   .panel {
     flex-direction: row;
-    /* stretch — чтобы premium-CTA «вытягивался» по высоте author-колонки
-       и в карточке не оставалось пустого вертикального пространства. */
     align-items: stretch;
     justify-content: space-between;
-    gap: 28px;
+    gap: 20px;
   }
 
   .author {
     flex: 1;
     min-width: 0;
-    max-width: 420px;
+    max-width: 400px;
   }
 
   .dropActions {
     flex-shrink: 0;
-    width: min(100%, 320px);
+    width: min(100%, 300px);
+  }
+
+  .panel.panelCompact {
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 12px;
+  }
+
+  .panel.panelCompact .author {
+    max-width: none;
+  }
+
+  .panel.panelCompact .dropActions {
+    width: auto;
+    min-width: 200px;
+    max-width: 280px;
+  }
+}
+
+.panel.panelCompact {
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0;
+  border-radius: 12px;
+}
+
+.panel.panelCompact .author {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+  gap: 4px;
+}
+
+.panel.panelCompact .dropActions {
+  flex-shrink: 0;
+  width: auto;
+  min-width: 180px;
+  max-width: 260px;
+}
+
+@media (max-width: 560px) {
+  .panel.panelCompact {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .panel.panelCompact .dropActions {
+    width: 100%;
+    max-width: none;
   }
 }
 
 .author {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
 }
 
 .label {
@@ -227,7 +523,7 @@
 
 .select {
   width: 100%;
-  min-height: 48px;
+  min-height: 44px;
   padding: 0 14px;
   border-radius: 12px;
   border: 1px solid var(--border);
@@ -247,7 +543,7 @@
 
 .input {
   width: 100%;
-  min-height: 48px;
+  min-height: 44px;
   padding: 0 14px;
   border-radius: 12px;
   border: 1px solid var(--border);
@@ -268,9 +564,9 @@
 }
 
 .authorHint {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.4;
   color: var(--muted);
 }
 
@@ -285,9 +581,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  /* На десктопе колонка тянется по высоте author — premium-CTA внутри
-     получит flex: 1 и заполнит её без пустот. */
+  gap: 8px;
 }
 
 .fileSink {
@@ -304,18 +598,6 @@
   opacity: 0;
 }
 
-/* ============================================================
-   Premium-CTA «Добавить фото или видео».
-   Один большой drop-zone-блок: тёмный navy-градиент с тёплым red
-   highlight в правом верхнем углу, иконка-плитка камеры/play,
-   крупный заголовок, подсказка, мини-чип с поддерживаемыми
-   расширениями и плюс-кнопка в правом верхнем углу для
-   мгновенного считывания «это кнопка добавления».
-   На hover проезжает диагональный shimmer + тонкое поднятие.
-   `flex: 1` нужно, чтобы кнопка вытягивалась по высоте author-
-   колонки на десктопе и в карточке не оставалось пустот.
-   ============================================================ */
-
 .uploadCta {
   position: relative;
   isolation: isolate;
@@ -324,11 +606,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
-  min-height: 220px;
-  padding: 26px 22px;
-  border-radius: 20px;
+  min-height: 168px;
+  padding: 20px 18px 22px;
+  border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   color: #f6f8fc;
   text-align: center;
@@ -340,7 +622,7 @@
     linear-gradient(180deg, #102a55 0%, #08172f 100%);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.14) inset,
-    0 16px 40px rgba(15, 28, 54, 0.36);
+    0 14px 34px rgba(15, 28, 54, 0.32);
   transition:
     transform 0.18s ease,
     box-shadow 0.22s ease,
@@ -351,9 +633,9 @@
 .uploadCta::after {
   content: '';
   position: absolute;
-  left: 22px;
-  right: 22px;
-  bottom: 12px;
+  left: 18px;
+  right: 18px;
+  bottom: 10px;
   height: 2px;
   border-radius: 2px;
   background: linear-gradient(
@@ -404,9 +686,9 @@
 }
 
 .uploadCtaIcon {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -417,14 +699,14 @@
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.2) inset,
     0 8px 18px rgba(0, 0, 0, 0.22);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   flex-shrink: 0;
   transition: transform 0.2s ease;
 }
 
 .uploadCtaIcon svg {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   display: block;
 }
 
@@ -433,7 +715,7 @@
 }
 
 .uploadCtaTitle {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: #fff;
@@ -442,34 +724,32 @@
 
 .uploadCtaHint {
   max-width: 30ch;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 500;
   color: rgba(246, 248, 252, 0.74);
-  line-height: 1.4;
+  line-height: 1.35;
   text-wrap: pretty;
 }
 
 .uploadCtaTypes {
-  margin-top: 4px;
-  padding: 5px 11px;
+  margin-top: 2px;
+  padding: 4px 10px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.06);
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: rgba(246, 248, 252, 0.78);
 }
 
-/* Маленький плюсик-индикатор в правом верхнем углу — за счёт него
-   кнопка мгновенно «читается» как добавление. */
 .uploadCtaArrow {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 32px;
-  height: 32px;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -498,23 +778,23 @@
 
 @media (max-width: 720px) {
   .uploadCta {
-    min-height: 200px;
-    padding: 22px 18px;
+    min-height: 156px;
+    padding: 18px 16px 20px;
   }
 
   .uploadCtaIcon {
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
   }
 
   .uploadCtaIcon svg {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
   }
 
   .uploadCtaTitle {
-    font-size: 15px;
+    font-size: 14.5px;
   }
 }
 

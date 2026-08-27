@@ -1,4 +1,4 @@
-export type SiteProjectFileKind = 'pdf' | 'dwg'
+export type SiteProjectFileKind = 'pdf' | 'dwg' | 'file' | 'folder'
 
 export type StoredSiteProjectFile = {
   id: string
@@ -8,6 +8,8 @@ export type StoredSiteProjectFile = {
   mime: string
   sizeBytes: number
   uploadedAtIso: string
+  /** null / отсутствует — в корне папки документов */
+  parentId?: string | null
 }
 
 const DB_NAME = 'deloresh-site-projects'
@@ -68,11 +70,34 @@ async function runTx<T>(
   })
 }
 
+export function detectProjectFileKind(file: { name: string; type?: string }): SiteProjectFileKind {
+  const name = file.name.toLowerCase()
+  const mime = (file.type ?? '').toLowerCase()
+  if (name.endsWith('.pdf') || mime === 'application/pdf') return 'pdf'
+  if (
+    name.endsWith('.dwg') ||
+    mime.includes('acad') ||
+    mime.includes('dwg') ||
+    mime === 'image/vnd.dwg'
+  ) {
+    return 'dwg'
+  }
+  return 'file'
+}
+
+export function projectParentId(row: Pick<StoredSiteProjectFile, 'parentId'>): string | null {
+  return row.parentId ?? null
+}
+
 export async function listProjectFilesBySite(siteId: string): Promise<StoredSiteProjectFile[]> {
   return runTx(STORE_FILES, 'readonly', (tx) => {
     return new Promise<StoredSiteProjectFile[]>((resolve, reject) => {
       const req = tx.objectStore(STORE_FILES).index(INDEX_BY_SITE).getAll(IDBKeyRange.only(siteId))
-      req.onsuccess = () => resolve((req.result ?? []) as StoredSiteProjectFile[])
+      req.onsuccess = () => {
+        const rows = (req.result ?? []) as StoredSiteProjectFile[]
+        rows.sort((a, b) => b.uploadedAtIso.localeCompare(a.uploadedAtIso))
+        resolve(rows)
+      }
       req.onerror = () => reject(req.error)
     })
   })
@@ -91,22 +116,18 @@ export async function getProjectFileBlob(id: string): Promise<Blob | null> {
   })
 }
 
+/** Метаданные без blob (папки). */
+export async function putProjectFileMeta(record: StoredSiteProjectFile): Promise<void> {
+  await runTx(STORE_FILES, 'readwrite', (tx) => {
+    tx.objectStore(STORE_FILES).put(record)
+  })
+}
+
+/** Добавить или обновить файл по id (без замены «единственного PDF/DWG»). */
 export async function putProjectFile(record: StoredSiteProjectFile, blob: Blob): Promise<void> {
-  await runTx([STORE_FILES, STORE_BLOBS], 'readwrite', async (tx) => {
-    const fileStore = tx.objectStore(STORE_FILES)
-    const blobStore = tx.objectStore(STORE_BLOBS)
-    const existing = await new Promise<StoredSiteProjectFile[]>((resolve, reject) => {
-      const req = fileStore.index(INDEX_BY_SITE).getAll(IDBKeyRange.only(record.siteId))
-      req.onsuccess = () => resolve((req.result ?? []) as StoredSiteProjectFile[])
-      req.onerror = () => reject(req.error)
-    })
-    for (const row of existing) {
-      if (row.kind !== record.kind) continue
-      fileStore.delete(row.id)
-      blobStore.delete(row.id)
-    }
-    fileStore.put(record)
-    blobStore.put({ id: record.id, blob })
+  await runTx([STORE_FILES, STORE_BLOBS], 'readwrite', (tx) => {
+    tx.objectStore(STORE_FILES).put(record)
+    tx.objectStore(STORE_BLOBS).put({ id: record.id, blob })
   })
 }
 
@@ -131,4 +152,25 @@ export async function pruneProjectFilesToRemote(
     if (remoteIds.has(row.id) || pendingIds.has(row.id)) continue
     await deleteProjectFile(row.id)
   }
+}
+
+/** id папки и всех вложенных файлов/папок (для удаления). */
+export function collectDescendantIds(
+  all: readonly StoredSiteProjectFile[],
+  folderId: string,
+): string[] {
+  const ids = new Set<string>([folderId])
+  let grew = true
+  while (grew) {
+    grew = false
+    for (const row of all) {
+      if (ids.has(row.id)) continue
+      const parent = projectParentId(row)
+      if (parent && ids.has(parent)) {
+        ids.add(row.id)
+        grew = true
+      }
+    }
+  }
+  return [...ids]
 }

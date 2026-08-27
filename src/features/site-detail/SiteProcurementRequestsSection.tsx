@@ -48,9 +48,12 @@ function formatDateTime(iso: string): string {
   })
 }
 
-function deliveryPct(requestedQty: number, acceptedQty: number): number {
-  if (requestedQty <= 0) return acceptedQty > 0 ? 100 : 0
-  return Math.min(100, Math.round((acceptedQty / requestedQty) * 100))
+function itemsPreview(req: ProcurementRequest): string {
+  const n = req.items.length
+  if (n === 0) return 'Без позиций'
+  const first = req.items[0]?.title.trim() || 'Позиция'
+  if (n === 1) return first
+  return `${first} · ещё ${n - 1}`
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -94,7 +97,7 @@ export function SiteProcurementRequestsSection({
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [sharedId, setSharedId] = useState<string | null>(null)
   const [refuseId, setRefuseId] = useState<string | null>(null)
-  const [showMaterials, setShowMaterials] = useState(false)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set())
 
   const summary = useMemo(() => summarizeProcurementAccounting(requests), [requests])
   const visible = useMemo(() => {
@@ -105,6 +108,15 @@ export function SiteProcurementRequestsSection({
   const waiting =
     summary.byStatus.pending + summary.byStatus.approved + summary.byStatus.refused
   const refuseReq = refuseId ? requests.find((r) => r.id === refuseId) ?? null : null
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const handleDownloadTxt = (req: ProcurementRequest) => {
     const base = buildProcurementFileBase(req)
@@ -249,267 +261,254 @@ export function SiteProcurementRequestsSection({
         </div>
       ) : (
         <ul className={styles.list}>
-          {visible.map((req) => (
-            <li
-              key={req.id}
-              className={`${styles.card} ${req.urgent ? styles.cardUrgent : ''}`}
-            >
-              <header className={styles.cardHead}>
-                <div className={styles.cardHeadText}>
-                  <p className={styles.cardCode}>
-                    <span className={styles.cardCodeMark}>№</span>
-                    {req.shortCode}
-                    {req.urgent ? (
-                      <span className={styles.urgentBadge} title="Срочная заявка">
-                        Срочно
-                      </span>
-                    ) : null}
-                  </p>
-                  <p className={styles.cardMeta}>
-                    <time dateTime={req.createdAtIso}>{formatDateTime(req.createdAtIso)}</time>
-                    <span className={styles.metaDot} aria-hidden>
-                      ·
-                    </span>
-                    <span className={styles.cardAuthor}>{req.createdBy}</span>
-                    {req.neededByIso ? (
-                      <>
-                        <span className={styles.metaDot} aria-hidden>
-                          ·
+          {visible.map((req) => {
+            const open = expandedIds.has(req.id)
+            const itemCount = req.items.length
+            return (
+              <li
+                key={req.id}
+                className={`${styles.card} ${req.urgent ? styles.cardUrgent : ''} ${open ? styles.cardOpen : ''}`}
+              >
+                <header className={styles.cardHead}>
+                  <div className={styles.cardHeadText}>
+                    <p className={styles.cardCode}>
+                      <span className={styles.cardCodeMark}>№</span>
+                      {req.shortCode}
+                      {req.urgent ? (
+                        <span className={styles.urgentBadge} title="Срочная заявка">
+                          Срочно
                         </span>
-                        <span>к {formatDateTime(req.neededByIso)}</span>
-                      </>
-                    ) : null}
-                  </p>
-                </div>
-                <span className={`${styles.statusBadge} ${styles[`status_${req.status}`]}`}>
-                  {PROCUREMENT_STATUS_LABELS[req.status]}
-                </span>
-              </header>
-
-              {(canSupplyApprove(req) || canSupplyEdit(req) || canSupplyCancel(req)) && (
-                <div className={styles.supplyBar}>
-                  {canSupplyApprove(req) ? (
-                    <button
-                      type="button"
-                      className={styles.approveBtn}
-                      onClick={() => onUpdateRequest(req.id, { status: 'approved' })}
-                    >
-                      Согласовать
-                    </button>
-                  ) : null}
-                  {canSupplyEdit(req) ? (
-                    <button
-                      type="button"
-                      className={styles.ghostBtn}
-                      onClick={() => onEdit(req)}
-                    >
-                      Изменить
-                    </button>
-                  ) : null}
-                  {canSupplyCancel(req) ? (
-                    <button
-                      type="button"
-                      className={styles.cancelSupplyBtn}
-                      onClick={() =>
-                        onUpdateRequest(req.id, { status: 'cancelled', receipt: null })
-                      }
-                    >
-                      Снять
-                    </button>
-                  ) : null}
-                </div>
-              )}
-
-              <ul className={styles.lines} aria-label="Позиции заявки">
-                {req.items.map((it, i) => (
-                  <li key={`${i}-${it.title}`} className={styles.line}>
-                    <span className={styles.lineIndex} aria-hidden>
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-                    <span className={styles.lineTitle}>{it.title}</span>
-                    <span className={styles.lineQty}>
-                      {formatQty(it.quantity)}
-                      <span className={styles.lineUnit}>{unitLabel(it.unitId)}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              {req.note ? (
-                <p className={styles.cardNote}>
-                  <span className={styles.cardNoteLabel}>Комментарий</span>
-                  {req.note}
-                </p>
-              ) : null}
-
-              {req.unloadPoint ? (
-                <p className={styles.cardNote}>
-                  <span className={styles.cardNoteLabel}>Разгрузка</span>
-                  {req.unloadPoint.address ||
-                    `${req.unloadPoint.lat.toFixed(5)}, ${req.unloadPoint.lng.toFixed(5)}`}
-                  {req.unloadPoint.hint ? ` · ${req.unloadPoint.hint}` : ''}
-                </p>
-              ) : null}
-
-              {req.status === 'accepted' ? (
-                <div className={styles.receiptBlock}>
-                  <p className={styles.acceptedMark}>
-                    <span className={styles.acceptedIcon} aria-hidden>
-                      ✓
-                    </span>
-                    Принято
-                    {req.receipt
-                      ? ` ${formatReceiptStampRu(req.receipt.atIso)}`
-                      : ' — объём списан в расход материалов'}
-                  </p>
-                  {req.receipt?.media && req.receipt.media.length > 0 ? (
-                    <ul className={styles.receiptMedia}>
-                      {req.receipt.media.map((m) => (
-                        <li key={m.id}>
-                          {m.kind === 'video' && m.previewUrl ? (
-                            <video src={m.previewUrl} muted playsInline controls />
-                          ) : m.previewUrl ? (
-                            <img src={m.previewUrl} alt="" />
-                          ) : null}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </div>
-              ) : req.status === 'refused' ? (
-                <div className={styles.receiptBlock}>
-                  <p className={styles.refusedMark}>
-                    Отказано в приёмке
-                    {req.receipt ? ` ${formatReceiptStampRu(req.receipt.atIso)}` : ''}
-                    {req.receipt?.reason ? `. ${req.receipt.reason}` : ''}
-                  </p>
-                  {req.receipt?.media && req.receipt.media.length > 0 ? (
-                    <ul className={styles.receiptMedia}>
-                      {req.receipt.media.map((m) => (
-                        <li key={m.id}>
-                          {m.kind === 'video' && m.previewUrl ? (
-                            <video src={m.previewUrl} muted playsInline controls />
-                          ) : m.previewUrl ? (
-                            <img src={m.previewUrl} alt="" />
-                          ) : null}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </div>
-              ) : canReceiveOnSite(req) ? (
-                <div className={styles.decide}>
-                  <button
-                    type="button"
-                    className={styles.acceptBtn}
-                    onClick={() =>
-                      onUpdateRequest(
-                        req.id,
-                        cargoReceiptPatch(makeAcceptedReceipt(new Date().toISOString())),
-                      )
-                    }
-                  >
-                    Принять материал
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.refuseBtn}
-                    onClick={() => setRefuseId(req.id)}
-                  >
-                    Отказать в приёмке
-                  </button>
-                </div>
-              ) : null}
-
-              <footer className={styles.cardFooter}>
-                <div className={styles.cardActions}>
-                  <button
-                    type="button"
-                    className={styles.ghostBtn}
-                    onClick={() => handleDownloadTxt(req)}
-                  >
-                    TXT
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.ghostBtn}
-                    onClick={() => handleDownloadCsv(req)}
-                  >
-                    CSV
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.ghostBtn}
-                    onClick={() => handleCopy(req)}
-                    aria-live="polite"
-                  >
-                    {copiedId === req.id ? 'Скопировано' : 'Копировать'}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.ghostBtn}
-                    onClick={() => handleShare(req)}
-                    aria-live="polite"
-                  >
-                    {sharedId === req.id ? 'Отправлено' : 'Поделиться'}
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  className={styles.dangerBtn}
-                  onClick={() => onRemove(req.id)}
-                  aria-label={`Удалить заявку № ${req.shortCode}`}
-                >
-                  Удалить
-                </button>
-              </footer>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {summary.materials.length > 0 ? (
-        <div className={styles.materialsBlock}>
-          <button
-            type="button"
-            className={styles.moreBtn}
-            onClick={() => setShowMaterials((v) => !v)}
-            aria-expanded={showMaterials}
-          >
-            {showMaterials ? 'Скрыть сводку материалов' : 'Сводка материалов'}
-          </button>
-          {showMaterials ? (
-            <ul className={styles.materials}>
-              {summary.materials.map((m) => {
-                const who = [...new Set(m.refs.map((r) => r.createdBy))]
-                const pct = deliveryPct(m.requestedQty, m.acceptedQty)
-                return (
-                  <li key={`${m.title}-${m.unitId}`} className={styles.material}>
-                    <div className={styles.materialHead}>
-                      <span className={styles.materialName}>{m.title}</span>
-                      {m.acceptedQty > 0 ? (
-                        <span className={styles.materialPct}>{pct}%</span>
                       ) : null}
-                    </div>
-                    {m.acceptedQty > 0 ? (
-                      <div className={styles.progressTrack} aria-hidden>
-                        <div className={styles.progressFill} style={{ width: `${pct}%` }} />
+                    </p>
+                    <p className={styles.cardMeta}>
+                      <time dateTime={req.createdAtIso}>{formatDateTime(req.createdAtIso)}</time>
+                      <span className={styles.metaDot} aria-hidden>
+                        ·
+                      </span>
+                      <span className={styles.cardAuthor}>{req.createdBy}</span>
+                      {req.neededByIso ? (
+                        <>
+                          <span className={styles.metaDot} aria-hidden>
+                            ·
+                          </span>
+                          <span>к {formatDateTime(req.neededByIso)}</span>
+                        </>
+                      ) : null}
+                    </p>
+                  </div>
+                  <span className={`${styles.statusBadge} ${styles[`status_${req.status}`]}`}>
+                    {PROCUREMENT_STATUS_LABELS[req.status]}
+                  </span>
+                </header>
+
+                {(canSupplyApprove(req) || canSupplyEdit(req) || canSupplyCancel(req)) && (
+                  <div className={styles.supplyBar}>
+                    {canSupplyApprove(req) ? (
+                      <button
+                        type="button"
+                        className={styles.approveBtn}
+                        onClick={() => onUpdateRequest(req.id, { status: 'approved' })}
+                      >
+                        Согласовать
+                      </button>
+                    ) : null}
+                    {canSupplyEdit(req) ? (
+                      <button
+                        type="button"
+                        className={styles.ghostBtn}
+                        onClick={() => onEdit(req)}
+                      >
+                        Изменить
+                      </button>
+                    ) : null}
+                    {canSupplyCancel(req) ? (
+                      <button
+                        type="button"
+                        className={styles.cancelSupplyBtn}
+                        onClick={() =>
+                          onUpdateRequest(req.id, { status: 'cancelled', receipt: null })
+                        }
+                      >
+                        Снять
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+
+                {!open ? (
+                  <button
+                    type="button"
+                    className={styles.expandBtn}
+                    aria-expanded={false}
+                    onClick={() => toggleExpanded(req.id)}
+                  >
+                    <span className={styles.expandPreview}>{itemsPreview(req)}</span>
+                    <span className={styles.expandAction}>
+                      Раскрыть
+                      <span className={styles.expandCount}>{itemCount}</span>
+                    </span>
+                  </button>
+                ) : (
+                  <div className={styles.cardDetails}>
+                    <button
+                      type="button"
+                      className={styles.collapseBtn}
+                      aria-expanded
+                      onClick={() => toggleExpanded(req.id)}
+                    >
+                      Свернуть
+                    </button>
+
+                    <ul className={styles.lines} aria-label="Позиции заявки">
+                      {req.items.map((it, i) => (
+                        <li key={`${i}-${it.title}`} className={styles.line}>
+                          <span className={styles.lineIndex} aria-hidden>
+                            {String(i + 1).padStart(2, '0')}
+                          </span>
+                          <span className={styles.lineTitle}>{it.title}</span>
+                          <span className={styles.lineQty}>
+                            {formatQty(it.quantity)}
+                            <span className={styles.lineUnit}>{unitLabel(it.unitId)}</span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {req.note ? (
+                      <p className={styles.cardNote}>
+                        <span className={styles.cardNoteLabel}>Комментарий</span>
+                        {req.note}
+                      </p>
+                    ) : null}
+
+                    {req.unloadPoint ? (
+                      <p className={styles.cardNote}>
+                        <span className={styles.cardNoteLabel}>Разгрузка</span>
+                        {req.unloadPoint.address ||
+                          `${req.unloadPoint.lat.toFixed(5)}, ${req.unloadPoint.lng.toFixed(5)}`}
+                        {req.unloadPoint.hint ? ` · ${req.unloadPoint.hint}` : ''}
+                      </p>
+                    ) : null}
+
+                    {req.status === 'accepted' ? (
+                      <div className={styles.receiptBlock}>
+                        <p className={styles.acceptedMark}>
+                          <span className={styles.acceptedIcon} aria-hidden>
+                            ✓
+                          </span>
+                          Принято
+                          {req.receipt
+                            ? ` ${formatReceiptStampRu(req.receipt.atIso)}`
+                            : ' — объём списан в расход материалов'}
+                        </p>
+                        {req.receipt?.media && req.receipt.media.length > 0 ? (
+                          <ul className={styles.receiptMedia}>
+                            {req.receipt.media.map((m) => (
+                              <li key={m.id}>
+                                {m.kind === 'video' && m.previewUrl ? (
+                                  <video src={m.previewUrl} muted playsInline controls />
+                                ) : m.previewUrl ? (
+                                  <img src={m.previewUrl} alt="" />
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
+                    ) : req.status === 'refused' ? (
+                      <div className={styles.receiptBlock}>
+                        <p className={styles.refusedMark}>
+                          Отказано в приёмке
+                          {req.receipt ? ` ${formatReceiptStampRu(req.receipt.atIso)}` : ''}
+                          {req.receipt?.reason ? `. ${req.receipt.reason}` : ''}
+                        </p>
+                        {req.receipt?.media && req.receipt.media.length > 0 ? (
+                          <ul className={styles.receiptMedia}>
+                            {req.receipt.media.map((m) => (
+                              <li key={m.id}>
+                                {m.kind === 'video' && m.previewUrl ? (
+                                  <video src={m.previewUrl} muted playsInline controls />
+                                ) : m.previewUrl ? (
+                                  <img src={m.previewUrl} alt="" />
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
+                    ) : canReceiveOnSite(req) ? (
+                      <div className={styles.decide}>
+                        <button
+                          type="button"
+                          className={styles.acceptBtn}
+                          onClick={() =>
+                            onUpdateRequest(
+                              req.id,
+                              cargoReceiptPatch(makeAcceptedReceipt(new Date().toISOString())),
+                            )
+                          }
+                        >
+                          Принять материал
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.refuseBtn}
+                          onClick={() => setRefuseId(req.id)}
+                        >
+                          Отказать в приёмке
+                        </button>
                       </div>
                     ) : null}
-                    <p className={styles.materialQty}>
-                      {formatQty(m.requestedQty)} {unitLabel(m.unitId)}
-                      {m.acceptedQty > 0
-                        ? ` · привезли ${formatQty(m.acceptedQty)} ${unitLabel(m.unitId)}`
-                        : ''}
-                    </p>
-                    <p className={styles.materialWho}>{who.join(', ')}</p>
-                  </li>
-                )
-              })}
-            </ul>
-          ) : null}
-        </div>
-      ) : null}
+
+                    <footer className={styles.cardFooter}>
+                      <div className={styles.cardActions}>
+                        <button
+                          type="button"
+                          className={styles.ghostBtn}
+                          onClick={() => handleDownloadTxt(req)}
+                        >
+                          TXT
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.ghostBtn}
+                          onClick={() => handleDownloadCsv(req)}
+                        >
+                          CSV
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.ghostBtn}
+                          onClick={() => handleCopy(req)}
+                          aria-live="polite"
+                        >
+                          {copiedId === req.id ? 'Скопировано' : 'Копировать'}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.ghostBtn}
+                          onClick={() => handleShare(req)}
+                          aria-live="polite"
+                        >
+                          {sharedId === req.id ? 'Отправлено' : 'Поделиться'}
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.dangerBtn}
+                        onClick={() => onRemove(req.id)}
+                        aria-label={`Удалить заявку № ${req.shortCode}`}
+                      >
+                        Удалить
+                      </button>
+                    </footer>
+                  </div>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
 
       {refuseReq ? (
         <CargoReceiptSheet

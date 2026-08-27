@@ -99,8 +99,7 @@ function uniquePlanPoints(a: WorkDayAssignment): Array<{ number: string; title: 
 
 const WORK_DAY_LEAD: Record<WorkDayRole, (siteName: string) => string> = {
   manager: () => 'Назначьте строку плана и объём на день.',
-  brigadier: () =>
-    'Укажите выполненный объём, приложите медиа и подтвердите выполнение.',
+  brigadier: () => 'Объём, медиа — подтвердите выполнение.',
 }
 
 export function SiteWorkDayPlanSection({
@@ -242,7 +241,7 @@ export function SiteWorkDayPlanSection({
 
       {embedded && !showIntro ? (
         <header className={styles.moduleHead}>
-          <p className={styles.moduleKicker}>
+          <p className={styles.moduleKicker} id="work-day-plan-heading">
             <img
               className={styles.moduleKickerMark}
               src="/brand-chevron.svg"
@@ -251,9 +250,6 @@ export function SiteWorkDayPlanSection({
             />
             Задания дня
           </p>
-          <h3 className={styles.moduleTitle} id="work-day-plan-heading">
-            План смены
-          </h3>
           <p className={styles.moduleLead}>{WORK_DAY_LEAD[role](siteName)}</p>
         </header>
       ) : null}
@@ -466,7 +462,6 @@ function DayBriefingSheet({
 
   return (
     <article className={styles.daySheet}>
-      <span className={styles.cardRail} aria-hidden />
       <span className={styles.cardShimmer} aria-hidden />
 
       <header className={styles.daySheetHead}>

@@ -16,6 +16,23 @@
   border-bottom: 1px solid rgba(15, 23, 42, 0.08);
 }
 
+.embedded .moduleHead {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 0 0 10px;
+  padding: 0 0 8px;
+}
+
+.embedded .moduleLead {
+  margin: 0;
+  width: auto;
+  flex: 1 1 12rem;
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
 .moduleKicker {
   margin: 0;
   display: inline-flex;
@@ -235,6 +252,11 @@
   margin-bottom: 14px;
 }
 
+.embedded .toolbar {
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
 .viewSwitch {
   display: inline-flex;
   padding: 3px;
@@ -255,6 +277,12 @@
   font-weight: 650;
   color: var(--muted);
   cursor: pointer;
+}
+
+.embedded .viewBtn {
+  min-height: 32px;
+  padding: 0 11px;
+  font-size: 12.5px;
 }
 
 .viewOn {
@@ -280,10 +308,19 @@
   color: var(--text-strong);
 }
 
+.embedded .navBtn,
+.embedded .todayBtn {
+  min-height: 32px;
+}
+
 .navBtn {
   width: 36px;
   font-size: 18px;
   line-height: 1;
+}
+
+.embedded .navBtn {
+  width: 32px;
 }
 
 .todayBtn {
@@ -298,6 +335,10 @@
   font-weight: 650;
   color: var(--text-strong);
   text-transform: capitalize;
+}
+
+.embedded .navLabel {
+  font-size: 13px;
 }
 
 .assignCta {
@@ -326,6 +367,12 @@
   font-size: 14px;
 }
 
+.embedded .empty {
+  padding: 14px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+}
+
 .cardList {
   list-style: none;
   margin: 0;
@@ -335,9 +382,13 @@
   gap: 14px;
 }
 
+.embedded .cardList {
+  gap: 10px;
+}
+
 .daySheet {
   position: relative;
-  padding: 22px 22px 18px 28px;
+  padding: 22px;
   border-radius: 24px;
   border: 1px solid rgba(15, 23, 42, 0.07);
   background:
@@ -351,6 +402,14 @@
   overflow: hidden;
 }
 
+.embedded .daySheet {
+  padding: 12px;
+  border-radius: 14px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
 .daySheetHead {
   position: relative;
   z-index: 1;
@@ -362,6 +421,12 @@
   margin-bottom: 18px;
   padding-bottom: 16px;
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.embedded .daySheetHead {
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
 }
 
 .daySheetHeadText {
@@ -406,6 +471,21 @@
   gap: 12px;
 }
 
+.embedded .taskList {
+  gap: 8px;
+}
+
+.embedded .daySheetTitle {
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.embedded .daySheetLead {
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
 .taskRow {
   --task-accent: #1c2c54;
   position: relative;
@@ -431,6 +511,12 @@
     border-color 0.2s ease,
     box-shadow 0.2s ease,
     transform 0.2s ease;
+}
+
+.embedded .taskRow {
+  gap: 10px;
+  padding: 12px 12px 12px 10px;
+  border-radius: 14px;
 }
 
 .taskRow::before {

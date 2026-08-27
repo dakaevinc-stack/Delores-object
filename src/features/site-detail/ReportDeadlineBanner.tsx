@@ -5,7 +5,8 @@ import styles from './ReportDeadlineBanner.module.css'
 type Props = {
   reports: readonly BrigadierStoredReport[]
   todayIso: string
-  onOpenComposer: () => void
+  /** Внутри hero объекта — компактная полоска, без отдельного блока на странице. */
+  embedded?: boolean
 }
 
 type Urgency = 'none' | 'reminder' | 'warning' | 'overdue'
@@ -28,22 +29,26 @@ function getUrgency(hasTodayReport: boolean, hour: number): Urgency {
   return 'none'
 }
 
-const COPY: Record<Exclude<Urgency, 'none'>, { emoji: string; text: string }> = {
+const COPY: Record<Exclude<Urgency, 'none'>, { short: string; full: string }> = {
   reminder: {
-    emoji: '🕐',
-    text: 'Отчёт за сегодня ещё не сдан. До конца смены осталось несколько часов.',
+    short: 'Отчёт за сегодня ещё не сдан',
+    full: 'Отчёт за сегодня ещё не сдан. До конца смены осталось несколько часов.',
   },
   warning: {
-    emoji: '⚠️',
-    text: 'Отчёт за сегодня не сдан. Остался меньше часа!',
+    short: 'Меньше часа до сдачи отчёта',
+    full: 'Отчёт за сегодня не сдан. Остался меньше часа!',
   },
   overdue: {
-    emoji: '🔴',
-    text: 'Отчёт просрочен. Руководитель уведомлён.',
+    short: 'Отчёт просрочен',
+    full: 'Отчёт просрочен. Руководитель уведомлён.',
   },
 }
 
-export function ReportDeadlineBanner({ reports, todayIso, onOpenComposer }: Props) {
+export function ReportDeadlineBanner({
+  reports,
+  todayIso,
+  embedded = false,
+}: Props) {
   const [hour, setHour] = useState(mskHour)
 
   useEffect(() => {
@@ -57,25 +62,18 @@ export function ReportDeadlineBanner({ reports, todayIso, onOpenComposer }: Prop
   if (urgency === 'none') return null
 
   const copy = COPY[urgency]
+  const text = embedded ? copy.short : copy.full
 
   return (
     <div
-      className={`${styles.banner} ${styles[urgency]}`}
+      className={[
+        embedded ? styles.inline : styles.banner,
+        styles[urgency],
+      ].join(' ')}
       role="alert"
     >
-      <span className={styles.emoji} aria-hidden>
-        {copy.emoji}
-      </span>
-      <p className={styles.text}>{copy.text}</p>
-      {urgency !== 'overdue' ? (
-        <button type="button" className={styles.cta} onClick={onOpenComposer}>
-          Сдать отчёт
-        </button>
-      ) : (
-        <button type="button" className={styles.ctaOverdue} onClick={onOpenComposer}>
-          Сдать сейчас
-        </button>
-      )}
+      <span className={styles.pulse} aria-hidden />
+      <p className={styles.text}>{text}</p>
     </div>
   )
 }

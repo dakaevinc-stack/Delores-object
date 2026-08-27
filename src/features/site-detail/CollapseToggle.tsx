@@ -43,8 +43,8 @@ export function CollapseToggle({
   className,
   style,
 }: Props) {
-  const fallbackExpanded = variant === 'icon' ? 'Свернуть' : 'Свернуть блок'
-  const fallbackCollapsed = variant === 'icon' ? 'Раскрыть' : 'Раскрыть блок'
+  const fallbackExpanded = 'Свернуть'
+  const fallbackCollapsed = 'Открыть'
   const label = expanded
     ? expandedLabel ?? fallbackExpanded
     : collapsedLabel ?? fallbackCollapsed

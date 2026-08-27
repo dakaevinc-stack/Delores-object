@@ -546,7 +546,10 @@ export function FieldReportCard({
       label: `${narrativeStructured.crew.equipment} ед. техники`,
     })
   }
-  const showPreview = isCollapsible && !expanded && (previewChips.length > 0 || (metaChips && metaChips.length > 0))
+  const showPreview = isCollapsible && !expanded && (previewChips.length > 0 || (metaChips && metaChips.length > 0) || (attachments && attachments.length > 0))
+  const previewThumbs = (attachments ?? [])
+    .filter((a) => a.previewUrl && (a.kind === 'photo' || a.kind === 'video'))
+    .slice(0, 4)
 
   const cardClass = [
     styles.card,
@@ -611,8 +614,6 @@ export function FieldReportCard({
               variant="icon"
               expanded={expanded}
               onToggle={() => setExpanded((v) => !v)}
-              expandedLabel="Свернуть отчёт"
-              collapsedLabel="Раскрыть отчёт"
             />
           ) : null}
         </div>
@@ -620,6 +621,29 @@ export function FieldReportCard({
 
       {showPreview ? (
         <div className={styles.preview}>
+          {previewThumbs.length > 0 ? (
+            <div className={styles.previewThumbs} aria-label="Вложения">
+              {previewThumbs.map((a) => (
+                <span key={a.id} className={styles.previewThumb} data-kind={a.kind}>
+                  {a.kind === 'video' ? (
+                    <video src={a.previewUrl} muted playsInline preload="metadata" />
+                  ) : (
+                    <img src={a.previewUrl} alt="" />
+                  )}
+                  {a.kind === 'video' ? (
+                    <span className={styles.previewThumbBadge} aria-hidden>
+                      ▶
+                    </span>
+                  ) : null}
+                </span>
+              ))}
+              {(attachments?.length ?? 0) > previewThumbs.length ? (
+                <span className={styles.previewThumbMore}>
+                  +{(attachments?.length ?? 0) - previewThumbs.length}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           {previewChips.map((c) => (
             <span
               key={c.id}

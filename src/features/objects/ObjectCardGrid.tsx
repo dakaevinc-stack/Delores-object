@@ -21,7 +21,7 @@ export function ObjectCardGrid({ sites, filteredEmpty = false }: Props) {
             <p className={styles.emptyText}>
               {filteredEmpty
                 ? 'Сбросьте поиск или фильтр статуса'
-                : 'Создайте первый объект — карточку можно заполнять по мере появления данных'}
+                : 'Нажмите +, чтобы создать объект'}
             </p>
           </div>
         </div>

@@ -20,6 +20,7 @@ import {
 import { getMaterialBudgetForSite } from '../../data/materialBudgets'
 import type { AddressHit } from '../../domain/addressSearch'
 import type { SiteDeliveryPoint } from '../../domain/siteDeliveryPoint'
+import { listStaffBrigadierAndSiteManagerOptions } from '../../domain/staffDirectory'
 import { reverseGeocodeRemote, searchAddressRemote } from '../../lib/siteFormsApi'
 import { DeliveryPointMap } from './DeliveryPointMap'
 import styles from './ProcurementRequestModal.module.css'
@@ -438,15 +439,37 @@ export function ProcurementRequestModal({
     onClose()
   }
 
-  const quickSelectValue =
-    knownAuthors.length === 0
-      ? ''
-      : (() => {
-          const t = createdBy.trim()
-          if (knownAuthors.includes(t)) return t
-          if (otherFioMode || t.length > 0) return '__other__'
-          return ''
-        })()
+  const staffAuthors = useMemo(() => listStaffBrigadierAndSiteManagerOptions(), [])
+  const staffAuthorNames = useMemo(
+    () => staffAuthors.map((o) => o.fullName),
+    [staffAuthors],
+  )
+  const recentExtraAuthors = useMemo(
+    () => knownAuthors.filter((n) => !staffAuthorNames.includes(n)),
+    [knownAuthors, staffAuthorNames],
+  )
+  const selectableAuthorNames = useMemo(
+    () => [...staffAuthorNames, ...recentExtraAuthors],
+    [staffAuthorNames, recentExtraAuthors],
+  )
+
+  const brigadierOptions = useMemo(
+    () => staffAuthors.filter((o) => o.group === 'brigadier'),
+    [staffAuthors],
+  )
+  const siteManagerOptions = useMemo(
+    () => staffAuthors.filter((o) => o.group === 'site_manager'),
+    [staffAuthors],
+  )
+
+  const quickSelectValue = (() => {
+    const t = createdBy.trim()
+    if (selectableAuthorNames.includes(t)) return t
+    if (otherFioMode || t.length > 0) return '__other__'
+    return ''
+  })()
+
+  const showFioInput = quickSelectValue === '__other__' || selectableAuthorNames.length === 0
 
   return (
     <div
@@ -483,70 +506,82 @@ export function ProcurementRequestModal({
         <form className={styles.form} onSubmit={handleSubmit}>
           <div className={styles.block}>
             <span className={styles.blockTitle}>Кто создал заявку</span>
-            {knownAuthors.length > 0 ? (
-              <>
-                <label className={styles.label} htmlFor={`${uid}-quick`}>
-                  Быстрый выбор
-                </label>
-                <select
-                  id={`${uid}-quick`}
-                  className={styles.select}
-                  value={quickSelectValue}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    if (v === '__other__') {
-                      setOtherFioMode(true)
-                      setCreatedBy('')
-                      return
-                    }
-                    if (v === '') {
-                      setOtherFioMode(false)
-                      setCreatedBy('')
-                      return
-                    }
-                    setOtherFioMode(false)
-                    setCreatedBy(v)
-                  }}
-                >
-                  <option value="">— Снабженец —</option>
-                  {knownAuthors.map((name) => (
+            <label className={styles.label} htmlFor={`${uid}-quick`}>
+              ФИО
+            </label>
+            <select
+              id={`${uid}-quick`}
+              className={styles.select}
+              value={quickSelectValue}
+              onChange={(e) => {
+                const v = e.target.value
+                if (v === '__other__') {
+                  setOtherFioMode(true)
+                  setCreatedBy('')
+                  return
+                }
+                if (v === '') {
+                  setOtherFioMode(false)
+                  setCreatedBy('')
+                  return
+                }
+                setOtherFioMode(false)
+                setCreatedBy(v)
+              }}
+            >
+              <option value="">— Выберите —</option>
+              {siteManagerOptions.length > 0 ? (
+                <optgroup label="Начальники объектов">
+                  {siteManagerOptions.map((o) => (
+                    <option key={o.fullName} value={o.fullName}>
+                      {o.fullName}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
+              {brigadierOptions.length > 0 ? (
+                <optgroup label="Бригадиры">
+                  {brigadierOptions.map((o) => (
+                    <option key={o.fullName} value={o.fullName}>
+                      {o.fullName}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
+              {recentExtraAuthors.length > 0 ? (
+                <optgroup label="Недавние">
+                  {recentExtraAuthors.map((name) => (
                     <option key={name} value={name}>
                       {name}
                     </option>
                   ))}
-                  <option value="__other__">Другое ФИО…</option>
-                </select>
+                </optgroup>
+              ) : null}
+              <option value="__other__">Другое ФИО…</option>
+            </select>
+
+            {showFioInput ? (
+              <>
+                <label className={styles.label} htmlFor={`${uid}-fio`}>
+                  Введите ФИО
+                </label>
+                <input
+                  id={`${uid}-fio`}
+                  className={styles.input}
+                  type="text"
+                  autoComplete="name"
+                  placeholder="Иванов Иван Иванович"
+                  value={createdBy}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setCreatedBy(v)
+                    setOtherFioMode(true)
+                  }}
+                />
               </>
             ) : null}
-
-            <label className={styles.label} htmlFor={`${uid}-fio`}>
-              ФИО
-            </label>
-            <input
-              id={`${uid}-fio`}
-              className={styles.input}
-              type="text"
-              autoComplete="name"
-              placeholder="Например: Петров Сергей Иванович"
-              value={createdBy}
-              onChange={(e) => {
-                const v = e.target.value
-                setCreatedBy(v)
-                const t = v.trim()
-                if (knownAuthors.includes(t)) setOtherFioMode(false)
-                else if (t.length > 0) setOtherFioMode(true)
-              }}
-              list={knownAuthors.length ? `${uid}-fio-list` : undefined}
-            />
-            {knownAuthors.length > 0 ? (
-              <datalist id={`${uid}-fio-list`}>
-                {knownAuthors.map((name) => (
-                  <option key={name} value={name} />
-                ))}
-              </datalist>
-            ) : null}
             <p className={styles.hint}>
-              Запоминается на этом устройстве — в следующий раз можно выбрать себя из списка.
+              Выберите бригадира или начальника объекта. Свой вариант — «Другое ФИО…».
             </p>
           </div>
 

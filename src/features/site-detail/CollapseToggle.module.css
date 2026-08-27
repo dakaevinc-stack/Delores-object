@@ -15,7 +15,11 @@
 .capsule {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  box-sizing: border-box;
+  min-width: 7.5rem;
+  min-height: 36px;
   padding: 7px 12px 7px 14px;
   border-radius: 999px;
   font-size: 12px;

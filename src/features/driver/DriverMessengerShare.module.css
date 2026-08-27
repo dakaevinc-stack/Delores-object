@@ -5,21 +5,18 @@
   gap: 10px;
 }
 
-/* Компактная панель — одна стеклянная рамка, без вложенного «лотка» */
+/*
+ * Compact — ряд стеклянных кнопок на всю ширину подвала.
+ */
 .wrapCompact {
-  gap: 8px;
-  padding: 10px 10px 11px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  background:
-    radial-gradient(120% 90% at 0% 0%, rgba(29, 78, 216, 0.12) 0%, transparent 52%),
-    radial-gradient(100% 80% at 100% 100%, rgba(23, 42, 77, 0.1) 0%, transparent 48%),
-    rgba(255, 255, 255, 0.26);
-  backdrop-filter: blur(20px) saturate(1.6);
-  -webkit-backdrop-filter: blur(20px) saturate(1.6);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 10px 28px rgba(15, 23, 42, 0.07);
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .head {
@@ -27,10 +24,6 @@
   align-items: flex-start;
   gap: 10px 12px;
   padding: 2px 2px 6px;
-}
-
-.wrapCompact .head {
-  padding: 0 1px 4px;
 }
 
 .kicker {
@@ -87,30 +80,22 @@
   color: var(--muted, #6b7280);
 }
 
-.wrapCompact .title {
-  font-size: 14.5px;
-}
-
-.wrapCompact .lead {
-  font-size: 12px;
-  line-height: 1.4;
-}
-
 .tgTip {
-  margin: 0;
-  padding: 9px 11px;
+  margin: 0 0 8px;
+  padding: 8px 11px;
   border-radius: 11px;
-  border: 1px solid rgba(34, 158, 217, 0.3);
-  background: linear-gradient(180deg, rgba(238, 248, 253, 0.82) 0%, rgba(247, 252, 255, 0.68) 100%);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  font-size: 12.5px;
+  border: 1px solid rgba(34, 158, 217, 0.28);
+  background: linear-gradient(180deg, rgba(238, 248, 253, 0.9) 0%, rgba(247, 252, 255, 0.75) 100%);
+  font-size: 12px;
   font-weight: 650;
-  line-height: 1.4;
+  line-height: 1.35;
   color: #0c4a6e;
 }
 
-/* Сетка: в compact всегда 4 в ряд */
+.wrapCompact .tgTip {
+  margin: 0 0 10px;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
@@ -118,12 +103,18 @@
 }
 
 .wrapCompact .grid {
+  display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  gap: 8px;
+  width: 100%;
   padding: 0;
   border: 0;
   background: none;
   box-shadow: none;
+}
+
+.wrapCompact .grid:has(> :nth-child(5)) {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 /* ─── Стеклянные плитки ─────────────────────────────────────────── */
@@ -229,24 +220,44 @@
   white-space: nowrap;
 }
 
-/* Compact: иконка — главный акцент, подпись компактная */
+/* Compact: стеклянные плитки в ряд на всю ширину */
 .wrapCompact .tile {
-  min-height: 0;
-  padding: 7px 4px 5px;
-  gap: 4px;
-  border-radius: 13px;
+  width: auto;
+  height: auto;
+  min-height: 52px;
+  flex: none;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 12px;
+  gap: 8px;
+  border-radius: 14px;
 }
 
 .wrapCompact .glyph {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+.wrapCompact .glyph svg {
+  width: 15px;
+  height: 15px;
 }
 
 .wrapCompact .tileLabel {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  position: static;
+  width: auto;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  clip: auto;
+  white-space: nowrap;
+  border: 0;
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
 }
 
 .wa {
@@ -332,61 +343,30 @@
   filter: grayscale(0.35);
 }
 
-/* Мобилка: 4 в ряд, крупные стеклянные иконки, без подписей */
 @media (max-width: 640px) {
-  .wrapCompact {
-    padding: 8px 8px 9px;
-    gap: 6px;
-    border-radius: 14px;
-  }
-
-  .wrapCompact .head {
-    align-items: center;
-    gap: 8px;
-    padding-bottom: 2px;
-  }
-
-  .wrapCompact .kicker {
-    margin: 0;
-    padding: 3px 8px 3px 6px;
-    font-size: 9px;
-  }
-
-  .wrapCompact .title {
-    font-size: 13.5px;
-  }
-
-  .wrapCompact .lead {
-    font-size: 11px;
-    line-height: 1.35;
-  }
-
   .wrapCompact .grid {
-    gap: 5px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .wrapCompact .grid:has(> :nth-child(5)) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .wrapCompact .tile {
-    padding: 5px 2px 4px;
-    gap: 0;
-    border-radius: 12px;
-  }
-
-  .wrapCompact .glyph {
-    width: 48px;
-    height: 48px;
+    min-height: 48px;
+    padding: 8px;
+    gap: 7px;
     border-radius: 13px;
   }
 
+  .wrapCompact .glyph {
+    width: 28px;
+    height: 28px;
+  }
+
   .wrapCompact .tileLabel {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+    font-size: 11px;
   }
 
   .grid {
@@ -407,17 +387,5 @@
 
   .tileLabel {
     font-size: 10px;
-  }
-}
-
-/* Очень узкий экран (iPhone SE) — чуть плотнее, иконки чуть меньше */
-@media (max-width: 360px) {
-  .wrapCompact .grid {
-    gap: 4px;
-  }
-
-  .wrapCompact .glyph {
-    width: 44px;
-    height: 44px;
   }
 }

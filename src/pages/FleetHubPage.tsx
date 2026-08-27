@@ -104,8 +104,8 @@ export function FleetHubPage() {
             <p className={styles.kicker}>Парк техники</p>
             <h1 className={styles.title}>Спецтехника</h1>
             <p className={styles.lead}>
-              Пока можно вести парк вручную: добавляйте единицы — счётчики на главной
-              обновятся. Полный импорт подключим, когда будут списки.
+              Выберите класс — откроется парк с госномерами, ТО, страховками и журналом
+              ремонтов.
             </p>
 
             <div className={styles.heroStats} aria-label="Сводка парка">

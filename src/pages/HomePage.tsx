@@ -13,7 +13,6 @@ import { resolveSiteStatus } from '../domain/objectStatus'
 import { isFleetUnitOnControl } from '../domain/fleet'
 import { useFleetRegistry } from '../features/fleet/useFleetRegistry'
 import { HubCard } from '../features/home/HubCard'
-import { DataReadinessNote } from '../features/home/DataReadinessNote'
 import { MastheadSignIn } from '../features/home/MastheadSignIn'
 import { useLocalSession } from '../lib/useLocalSession'
 import { homeShowsHubs, homeShowsPortfolioKpi } from '../domain/sitePageZone'
@@ -254,8 +253,6 @@ export function HomePage() {
 
       {session ? (
         <>
-          <DataReadinessNote />
-
           {homeShowsHubs(session.duty) ? (
             <div className={styles.hubRow}>
               <HubCard

@@ -1,4 +1,9 @@
-import { normalizeDriverTrip, type DriverTrip } from '../domain/driverTrip'
+import {
+  normalizeDriverTrip,
+  withTripDone,
+  withTripSeen,
+  type DriverTrip,
+} from '../domain/driverTrip'
 
 const KEY = 'deloresh-driver-trips:v1'
 
@@ -47,12 +52,15 @@ export function mergeDriverTrips(local: readonly DriverTrip[], remote: readonly 
   const remoteIds = new Set(remote.map((t) => t.id))
   const merged = remote.map((t) => {
     const prev = localById.get(t.id)
-    if (prev?.seenAtIso && !t.seenAtIso) {
-      return { ...t, seenAtIso: prev.seenAtIso }
+    if (!prev) return t
+    const seenAtIso = t.seenAtIso ?? prev.seenAtIso
+    const completedAtIso = t.completedAtIso ?? prev.completedAtIso
+    return {
+      ...t,
+      seenAtIso: completedAtIso ? seenAtIso ?? completedAtIso : seenAtIso,
+      completedAtIso,
     }
-    return t
   })
-  // Локальные рейсы, которые ещё не дошли до сервера, оставляем.
   for (const t of local) {
     if (!remoteIds.has(t.id)) merged.push(t)
   }
@@ -60,9 +68,13 @@ export function mergeDriverTrips(local: readonly DriverTrip[], remote: readonly 
 }
 
 export function markDriverTripSeen(id: string, atIso: string = new Date().toISOString()): DriverTrip[] {
-  const next = loadDriverTrips().map((t) =>
-    t.id === id && !t.seenAtIso ? { ...t, seenAtIso: atIso } : t,
-  )
+  const next = loadDriverTrips().map((t) => (t.id === id ? withTripSeen(t, atIso) : t))
+  saveDriverTrips(next)
+  return next
+}
+
+export function markDriverTripDone(id: string, atIso: string = new Date().toISOString()): DriverTrip[] {
+  const next = loadDriverTrips().map((t) => (t.id === id ? withTripDone(t, atIso) : t))
   saveDriverTrips(next)
   return next
 }

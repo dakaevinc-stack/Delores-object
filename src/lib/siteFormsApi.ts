@@ -69,10 +69,15 @@ function parseObjectMediaManifestJson(data: unknown): StoredSiteMedia[] {
 function isProjectFileRecord(x: unknown): x is StoredSiteProjectFile {
   if (!x || typeof x !== 'object') return false
   const r = x as Record<string, unknown>
+  const kindOk =
+    r.kind === 'pdf' || r.kind === 'dwg' || r.kind === 'file' || r.kind === 'folder'
+  const parentOk =
+    r.parentId === undefined || r.parentId === null || typeof r.parentId === 'string'
   return (
     typeof r.id === 'string' &&
     typeof r.siteId === 'string' &&
-    (r.kind === 'pdf' || r.kind === 'dwg') &&
+    kindOk &&
+    parentOk &&
     typeof r.name === 'string' &&
     typeof r.mime === 'string' &&
     typeof r.sizeBytes === 'number' &&
@@ -122,7 +127,7 @@ function classifyResponse(status: number): RemoteWriteResult {
  */
 export function describeRemoteWriteError(
   result: Extract<RemoteWriteResult, { ok: false }>,
-  what: 'отчёт' | 'заявку' | 'изменения' | 'удаление' | 'файл',
+  what: 'отчёт' | 'заявку' | 'изменения' | 'удаление' | 'файл' | 'папку',
 ): string {
   if (result.reason === 'forbidden') {
     if (import.meta.env.DEV && !hasWriteSecret()) {
@@ -372,6 +377,26 @@ export async function markDriverTripSeenRemote(id: string): Promise<string | nul
   }
 }
 
+export async function markDriverTripDoneRemote(id: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${apiBase()}/api/driver-trips/${encodeURIComponent(id)}/complete`, {
+      method: 'POST',
+    })
+    if (!res.ok) return null
+    const json: unknown = await res.json().catch(() => null)
+    if (
+      json &&
+      typeof json === 'object' &&
+      typeof (json as { completedAtIso?: unknown }).completedAtIso === 'string'
+    ) {
+      return (json as { completedAtIso: string }).completedAtIso
+    }
+    return new Date().toISOString()
+  } catch {
+    return null
+  }
+}
+
 export async function fetchDriverNotifyConfig(): Promise<{
   telegramEnabled: boolean
   botUsername: string
@@ -494,7 +519,7 @@ export async function fetchProjectFileBlobRemote(
 export async function createProjectFileRemote(
   siteId: string,
   record: StoredSiteProjectFile,
-  file: Blob,
+  file?: Blob | null,
 ): Promise<RemoteWriteResult> {
   try {
     const metaRes = await fetch(siteUrl(siteId, '/project-files'), {
@@ -503,6 +528,8 @@ export async function createProjectFileRemote(
       body: JSON.stringify({ record }),
     })
     if (!metaRes.ok) return classifyResponse(metaRes.status)
+
+    if (record.kind === 'folder' || !file) return { ok: true }
 
     const blobRes = await fetch(
       siteUrl(siteId, `/project-files/${encodeURIComponent(record.id)}/blob`),

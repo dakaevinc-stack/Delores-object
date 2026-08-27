@@ -7,15 +7,25 @@ import {
   brigadierAttachmentBlobUrl,
   objectMediaBlobUrl,
 } from '../../lib/siteFormsApi'
-import { listMediaBySite, type StoredSiteMedia } from '../../lib/mediaRepository'
+import {
+  getMediaBlob,
+  listMediaBySite,
+  type StoredSiteMedia,
+} from '../../lib/mediaRepository'
 import { CollapseToggle } from './CollapseToggle'
-import { enrichReportsWithObjectMedia } from './enrichReportsWithObjectMedia'
+import { useAnchoredExpand } from './useAnchoredExpand'
+import {
+  calendarDayKey,
+  enrichReportsWithObjectMedia,
+  listOrphanObjectMediaDays,
+} from './enrichReportsWithObjectMedia'
 import {
   FieldReportCard,
   type FieldReportAttachment,
   type FieldReportMetaChip,
 } from './FieldReportCard'
 import { parseBrigadierComment } from './brigadierCommentSections'
+import { JournalMediaDayCard } from './JournalMediaDayCard'
 import { SiteObjectMediaDropSection } from './SiteObjectMediaDropSection'
 import styles from './SiteBrigadierSubmittedSection.module.css'
 
@@ -30,12 +40,6 @@ type Props = {
   onRemoveReport: (id: string) => void | Promise<void>
 }
 
-/**
- * Превращает локальное вложение в `FieldReportAttachment` с готовым
- * `previewUrl`. Если локального preview нет (data:/blob:), но API
- * подключён и файл не помечен `notPersisted` — собираем прямую ссылку
- * на серверный blob; браузер сам подгрузит изображение/видео.
- */
 function resolveAttachment(
   siteId: string,
   reportId: string,
@@ -57,47 +61,6 @@ function resolveAttachment(
   return a
 }
 
-function formatPeriod(reports: readonly BrigadierStoredReport[]): string | null {
-  const ts = reports
-    .map((r) => r.reportedAtIso)
-    .filter((iso): iso is string => Boolean(iso))
-    .map((iso) => new Date(iso).getTime())
-    .filter((t) => Number.isFinite(t))
-
-  if (ts.length === 0) return null
-
-  const min = new Date(Math.min(...ts))
-  const max = new Date(Math.max(...ts))
-  const fmt = (d: Date) =>
-    d.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' })
-
-  if (min.toDateString() === max.toDateString()) return fmt(min)
-  return `${fmt(min)} — ${fmt(max)}`
-}
-
-/**
- * Берём 0..2 уникальных ответственных по последним записям —
- * чтобы в шапке поместился короткий сводный список без перелива.
- */
-function pickActiveResponsibles(
-  reports: readonly BrigadierStoredReport[],
-): string {
-  const seen: string[] = []
-  for (const r of reports) {
-    const t = r.responsible?.trim()
-    if (!t) continue
-    if (!seen.includes(t)) seen.push(t)
-    if (seen.length >= 2) break
-  }
-  if (seen.length === 0) return '—'
-  return seen.join(', ')
-}
-
-/**
- * Короткая «человеческая» отметка относительной даты для пилюли в карточке:
- * «Сегодня», «Вчера», «3 дн. назад», «2 нед. назад». Если запись далеко в
- * прошлом или будущем — возвращаем `null`, чтобы шапка не путала.
- */
 function relativeDayLabelRu(iso: string | undefined, now: Date = new Date()): string | null {
   if (!iso) return null
   const d = new Date(iso)
@@ -113,10 +76,6 @@ function relativeDayLabelRu(iso: string | undefined, now: Date = new Date()): st
   if (diffDays === 1) return 'Вчера'
   if (diffDays === -1) return 'Завтра'
   if (diffDays >= 2 && diffDays < 7) return `${diffDays} дн. назад`
-  if (diffDays >= 7 && diffDays < 31) {
-    const weeks = Math.floor(diffDays / 7)
-    return `${weeks} нед. назад`
-  }
   return null
 }
 
@@ -128,25 +87,51 @@ function pluralRu(n: number, [one, few, many]: [string, string, string]): string
   return many
 }
 
-/**
- * «сегодня в 14:30», «вчера в 21:06», «6 мая, 21:06» — короткий
- * человеческий вид свежести записи для одной строки лида.
- */
-function formatLatestEntryRu(iso: string | undefined, now: Date = new Date()): string | null {
-  if (!iso) return null
-  const d = new Date(iso)
-  if (!Number.isFinite(d.getTime())) return null
-  const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-  const dayMs = 86_400_000
-  const startOfDay = (x: Date) => {
-    const t = new Date(x)
-    t.setHours(0, 0, 0, 0)
-    return t.getTime()
+function formatDayBadgeRu(dayKey: string): string {
+  const d = new Date(`${dayKey}T12:00:00`)
+  if (!Number.isFinite(d.getTime())) return dayKey
+  const rel = relativeDayLabelRu(d.toISOString())
+  if (rel === 'Сегодня' || rel === 'Вчера') return rel
+  return d.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+  })
+}
+
+/** Короткая дата для списка кадров: 27.04.2026 */
+function formatDayShortRu(dayKey: string): string {
+  const d = new Date(`${dayKey}T12:00:00`)
+  if (!Number.isFinite(d.getTime())) return dayKey
+  const rel = relativeDayLabelRu(d.toISOString())
+  if (rel === 'Сегодня' || rel === 'Вчера') return rel
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  return `${dd}.${mm}.${d.getFullYear()}`
+}
+
+function attachmentMetaChips(
+  attachments: readonly { kind: string }[],
+): FieldReportMetaChip[] {
+  const photos = attachments.filter((a) => a.kind === 'photo').length
+  const videos = attachments.filter((a) => a.kind === 'video').length
+  const meta: FieldReportMetaChip[] = []
+  if (photos > 0) {
+    meta.push({
+      id: 'photos',
+      icon: 'photo',
+      label: `${photos} ${pluralRu(photos, ['фото', 'фото', 'фото'])}`,
+      tone: 'neutral',
+    })
   }
-  const days = Math.round((startOfDay(now) - startOfDay(d)) / dayMs)
-  if (days === 0) return `сегодня в ${time}`
-  if (days === 1) return `вчера в ${time}`
-  return `${d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}, ${time}`
+  if (videos > 0) {
+    meta.push({
+      id: 'videos',
+      icon: 'video',
+      label: `${videos} ${pluralRu(videos, ['видео', 'видео', 'видео'])}`,
+      tone: 'neutral',
+    })
+  }
+  return meta
 }
 
 export function SiteBrigadierSubmittedReportsSection({
@@ -160,6 +145,25 @@ export function SiteBrigadierSubmittedReportsSection({
   onRemoveReport,
 }: Props) {
   const [localMedia, setLocalMedia] = useState<StoredSiteMedia[]>([])
+  const [localPreviewById, setLocalPreviewById] = useState<Record<string, string>>({})
+  const [mediaTick, setMediaTick] = useState(0)
+  const {
+    expanded: sectionExpanded,
+    toggle: toggleSection,
+    anchorRef: sectionAnchorRef,
+  } = useAnchoredExpand(false)
+  const {
+    expanded: photosExpanded,
+    toggle: togglePhotos,
+    anchorRef: photosAnchorRef,
+  } = useAnchoredExpand<HTMLDivElement>(false)
+  const {
+    expanded: reportsExpanded,
+    toggle: toggleReports,
+    anchorRef: reportsAnchorRef,
+  } = useAnchoredExpand<HTMLDivElement>(false)
+
+  const refreshLocalMedia = () => setMediaTick((n) => n + 1)
 
   useEffect(() => {
     let cancelled = false
@@ -173,7 +177,7 @@ export function SiteBrigadierSubmittedReportsSection({
     return () => {
       cancelled = true
     }
-  }, [siteId, objectMediaManifest])
+  }, [siteId, objectMediaManifest, mediaTick])
 
   const mediaPool = useMemo(() => {
     const map = new Map<string, StoredSiteMedia>()
@@ -182,15 +186,47 @@ export function SiteBrigadierSubmittedReportsSection({
     return [...map.values()]
   }, [objectMediaManifest, localMedia])
 
+  useEffect(() => {
+    if (objectMediaServerBacked) {
+      setLocalPreviewById({})
+      return
+    }
+    let cancelled = false
+    const created: string[] = []
+    void (async () => {
+      const next: Record<string, string> = {}
+      for (const m of mediaPool) {
+        const blob = await getMediaBlob(m.id)
+        if (!blob || cancelled) continue
+        const url = URL.createObjectURL(blob)
+        created.push(url)
+        next[m.id] = url
+      }
+      if (!cancelled) setLocalPreviewById(next)
+    })()
+    return () => {
+      cancelled = true
+      for (const u of created) URL.revokeObjectURL(u)
+    }
+  }, [mediaPool, objectMediaServerBacked])
+
+  const previewUrlFor = (mediaId: string) =>
+    objectMediaServerBacked
+      ? objectMediaBlobUrl(siteId, mediaId)
+      : (localPreviewById[mediaId] ?? '')
+
   const enriched = useMemo(
-    () =>
-      enrichReportsWithObjectMedia(reports, mediaPool, (mediaId) =>
-        objectMediaServerBacked ? objectMediaBlobUrl(siteId, mediaId) : '',
-      ),
-    [reports, mediaPool, objectMediaServerBacked, siteId],
+    () => enrichReportsWithObjectMedia(reports, mediaPool, previewUrlFor),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reports, mediaPool, objectMediaServerBacked, siteId, localPreviewById],
   )
 
-  const sorted = useMemo(
+  const orphanDays = useMemo(
+    () => listOrphanObjectMediaDays(reports, mediaPool),
+    [reports, mediaPool],
+  )
+
+  const sortedReports = useMemo(
     () =>
       [...enriched].sort((a, b) =>
         (b.reportedAtIso ?? '').localeCompare(a.reportedAtIso ?? ''),
@@ -198,207 +234,332 @@ export function SiteBrigadierSubmittedReportsSection({
     [enriched],
   )
 
-  const total = sorted.length
-  const latest = sorted[0]
-  const latestEntry = formatLatestEntryRu(latest?.reportedAtIso)
-  const period = formatPeriod(sorted)
-  const totalProblems = sorted.reduce((acc, r) => acc + (r.problems?.length ?? 0), 0)
-  const totalAttachments = sorted.reduce(
-    (acc, r) => acc + (r.attachments?.length ?? 0),
-    0,
+  const photoOnlyDays = useMemo(
+    () =>
+      orphanDays.map((day) => ({
+        dayKey: day.dayKey,
+        dayLabel: formatDayShortRu(day.dayKey),
+        items: day.items,
+      })),
+    [orphanDays],
   )
-  const responsibles = pickActiveResponsibles(sorted)
 
-  const [sectionExpanded, setSectionExpanded] = useState(false)
-  const canCollapse = total > 0 || mediaPool.length > 0
+  const photoCount = orphanDays.reduce((n, d) => n + d.items.length, 0)
+  const reportCount = sortedReports.length
+  const canCollapse = reportCount > 0 || mediaPool.length > 0
+  const showBody = !canCollapse || sectionExpanded || (reportCount === 0 && mediaPool.length === 0)
+
+  const metaBits: string[] = []
+  if (reportCount > 0) {
+    metaBits.push(
+      `${reportCount} ${pluralRu(reportCount, ['отчёт', 'отчёта', 'отчётов'])}`,
+    )
+  }
+  if (photoCount > 0) {
+    metaBits.push(
+      `${photoCount} ${pluralRu(photoCount, ['фото', 'фото', 'фото'])}`,
+    )
+  }
 
   return (
-    <section className={styles.section} aria-labelledby="brigadier-submitted-heading">
-      <div className={styles.head}>
-        <div className={styles.headInner}>
+    <section
+      ref={sectionAnchorRef}
+      className={`${styles.shell}${showBody ? ` ${styles.shellOpen}` : ''}`}
+      aria-labelledby="brigadier-submitted-heading"
+      data-collapsed={canCollapse && !sectionExpanded ? 'true' : undefined}
+    >
+      <div className={styles.shellRail} aria-hidden />
+
+      <header className={styles.shellHead}>
+        <div className={styles.shellHeadCopy}>
           <p className={styles.kicker}>
             <img
               className={styles.kickerMark}
               src="/brand-chevron.svg"
               alt=""
-              aria-hidden="true"
+              aria-hidden
             />
-            <span>Журнал бригадира</span>
+            Журнал
           </p>
-          <div className={styles.titleRow}>
-            <h2 className={styles.title} id="brigadier-submitted-heading">
-              Отчёты бригадира
-            </h2>
-            <span className={styles.sourceBadge}>
-              <svg
-                className={styles.sourceBadgeIcon}
-                viewBox="0 0 24 24"
-                width="13"
-                height="13"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
+          <h2 className={styles.title} id="brigadier-submitted-heading">
+            Фото и отчёты
+          </h2>
+          <p className={styles.lead}>
+            {metaBits.length > 0
+              ? metaBits.join(' · ')
+              : `Объект «${siteName}» — пока пусто`}
+            {'. '}
+            {canCollapse && !sectionExpanded
+              ? 'Откройте журнал.'
+              : 'Загрузка сверху, списки — по строке ниже.'}
+          </p>
+        </div>
+        {canCollapse ? (
+          <CollapseToggle
+            expanded={sectionExpanded}
+            onToggle={toggleSection}
+            ariaControls="brigadier-submitted-list"
+            className={styles.headToggle}
+          />
+        ) : null}
+      </header>
+
+      {showBody ? (
+        <div className={styles.shellBody} id="brigadier-submitted-list">
+          <div
+            ref={photosAnchorRef}
+            className={`${styles.block} ${styles.blockPhotos}`}
+            data-collapsed={photoOnlyDays.length > 0 && !photosExpanded ? 'true' : undefined}
+          >
+            {photoOnlyDays.length > 0 ? (
+              <button
+                type="button"
+                className={`${styles.rail}${photosExpanded ? ` ${styles.railOpen}` : ''}`}
+                aria-expanded={photosExpanded}
+                aria-controls="journal-photos-list"
+                onClick={togglePhotos}
               >
-                {serverBacked ? (
-                  <>
-                    <path d="M4 7c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3Z" />
-                    <path d="M4 7v5c0 1.7 3.6 3 8 3s8-1.3 8-3V7" />
-                    <path d="M4 12v5c0 1.7 3.6 3 8 3s8-1.3 8-3v-5" />
-                  </>
-                ) : (
-                  <>
-                    <rect x="4" y="3.5" width="14" height="17" rx="2" />
-                    <path d="M8 8h6M8 12h6M8 16h4" />
-                  </>
-                )}
-              </svg>
-              {serverBacked ? 'Источник · Сервер' : 'Источник · Это устройство'}
-            </span>
-            {canCollapse ? (
-              <CollapseToggle
-                expanded={sectionExpanded}
-                onToggle={() => setSectionExpanded((v) => !v)}
-                ariaControls="brigadier-submitted-list"
-                expandedLabel="Свернуть журнал"
-                collapsedLabel="Открыть журнал"
-                className={styles.headToggle}
+                <span className={styles.railAccent} aria-hidden />
+                <span className={styles.railGlow} aria-hidden />
+                <span className={styles.railIcon} aria-hidden>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+                    <path
+                      d="M4 8.5A2.5 2.5 0 0 1 6.5 6h2l1.2-1.8A1.5 1.5 0 0 1 10.95 3.5h2.1c.5 0 .97.25 1.25.67L15.5 6H17.5A2.5 2.5 0 0 1 20 8.5v7A2.5 2.5 0 0 1 17.5 18h-11A2.5 2.5 0 0 1 4 15.5v-7Z"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinejoin="round"
+                    />
+                    <circle cx="12" cy="12" r="3.1" stroke="currentColor" strokeWidth="1.7" />
+                  </svg>
+                </span>
+                <span className={styles.railCopy}>
+                  <span className={styles.railKicker}>Медиа</span>
+                  <span className={styles.railTitle}>Фото / Видео объекта</span>
+                </span>
+                <span className={styles.railMeta}>
+                  <span className={styles.railPill}>
+                    {photoCount}{' '}
+                    {pluralRu(photoCount, ['фото', 'фото', 'фото'])}
+                  </span>
+                  <span className={styles.railPill}>
+                    {photoOnlyDays.length}{' '}
+                    {pluralRu(photoOnlyDays.length, ['день', 'дня', 'дней'])}
+                  </span>
+                </span>
+                <span className={styles.railAction} aria-hidden>
+                  <span className={styles.railActionLabel}>
+                    {photosExpanded ? 'Свернуть' : 'Открыть'}
+                  </span>
+                  <span
+                    className={`${styles.railChevron}${photosExpanded ? ` ${styles.railChevronOpen}` : ''}`}
+                  >
+                    <svg viewBox="0 0 20 20" width="16" height="16" fill="none">
+                      <path
+                        d="M5 7.5 10 12.5 15 7.5"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                </span>
+              </button>
+            ) : (
+              <div className={styles.railStatic}>
+                <span className={styles.railAccent} aria-hidden />
+                <span className={styles.railIcon} aria-hidden>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+                    <path
+                      d="M4 8.5A2.5 2.5 0 0 1 6.5 6h2l1.2-1.8A1.5 1.5 0 0 1 10.95 3.5h2.1c.5 0 .97.25 1.25.67L15.5 6H17.5A2.5 2.5 0 0 1 20 8.5v7A2.5 2.5 0 0 1 17.5 18h-11A2.5 2.5 0 0 1 4 15.5v-7Z"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinejoin="round"
+                    />
+                    <circle cx="12" cy="12" r="3.1" stroke="currentColor" strokeWidth="1.7" />
+                  </svg>
+                </span>
+                <span className={styles.railCopy}>
+                  <span className={styles.railKicker}>Медиа</span>
+                  <span className={styles.railTitle}>Фото / Видео объекта</span>
+                </span>
+              </div>
+            )}
+
+            <div className={styles.blockBody}>
+              <SiteObjectMediaDropSection
+                embedded
+                mode="upload"
+                siteId={siteId}
+                serverBacked={objectMediaServerBacked}
+                serverManifest={objectMediaManifest}
+                onRemoteSyncError={onObjectMediaSyncError}
+                onLibraryChange={refreshLocalMedia}
               />
-            ) : null}
+
+              {photoOnlyDays.length > 0 && photosExpanded ? (
+                <div
+                  className={styles.dayList}
+                  id="journal-photos-list"
+                  aria-label="Уже загружено"
+                >
+                  {photoOnlyDays.map((day) => (
+                    <JournalMediaDayCard
+                      key={day.dayKey}
+                      dayKey={day.dayKey}
+                      dayLabel={day.dayLabel}
+                      items={day.items}
+                      previewUrlFor={previewUrlFor}
+                    />
+                  ))}
+                </div>
+              ) : photoOnlyDays.length > 0 ? (
+                <div id="journal-photos-list" hidden />
+              ) : null}
+            </div>
           </div>
 
-          <p className={styles.lead}>
-            {total > 0
-              ? latestEntry
-                ? `Последняя запись — ${latestEntry}.`
-                : 'Журнал смен.'
-              : 'Журнал пуст — добавьте запись через «Ввод отчёта».'}{' '}
-            Медиа привязаны к отчётам по дате.
-          </p>
+          {sortedReports.length > 0 ? (
+            <div
+              ref={reportsAnchorRef}
+              className={`${styles.block} ${styles.blockReports}`}
+              data-collapsed={!reportsExpanded ? 'true' : undefined}
+            >
+              <button
+                type="button"
+                className={`${styles.rail}${reportsExpanded ? ` ${styles.railOpen}` : ''}`}
+                aria-expanded={reportsExpanded}
+                aria-controls="journal-reports-list"
+                onClick={toggleReports}
+              >
+                <span className={styles.railAccent} aria-hidden />
+                <span className={styles.railGlow} aria-hidden />
+                <span className={`${styles.railIcon} ${styles.railIconReports}`} aria-hidden>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+                    <path
+                      d="M7 3.75h7.5L19 8.25V20a.75.75 0 0 1-.75.75H7A.75.75 0 0 1 6.25 20V4.5A.75.75 0 0 1 7 3.75Z"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M14.25 3.75V8h4.5"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M9 12.5h6M9 15.5h4"
+                      stroke="currentColor"
+                      strokeWidth="1.7"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
+                <span className={styles.railCopy}>
+                  <span className={styles.railKicker}>Журнал</span>
+                  <span className={styles.railTitle}>Отчёты объекта</span>
+                </span>
+                <span className={styles.railMeta}>
+                  <span className={styles.railPill}>
+                    {reportCount}{' '}
+                    {pluralRu(reportCount, ['отчёт', 'отчёта', 'отчётов'])}
+                  </span>
+                </span>
+                <span className={styles.railAction} aria-hidden>
+                  <span className={styles.railActionLabel}>
+                    {reportsExpanded ? 'Свернуть' : 'Открыть'}
+                  </span>
+                  <span
+                    className={`${styles.railChevron}${reportsExpanded ? ` ${styles.railChevronOpen}` : ''}`}
+                  >
+                    <svg viewBox="0 0 20 20" width="16" height="16" fill="none">
+                      <path
+                        d="M5 7.5 10 12.5 15 7.5"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                </span>
+              </button>
+              {reportsExpanded ? (
+                <div className={styles.blockBody}>
+                  <div className={styles.reportList} id="journal-reports-list">
+                    {sortedReports.map((r) => {
+                      const problems = r.problems.length
+                      const attachments = r.attachments.map((a) =>
+                        resolveAttachment(
+                          siteId,
+                          r.id,
+                          a,
+                          serverBacked,
+                          objectMediaServerBacked,
+                        ),
+                      )
+                      const meta = attachmentMetaChips(attachments)
+                      if (problems > 0) {
+                        meta.push({
+                          id: 'problems',
+                          icon: 'warn',
+                          label: `${problems} ${pluralRu(problems, ['проблема', 'проблемы', 'проблем'])}`,
+                          tone: 'warning',
+                        })
+                      }
+                      if (meta.length === 0) {
+                        meta.push({
+                          id: 'no-media',
+                          icon: 'attach',
+                          label: 'Без фото',
+                          tone: 'neutral',
+                        })
+                      }
+                      const dayKey = calendarDayKey(r.reportedAtIso)
+                      const dayBadge = dayKey ? formatDayBadgeRu(dayKey) : 'Смена'
 
-          {total > 0 ? (
-            <dl className={styles.summary}>
-              <div className={styles.summaryItem}>
-                <dt className={styles.summaryLabel}>Отчётов</dt>
-                <dd className={styles.summaryValue}>{total}</dd>
-              </div>
-              <div className={styles.summaryItem}>
-                <dt className={styles.summaryLabel}>Проблем</dt>
-                <dd className={styles.summaryValue}>{totalProblems}</dd>
-              </div>
-              <div className={styles.summaryItem}>
-                <dt className={styles.summaryLabel}>Вложений</dt>
-                <dd className={styles.summaryValue}>{totalAttachments}</dd>
-              </div>
-              {period ? (
-                <div className={`${styles.summaryItem} ${styles.summaryItemWide}`}>
-                  <dt className={styles.summaryLabel}>Период</dt>
-                  <dd className={styles.summaryValue}>{period}</dd>
+                      return (
+                        <FieldReportCard
+                          key={r.id}
+                          accent="brigadier"
+                          badgeKicker="День"
+                          badge={dayBadge}
+                          dateTimeIso={r.reportedAtIso}
+                          responsibleName={r.responsible}
+                          lines={r.lines}
+                          narrativeComment={r.comment}
+                          narrativeStructured={parseBrigadierComment(r.comment)}
+                          collapsible
+                          defaultExpanded={false}
+                          problems={r.problems.map((p) => ({
+                            kindLabel: brigadierProblemKindLabel(p.kindId),
+                            details: p.details,
+                          }))}
+                          attachments={attachments}
+                          metaChips={meta}
+                          onRemove={() => onRemoveReport(r.id)}
+                          removeLabel="Скрыть на этом устройстве"
+                        />
+                      )
+                    })}
+                  </div>
                 </div>
-              ) : null}
-              <div className={`${styles.summaryItem} ${styles.summaryItemWide}`}>
-                <dt className={styles.summaryLabel}>Ответственные</dt>
-                <dd className={styles.summaryValue}>{responsibles}</dd>
-              </div>
-            </dl>
+              ) : (
+                <div id="journal-reports-list" hidden />
+              )}
+            </div>
+          ) : null}
+
+          {sortedReports.length === 0 && photoOnlyDays.length === 0 ? (
+            <p className={styles.emptyHint}>
+              Добавьте фото выше или заполните «Ввод отчёта» — всё появится здесь.
+            </p>
           ) : null}
         </div>
-      </div>
-
-      {total === 0 && mediaPool.length === 0 ? (
-        <div className={styles.empty}>
-          <p className={styles.emptyTitle}>Пока нет отчётов</p>
-          <p className={styles.emptyText}>
-            На объекте «{siteName}» нажмите «Ввод отчёта» выше — можно отправить только текст и
-            вложения, без таблицы работ.
-          </p>
-        </div>
-      ) : sectionExpanded || !canCollapse ? (
-        <div className={styles.list} id="brigadier-submitted-list">
-          {sorted.map((r) => {
-            const photos = r.attachments.filter((a) => a.kind === 'photo').length
-            const videos = r.attachments.filter((a) => a.kind === 'video').length
-            const problems = r.problems.length
-
-            const meta: FieldReportMetaChip[] = []
-            if (photos > 0) {
-              meta.push({
-                id: 'photos',
-                icon: 'photo',
-                label: `${photos} ${pluralRu(photos, ['фото', 'фото', 'фото'])}`,
-                tone: 'neutral',
-              })
-            }
-            if (videos > 0) {
-              meta.push({
-                id: 'videos',
-                icon: 'video',
-                label: `${videos} ${pluralRu(videos, ['видео', 'видео', 'видео'])}`,
-                tone: 'neutral',
-              })
-            }
-            if (photos === 0 && videos === 0) {
-              meta.push({
-                id: 'no-media',
-                icon: 'attach',
-                label: 'Без вложений',
-                tone: 'neutral',
-              })
-            }
-            if (problems > 0) {
-              meta.push({
-                id: 'problems',
-                icon: 'warn',
-                label: `${problems} ${pluralRu(problems, ['проблема', 'проблемы', 'проблем'])}`,
-                tone: 'warning',
-              })
-            }
-
-            return (
-              <FieldReportCard
-                key={r.id}
-                accent="brigadier"
-                badgeKicker="Отчёт"
-                badge="Бригадир"
-                dateTimeIso={r.reportedAtIso}
-                relativeTimeLabel={relativeDayLabelRu(r.reportedAtIso) ?? undefined}
-                responsibleName={r.responsible}
-                lines={r.lines}
-                narrativeComment={r.comment}
-                narrativeStructured={parseBrigadierComment(r.comment)}
-                collapsible={total > 1}
-                defaultExpanded={false}
-                problems={r.problems.map((p) => ({
-                  kindLabel: brigadierProblemKindLabel(p.kindId),
-                  details: p.details,
-                }))}
-                attachments={r.attachments.map((a) =>
-                  resolveAttachment(
-                    siteId,
-                    r.id,
-                    a,
-                    serverBacked,
-                    objectMediaServerBacked,
-                  ),
-                )}
-                metaChips={meta}
-                onRemove={() => onRemoveReport(r.id)}
-                removeLabel="Скрыть на этом устройстве"
-              />
-            )
-          })}
-
-          <SiteObjectMediaDropSection
-            embedded
-            siteId={siteId}
-            serverBacked={objectMediaServerBacked}
-            serverManifest={objectMediaManifest}
-            onRemoteSyncError={onObjectMediaSyncError}
-          />
-        </div>
-      ) : null}
+      ) : (
+        <div id="brigadier-submitted-list" hidden />
+      )}
     </section>
   )
 }

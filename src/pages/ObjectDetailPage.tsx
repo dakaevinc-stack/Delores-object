@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { BrigadierStoredReport } from '../domain/brigadierReport'
 import type { ProcurementRequest } from '../domain/procurementRequest'
@@ -54,6 +54,8 @@ import { SiteMaterialConsumptionSection } from '../features/site-detail/SiteMate
 import { ReportDeadlineBanner } from '../features/site-detail/ReportDeadlineBanner'
 import { SiteDeliveryPointSection } from '../features/site-detail/SiteDeliveryPointSection'
 import { SiteRoleZone } from '../features/site-detail/SiteRoleZone'
+import { CollapseToggle } from '../features/site-detail/CollapseToggle'
+import { useAnchoredExpand } from '../features/site-detail/useAnchoredExpand'
 import { TodayDeliveriesBoard } from '../features/deliveries/TodayDeliveriesBoard'
 import { getMaterialBudgetForSite } from '../data/materialBudgets'
 import { loadWorkDayPlan } from '../lib/workDayPlanRepository'
@@ -88,6 +90,11 @@ export function ObjectDetailPage() {
   const [deliveryPoint, setDeliveryPoint] = useState<SiteDeliveryPoint | null>(null)
   const [deliveryPointRemoteActive, setDeliveryPointRemoteActive] = useState(false)
   const deliveryPointRemoteRef = useRef(false)
+  const {
+    expanded: summaryOpen,
+    toggle: toggleSummary,
+    anchorRef: summaryAnchorRef,
+  } = useAnchoredExpand(false)
 
   useEffect(() => {
     remoteFormsRef.current = remoteFormsActive
@@ -346,9 +353,41 @@ export function ObjectDetailPage() {
     setComposerOpen(true)
   }
 
+  const brigadierJournal = (
+    <SiteBrigadierSubmittedReportsSection
+      siteId={site.id}
+      siteName={site.name}
+      reports={brigadierReports}
+      serverBacked={remoteFormsActive}
+      objectMediaManifest={objectMediaManifest}
+      objectMediaServerBacked={remoteObjectMediaActive}
+      onObjectMediaSyncError={(msg) => setFormsApiMessage(msg)}
+      onRemoveReport={async (id) => {
+        if (remoteFormsRef.current) {
+          const ok = await deleteBrigadierReportRemote(site.id, id)
+          if (!ok) {
+            setFormsApiMessage('Не удалось удалить отчёт на сервере.')
+            void resyncFormsFromServer()
+            return
+          }
+        }
+        setBrigadierReports((prev) => {
+          const row = prev.find((r) => r.id === id)
+          if (row) {
+            for (const a of row.attachments) {
+              if (a.previewUrl.startsWith('blob:')) URL.revokeObjectURL(a.previewUrl)
+            }
+          }
+          return prev.filter((r) => r.id !== id)
+        })
+      }}
+    />
+  )
+
   const objectSummary = (
     <section
-      className={styles.summaryPanel}
+      ref={summaryAnchorRef}
+      className={`${styles.summaryPanel} ${summaryOpen ? styles.summaryPanelOpen : ''}`}
       aria-labelledby="object-summary-heading"
       data-site-zone="summary"
     >
@@ -359,49 +398,54 @@ export function ObjectDetailPage() {
         <div className={styles.summaryHeadCopy}>
           <p className={styles.summaryKicker}>
             <img className={styles.summaryKickerMark} src="/brand-chevron.svg" alt="" aria-hidden />
-            Сводка
+            Контроль
           </p>
           <h2 className={styles.summaryTitle} id="object-summary-heading">
-            Сводка по объекту
+            Аналитика / План работ
           </h2>
           <p className={styles.summaryLead}>
-            Прогресс, сроки и отклонение от плана — по графику работ и отчётам бригадира.
+            KPI, график и производственный план — в одном месте.
           </p>
         </div>
+        <CollapseToggle
+          expanded={summaryOpen}
+          onToggle={toggleSummary}
+          ariaControls="object-summary-body"
+          className={styles.summaryToggle}
+        />
       </header>
 
-      <div className={styles.summaryPanelBody}>
-        {workPlan ? (
-          <SiteWorkPlanSection
-            plan={workPlan}
-            windowStartIso={liveKpis.startIso}
-            windowEndIso={liveKpis.endIso}
-          />
-        ) : null}
-        <SiteDetailKpiGrid kpis={liveKpis} embedded />
-        <div className={styles.midGrid}>
-          <SiteScheduleSection
-            kpis={liveKpis}
-            basePlan={basePlan}
-            reports={brigadierReports}
-          />
-          <SiteReportingSection reports={brigadierReports} todayIso={liveKpis.todayIso} />
+      {summaryOpen ? (
+        <div className={styles.summaryPanelBody} id="object-summary-body">
+          <SiteDetailKpiGrid kpis={liveKpis} embedded />
+          <div className={styles.midGrid}>
+            <SiteScheduleSection
+              kpis={liveKpis}
+              basePlan={basePlan}
+              reports={brigadierReports}
+            />
+            <SiteReportingSection reports={brigadierReports} todayIso={liveKpis.todayIso} />
+          </div>
+          {workPlan ? (
+            <SiteWorkPlanSection
+              embedded
+              plan={workPlan}
+              windowStartIso={liveKpis.startIso}
+              windowEndIso={liveKpis.endIso}
+            />
+          ) : null}
         </div>
-      </div>
+      ) : (
+        <div id="object-summary-body" hidden />
+      )}
     </section>
   )
 
   const renderZone = (zone: SitePageZoneId) => {
     switch (zone) {
       case 'manager':
-        // Только шапка проекта + PDF/DWG. Сводка идёт после зоны бригадира.
-        return (
-          <SiteRoleZone
-            key={zone}
-            zone="manager"
-            actions={<SiteProjectHeaderCard siteId={site.id} canUpload />}
-          />
-        )
+        // Документы проекта встроены в SiteDetailHeader.
+        return null
 
       case 'brigadier':
         return (
@@ -409,25 +453,17 @@ export function ObjectDetailPage() {
             key={zone}
             zone="brigadier"
             layout="panel"
-            actions={
-              <>
-                <button
-                  type="button"
-                  className={styles.toolbarCta}
-                  onClick={openProcurementComposer}
-                >
-                  Заявка снабженцу
-                </button>
-                <button
-                  type="button"
-                  className={styles.toolbarCta}
-                  onClick={openBrigadierComposer}
-                >
-                  Ввод отчёта
-                </button>
-              </>
-            }
+            collapsible
+            defaultExpanded={false}
           >
+            <TodayDeliveriesBoard
+              requests={procurementRequests}
+              variant="site"
+              deliveryPoints={deliveryPoint ? new Map([[site.id, deliveryPoint]]) : undefined}
+              onUpdateRequest={(id, patch) => {
+                void handleUpdateProcurementRequest(id, patch)
+              }}
+            />
             {workPlan ? (
               <SiteWorkDayPlanSection
                 siteId={site.id}
@@ -439,48 +475,18 @@ export function ObjectDetailPage() {
                 onAssignmentsChange={() => setDayPlanRevision((n) => n + 1)}
               />
             ) : null}
-            <TodayDeliveriesBoard
-              requests={procurementRequests}
-              variant="site"
-              deliveryPoints={deliveryPoint ? new Map([[site.id, deliveryPoint]]) : undefined}
-              onUpdateRequest={(id, patch) => {
-                void handleUpdateProcurementRequest(id, patch)
-              }}
-            />
-            <SiteBrigadierSubmittedReportsSection
-              siteId={site.id}
-              siteName={site.name}
-              reports={brigadierReports}
-              serverBacked={remoteFormsActive}
-              objectMediaManifest={objectMediaManifest}
-              objectMediaServerBacked={remoteObjectMediaActive}
-              onObjectMediaSyncError={(msg) => setFormsApiMessage(msg)}
-              onRemoveReport={async (id) => {
-                if (remoteFormsRef.current) {
-                  const ok = await deleteBrigadierReportRemote(site.id, id)
-                  if (!ok) {
-                    setFormsApiMessage('Не удалось удалить отчёт на сервере.')
-                    void resyncFormsFromServer()
-                    return
-                  }
-                }
-                setBrigadierReports((prev) => {
-                  const row = prev.find((r) => r.id === id)
-                  if (row) {
-                    for (const a of row.attachments) {
-                      if (a.previewUrl.startsWith('blob:')) URL.revokeObjectURL(a.previewUrl)
-                    }
-                  }
-                  return prev.filter((r) => r.id !== id)
-                })
-              }}
-            />
           </SiteRoleZone>
         )
 
       case 'supply':
         return (
-          <SiteRoleZone key={zone} zone="supply" layout="panel">
+          <SiteRoleZone
+            key={zone}
+            zone="supply"
+            layout="panel"
+            collapsible
+            defaultExpanded={false}
+          >
             <SiteProcurementRequestsSection
               requests={procurementRequests}
               selectedAuthor={procurementFilterAuthor}
@@ -521,7 +527,13 @@ export function ObjectDetailPage() {
 
       case 'dispatcher':
         return (
-          <SiteRoleZone key={zone} zone="dispatcher" layout="panel">
+          <SiteRoleZone
+            key={zone}
+            zone="dispatcher"
+            layout="panel"
+            collapsible
+            defaultExpanded={false}
+          >
             <SiteDeliveryPointSection
               key={`${site.id}-trip`}
               siteId={site.id}
@@ -540,12 +552,40 @@ export function ObjectDetailPage() {
 
   return (
     <div className={styles.page}>
-      <SiteDetailHeader site={site} dashboard={dashboard} />
-
-      <ReportDeadlineBanner
-        reports={brigadierReports}
-        todayIso={liveKpis.todayIso}
-        onOpenComposer={openBrigadierComposer}
+      <SiteDetailHeader
+        site={site}
+        documents={
+          visibleZones.includes('manager') ? (
+            <SiteProjectHeaderCard siteId={site.id} canUpload embedded />
+          ) : undefined
+        }
+        deadlineAlert={
+          <ReportDeadlineBanner
+            embedded
+            reports={brigadierReports}
+            todayIso={liveKpis.todayIso}
+          />
+        }
+        heroActions={
+          visibleZones.includes('brigadier') ? (
+            <>
+              <button
+                type="button"
+                className={styles.toolbarCtaCompact}
+                onClick={openProcurementComposer}
+              >
+                Заявка на материалы
+              </button>
+              <button
+                type="button"
+                className={styles.toolbarCtaCompact}
+                onClick={openBrigadierComposer}
+              >
+                Ввод отчёта
+              </button>
+            </>
+          ) : undefined
+        }
       />
 
       {formsApiMessage ? (
@@ -562,9 +602,14 @@ export function ObjectDetailPage() {
       ) : null}
 
       {visibleZones.flatMap((zone) => {
-        const nodes = [renderZone(zone)]
-        // Сводка — после бригадира (под «Документы проекта» → «Смена»).
-        // Если зоны бригадира нет — сразу после проекта.
+        const nodes: ReactNode[] = []
+        const zoneNode = renderZone(zone)
+        if (zoneNode) nodes.push(zoneNode)
+        // Журнал — отдельный блок сразу под зоной бригадира.
+        if (zone === 'brigadier') {
+          nodes.push(<div key="brigadier-journal">{brigadierJournal}</div>)
+        }
+        // Аналитика — после журнала; если зоны бригадира нет — после шапки проекта.
         if (showObjectSummary) {
           if (zone === 'brigadier') {
             nodes.push(<div key="object-summary">{objectSummary}</div>)
@@ -574,13 +619,6 @@ export function ObjectDetailPage() {
         }
         return nodes
       })}
-
-      <footer className={styles.footer}>
-        <p className={styles.footerNote}>
-          Показаны демонстрационные показатели. После подключения учётных систем те же блоки
-          заполнятся фактическими данными объекта без изменения структуры экрана.
-        </p>
-      </footer>
 
       {composerOpen ? (
         <BrigadierReportModal

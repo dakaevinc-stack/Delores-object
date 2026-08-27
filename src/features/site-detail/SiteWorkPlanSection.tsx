@@ -16,12 +16,18 @@ import {
   type WorkPlanSection,
 } from '../../domain/workPlan'
 import { CollapseToggle } from './CollapseToggle'
+import { useAnchoredExpand } from './useAnchoredExpand'
 import styles from './SiteWorkPlanSection.module.css'
 
 type Props = {
   plan: WorkPlan
   windowStartIso?: string
   windowEndIso?: string
+  /**
+   * Без своей шапки и кнопки «Открыть» — контент всегда виден
+   * (внутри общей панели «Аналитика / План работ»).
+   */
+  embedded?: boolean
 }
 
 function pluralize(n: number, [one, few, many]: readonly [string, string, string]): string {
@@ -94,6 +100,7 @@ export function SiteWorkPlanSection({
   plan,
   windowStartIso,
   windowEndIso,
+  embedded = false,
 }: Props) {
   const summary = useMemo(() => summarizeWorkPlan(plan), [plan])
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), [])
@@ -122,8 +129,7 @@ export function SiteWorkPlanSection({
   }, [healthByNumber])
 
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set())
-  // Развёрнуто по умолчанию: сводка + задачи + справка план/факт в одном блоке.
-  const [expanded, setExpanded] = useState(false)
+  const { expanded, toggle, anchorRef } = useAnchoredExpand(false)
 
   const toggleSection = (number: string) => {
     setOpenSections((prev) => {
@@ -141,8 +147,110 @@ export function SiteWorkPlanSection({
   const periodEndIso = windowEndIso ?? summary.latestEndIso
   const period = formatPeriodHumanRu(periodStartIso, periodEndIso)
 
+  const body = (
+    <div id={embedded ? undefined : 'work-plan-body'} className={styles.expandedBody}>
+      <div className={styles.summaryPanel}>
+        <p className={styles.lead}>
+          План, факт и отставание по строкам. Задания дня — у бригадира.
+        </p>
+
+        <dl className={styles.summary}>
+          <div className={styles.summaryItem}>
+            <dt className={styles.summaryLabel}>Активных</dt>
+            <dd className={styles.summaryValue}>
+              {summary.scheduledCount}
+              <span className={styles.summaryDelta}>/{summary.itemsCount}</span>
+            </dd>
+          </div>
+          <div className={styles.summaryItem}>
+            <dt className={styles.summaryLabel}>Завершено</dt>
+            <dd className={styles.summaryValue}>{summary.completedCount}</dd>
+          </div>
+          <div className={styles.summaryItem}>
+            <dt className={styles.summaryLabel}>Без срока</dt>
+            <dd className={styles.summaryValue}>{summary.deferredCount}</dd>
+          </div>
+          <div className={styles.summaryItem}>
+            <dt className={styles.summaryLabel}>Прогресс</dt>
+            <dd className={styles.summaryValue}>
+              {summary.averagePercent.toFixed(1).replace('.', ',')}%
+            </dd>
+          </div>
+          {period ? (
+            <div className={`${styles.summaryItem} ${styles.summaryItemWide}`}>
+              <dt className={styles.summaryLabel}>Период</dt>
+              <dd className={styles.summaryValue}>{period}</dd>
+            </div>
+          ) : null}
+        </dl>
+
+        <div className={styles.healthRow}>
+          {healthBuckets.critical > 0 ? (
+            <span className={`${styles.healthPill} ${styles.healthPillCritical}`}>
+              <span className={styles.healthPillDot} aria-hidden />
+              <span className={styles.healthPillCount}>{healthBuckets.critical}</span>
+              <span className={styles.healthPillLabel}>отстают</span>
+            </span>
+          ) : null}
+          {healthBuckets.attention > 0 ? (
+            <span className={`${styles.healthPill} ${styles.healthPillAttention}`}>
+              <span className={styles.healthPillDot} aria-hidden />
+              <span className={styles.healthPillCount}>{healthBuckets.attention}</span>
+              <span className={styles.healthPillLabel}>под вниманием</span>
+            </span>
+          ) : null}
+          {healthBuckets.normal > 0 ? (
+            <span className={`${styles.healthPill} ${styles.healthPillNormal}`}>
+              <span className={styles.healthPillDot} aria-hidden />
+              <span className={styles.healthPillCount}>{healthBuckets.normal}</span>
+              <span className={styles.healthPillLabel}>в графике</span>
+            </span>
+          ) : null}
+          {healthBuckets.not_scheduled > 0 ? (
+            <span className={`${styles.healthPill} ${styles.healthPillMuted}`}>
+              <span className={styles.healthPillDot} aria-hidden />
+              <span className={styles.healthPillCount}>{healthBuckets.not_scheduled}</span>
+              <span className={styles.healthPillLabel}>без графика</span>
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <div className={styles.registryBlock}>
+        <div className={styles.blockLabelRow}>
+          <h3 className={styles.blockLabel}>Справка — план и факт</h3>
+          <p className={styles.blockHint}>
+            Факт — из заданий дня и журнала бригадира
+          </p>
+        </div>
+        <ol className={styles.sections} id="work-plan-sections">
+          {plan.sections.map((section) => (
+            <SectionCard
+              key={section.number}
+              section={section}
+              health={healthByNumber.get(section.number)}
+              open={openSections.has(section.number)}
+              onToggle={() => toggleSection(section.number)}
+            />
+          ))}
+        </ol>
+      </div>
+    </div>
+  )
+
+  if (embedded) {
+    return (
+      <section
+        className={`${styles.section} ${styles.sectionEmbedded}`}
+        aria-label="План работ"
+      >
+        {body}
+      </section>
+    )
+  }
+
   return (
-    <section className={styles.section} aria-labelledby="work-plan-heading">
+    <section ref={anchorRef} className={styles.section} aria-labelledby="work-plan-heading">
       <div className={styles.head}>
         <div className={styles.headInner}>
           <p className={styles.kicker}>
@@ -160,10 +268,8 @@ export function SiteWorkPlanSection({
             </h2>
             <CollapseToggle
               expanded={expanded}
-              onToggle={() => setExpanded((v) => !v)}
+              onToggle={toggle}
               ariaControls="work-plan-body"
-              expandedLabel="Свернуть план"
-              collapsedLabel="Открыть план"
               className={styles.headToggle}
             />
           </div>
@@ -179,96 +285,7 @@ export function SiteWorkPlanSection({
         </div>
       </div>
 
-      {expanded ? (
-        <div id="work-plan-body" className={styles.expandedBody}>
-          <div className={styles.summaryPanel}>
-            <p className={styles.lead}>
-              План, факт и отставание по строкам. Задания дня — у бригадира.
-            </p>
-
-            <dl className={styles.summary}>
-              <div className={styles.summaryItem}>
-                <dt className={styles.summaryLabel}>Активных</dt>
-                <dd className={styles.summaryValue}>
-                  {summary.scheduledCount}
-                  <span className={styles.summaryDelta}>/{summary.itemsCount}</span>
-                </dd>
-              </div>
-              <div className={styles.summaryItem}>
-                <dt className={styles.summaryLabel}>Завершено</dt>
-                <dd className={styles.summaryValue}>{summary.completedCount}</dd>
-              </div>
-              <div className={styles.summaryItem}>
-                <dt className={styles.summaryLabel}>Без срока</dt>
-                <dd className={styles.summaryValue}>{summary.deferredCount}</dd>
-              </div>
-              <div className={styles.summaryItem}>
-                <dt className={styles.summaryLabel}>Прогресс</dt>
-                <dd className={styles.summaryValue}>
-                  {summary.averagePercent.toFixed(1).replace('.', ',')}%
-                </dd>
-              </div>
-              {period ? (
-                <div className={`${styles.summaryItem} ${styles.summaryItemWide}`}>
-                  <dt className={styles.summaryLabel}>Период</dt>
-                  <dd className={styles.summaryValue}>{period}</dd>
-                </div>
-              ) : null}
-            </dl>
-
-            <div className={styles.healthRow}>
-              {healthBuckets.critical > 0 ? (
-                <span className={`${styles.healthPill} ${styles.healthPillCritical}`}>
-                  <span className={styles.healthPillDot} aria-hidden />
-                  <span className={styles.healthPillCount}>{healthBuckets.critical}</span>
-                  <span className={styles.healthPillLabel}>отстают</span>
-                </span>
-              ) : null}
-              {healthBuckets.attention > 0 ? (
-                <span className={`${styles.healthPill} ${styles.healthPillAttention}`}>
-                  <span className={styles.healthPillDot} aria-hidden />
-                  <span className={styles.healthPillCount}>{healthBuckets.attention}</span>
-                  <span className={styles.healthPillLabel}>под вниманием</span>
-                </span>
-              ) : null}
-              {healthBuckets.normal > 0 ? (
-                <span className={`${styles.healthPill} ${styles.healthPillNormal}`}>
-                  <span className={styles.healthPillDot} aria-hidden />
-                  <span className={styles.healthPillCount}>{healthBuckets.normal}</span>
-                  <span className={styles.healthPillLabel}>в графике</span>
-                </span>
-              ) : null}
-              {healthBuckets.not_scheduled > 0 ? (
-                <span className={`${styles.healthPill} ${styles.healthPillMuted}`}>
-                  <span className={styles.healthPillDot} aria-hidden />
-                  <span className={styles.healthPillCount}>{healthBuckets.not_scheduled}</span>
-                  <span className={styles.healthPillLabel}>без графика</span>
-                </span>
-              ) : null}
-            </div>
-          </div>
-
-          <div className={styles.registryBlock}>
-            <div className={styles.blockLabelRow}>
-              <h3 className={styles.blockLabel}>Справка — план и факт</h3>
-              <p className={styles.blockHint}>
-                Факт — из заданий дня и журнала бригадира
-              </p>
-            </div>
-            <ol className={styles.sections} id="work-plan-sections">
-              {plan.sections.map((section) => (
-                <SectionCard
-                  key={section.number}
-                  section={section}
-                  health={healthByNumber.get(section.number)}
-                  open={openSections.has(section.number)}
-                  onToggle={() => toggleSection(section.number)}
-                />
-              ))}
-            </ol>
-          </div>
-        </div>
-      ) : null}
+      {expanded ? body : <div id="work-plan-body" hidden />}
     </section>
   )
 }

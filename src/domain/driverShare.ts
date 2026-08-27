@@ -95,7 +95,7 @@ export function renderDriverTripShareText(trip: DriverTrip, cabinetUrl: string):
 
   lines.push('')
   lines.push(SEP)
-  lines.push('ШАГ 2. ЧТО ГРУЗИТЬ')
+  lines.push('ШАГ 2. ЗАДАНИЕ')
   if (cargo.length > 0) {
     for (const line of cargo) lines.push(`• ${line}`)
   } else {

@@ -33,6 +33,7 @@ const trip: DriverTrip = {
   assignedByRole: 'dispatcher',
   createdAtIso: '2026-08-18T08:00:00.000Z',
   seenAtIso: null,
+  completedAtIso: null,
 }
 
 describe('driverShare', () => {
@@ -62,7 +63,7 @@ describe('driverShare', () => {
     expect(text).toContain('РЕЙС ДЛЯ: Иванов')
     expect(text).toContain('ШАГ 1. ЗАБРАТЬ ГРУЗ')
     expect(text).toContain('Карьер Щербинка')
-    expect(text).toContain('ШАГ 2. ЧТО ГРУЗИТЬ')
+    expect(text).toContain('ШАГ 2. ЗАДАНИЕ')
     expect(text).toContain('Щебень — 12 м³')
     expect(text).toContain('ШАГ 3. ВЕЗТИ СЮДА')
     expect(text).toContain('ул. Вокзальная, 12')

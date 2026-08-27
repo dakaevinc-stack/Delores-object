@@ -6,92 +6,69 @@
   margin: 0 0 var(--block-gap);
   padding: 14px 16px;
   border-radius: 14px;
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
   font-size: 14px;
   line-height: 1.45;
-  animation: bannerSlideIn 0.3s ease;
 }
 
-@keyframes bannerSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.inline {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+  min-height: 34px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.pulse {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.55);
 }
 
 .reminder {
-  border: 1px solid rgba(255, 204, 0, 0.5);
-  background: linear-gradient(135deg, #fffde6 0%, #fff8cc 100%);
+  border: 1px solid rgba(180, 130, 20, 0.28);
+  background: linear-gradient(135deg, rgba(255, 248, 220, 0.95) 0%, rgba(255, 243, 196, 0.88) 100%);
   color: #5c4a00;
 }
 
+.reminder .pulse {
+  background: #d4a017;
+}
+
 .warning {
-  border: 1px solid rgba(255, 149, 0, 0.5);
-  background: linear-gradient(135deg, #fff5e6 0%, #ffe8cc 100%);
+  border: 1px solid rgba(194, 100, 20, 0.32);
+  background: linear-gradient(135deg, rgba(255, 244, 230, 0.96) 0%, rgba(255, 232, 204, 0.9) 100%);
   color: #6e3b00;
 }
 
+.warning .pulse {
+  background: #e67e22;
+}
+
 .overdue {
-  border: 1px solid rgba(255, 59, 48, 0.45);
-  background: linear-gradient(135deg, #fff0f0 0%, #ffe5e5 100%);
+  border: 1px solid rgba(238, 45, 58, 0.28);
+  background: linear-gradient(135deg, rgba(255, 240, 242, 0.96) 0%, rgba(255, 228, 230, 0.9) 100%);
   color: #6e0f0a;
 }
 
-.emoji {
-  flex: 0 0 auto;
-  font-size: 20px;
-  line-height: 1;
+.overdue .pulse {
+  background: var(--brand-red, #ee2d3a);
 }
 
 .text {
-  flex: 1 1 200px;
+  flex: 0 1 auto;
   margin: 0;
-  font-weight: 500;
-}
-
-.cta,
-.ctaOverdue {
-  flex: 0 0 auto;
-  min-height: 36px;
-  padding: 0 16px;
-  border-radius: 980px;
-  border: 0;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
+  font-weight: 650;
   letter-spacing: -0.01em;
-}
-
-.cta {
-  background: #1c1c1e;
-  color: #fff;
-}
-
-.cta:hover {
-  background: #333;
-}
-
-.ctaOverdue {
-  background: #ff3b30;
-  color: #fff;
-}
-
-.ctaOverdue:hover {
-  background: #e0332a;
-}
-
-@media (max-width: 560px) {
-  .cta,
-  .ctaOverdue {
-    width: 100%;
-    justify-content: center;
-    display: flex;
-    align-items: center;
-  }
 }

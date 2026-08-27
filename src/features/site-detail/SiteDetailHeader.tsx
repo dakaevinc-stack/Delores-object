@@ -1,25 +1,32 @@
 import { Link } from 'react-router-dom'
+import type { ReactNode } from 'react'
 import { completionPercent } from '../../domain/executiveDashboard'
 import {
   SITE_STATUS_LABEL,
   SITE_STATUS_TOKEN,
   resolveSiteStatus,
 } from '../../domain/objectStatus'
-import type { SiteDetailDashboard } from '../../domain/siteDetailDashboard'
 import type { ConstructionSite } from '../../types/constructionSite'
 import styles from './SiteDetailHeader.module.css'
 
 type Props = {
   site: ConstructionSite
-  dashboard: SiteDetailDashboard
+  /** PDF/DWG проекта — в той же карточке, без отдельной зоны. */
+  documents?: ReactNode
+  /** Напоминание сдать отчёт — внутри hero, рядом со статусом объекта. */
+  deadlineAlert?: ReactNode
+  /** Действия смены (заявка / отчёт) — справа в ряду с оповещением. */
+  heroActions?: ReactNode
 }
 
-export function SiteDetailHeader({ site, dashboard }: Props) {
+export function SiteDetailHeader({ site, documents, deadlineAlert, heroActions }: Props) {
   const status = resolveSiteStatus(site)
   const token = SITE_STATUS_TOKEN[status]
   const pct = completionPercent(site)
   const planPct = Math.round(site.executive.planPercent)
   const factPct = Math.max(0, Math.min(100, pct))
+  const hasDocuments = Boolean(documents)
+  const showToolbar = Boolean(deadlineAlert || heroActions)
 
   return (
     <header className={styles.header}>
@@ -48,7 +55,10 @@ export function SiteDetailHeader({ site, dashboard }: Props) {
         </Link>
       </div>
 
-      <div className={styles.hero} data-status={token}>
+      <div
+        className={`${styles.hero} ${hasDocuments ? styles.heroWithDocs : ''}`}
+        data-status={token}
+      >
         <span className={styles.heroRail} aria-hidden />
 
         <div className={styles.heroTop}>
@@ -78,7 +88,6 @@ export function SiteDetailHeader({ site, dashboard }: Props) {
         </div>
 
         <h1 className={styles.title}>{site.name}</h1>
-        <p className={styles.reason}>{dashboard.statusReason}</p>
 
         <div className={styles.progressBlock}>
           <div
@@ -106,6 +115,23 @@ export function SiteDetailHeader({ site, dashboard }: Props) {
             </span>
           </div>
         </div>
+
+        {showToolbar ? (
+          <div className={styles.heroToolbar}>
+            {deadlineAlert ? (
+              <div className={styles.heroAlert}>{deadlineAlert}</div>
+            ) : (
+              <span className={styles.heroToolbarSpacer} aria-hidden />
+            )}
+            {heroActions ? (
+              <div className={styles.heroActions}>{heroActions}</div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {hasDocuments ? (
+          <div className={styles.docs}>{documents}</div>
+        ) : null}
       </div>
     </header>
   )
