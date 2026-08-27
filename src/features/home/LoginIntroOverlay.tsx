@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import styles from './LoginIntroOverlay.module.css'
 import {
   getLoginIntroPlayer,
-  loginIntroPoster,
   preloadLoginIntroPlayer,
   stopLoginIntroPlayback,
 } from './loginIntroPlayer'
@@ -15,10 +14,8 @@ type Props = {
 const FAILSAFE_MS = 12_000
 
 /**
- * Полноэкранный 9:16 вход:
- * — фон: размытый cover (без чёрных полей)
- * — поверх: полный кадр ролика (contain, без обрезки бренда)
- * — звук стартует с жеста «Войти» через общий player
+ * Вход как YouTube Shorts / Reels / TikTok:
+ * вертикальный 9:16 ролик на весь экран (cover, edge-to-edge), со звуком.
  */
 export function LoginIntroOverlay({ onDone }: Props) {
   const stageRef = useRef<HTMLDivElement>(null)
@@ -69,11 +66,14 @@ export function LoginIntroOverlay({ onDone }: Props) {
     if (video.paused) {
       void video.play().catch(() => {
         video.muted = true
-        void video.play().then(() => {
-          video.muted = false
-        }).catch(() => {
-          /* poster */
-        })
+        void video
+          .play()
+          .then(() => {
+            video.muted = false
+          })
+          .catch(() => {
+            /* poster */
+          })
       })
     }
 
@@ -109,14 +109,7 @@ export function LoginIntroOverlay({ onDone }: Props) {
       aria-label="Вход в систему"
       onClick={finish}
     >
-      <div className={styles.stage}>
-        <div
-          className={styles.backdrop}
-          style={{ backgroundImage: `url(${loginIntroPoster()})` }}
-          aria-hidden
-        />
-        <div ref={stageRef} className={styles.frame} />
-      </div>
+      <div ref={stageRef} className={styles.stage} />
       <button
         type="button"
         className={styles.skip}
@@ -137,5 +130,5 @@ export function preloadLoginIntro(): void {
 }
 
 export function unlockLoginIntroAudio(): void {
-  /* backward-compatible alias — реальный старт через beginLoginIntroPlayback */
+  /* alias — старт через beginLoginIntroPlayback */
 }
