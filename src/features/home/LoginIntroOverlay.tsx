@@ -15,9 +15,9 @@ type Props = {
 const FAILSAFE_MS = 12_000
 
 /**
- * Shorts на весь экран:
- * размытый фон edge-to-edge + полный кадр бренда (contain),
- * чтобы текст логотипа «КОГДА БИЗНЕС ЭТО ЛИЧНОЕ» был целиком.
+ * Интро на весь viewport:
+ * размытый cover-фон + contain-кадр бренда,
+ * чтобы «КОГДА БИЗНЕС ЭТО ЛИЧНОЕ» был целиком и максимально крупно.
  */
 export function LoginIntroOverlay({ onDone }: Props) {
   const stageRef = useRef<HTMLDivElement>(null)
