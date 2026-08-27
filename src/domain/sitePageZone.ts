@@ -48,7 +48,7 @@ export const SITE_PAGE_ZONES: Record<
   },
   supply: {
     kicker: 'Снабжение',
-    title: 'Материалы и заявки',
+    title: 'Материалы / Заявки',
     lead: 'Реестр, согласование и расход по смете.',
   },
   dispatcher: {
