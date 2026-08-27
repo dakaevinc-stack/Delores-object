@@ -8,13 +8,50 @@ type Props = {
 
 const INTRO_SRC = '/login-intro.mp4'
 const INTRO_POSTER = '/login-intro-poster.jpg'
+const WARM_ATTR = 'data-login-intro-warm'
 
 /** Ждём загрузку; не рвём ролик из‑за краткого buffering. */
 const FAILSAFE_MS = 20_000
 
 /**
+ * Вызвать синхронно из onClick «Войти» — иначе iOS/Safari блокируют звук
+ * (жест уже «остыл» к моменту монтирования оверлея).
+ */
+export function unlockLoginIntroAudio(): void {
+  if (typeof document === 'undefined') return
+  let warm = document.querySelector<HTMLVideoElement>(`video[${WARM_ATTR}]`)
+  if (!warm) {
+    warm = document.createElement('video')
+    warm.setAttribute(WARM_ATTR, '1')
+    warm.preload = 'auto'
+    warm.playsInline = true
+    warm.src = INTRO_SRC
+    warm.style.cssText =
+      'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-99px'
+    document.body.appendChild(warm)
+  }
+  warm.muted = false
+  warm.defaultMuted = false
+  warm.volume = 1
+  warm.removeAttribute('muted')
+  void warm
+    .play()
+    .then(() => {
+      try {
+        warm.pause()
+        warm.currentTime = 0
+      } catch {
+        /* noop */
+      }
+    })
+    .catch(() => {
+      /* разблокировка не обязана всегда пройти — оверлей ещё попробует */
+    })
+}
+
+/**
  * Полноэкранная брендовая анимация после «Войти».
- * Весь кадр (contain). Mute + playsInline — надёжный старт на iOS/Safari.
+ * Сцена 9:16 на весь экран; кадр ролика целиком (contain, без кропа) + звук.
  */
 export function LoginIntroOverlay({ onDone }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -42,9 +79,15 @@ export function LoginIntroOverlay({ onDone }: Props) {
 
     let cancelled = false
 
+    const enableSound = () => {
+      video.muted = false
+      video.defaultMuted = false
+      video.volume = 1
+      video.removeAttribute('muted')
+    }
+
     const onEnded = () => finish()
     const onError = () => {
-      // Даём увидеть постер хотя бы мгновение, потом закрываем.
       window.setTimeout(() => {
         if (!cancelled) finish()
       }, 900)
@@ -54,10 +97,9 @@ export function LoginIntroOverlay({ onDone }: Props) {
     video.addEventListener('error', onError)
 
     const tryPlay = async () => {
-      video.muted = true
-      video.defaultMuted = true
-      video.setAttribute('muted', '')
       video.playsInline = true
+      // Сначала со звуком — жест «Войти» уже разблокировал аудио.
+      enableSound()
       try {
         if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
           await new Promise<void>((resolve) => {
@@ -78,15 +120,25 @@ export function LoginIntroOverlay({ onDone }: Props) {
         }
         if (cancelled || doneRef.current) return
         await video.play()
+        enableSound()
+        return
       } catch {
-        // Не закрываем сразу: на части устройств play() отклоняется до canplay.
-        // Пользователь видит постер; failsafe / skip / ended закроют.
+        /* fallback: mute → play → unmute (политика автоплея) */
+      }
+
+      try {
+        video.muted = true
+        video.defaultMuted = true
+        await video.play()
+        enableSound()
+        // Повторный play после unmute на части WebKit
         try {
-          video.muted = true
           await video.play()
         } catch {
-          /* оставляем постер */
+          /* кадр уже идёт */
         }
+      } catch {
+        /* постер + failsafe */
       }
     }
     void tryPlay()
@@ -122,18 +174,19 @@ export function LoginIntroOverlay({ onDone }: Props) {
       aria-label="Вход в систему"
       onClick={finish}
     >
-      <video
-        ref={videoRef}
-        className={styles.video}
-        src={INTRO_SRC}
-        poster={INTRO_POSTER}
-        playsInline
-        preload="auto"
-        muted
-        autoPlay
-        controls={false}
-        disablePictureInPicture
-      />
+      <div className={styles.stage} aria-hidden={false}>
+        <video
+          ref={videoRef}
+          className={styles.video}
+          src={INTRO_SRC}
+          poster={INTRO_POSTER}
+          playsInline
+          preload="auto"
+          autoPlay
+          controls={false}
+          disablePictureInPicture
+        />
+      </div>
       <button
         type="button"
         className={styles.skip}
@@ -166,15 +219,15 @@ export function preloadLoginIntro(): void {
   poster.href = INTRO_POSTER
   document.head.appendChild(poster)
 
-  // Прогрев буфера через скрытый video (надёжнее link preload на мобилках).
-  if (!document.querySelector('video[data-login-intro-warm]')) {
+  if (!document.querySelector(`video[${WARM_ATTR}]`)) {
     const warm = document.createElement('video')
-    warm.setAttribute('data-login-intro-warm', '1')
+    warm.setAttribute(WARM_ATTR, '1')
     warm.preload = 'auto'
     warm.muted = true
     warm.playsInline = true
     warm.src = INTRO_SRC
-    warm.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-99px'
+    warm.style.cssText =
+      'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-99px'
     document.body.appendChild(warm)
     try {
       warm.load()

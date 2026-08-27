@@ -9,7 +9,7 @@ import {
   useLocalSession,
 } from '../../lib/useLocalSession'
 import { requestLoginIntro, clearLoginIntroPending } from './loginIntroPending'
-import { preloadLoginIntro } from './LoginIntroOverlay'
+import { preloadLoginIntro, unlockLoginIntroAudio } from './LoginIntroOverlay'
 import {
   loadRememberedLogin,
   saveRememberedLogin,
@@ -97,6 +97,8 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
       setMessage('Укажите логин и пароль')
       return
     }
+    // Синхронно с жестом «Войти» — иначе звук ролика блокируется.
+    unlockLoginIntroAudio()
     // Сразу, ещё до ответа — чтобы после «Выйти» поле уже было заполнено.
     saveRememberedLogin(user)
     setBusy(true)
