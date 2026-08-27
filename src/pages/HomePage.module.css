@@ -792,20 +792,30 @@
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: space-between;
     gap: 0;
+    width: 100%;
+    box-sizing: border-box;
     padding: 12px 14px;
     text-align: left;
   }
 
-  .todayLabel::after {
-    display: none;
+  .todayLabel,
+  .todayValue,
+  .todayMeta {
+    flex: 0 0 auto;
   }
 
   .todayValue {
+    flex: 1 1 auto;
+    text-align: center;
     font-size: 14px;
     font-weight: 700;
     letter-spacing: -0.02em;
+  }
+
+  .todayLabel::after {
+    display: none;
   }
 
   .todayValue::before {
@@ -813,7 +823,7 @@
     display: inline-block;
     width: 1px;
     height: 11px;
-    margin: 0 10px;
+    margin: 0 10px 0 0;
     vertical-align: -1px;
     background: var(--border-strong);
   }
@@ -825,7 +835,7 @@
   .todayMeta::before {
     content: '·';
     display: inline-block;
-    margin: 0 7px;
+    margin: 0 7px 0 0;
     color: rgba(23, 42, 77, 0.32);
     font-weight: 400;
   }
