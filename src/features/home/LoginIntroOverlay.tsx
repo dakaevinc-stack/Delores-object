@@ -15,9 +15,8 @@ type Props = {
 const FAILSAFE_MS = 12_000
 
 /**
- * Интро на весь viewport:
- * размытый cover-фон + contain-кадр бренда,
- * чтобы «КОГДА БИЗНЕС ЭТО ЛИЧНОЕ» был целиком и максимально крупно.
+ * Интро на весь экран: вертикальный мастер 9:16
+ * (кроп по логотипу + слогану, текст не режется).
  */
 export function LoginIntroOverlay({ onDone }: Props) {
   const stageRef = useRef<HTMLDivElement>(null)
