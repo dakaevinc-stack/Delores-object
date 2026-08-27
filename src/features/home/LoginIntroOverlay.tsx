@@ -1,60 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import styles from './LoginIntroOverlay.module.css'
+import {
+  getLoginIntroPlayer,
+  loginIntroPoster,
+  preloadLoginIntroPlayer,
+  stopLoginIntroPlayback,
+} from './loginIntroPlayer'
 
 type Props = {
   onDone: () => void
 }
 
-const INTRO_SRC = '/login-intro.mp4'
-const INTRO_POSTER = '/login-intro-poster.jpg'
-const WARM_ATTR = 'data-login-intro-warm'
-
-/** Ждём загрузку; не рвём ролик из‑за краткого buffering. */
-const FAILSAFE_MS = 20_000
+const FAILSAFE_MS = 12_000
 
 /**
- * Вызвать синхронно из onClick «Войти» — иначе iOS/Safari блокируют звук
- * (жест уже «остыл» к моменту монтирования оверлея).
- */
-export function unlockLoginIntroAudio(): void {
-  if (typeof document === 'undefined') return
-  let warm = document.querySelector<HTMLVideoElement>(`video[${WARM_ATTR}]`)
-  if (!warm) {
-    warm = document.createElement('video')
-    warm.setAttribute(WARM_ATTR, '1')
-    warm.preload = 'auto'
-    warm.playsInline = true
-    warm.src = INTRO_SRC
-    warm.style.cssText =
-      'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-99px'
-    document.body.appendChild(warm)
-  }
-  warm.muted = false
-  warm.defaultMuted = false
-  warm.volume = 1
-  warm.removeAttribute('muted')
-  void warm
-    .play()
-    .then(() => {
-      try {
-        warm.pause()
-        warm.currentTime = 0
-      } catch {
-        /* noop */
-      }
-    })
-    .catch(() => {
-      /* разблокировка не обязана всегда пройти — оверлей ещё попробует */
-    })
-}
-
-/**
- * Полноэкранная брендовая анимация после «Войти».
- * Сцена 9:16 на весь экран; кадр ролика целиком (contain, без кропа) + звук.
+ * Полноэкранный 9:16 вход:
+ * — фон: размытый cover (без чёрных полей)
+ * — поверх: полный кадр ролика (contain, без обрезки бренда)
+ * — звук стартует с жеста «Войти» через общий player
  */
 export function LoginIntroOverlay({ onDone }: Props) {
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
   const [phase, setPhase] = useState<'in' | 'out'>('in')
   const doneRef = useRef(false)
 
@@ -62,7 +29,10 @@ export function LoginIntroOverlay({ onDone }: Props) {
     if (doneRef.current) return
     doneRef.current = true
     setPhase('out')
-    window.setTimeout(() => onDone(), 320)
+    window.setTimeout(() => {
+      stopLoginIntroPlayback()
+      onDone()
+    }, 280)
   }
 
   useEffect(() => {
@@ -74,74 +44,38 @@ export function LoginIntroOverlay({ onDone }: Props) {
       return
     }
 
-    const video = videoRef.current
-    if (!video) return
+    const stage = stageRef.current
+    if (!stage) return
+
+    const video = getLoginIntroPlayer()
+    video.className = styles.video
+    video.style.cssText = ''
+    video.muted = false
+    video.defaultMuted = false
+    video.volume = 1
+    video.removeAttribute('muted')
+    stage.appendChild(video)
 
     let cancelled = false
-
-    const enableSound = () => {
-      video.muted = false
-      video.defaultMuted = false
-      video.volume = 1
-      video.removeAttribute('muted')
-    }
-
     const onEnded = () => finish()
     const onError = () => {
       window.setTimeout(() => {
         if (!cancelled) finish()
-      }, 900)
+      }, 600)
     }
-
     video.addEventListener('ended', onEnded)
     video.addEventListener('error', onError)
 
-    const tryPlay = async () => {
-      video.playsInline = true
-      // Сначала со звуком — жест «Войти» уже разблокировал аудио.
-      enableSound()
-      try {
-        if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-          await new Promise<void>((resolve) => {
-            const ready = () => {
-              video.removeEventListener('canplay', ready)
-              video.removeEventListener('loadeddata', ready)
-              resolve()
-            }
-            video.addEventListener('canplay', ready)
-            video.addEventListener('loadeddata', ready)
-            try {
-              video.load()
-            } catch {
-              resolve()
-            }
-            window.setTimeout(resolve, 4_000)
-          })
-        }
-        if (cancelled || doneRef.current) return
-        await video.play()
-        enableSound()
-        return
-      } catch {
-        /* fallback: mute → play → unmute (политика автоплея) */
-      }
-
-      try {
+    if (video.paused) {
+      void video.play().catch(() => {
         video.muted = true
-        video.defaultMuted = true
-        await video.play()
-        enableSound()
-        // Повторный play после unmute на части WebKit
-        try {
-          await video.play()
-        } catch {
-          /* кадр уже идёт */
-        }
-      } catch {
-        /* постер + failsafe */
-      }
+        void video.play().then(() => {
+          video.muted = false
+        }).catch(() => {
+          /* poster */
+        })
+      })
     }
-    void tryPlay()
 
     const failsafe = window.setTimeout(finish, FAILSAFE_MS)
     const prevOverflow = document.body.style.overflow
@@ -153,11 +87,12 @@ export function LoginIntroOverlay({ onDone }: Props) {
       video.removeEventListener('error', onError)
       window.clearTimeout(failsafe)
       document.body.style.overflow = prevOverflow
-      try {
-        video.pause()
-      } catch {
-        /* noop */
+      video.className = ''
+      if (video.parentElement === stage) {
+        document.body.appendChild(video)
       }
+      video.style.cssText =
+        'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-99px;z-index:-1'
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- один показ на mount
   }, [])
@@ -174,18 +109,13 @@ export function LoginIntroOverlay({ onDone }: Props) {
       aria-label="Вход в систему"
       onClick={finish}
     >
-      <div className={styles.stage} aria-hidden={false}>
-        <video
-          ref={videoRef}
-          className={styles.video}
-          src={INTRO_SRC}
-          poster={INTRO_POSTER}
-          playsInline
-          preload="auto"
-          autoPlay
-          controls={false}
-          disablePictureInPicture
+      <div className={styles.stage}>
+        <div
+          className={styles.backdrop}
+          style={{ backgroundImage: `url(${loginIntroPoster()})` }}
+          aria-hidden
         />
+        <div ref={stageRef} className={styles.frame} />
       </div>
       <button
         type="button"
@@ -202,37 +132,10 @@ export function LoginIntroOverlay({ onDone }: Props) {
   )
 }
 
-/** Предзагрузка ролика, пока сотрудник смотрит форму входа. */
 export function preloadLoginIntro(): void {
-  if (typeof document === 'undefined') return
-  if (document.querySelector(`link[data-login-intro="${INTRO_SRC}"]`)) return
-  const link = document.createElement('link')
-  link.rel = 'preload'
-  link.as = 'video'
-  link.href = INTRO_SRC
-  link.setAttribute('data-login-intro', INTRO_SRC)
-  document.head.appendChild(link)
+  preloadLoginIntroPlayer()
+}
 
-  const poster = document.createElement('link')
-  poster.rel = 'preload'
-  poster.as = 'image'
-  poster.href = INTRO_POSTER
-  document.head.appendChild(poster)
-
-  if (!document.querySelector(`video[${WARM_ATTR}]`)) {
-    const warm = document.createElement('video')
-    warm.setAttribute(WARM_ATTR, '1')
-    warm.preload = 'auto'
-    warm.muted = true
-    warm.playsInline = true
-    warm.src = INTRO_SRC
-    warm.style.cssText =
-      'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-99px'
-    document.body.appendChild(warm)
-    try {
-      warm.load()
-    } catch {
-      /* noop */
-    }
-  }
+export function unlockLoginIntroAudio(): void {
+  /* backward-compatible alias — реальный старт через beginLoginIntroPlayback */
 }

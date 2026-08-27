@@ -9,7 +9,8 @@ import {
   useLocalSession,
 } from '../../lib/useLocalSession'
 import { requestLoginIntro, clearLoginIntroPending } from './loginIntroPending'
-import { preloadLoginIntro, unlockLoginIntroAudio } from './LoginIntroOverlay'
+import { preloadLoginIntro } from './LoginIntroOverlay'
+import { beginLoginIntroPlayback, stopLoginIntroPlayback } from './loginIntroPlayer'
 import {
   loadRememberedLogin,
   saveRememberedLogin,
@@ -97,27 +98,26 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
       setMessage('Укажите логин и пароль')
       return
     }
-    // Синхронно с жестом «Войти» — иначе звук ролика блокируется.
-    unlockLoginIntroAudio()
-    // Сразу, ещё до ответа — чтобы после «Выйти» поле уже было заполнено.
     saveRememberedLogin(user)
     setBusy(true)
     setMessage(null)
-    window.setTimeout(() => {
-      requestLoginIntro()
-      const result = signInWithCredentials(user, password)
-      if (!result.ok) {
-        clearLoginIntroPending()
-        setMessage(result.message)
-        setBusy(false)
-        return
-      }
-      saveRememberedLogin(result.session.login)
-      setPassword('')
-      setLogin(result.session.login)
+
+    // Без setTimeout: звук и картинка стартуют в том же жесте, что «Войти».
+    const result = signInWithCredentials(user, password)
+    if (!result.ok) {
+      stopLoginIntroPlayback()
+      clearLoginIntroPending()
+      setMessage(result.message)
       setBusy(false)
-      onSessionChange?.(result.session)
-    }, 180)
+      return
+    }
+    beginLoginIntroPlayback()
+    requestLoginIntro()
+    saveRememberedLogin(result.session.login)
+    setPassword('')
+    setLogin(result.session.login)
+    setBusy(false)
+    onSessionChange?.(result.session)
   }
 
   function onSignOut() {
