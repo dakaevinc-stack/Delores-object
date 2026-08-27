@@ -46,10 +46,7 @@ export function LoginIntroOverlay({ onDone }: Props) {
 
     const video = getLoginIntroPlayer()
     video.className = styles.video
-    // iOS: absolute+100% даёт cover-кроп; auto+max-% вписывает кадр целиком.
-    // Отдаление на 25% → масштаб 75% экрана.
-    video.style.cssText =
-      'position:static;display:block;width:auto;height:auto;max-width:75%;max-height:75%;object-fit:contain;object-position:center;background:transparent;border:0;margin:0;padding:0;pointer-events:none'
+    video.style.cssText = ''
     video.muted = false
     video.defaultMuted = false
     video.volume = 1
