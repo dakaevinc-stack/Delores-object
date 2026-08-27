@@ -6,29 +6,20 @@ type Props = {
   onDone: () => void
 }
 
-const DESKTOP_SRC = '/login-intro.mp4'
-const MOBILE_SRC = '/login-intro-mobile.mp4'
-const DESKTOP_POSTER = '/login-intro-poster.jpg'
-const MOBILE_POSTER = '/login-intro-poster-mobile.jpg'
+const INTRO_SRC = '/login-intro.mp4'
+const INTRO_POSTER = '/login-intro-poster.jpg'
 
 /** Не держим чёрный экран, если буфер завис. */
-const FAILSAFE_MS = 8_000
+const FAILSAFE_MS = 10_000
 const STALL_MS = 2_500
-
-function preferMobileIntro(): boolean {
-  if (typeof window === 'undefined') return false
-  if (typeof window.matchMedia !== 'function') return false
-  return window.matchMedia('(max-width: 900px), (orientation: portrait)').matches
-}
 
 /**
  * Полноэкранная брендовая анимация после «Войти».
- * На телефоне — вертикальный ролик 9:16 edge-to-edge (как Reels).
+ * Весь кадр ролика (contain) — без обрезки на телефоне и десктопе.
  */
 export function LoginIntroOverlay({ onDone }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [phase, setPhase] = useState<'in' | 'out'>('in')
-  const [mobile] = useState(preferMobileIntro)
   const doneRef = useRef(false)
 
   const finish = () => {
@@ -116,11 +107,7 @@ export function LoginIntroOverlay({ onDone }: Props) {
 
   return createPortal(
     <div
-      className={[
-        styles.screen,
-        mobile ? styles.screenMobile : styles.screenDesktop,
-        phase === 'out' ? styles.screenOut : '',
-      ]
+      className={[styles.screen, phase === 'out' ? styles.screenOut : '']
         .filter(Boolean)
         .join(' ')}
       role="dialog"
@@ -131,8 +118,8 @@ export function LoginIntroOverlay({ onDone }: Props) {
       <video
         ref={videoRef}
         className={styles.video}
-        src={mobile ? MOBILE_SRC : DESKTOP_SRC}
-        poster={mobile ? MOBILE_POSTER : DESKTOP_POSTER}
+        src={INTRO_SRC}
+        poster={INTRO_POSTER}
         playsInline
         preload="auto"
         muted
@@ -154,22 +141,20 @@ export function LoginIntroOverlay({ onDone }: Props) {
   )
 }
 
-/** Предзагрузка лёгкого ролика, пока сотрудник смотрит форму входа. */
+/** Предзагрузка ролика, пока сотрудник смотрит форму входа. */
 export function preloadLoginIntro(): void {
   if (typeof document === 'undefined') return
-  const mobile = preferMobileIntro()
-  const href = mobile ? MOBILE_SRC : DESKTOP_SRC
-  if (document.querySelector(`link[data-login-intro="${href}"]`)) return
+  if (document.querySelector(`link[data-login-intro="${INTRO_SRC}"]`)) return
   const link = document.createElement('link')
   link.rel = 'preload'
   link.as = 'video'
-  link.href = href
-  link.setAttribute('data-login-intro', href)
+  link.href = INTRO_SRC
+  link.setAttribute('data-login-intro', INTRO_SRC)
   document.head.appendChild(link)
 
   const poster = document.createElement('link')
   poster.rel = 'preload'
   poster.as = 'image'
-  poster.href = mobile ? MOBILE_POSTER : DESKTOP_POSTER
+  poster.href = INTRO_POSTER
   document.head.appendChild(poster)
 }
