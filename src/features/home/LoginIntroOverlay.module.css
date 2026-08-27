@@ -1,4 +1,4 @@
-/* Интро без «рамки»: оригинал по центру, фон студии на весь экран. */
+/* Интро 9:16 пользователя — на весь экран телефона, без рамок. */
 
 .screen {
   position: fixed;
@@ -7,7 +7,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  background: #c7cacd;
+  background: #cdd3d8;
   width: 100dvw;
   height: 100dvh;
   min-height: 100vh;
@@ -30,7 +30,7 @@
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background: #c7cacd;
+  background: #cdd3d8;
 }
 
 .video {
@@ -42,11 +42,17 @@
   border: 0;
   width: 100%;
   height: 100%;
-  /* Весь бренд-кадр целиком — без кропа и без композитной рамки */
-  object-fit: contain;
+  object-fit: cover;
   object-position: center center;
-  background: transparent;
+  background: #cdd3d8;
   pointer-events: none;
+}
+
+/* На широких экранах — весь вертикальный кадр целиком */
+@media (min-aspect-ratio: 1 / 1) {
+  .video {
+    object-fit: contain;
+  }
 }
 
 .skip {

@@ -14,8 +14,7 @@ type Props = {
 const FAILSAFE_MS = 12_000
 
 /**
- * Интро без центральной рамки: оригинальный кадр contain
- * на фоне студии на весь экран.
+ * Интро: вертикальный 9:16 ролик пользователя на весь экран.
  */
 export function LoginIntroOverlay({ onDone }: Props) {
   const stageRef = useRef<HTMLDivElement>(null)
