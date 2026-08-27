@@ -309,6 +309,11 @@
   opacity: 0.88;
 }
 
+/* Только экран входа: полоска не нужна */
+.pageGuest .mastheadStripe {
+  display: none;
+}
+
 .brandAuth {
   position: relative;
   z-index: 3;
