@@ -206,7 +206,7 @@ export function HomePage() {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={[styles.page, session ? null : styles.pageGuest].filter(Boolean).join(' ')}>
       <h1 className={styles.srOnly}>
         {session ? 'Управленческий обзор' : 'Вход в систему'}
       </h1>

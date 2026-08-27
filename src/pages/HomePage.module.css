@@ -6,6 +6,69 @@
   box-sizing: border-box;
 }
 
+/**
+ * Экран входа (без сессии): стекло на весь viewport —
+ * без «воздуха» под карточкой на телефоне / планшете / ноуте.
+ */
+.pageGuest {
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  padding-top: max(10px, env(safe-area-inset-top, 0px));
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(12px, env(safe-area-inset-left, 0px));
+  box-sizing: border-box;
+}
+
+.pageGuest .masthead {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+  min-height: 0;
+}
+
+.pageGuest .masthead::before {
+  inset: -12px -4%;
+}
+
+.pageGuest .mastheadInner {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.pageGuest .brandAuth {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+@media (min-width: 720px) {
+  .pageGuest {
+    padding-top: max(16px, env(safe-area-inset-top, 0px));
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(20px, env(safe-area-inset-left, 0px));
+    padding-right: max(20px, env(safe-area-inset-right, 0px));
+  }
+
+  .pageGuest .masthead {
+    width: min(1280px, 100%);
+    margin-inline: auto;
+  }
+
+  .pageGuest .brandAuth {
+    align-items: center;
+    align-content: center;
+  }
+}
+
 /* Большой монитор — шире холст, те же пропорции */
 @media (min-width: 1440px) {
   .page {
@@ -27,6 +90,13 @@
     padding-right: max(var(--page-pad-x), env(safe-area-inset-right, 0px));
     padding-bottom: var(--page-pad-bottom);
     padding-left: max(var(--page-pad-x), env(safe-area-inset-left, 0px));
+  }
+
+  .pageGuest {
+    padding-top: max(8px, env(safe-area-inset-top, 0px));
+    padding-right: max(10px, env(safe-area-inset-right, 0px));
+    padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(10px, env(safe-area-inset-left, 0px));
   }
 
   .toolbar > * {
@@ -567,6 +637,36 @@
     flex-direction: column;
     align-items: stretch;
     gap: 0;
+  }
+
+  .pageGuest .brandAuth {
+    justify-content: space-between;
+    gap: clamp(12px, 3.5vh, 28px);
+    padding-top: clamp(18px, 4vh, 32px);
+    padding-bottom: clamp(18px, 4vh, 36px);
+  }
+
+  .pageGuest .brandCell {
+    padding: 0;
+    justify-content: center;
+  }
+
+  .pageGuest .brandLogo {
+    width: min(220px, 68vw);
+  }
+
+  .pageGuest .mastheadToday {
+    padding: 0;
+    border-top: 0;
+    border-bottom: 0;
+  }
+
+  .pageGuest .signIn {
+    padding: 0;
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 420px;
+    margin-inline: auto;
   }
 
   .brandCell {
