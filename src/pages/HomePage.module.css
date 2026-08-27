@@ -669,6 +669,8 @@
   .pageGuest .brandCell {
     padding: 0;
     justify-content: center;
+    /* Мобилка: логотип выше на ~1,5 см */
+    margin-top: -1.5cm;
   }
 
   .pageGuest .brandLogo {
