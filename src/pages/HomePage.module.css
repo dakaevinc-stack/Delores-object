@@ -644,8 +644,7 @@
 
   .pageGuest .brandAuth {
     /*
-     * Одна колонка: логотип / дата / форма — одни и те же края.
-     * Мечта перфекциониста: общая ширина + общий внутренний inset.
+     * Одна колонка для даты и формы; логотип — прежний размер по центру.
      */
     --guest-col: min(100%, 22.75rem);
     --guest-inset: 14px;
@@ -669,12 +668,11 @@
 
   .pageGuest .brandCell {
     padding: 0;
-    justify-content: flex-start;
+    justify-content: center;
   }
 
   .pageGuest .brandLogo {
-    /* та же ширина, что у полей — левый край совпадает */
-    width: 100%;
+    width: min(196px, 58vw);
     max-width: 100%;
   }
 
@@ -691,17 +689,41 @@
   }
 
   .pageGuest .todayCore {
-    /* тот же inset, что у текста в инпутах (14px справа / оптика слева) */
-    justify-content: flex-start;
+    /* Три части на всю ширину: Слева / центр / справа — без пустоты у «Четверг» */
+    display: flex;
+    justify-content: space-between;
     align-items: center;
     width: 100%;
     box-sizing: border-box;
     padding: 11px var(--guest-inset);
     text-align: left;
+    gap: 0;
+  }
+
+  .pageGuest .todayLabel,
+  .pageGuest .todayValue,
+  .pageGuest .todayMeta {
+    flex: 0 0 auto;
+  }
+
+  .pageGuest .todayValue {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .pageGuest .todayValue::before {
+    margin-left: 0;
+    margin-right: 10px;
+  }
+
+  .pageGuest .todayMeta::before {
+    margin-left: 0;
+    margin-right: 7px;
   }
 
   .pageGuest .signIn {
     flex: 0 0 auto;
+    padding: 0;
   }
 
   /* Короткий экран (SE / mini) — ещё плотнее */
@@ -711,6 +733,10 @@
       gap: 10px;
       padding-top: 10px;
       padding-bottom: 12px;
+    }
+
+    .pageGuest .brandLogo {
+      width: min(156px, 52vw);
     }
 
     .pageGuest .todayCore {
@@ -725,6 +751,10 @@
       gap: 14px;
       padding-top: 20px;
       padding-bottom: 24px;
+    }
+
+    .pageGuest .brandLogo {
+      width: min(220px, 56vw);
     }
   }
 
