@@ -655,7 +655,7 @@
     --guest-inset: 14px;
     justify-content: center;
     align-items: center;
-    gap: 12px;
+    gap: 22px;
     padding-top: 16px;
     padding-bottom: 20px;
   }
@@ -674,8 +674,8 @@
   .pageGuest .brandCell {
     padding: 0;
     justify-content: center;
-    /* Мобилка: логотип выше на ~1,5 см */
-    margin-top: -1.5cm;
+    /* Мобилка: логотип выше, чтобы не прижимался к дате */
+    margin-top: -2.1cm;
   }
 
   .pageGuest .brandLogo {
@@ -737,9 +737,13 @@
   @media (max-height: 700px) {
     .pageGuest .brandAuth {
       --guest-col: min(100%, 20.5rem);
-      gap: 10px;
+      gap: 16px;
       padding-top: 10px;
       padding-bottom: 12px;
+    }
+
+    .pageGuest .brandCell {
+      margin-top: -1.7cm;
     }
 
     .pageGuest .brandLogo {
@@ -755,9 +759,13 @@
   @media (min-height: 820px) {
     .pageGuest .brandAuth {
       --guest-col: min(100%, 24rem);
-      gap: 14px;
+      gap: 26px;
       padding-top: 20px;
       padding-bottom: 24px;
+    }
+
+    .pageGuest .brandCell {
+      margin-top: -2.4cm;
     }
 
     .pageGuest .brandLogo {
