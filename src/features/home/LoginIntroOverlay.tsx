@@ -46,10 +46,9 @@ export function LoginIntroOverlay({ onDone }: Props) {
 
     const video = getLoginIntroPlayer()
     video.className = styles.video
-    // Сбрасываем скрытый preload-стиль и жёстко фиксируем contain —
-    // иначе на мобилках мог остаться cover и резать лого/текст.
+    // iOS: absolute+100% даёт cover-кроп; auto+max-% вписывает кадр целиком и отдаляет.
     video.style.cssText =
-      'display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;object-position:center center;background:transparent;border:0;margin:0;padding:0;pointer-events:none'
+      'position:static;display:block;width:auto;height:auto;max-width:78%;max-height:78%;object-fit:contain;object-position:center;background:transparent;border:0;margin:0;padding:0;pointer-events:none'
     video.muted = false
     video.defaultMuted = false
     video.volume = 1

@@ -1,4 +1,4 @@
-/* Интро: весь логотип + слоган, чуть отдалены от краёв экрана. */
+/* Интро: весь логотип + слоган, заметно отдалены от краёв (без кропа на iOS). */
 
 .screen {
   position: fixed;
@@ -40,23 +40,27 @@
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
-  /* Небольшой отступ — лого и текст не упираются в края */
-  padding: clamp(12px, 3.5vw, 28px) clamp(14px, 4vw, 32px);
   margin: 0;
+  padding: 0;
   overflow: hidden;
   background: transparent;
 }
 
+/*
+ * Не absolute+100%: на iOS Safari video тогда ведёт себя как cover и режет края.
+ * auto + max-% сохраняет аспект и вписывает кадр целиком.
+ */
 .video {
+  position: static;
   display: block;
   margin: 0;
   padding: 0;
   border: 0;
-  width: 100%;
-  height: 100%;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain !important;
+  width: auto;
+  height: auto;
+  max-width: 78%;
+  max-height: 78%;
+  object-fit: contain;
   object-position: center center;
   background: transparent;
   pointer-events: none;
