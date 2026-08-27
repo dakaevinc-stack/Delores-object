@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import styles from './LoginIntroOverlay.module.css'
 import {
   getLoginIntroPlayer,
+  loginIntroPoster,
   preloadLoginIntroPlayer,
   stopLoginIntroPlayback,
 } from './loginIntroPlayer'
@@ -14,8 +15,9 @@ type Props = {
 const FAILSAFE_MS = 12_000
 
 /**
- * Вход как YouTube Shorts / Reels / TikTok:
- * вертикальный 9:16 ролик на весь экран (cover, edge-to-edge), со звуком.
+ * Shorts на весь экран:
+ * размытый фон edge-to-edge + полный кадр бренда (contain),
+ * чтобы текст логотипа «КОГДА БИЗНЕС ЭТО ЛИЧНОЕ» был целиком.
  */
 export function LoginIntroOverlay({ onDone }: Props) {
   const stageRef = useRef<HTMLDivElement>(null)
@@ -109,7 +111,14 @@ export function LoginIntroOverlay({ onDone }: Props) {
       aria-label="Вход в систему"
       onClick={finish}
     >
-      <div ref={stageRef} className={styles.stage} />
+      <div className={styles.stage}>
+        <div
+          className={styles.backdrop}
+          style={{ backgroundImage: `url(${loginIntroPoster()})` }}
+          aria-hidden
+        />
+        <div ref={stageRef} className={styles.frame} />
+      </div>
       <button
         type="button"
         className={styles.skip}
