@@ -8,6 +8,7 @@ import {
   signOutLocalSession,
   useLocalSession,
 } from '../../lib/useLocalSession'
+import { LoginIntroOverlay } from './LoginIntroOverlay'
 import styles from './MastheadSignIn.module.css'
 
 type Props = {
@@ -71,6 +72,7 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
   const [reveal, setReveal] = useState(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [showIntro, setShowIntro] = useState(false)
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -95,6 +97,7 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
       setPassword('')
       setLogin('')
       setBusy(false)
+      setShowIntro(true)
       onSessionChange?.(result.session)
     }, 180)
   }
@@ -107,21 +110,26 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
 
   if (session) {
     return (
-      <div
-        className={[styles.session, className].filter(Boolean).join(' ')}
-        aria-label={`Профиль: ${session.fullName}`}
-      >
-        <span className={styles.sessionAvatar} aria-hidden>
-          <span className={styles.sessionInitials}>{sessionInitials(session.fullName)}</span>
-        </span>
-        <div className={styles.sessionCopy}>
-          <p className={styles.sessionKicker}>{session.dutyLabel}</p>
-          <p className={styles.sessionName}>{session.fullName}</p>
+      <>
+        {showIntro ? (
+          <LoginIntroOverlay onDone={() => setShowIntro(false)} />
+        ) : null}
+        <div
+          className={[styles.session, className].filter(Boolean).join(' ')}
+          aria-label={`Профиль: ${session.fullName}`}
+        >
+          <span className={styles.sessionAvatar} aria-hidden>
+            <span className={styles.sessionInitials}>{sessionInitials(session.fullName)}</span>
+          </span>
+          <div className={styles.sessionCopy}>
+            <p className={styles.sessionKicker}>{session.dutyLabel}</p>
+            <p className={styles.sessionName}>{session.fullName}</p>
+          </div>
+          <button className={styles.signOut} type="button" onClick={onSignOut}>
+            Выйти
+          </button>
         </div>
-        <button className={styles.signOut} type="button" onClick={onSignOut}>
-          Выйти
-        </button>
-      </div>
+      </>
     )
   }
 
