@@ -456,6 +456,37 @@ export async function putWorkDayPlanRemote(
   }
 }
 
+export async function uploadWorkDayMediaRemote(
+  siteId: string,
+  media: { id: string; kind: 'photo' | 'video'; name: string; mime?: string },
+  blob: Blob,
+): Promise<boolean> {
+  try {
+    const dataBase64 = await readBlobAsBase64(blob)
+    if (!dataBase64) return false
+    const res = await fetch(siteUrl(siteId, '/work-day-media'), {
+      method: 'POST',
+      headers: writeHeaders(true),
+      body: JSON.stringify({
+        id: media.id,
+        kind: media.kind,
+        name: media.name,
+        mime: media.mime || blob.type || (media.kind === 'video' ? 'video/mp4' : 'image/jpeg'),
+        dataBase64,
+      }),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+/** Прямой URL медиа плана дня для `<img>` / `<video>` на любом устройстве. */
+export function workDayMediaBlobUrl(siteId: string, mediaId: string): string {
+  const b = apiBase()
+  return `${b}/api/sites/${encodeURIComponent(siteId)}/work-day-media/${encodeURIComponent(mediaId)}/blob`
+}
+
 export type DriverTripPutResult = {
   ok: boolean
   telegramNotified: boolean

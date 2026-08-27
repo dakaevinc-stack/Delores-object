@@ -700,6 +700,82 @@ const server = http.createServer(async (req, res) => {
       parts[0] === 'api' &&
       parts[1] === 'sites' &&
       parts[2] &&
+      parts[3] === 'work-day-media'
+    ) {
+      const siteId = safeSiteId(parts[2])
+      if (!siteId) {
+        sendJson(res, 400, { error: 'bad_site_id' })
+        return
+      }
+      const baseDir = path.join(DATA_ROOT, 'sites', siteId, 'work-day-blobs')
+      const metaPath = path.join(baseDir, 'meta.json')
+
+      if (parts.length === 4 && req.method === 'POST') {
+        if (!checkWrite(req, res)) return
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        const id = safeMediaId(body?.id)
+        const dataBase64 = typeof body?.dataBase64 === 'string' ? body.dataBase64 : ''
+        const kind = body?.kind === 'video' ? 'video' : body?.kind === 'photo' ? 'photo' : null
+        const name = typeof body?.name === 'string' ? body.name.trim() : ''
+        const mime =
+          typeof body?.mime === 'string' && body.mime.trim()
+            ? body.mime.trim()
+            : kind === 'video'
+              ? 'video/mp4'
+              : 'image/jpeg'
+        if (!id || !kind || !name || !dataBase64) {
+          sendJson(res, 400, { error: 'invalid_work_day_media' })
+          return
+        }
+        const buf = Buffer.from(dataBase64, 'base64')
+        if (!buf.length) {
+          sendJson(res, 400, { error: 'empty_payload' })
+          return
+        }
+        await fs.mkdir(baseDir, { recursive: true })
+        await fs.writeFile(path.join(baseDir, id), buf)
+        const meta = (await readJsonObject(metaPath)) || {}
+        meta[id] = { id, kind, name, mime, sizeBytes: buf.length }
+        await writeJsonFile(metaPath, meta)
+        sendJson(res, 200, { ok: true })
+        return
+      }
+
+      if (parts.length === 6 && parts[5] === 'blob' && req.method === 'GET') {
+        const mediaId = safeMediaId(parts[4])
+        if (!mediaId) {
+          sendJson(res, 400, { error: 'bad_id' })
+          return
+        }
+        const meta = (await readJsonObject(metaPath)) || {}
+        const row = meta[mediaId]
+        const mime =
+          row && typeof row === 'object' && typeof /** @type {{mime?:unknown}} */ (row).mime === 'string'
+            ? /** @type {{mime:string}} */ (row).mime
+            : 'application/octet-stream'
+        try {
+          const buf = await fs.readFile(path.join(baseDir, mediaId))
+          setCors(res)
+          res.statusCode = 200
+          res.setHeader('Content-Type', mime)
+          res.setHeader('Cache-Control', 'public, max-age=86400')
+          res.end(buf)
+        } catch (e) {
+          if (/** @type {NodeJS.ErrnoException} */ (e).code === 'ENOENT') {
+            sendJson(res, 404, { error: 'not_found' })
+            return
+          }
+          throw e
+        }
+        return
+      }
+    }
+
+    if (
+      parts[0] === 'api' &&
+      parts[1] === 'sites' &&
+      parts[2] &&
       parts[3] === 'procurement-requests'
     ) {
       const siteId = safeSiteId(parts[2])

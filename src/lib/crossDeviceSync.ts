@@ -79,9 +79,20 @@ function parseOverridesMap(raw: Record<string, unknown>): Record<string, Vehicle
 }
 
 let started = false
+let visibilityBound = false
 
 export async function bootstrapCrossDeviceSync(): Promise<void> {
-  if (started || typeof window === 'undefined') return
+  if (typeof window === 'undefined') return
+  if (!visibilityBound) {
+    visibilityBound = true
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        started = false
+        void bootstrapCrossDeviceSync()
+      }
+    })
+  }
+  if (started) return
   started = true
 
   const remoteReg = await fetchFleetRegistryRemote()
@@ -92,8 +103,6 @@ export async function bootstrapCrossDeviceSync(): Promise<void> {
       await putFleetRegistryRemote(local)
     } else if (!registryEmpty(parsed)) {
       saveRegistry(parsed, { syncRemote: false })
-    } else if (registryEmpty(parsed) && registryEmpty(local)) {
-      /* оба пустые — оставляем mock */
     }
   }
 

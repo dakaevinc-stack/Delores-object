@@ -30,7 +30,7 @@ import {
   loadWorkDayPlan,
   syncWorkDayPlanFromServer,
   removeAssignment,
-  upsertAssignment,
+  upsertAssignmentAndSync,
 } from '../../lib/workDayPlanRepository'
 import styles from './SiteWorkDayPlanSection.module.css'
 
@@ -130,14 +130,24 @@ export function SiteWorkDayPlanSection({
 
   useEffect(() => {
     let cancelled = false
-    setAssignments(loadWorkDayPlan(siteId).assignments)
-    void (async () => {
+    const pull = async () => {
       const synced = await syncWorkDayPlanFromServer(siteId)
-      if (cancelled || !synced) return
+      if (cancelled) return
       replaceAssignments(synced.assignments)
-    })()
+    }
+    setAssignments(loadWorkDayPlan(siteId).assignments)
+    void pull()
+    const timer = window.setInterval(() => {
+      void pull()
+    }, 10_000)
+    const onVis = () => {
+      if (document.visibilityState === 'visible') void pull()
+    }
+    document.addEventListener('visibilitychange', onVis)
     return () => {
       cancelled = true
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVis)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- тянем план при смене объекта
   }, [siteId])
@@ -150,7 +160,7 @@ export function SiteWorkDayPlanSection({
       const cur = prev.find((a) => a.id === assignmentId)
       if (!cur) return prev
       const next = fn(cur)
-      upsertAssignment(siteId, next)
+      void upsertAssignmentAndSync(siteId, next)
       const list = prev.map((a) => (a.id === next.id ? next : a))
       onAssignmentsChange?.(list)
       return list
@@ -401,11 +411,13 @@ export function SiteWorkDayPlanSection({
           planItems={planItems}
           onClose={() => setAssignOpen(false)}
           onSave={(a) => {
-            upsertAssignment(siteId, a)
-            replaceAssignments(loadWorkDayPlan(siteId).assignments)
-            setAssignOpen(false)
-            setCursor(parseDateKey(a.dateKey))
-            setView('day')
+            void (async () => {
+              const { bundle } = await upsertAssignmentAndSync(siteId, a)
+              replaceAssignments(bundle.assignments)
+              setAssignOpen(false)
+              setCursor(parseDateKey(a.dateKey))
+              setView('day')
+            })()
           }}
         />
       ) : null}

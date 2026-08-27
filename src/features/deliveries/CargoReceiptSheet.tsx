@@ -68,15 +68,25 @@ async function persistMedia(items: readonly CargoReceiptMedia[]): Promise<CargoR
         if (item.previewUrl.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl)
         out.push({ ...item, previewUrl: dataUrl })
       } else if (blob.size > MAX_VIDEO_BYTES) {
-        out.push(item)
+        if (item.previewUrl.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl)
+        throw new Error(
+          'Видео слишком большое для общей базы (макс. ~5 МБ). Сожмите ролик или приложите фото.',
+        )
       } else {
         const dataUrl = await blobToDataUrl(blob)
         if (item.previewUrl.startsWith('blob:')) URL.revokeObjectURL(item.previewUrl)
         out.push({ ...item, previewUrl: dataUrl })
       }
-    } catch {
+    } catch (e) {
+      if (e instanceof Error && e.message.includes('слишком большое')) throw e
+      if (item.previewUrl.startsWith('blob:')) {
+        throw new Error('Не удалось сохранить медиа для других устройств. Попробуйте ещё раз.')
+      }
       out.push(item)
     }
+  }
+  if (out.some((m) => m.previewUrl.startsWith('blob:'))) {
+    throw new Error('Медиа не ушло в общую базу. Попробуйте ещё раз или уменьшите файл.')
   }
   return out
 }
@@ -157,8 +167,8 @@ export function CargoReceiptSheet({ request, onClose, onSubmit }: Props) {
     try {
       const persisted = await persistMedia(made.receipt.media)
       await onSubmit({ ...made.receipt, media: persisted })
-    } catch {
-      setError('Не получилось сохранить. Попробуй ещё раз.')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не получилось сохранить. Попробуй ещё раз.')
       setBusy(false)
     }
   }
