@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useState, type FormEvent } from 'react'
 import {
   sessionInitials,
   type LocalSession,
@@ -8,7 +8,7 @@ import {
   signOutLocalSession,
   useLocalSession,
 } from '../../lib/useLocalSession'
-import { LoginIntroOverlay } from './LoginIntroOverlay'
+import { LoginIntroOverlay, preloadLoginIntro } from './LoginIntroOverlay'
 import styles from './MastheadSignIn.module.css'
 
 type Props = {
@@ -73,6 +73,10 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [showIntro, setShowIntro] = useState(false)
+
+  useEffect(() => {
+    if (!session) preloadLoginIntro()
+  }, [session])
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()

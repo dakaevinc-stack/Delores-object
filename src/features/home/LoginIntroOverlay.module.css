@@ -1,6 +1,6 @@
-/* Полноэкранный вход: весь кадр ролика виден на любом устройстве.
-   object-fit: contain — без обрезки центра на телефоне;
-   поля по краям — фирменный navy. */
+/* Полноэкранный вход.
+   Телефон — вертикальный 9:16 edge-to-edge (как Reels).
+   Десктоп — contain по центру. */
 
 .screen {
   position: fixed;
@@ -11,11 +11,6 @@
   justify-content: center;
   box-sizing: border-box;
   margin: 0;
-  padding:
-    max(0px, env(safe-area-inset-top))
-    max(0px, env(safe-area-inset-right))
-    max(0px, env(safe-area-inset-bottom))
-    max(0px, env(safe-area-inset-left));
   background: #0a1224;
   width: 100%;
   height: 100%;
@@ -24,9 +19,21 @@
   min-height: 100vh;
   overflow: hidden;
   opacity: 1;
-  transition: opacity 0.4s ease;
+  transition: opacity 0.32s ease;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+.screenMobile {
+  padding: 0;
+}
+
+.screenDesktop {
+  padding:
+    max(0px, env(safe-area-inset-top))
+    max(0px, env(safe-area-inset-right))
+    max(0px, env(safe-area-inset-bottom))
+    max(0px, env(safe-area-inset-left));
 }
 
 .screenOut {
@@ -36,22 +43,33 @@
 
 .video {
   display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: #0a1224;
+  pointer-events: none;
+}
+
+/* Reels: кадр на весь экран, без полей */
+.screenMobile .video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+}
+
+/* Ноут / монитор: весь кадр 16:9 */
+.screenDesktop .video {
   width: 100%;
   height: 100%;
   max-width: 100%;
   max-height: 100%;
-  margin: 0;
-  padding: 0;
-  border: 0;
   object-fit: contain;
   object-position: center center;
-  background: transparent;
-  pointer-events: none;
 }
 
-/* Широкие мониторы / TV: не раздувать ролик сверх естественной плотности. */
 @media (min-width: 1400px) and (min-aspect-ratio: 16/9) {
-  .video {
+  .screenDesktop .video {
     width: min(100%, 1600px);
     height: min(100%, calc(1600px * 9 / 16));
   }
