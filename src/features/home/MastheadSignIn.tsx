@@ -8,7 +8,8 @@ import {
   signOutLocalSession,
   useLocalSession,
 } from '../../lib/useLocalSession'
-import { LoginIntroOverlay, preloadLoginIntro } from './LoginIntroOverlay'
+import { requestLoginIntro, clearLoginIntroPending } from './loginIntroPending'
+import { preloadLoginIntro } from './LoginIntroOverlay'
 import styles from './MastheadSignIn.module.css'
 
 const REMEMBERED_LOGIN_KEY = 'deloresh-remembered-login:v1'
@@ -93,7 +94,6 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
   const [reveal, setReveal] = useState(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
-  const [showIntro, setShowIntro] = useState(false)
 
   useEffect(() => {
     if (!session) {
@@ -117,8 +117,10 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
     setBusy(true)
     setMessage(null)
     window.setTimeout(() => {
+      requestLoginIntro()
       const result = signInWithCredentials(user, password)
       if (!result.ok) {
+        clearLoginIntroPending()
         setMessage(result.message)
         setBusy(false)
         return
@@ -127,7 +129,6 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
       setPassword('')
       setLogin(user)
       setBusy(false)
-      setShowIntro(true)
       onSessionChange?.(result.session)
     }, 180)
   }
@@ -140,26 +141,21 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
 
   if (session) {
     return (
-      <>
-        {showIntro ? (
-          <LoginIntroOverlay onDone={() => setShowIntro(false)} />
-        ) : null}
-        <div
-          className={[styles.session, className].filter(Boolean).join(' ')}
-          aria-label={`Профиль: ${session.fullName}`}
-        >
-          <span className={styles.sessionAvatar} aria-hidden>
-            <span className={styles.sessionInitials}>{sessionInitials(session.fullName)}</span>
-          </span>
-          <div className={styles.sessionCopy}>
-            <p className={styles.sessionKicker}>{session.dutyLabel}</p>
-            <p className={styles.sessionName}>{session.fullName}</p>
-          </div>
-          <button className={styles.signOut} type="button" onClick={onSignOut}>
-            Выйти
-          </button>
+      <div
+        className={[styles.session, className].filter(Boolean).join(' ')}
+        aria-label={`Профиль: ${session.fullName}`}
+      >
+        <span className={styles.sessionAvatar} aria-hidden>
+          <span className={styles.sessionInitials}>{sessionInitials(session.fullName)}</span>
+        </span>
+        <div className={styles.sessionCopy}>
+          <p className={styles.sessionKicker}>{session.dutyLabel}</p>
+          <p className={styles.sessionName}>{session.fullName}</p>
         </div>
-      </>
+        <button className={styles.signOut} type="button" onClick={onSignOut}>
+          Выйти
+        </button>
+      </div>
     )
   }
 

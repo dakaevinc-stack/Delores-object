@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { LoginIntroHost } from '../features/home/LoginIntroHost'
 import { RequireAuth, RequireFleetAccess } from './RequireAuth'
 
 const HomePage = lazy(() =>
@@ -35,6 +36,7 @@ function RouteFallback() {
 export function App() {
   return (
     <Suspense fallback={<RouteFallback />}>
+      <LoginIntroHost />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route
