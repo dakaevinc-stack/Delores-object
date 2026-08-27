@@ -637,23 +637,45 @@
     flex-direction: column;
     align-items: stretch;
     gap: 0;
+    /* симметрия: базовый +6px слева ломал вертикаль на мобилке */
+    padding-left: var(--masthead-pad-x);
+    padding-right: var(--masthead-pad-x);
   }
 
   .pageGuest .brandAuth {
-    /* Плотный блок по центру — без «дыр» между логотипом, датой и формой */
+    /*
+     * Одна колонка: логотип / дата / форма — одни и те же края.
+     * Мечта перфекциониста: общая ширина + общий внутренний inset.
+     */
+    --guest-col: min(100%, 22.75rem);
+    --guest-inset: 14px;
     justify-content: center;
+    align-items: center;
     gap: 12px;
     padding-top: 16px;
     padding-bottom: 20px;
   }
 
+  .pageGuest .brandCell,
+  .pageGuest .mastheadToday,
+  .pageGuest .signIn {
+    width: 100%;
+    max-width: var(--guest-col);
+    margin-inline: 0;
+    padding-left: 0;
+    padding-right: 0;
+    box-sizing: border-box;
+  }
+
   .pageGuest .brandCell {
     padding: 0;
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   .pageGuest .brandLogo {
-    width: min(196px, 58vw);
+    /* та же ширина, что у полей — левый край совпадает */
+    width: 100%;
+    max-width: 100%;
   }
 
   .pageGuest .mastheadToday {
@@ -663,49 +685,46 @@
     flex: 0 0 auto;
   }
 
+  .pageGuest .todayGlass {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
   .pageGuest .todayCore {
-    padding: 10px 14px;
+    /* тот же inset, что у текста в инпутах (14px справа / оптика слева) */
+    justify-content: flex-start;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px var(--guest-inset);
+    text-align: left;
   }
 
   .pageGuest .signIn {
-    padding: 0;
     flex: 0 0 auto;
-    width: 100%;
-    max-width: 380px;
-    margin-inline: auto;
   }
 
   /* Короткий экран (SE / mini) — ещё плотнее */
   @media (max-height: 700px) {
     .pageGuest .brandAuth {
+      --guest-col: min(100%, 20.5rem);
       gap: 10px;
       padding-top: 10px;
       padding-bottom: 12px;
     }
 
-    .pageGuest .brandLogo {
-      width: min(156px, 52vw);
-    }
-
     .pageGuest .todayCore {
-      padding: 8px 12px;
+      padding-block: 9px;
     }
   }
 
   /* Высокий экран (Pro Max и аналоги) — чуть крупнее, но без растяжки gap */
   @media (min-height: 820px) {
     .pageGuest .brandAuth {
+      --guest-col: min(100%, 24rem);
       gap: 14px;
       padding-top: 20px;
       padding-bottom: 24px;
-    }
-
-    .pageGuest .brandLogo {
-      width: min(220px, 56vw);
-    }
-
-    .pageGuest .signIn {
-      max-width: 400px;
     }
   }
 
@@ -739,7 +758,7 @@
 
   .todayCore {
     flex-direction: row;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     justify-content: flex-start;
     gap: 0;
