@@ -1,4 +1,4 @@
-/* Как splash WB: ролик edge-to-edge, без blur и без рамок. */
+/* Интро edge-to-edge: любой аспект ролика закрывает экран (cover), без рамок и полос. */
 
 .screen {
   position: fixed;
@@ -8,6 +8,8 @@
   margin: 0;
   padding: 0;
   background: #c5c8cb;
+  width: 100%;
+  height: 100%;
   width: 100dvw;
   height: 100dvh;
   min-height: 100vh;
@@ -23,7 +25,8 @@
   pointer-events: none;
 }
 
-.stage {
+.stage,
+.frame {
   position: absolute;
   inset: 0;
   margin: 0;
@@ -32,23 +35,17 @@
   background: #c5c8cb;
 }
 
-.frame {
+.video {
   position: absolute;
   inset: 0;
-  z-index: 1;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-}
-
-.video {
   display: block;
   margin: 0;
   padding: 0;
   border: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  /* Рамка бренда на весь экран при любом аспекте — без полос и линий */
+  object-fit: fill;
   object-position: center center;
   background: #c5c8cb;
   pointer-events: none;
