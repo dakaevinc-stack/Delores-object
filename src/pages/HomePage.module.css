@@ -718,16 +718,6 @@
     text-align: center;
   }
 
-  .pageGuest .todayValue::before {
-    margin-left: 0;
-    margin-right: 10px;
-  }
-
-  .pageGuest .todayMeta::before {
-    margin-left: 0;
-    margin-right: 7px;
-  }
-
   .pageGuest .signIn {
     flex: 0 0 auto;
     padding: 0;
@@ -831,14 +821,23 @@
     display: none;
   }
 
-  .todayValue::before {
+  .todayValue::before,
+  .todayValue::after {
     content: '';
     display: inline-block;
     width: 1px;
     height: 11px;
-    margin: 0 10px 0 0;
     vertical-align: -1px;
     background: var(--border-strong);
+  }
+
+  /* Симметрия: одинаковые черточки слева и справа от даты */
+  .todayValue::before {
+    margin: 0 10px 0 0;
+  }
+
+  .todayValue::after {
+    margin: 0 0 0 10px;
   }
 
   .todayMeta {
@@ -846,11 +845,7 @@
   }
 
   .todayMeta::before {
-    content: '·';
-    display: inline-block;
-    margin: 0 7px 0 0;
-    color: rgba(23, 42, 77, 0.32);
-    font-weight: 400;
+    display: none;
   }
 
   .signIn {
