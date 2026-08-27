@@ -1,4 +1,4 @@
-/* Интро без «рамки»: оригинал по центру, фон студии на весь экран. */
+/* Интро: весь логотип + слоган, чуть отдалены от краёв экрана. */
 
 .screen {
   position: fixed;
@@ -23,8 +23,7 @@
   pointer-events: none;
 }
 
-.stage,
-.frame {
+.stage {
   position: absolute;
   inset: 0;
   margin: 0;
@@ -33,17 +32,31 @@
   background: #c7cacd;
 }
 
-.video {
+.frame {
   position: absolute;
   inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  /* Небольшой отступ — лого и текст не упираются в края */
+  padding: clamp(12px, 3.5vw, 28px) clamp(14px, 4vw, 32px);
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+.video {
   display: block;
   margin: 0;
   padding: 0;
   border: 0;
   width: 100%;
   height: 100%;
-  /* Весь бренд-кадр целиком — без кропа и без композитной рамки */
-  object-fit: contain;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain !important;
   object-position: center center;
   background: transparent;
   pointer-events: none;

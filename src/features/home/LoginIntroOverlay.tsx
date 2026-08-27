@@ -46,7 +46,10 @@ export function LoginIntroOverlay({ onDone }: Props) {
 
     const video = getLoginIntroPlayer()
     video.className = styles.video
-    video.style.cssText = ''
+    // Сбрасываем скрытый preload-стиль и жёстко фиксируем contain —
+    // иначе на мобилках мог остаться cover и резать лого/текст.
+    video.style.cssText =
+      'display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;object-position:center center;background:transparent;border:0;margin:0;padding:0;pointer-events:none'
     video.muted = false
     video.defaultMuted = false
     video.volume = 1
