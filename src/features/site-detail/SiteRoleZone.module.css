@@ -5,13 +5,9 @@
 
 .head {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  column-gap: clamp(16px, 2.5vw, 28px);
-  row-gap: 12px;
+  display: block;
   margin-bottom: var(--block-gap);
-  padding: 22px 24px 20px 26px;
+  padding: 16px 16px 52px 18px;
   border-radius: 22px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   background:
@@ -21,6 +17,36 @@
     0 1px 0 rgba(255, 255, 255, 0.9) inset,
     0 18px 40px rgba(15, 23, 42, 0.06);
   overflow: hidden;
+}
+
+.head .actions {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  z-index: 2;
+}
+
+@media (min-width: 861px) {
+  .head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: clamp(16px, 2.5vw, 28px);
+    row-gap: 12px;
+    padding: 22px 24px 20px 26px;
+  }
+
+  .head .actions {
+    position: static;
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .head .actions .headToggle {
+    width: auto;
+    margin-left: 4px;
+    align-self: center;
+  }
 }
 
 .headRail {
@@ -203,33 +229,20 @@
   color: #1d4ed8;
 }
 
-@media (max-width: 860px) {
-  .head {
-    grid-template-columns: 1fr;
-    padding: 16px 16px 16px 18px;
-  }
-
-  .actions {
-    width: 100%;
-    justify-content: stretch;
-  }
-
-  .actions > * {
-    width: 100%;
-  }
-
-  .actions .headToggle {
-    width: auto;
-    margin-left: auto;
-    align-self: flex-end;
-  }
-}
-
 @media (max-width: 640px) {
   .actions :global(button.toolbarCta),
   .actions :global(a.toolbarCta) {
     width: 100%;
     justify-content: center;
+  }
+
+  .panelHead {
+    min-height: 188px;
+    padding:
+      14px
+      max(14px, env(safe-area-inset-right, 0px))
+      16px
+      max(18px, env(safe-area-inset-left, 0px));
   }
 }
 
@@ -294,8 +307,9 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 16px;
-  row-gap: 12px;
-  padding: 22px 24px 18px 28px;
+  box-sizing: border-box;
+  min-height: 188px;
+  padding: 14px 14px 16px 18px;
   border-bottom: 1px solid rgba(15, 23, 42, 0.07);
   background: linear-gradient(
     180deg,
@@ -304,14 +318,46 @@
   );
 }
 
+.panelHead .headText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.panelHead .headText .kicker,
+.panelHead .headText .title,
+.panelHead .headText .lead {
+  margin: 0;
+}
+
 .panelHead .actions {
-  justify-self: end;
+  position: static;
   align-self: center;
+  justify-self: end;
+  margin: 0;
+  padding: 0;
+  z-index: 2;
+  flex-shrink: 0;
 }
 
 .zonePanel[data-collapsed='true'] .panelHead {
   border-bottom: 0;
-  padding-bottom: 20px;
+}
+
+@media (min-width: 861px) {
+  .panelHead {
+    height: 136px;
+    min-height: 136px;
+    padding: 20px 24px 16px 28px;
+  }
+
+  .panelHead .headText .lead {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
 }
 
 .panelBody {
@@ -488,29 +534,9 @@
   box-shadow: none;
 }
 
-@media (max-width: 860px) {
-  .panelHead {
-    grid-template-columns: 1fr;
-    padding: 16px 16px 14px 18px;
-  }
-
-  .panelBody {
-    padding: 14px 12px 16px 14px;
-    gap: 14px;
-  }
-}
-
 @media (max-width: 640px) {
   .zonePanel {
     border-radius: 18px;
-  }
-
-  .panelHead {
-    padding:
-      14px
-      max(14px, env(safe-area-inset-right, 0px))
-      12px
-      max(18px, env(safe-area-inset-left, 0px));
   }
 
   .panelBody {

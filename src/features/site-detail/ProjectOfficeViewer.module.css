@@ -1,0 +1,154 @@
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  background: rgba(8, 12, 20, 0.55);
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.viewer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #f7f8fa;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  background: #fff;
+}
+
+.kicker {
+  margin: 0 0 2px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #b42318;
+}
+
+.title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.btn,
+.btnClose,
+.sheetSelect {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #0f172a;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btnClose {
+  border-color: rgba(220, 38, 38, 0.2);
+  color: #dc2626;
+}
+
+.sheetSelect {
+  max-width: 180px;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+  background: #eef1f5;
+}
+
+.status {
+  margin: 24px auto;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.errorBox {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  margin-top: 48px;
+}
+
+.image {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 100px);
+  margin: 0 auto;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.html {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  overflow: auto;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #0f172a;
+}
+
+.html :global(table) {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  font-size: 12px;
+}
+
+.html :global(td),
+.html :global(th) {
+  border: 1px solid #d7dde7;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+
+.html :global(p) {
+  margin: 0 0 0.75em;
+}
+
+.text {
+  margin: 0;
+  padding: 16px;
+  background: #fff;
+  border-radius: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #0f172a;
+}

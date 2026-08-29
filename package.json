@@ -4,10 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host --port 5173 --strictPort",
+    "dev": "node scripts/copy-dwg-wasm.mjs && node scripts/patch-cadview-hatch.mjs && vite --host --port 5173 --strictPort",
     "dev:site-forms-api": "node server/site-forms.mjs",
     "dev:mobile": "bash scripts/mobile-dev.sh",
-    "prebuild": "node scripts/generate-pwa-icons.mjs",
+    "postinstall": "node scripts/patch-cadview-hatch.mjs",
+    "prebuild": "node scripts/generate-pwa-icons.mjs && node scripts/copy-dwg-wasm.mjs && node scripts/patch-cadview-hatch.mjs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
@@ -15,6 +16,7 @@
     "check": "npm run lint && npm run test && npm run build",
     "preview": "vite preview --host 0.0.0.0 --port 4173 --strictPort",
     "launch": "npm run build && npm run preview",
+    "generate:dwg-previews": "node scripts/generate-dwg-previews.mjs",
     "deploy:server": "bash scripts/deploy/from-mac.sh"
   },
   "dependencies": {
@@ -22,6 +24,7 @@
     "@cadview/dwg": "^0.2.0",
     "@cadview/react": "^0.5.0",
     "leaflet": "^1.9.4",
+    "mammoth": "^1.12.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.14.1",

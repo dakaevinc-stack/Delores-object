@@ -36,9 +36,9 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 16px;
-  row-gap: 12px;
-  /* Как у zonePanel / summary — одна вертикаль «Открыть» */
-  padding: 22px 24px 18px 28px;
+  box-sizing: border-box;
+  min-height: 188px;
+  padding: 14px 14px 16px 18px;
 }
 
 .shell[data-collapsed='true'] .shellHead {
@@ -47,15 +47,49 @@
 
 .shellOpen .shellHead {
   border-bottom: 1px solid rgba(15, 23, 42, 0.07);
-  padding-bottom: 14px;
+  padding-bottom: 16px;
 }
 
 .shellHeadCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   min-width: 0;
 }
 
+.shellHeadCopy .kicker,
+.shellHeadCopy .title,
+.shellHeadCopy .lead {
+  margin: 0;
+}
+
+.headToggle {
+  position: static;
+  align-self: center;
+  justify-self: end;
+  margin: 0;
+  padding: 0;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+@media (min-width: 861px) {
+  .shellHead {
+    height: 136px;
+    min-height: 136px;
+    padding: 20px 24px 16px 28px;
+  }
+
+  .shellHeadCopy .lead {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+}
+
 .kicker {
-  margin: 0 0 4px;
+  margin: 0;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -73,7 +107,7 @@
 }
 
 .title {
-  margin: 0 0 4px;
+  margin: 0;
   font-size: clamp(1.15rem, 1.05rem + 0.4vw, 1.35rem);
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -88,11 +122,14 @@
   color: var(--muted);
 }
 
-.headToggle {
-  flex-shrink: 0;
-  justify-self: end;
-  align-self: center;
-  margin: 0;
+@media (min-width: 861px) {
+  .shellHeadCopy .kicker {
+    margin-bottom: 0;
+  }
+
+  .shellHeadCopy .title {
+    margin-bottom: 0;
+  }
 }
 
 .shellBody {
@@ -453,16 +490,20 @@
 
 @media (max-width: 640px) {
   .shellHead {
-    padding: 16px 16px 14px 18px;
+    min-height: 188px;
+    padding:
+      14px
+      max(14px, env(safe-area-inset-right, 0px))
+      16px
+      max(18px, env(safe-area-inset-left, 0px));
   }
 
   .shellBody {
-    padding: 12px 10px 14px 12px;
+    padding:
+      12px
+      max(10px, env(safe-area-inset-right, 0px))
+      14px
+      max(14px, env(safe-area-inset-left, 0px));
     gap: 12px;
-  }
-
-  .headToggle {
-    justify-self: start;
-    align-self: center;
   }
 }

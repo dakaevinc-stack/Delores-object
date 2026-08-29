@@ -1,11 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { CadViewer, type CadViewerRef } from '@cadview/react'
-import { convertDwgToDxf, dwgConverter, initWasm } from '@cadview/dwg'
-import { computeEntitiesBounds, fitToView as coreFitToView } from '@cadview/core'
+import { type CadViewerRef } from '@cadview/react'
+import {
+  evictDwgPreviewMemoryForFile,
+  hasDwgPreviewInMemory,
+  prefetchAllDwgPreviews,
+  prefetchDwgPreview,
+  prefetchDwgPngPreview,
+  getPrefetchedDwgPng,
+  resolveDwgDxfText,
+  warmDwgPreviewAfterUpload,
+  type DwgLoadPhase,
+} from '../../lib/dwgPreview'
+import { probeRasterPreviewBlank } from '../../lib/dwgRasterBlank'
+import { parsePngWorldMeta, type PngPreviewWorldMeta } from '../../lib/dwgPngBounds'
+import { fitCadViewerToDrawing } from '../../lib/dwgViewerFit'
+import { canPreviewInApp, projectOpenMode } from '../../lib/projectFileOpen'
+import { DwgViewerChrome } from './DwgViewerChrome'
+import { type DwgRasterViewerRef } from './DwgRasterViewer'
+import { ProjectOfficeViewer } from './ProjectOfficeViewer'
 import {
   collectDescendantIds,
   deleteProjectFile,
+  deleteDwgDxfPreviewsForFile,
   detectProjectFileKind,
   getProjectFileBlob,
   listProjectFilesBySite,
@@ -13,6 +30,7 @@ import {
   pruneProjectFilesToRemote,
   putProjectFile,
   putProjectFileMeta,
+  projectFileSyncSignature,
   type StoredSiteProjectFile,
 } from '../../lib/siteProjectFilesRepository'
 import {
@@ -21,6 +39,8 @@ import {
   describeRemoteWriteError,
   fetchProjectFileBlobRemote,
   fetchProjectFilesRemote,
+  fetchProjectFilePngPreviewRemote,
+  fetchProjectFilePngWorldMetaRemote,
   hasWriteSecret,
   projectFileBlobUrl,
 } from '../../lib/siteFormsApi'
@@ -48,10 +68,12 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`
 }
 
-function kindLabel(kind: StoredSiteProjectFile['kind']): string {
+function kindLabel(kind: StoredSiteProjectFile['kind'], name?: string): string {
   if (kind === 'pdf') return 'PDF'
   if (kind === 'dwg') return 'DWG'
   if (kind === 'folder') return 'Папка'
+  const ext = (name ?? '').split('.').pop()?.toUpperCase()
+  if (ext && ext.length <= 5) return ext
   return 'Файл'
 }
 
@@ -78,9 +100,11 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
   const [busy, setBusy] = useState(false)
   const [viewerPdf, setViewerPdf] = useState<ProjectAsset | null>(null)
   const [viewerDwg, setViewerDwg] = useState<ProjectAsset | null>(null)
-  const [dwgFile, setDwgFile] = useState<File | null>(null)
+  const [viewerOffice, setViewerOffice] = useState<ProjectAsset | null>(null)
   const [dwgDxfText, setDwgDxfText] = useState<string | null>(null)
   const [dwgLoadState, setDwgLoadState] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [dwgLoadPhase, setDwgLoadPhase] = useState<DwgLoadPhase | null>(null)
+  const [dwgErrorDetail, setDwgErrorDetail] = useState<string | null>(null)
   const [remoteActive, setRemoteActive] = useState(false)
   const [syncMessage, setSyncMessage] = useState<string | null>(null)
   const [folderOpen, setFolderOpen] = useState(false)
@@ -89,7 +113,13 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
   const [newFolderName, setNewFolderName] = useState('')
   const dwgLayersLoadedRef = useRef(false)
   const dwgCadRef = useRef<CadViewerRef | null>(null)
+  const dwgRasterRef = useRef<DwgRasterViewerRef | null>(null)
   const dwgCanvasWrapRef = useRef<HTMLDivElement | null>(null)
+  const dwgPngRevokeRef = useRef<string | null>(null)
+  const dwgOpenGenRef = useRef(0)
+  const [dwgPngObjectUrl, setDwgPngObjectUrl] = useState<string | null>(null)
+  const [dwgPngWorldMeta, setDwgPngWorldMeta] = useState<PngPreviewWorldMeta | null>(null)
+  const [dwgPngState, setDwgPngState] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle')
 
   const revokeIfBlobUrl = (url: string) => {
     if (url.startsWith('blob:')) URL.revokeObjectURL(url)
@@ -256,46 +286,113 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
         }
       }
       resolved.sort((a, b) => b.uploadedAtIso.localeCompare(a.uploadedAtIso))
-      const prevSig = prev.map((r) => `${r.kind}:${r.id}:${r.parentId ?? ''}:${r.sizeBytes}`).join('|')
-      const nextSig = resolved.map((r) => `${r.kind}:${r.id}:${r.parentId ?? ''}:${r.sizeBytes}`).join('|')
+      const prevSig = prev.map((r) => projectFileSyncSignature(r)).join('|')
+      const nextSig = resolved.map((r) => projectFileSyncSignature(r)).join('|')
       if (prevSig === nextSig) return prev
       return resolved
     })
   }, [siteId])
 
-  const smartFitToRoad = () => {
-    const viewer = dwgCadRef.current?.getViewer()
-    const wrap = dwgCanvasWrapRef.current
-    const width = wrap?.clientWidth ?? 0
-    const height = wrap?.clientHeight ?? 0
-
-    if (!viewer || !width || !height) {
-      dwgCadRef.current?.fitToView()
-      return
+  const clearDwgPngObjectUrl = () => {
+    if (dwgPngRevokeRef.current) {
+      URL.revokeObjectURL(dwgPngRevokeRef.current)
+      dwgPngRevokeRef.current = null
     }
-
-    const ROAD_TYPES = new Set(['LINE', 'LWPOLYLINE', 'POLYLINE'])
-    const entities = viewer.getEntities()
-    const roadEntities = entities.filter((e) => e.visible && ROAD_TYPES.has(e.type))
-
-    if (roadEntities.length === 0) {
-      dwgCadRef.current?.fitToView()
-      return
-    }
-
-    const bbox = computeEntitiesBounds(roadEntities, viewer.getDocument() ?? undefined)
-    if (!bbox) {
-      dwgCadRef.current?.fitToView()
-      return
-    }
-
-    const cx = (bbox.minX + bbox.maxX) / 2
-    const cy = (bbox.minY + bbox.maxY) / 2
-    const vt = coreFitToView(width, height, bbox.minX, bbox.minY, bbox.maxX, bbox.maxY, 0.06)
-
-    viewer.zoomTo(vt.scale)
-    viewer.panTo(cx, cy)
+    setDwgPngObjectUrl(null)
+    setDwgPngWorldMeta(null)
+    setDwgPngState('idle')
   }
+
+  const loadDwgPng = useCallback(
+    async (row: ProjectAsset, opts?: { regenerate?: boolean }) => {
+      const openGen = dwgOpenGenRef.current
+      if (!remoteActive) {
+        clearDwgPngObjectUrl()
+        return
+      }
+      // Любой DWG: если превью раньше упало — тихо пробуем снова при открытии.
+      const shouldRegenerate = opts?.regenerate === true || row.pngPreviewStatus === 'failed'
+      setDwgPngState('loading')
+      try {
+        const cacheKey = row.pngPreviewAtIso ?? row.uploadedAtIso
+        const prefetched =
+          !shouldRegenerate ? getPrefetchedDwgPng(row.id, cacheKey) : undefined
+        const fetched =
+          prefetched == null
+            ? await fetchProjectFilePngPreviewRemote(siteId, row.id, {
+                cacheKey,
+                regenerate: shouldRegenerate,
+                onWait: () => {
+                  if (dwgOpenGenRef.current === openGen) setDwgLoadPhase('converting')
+                },
+              })
+            : prefetched
+        if (dwgOpenGenRef.current !== openGen) return
+        const blob = fetched?.blob ?? null
+        let worldBounds =
+          fetched?.worldBounds ??
+          parsePngWorldMeta(row.pngWorldBounds) ??
+          null
+        if (!worldBounds?.pixelsPerUnit) {
+          worldBounds = (await fetchProjectFilePngWorldMetaRemote(siteId, row.id)) ?? worldBounds
+        }
+        if (dwgOpenGenRef.current !== openGen) return
+        if (!blob) {
+          setDwgPngState('failed')
+          return
+        }
+        if (dwgPngRevokeRef.current) URL.revokeObjectURL(dwgPngRevokeRef.current)
+        const url = URL.createObjectURL(blob)
+        if (await probeRasterPreviewBlank(url)) {
+          URL.revokeObjectURL(url)
+          if (dwgOpenGenRef.current === openGen) setDwgPngState('failed')
+          return
+        }
+        if (dwgOpenGenRef.current !== openGen) {
+          URL.revokeObjectURL(url)
+          return
+        }
+        dwgPngRevokeRef.current = url
+        setDwgPngObjectUrl(url)
+        setDwgPngWorldMeta(worldBounds)
+        setDwgPngState('ready')
+        void refreshFromRemote()
+      } catch {
+        if (dwgOpenGenRef.current === openGen) setDwgPngState('failed')
+      }
+    },
+    [remoteActive, siteId, refreshFromRemote],
+  )
+
+  const fitDwgToView = () => {
+    if (dwgPngState === 'ready' && dwgPngObjectUrl) {
+      dwgRasterRef.current?.fit()
+      return
+    }
+    fitCadViewerToDrawing(dwgCadRef.current, dwgCanvasWrapRef.current)
+  }
+
+  const handleDwgLayersLoaded = useCallback(
+    (entityCount: number) => {
+      dwgLayersLoadedRef.current = true
+      setDwgLoadPhase(null)
+      const hasPng = dwgPngState === 'ready' && Boolean(dwgPngObjectUrl)
+      if (entityCount === 0 && !hasPng && dwgPngState !== 'loading') {
+        setDwgErrorDetail(
+          'Не удалось показать цветной план. На сервере нужен Dwg2Png (ACadSharp.Image). Попробуйте «Обновить чертёж» или откройте DWG в AutoCAD.',
+        )
+        setDwgLoadState('error')
+        return
+      }
+      if (!hasPng && dwgPngState !== 'loading') {
+        fitCadViewerToDrawing(dwgCadRef.current, dwgCanvasWrapRef.current)
+        window.requestAnimationFrame(() =>
+          fitCadViewerToDrawing(dwgCadRef.current, dwgCanvasWrapRef.current),
+        )
+      }
+    },
+    [dwgPngObjectUrl, dwgPngState],
+  )
 
   useEffect(() => {
     assetsRef.current = assets
@@ -343,18 +440,20 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
       if (canUpload && pendingSyncIdsRef.current.size > 0) void loadAssets({ silent: true })
       else void refreshFromRemote()
     }
-    const id = window.setInterval(tick, 8000)
+    const id = window.setInterval(tick, 4000)
     return () => window.clearInterval(id)
   }, [canUpload, loadAssets, refreshFromRemote])
 
   useEffect(() => {
-    const anyOpen = viewerPdf != null || viewerDwg != null || folderOpen
+    const anyOpen =
+      viewerPdf != null || viewerDwg != null || viewerOffice != null || folderOpen
     if (!anyOpen) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (viewerPdf || viewerDwg) {
+        if (viewerPdf || viewerDwg || viewerOffice) {
           setViewerPdf(null)
           setViewerDwg(null)
+          setViewerOffice(null)
         } else {
           setFolderOpen(false)
         }
@@ -367,15 +466,15 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
       document.removeEventListener('keydown', onKey)
       document.body.style.overflow = prevOverflow
     }
-  }, [viewerPdf, viewerDwg, folderOpen])
+  }, [viewerPdf, viewerDwg, viewerOffice, folderOpen])
 
   const hasLocalOnly = useMemo(() => assets.some((row) => row.url.startsWith('blob:')), [assets])
 
   const featuredDrawing = useMemo(() => {
     const dwgs = assets.filter((row) => row.kind === 'dwg')
     if (dwgs.length === 0) return null
-    // Основной чертёж — самый ранний DWG, остальные остаются в папке.
-    return [...dwgs].sort((a, b) => a.uploadedAtIso.localeCompare(b.uploadedAtIso))[0]
+    // Основной чертёж — последний загруженный DWG.
+    return [...dwgs].sort((a, b) => b.uploadedAtIso.localeCompare(a.uploadedAtIso))[0]
   }, [assets])
 
   const archiveFiles = useMemo(() => {
@@ -454,6 +553,31 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
 
         if (syncedToRemote) {
           await refreshFromRemote()
+          if (kind === 'dwg') {
+            setSyncMessage('Готовим чертёж к мгновенному открытию…')
+            try {
+              const remoteRows = await fetchProjectFilesRemote(siteId)
+              const remoteRow = remoteRows?.find((r) => r.id === record.id)
+              await warmDwgPreviewAfterUpload(
+                siteId,
+                remoteRow ?? record,
+                () => resolveProjectBlob(record.id),
+              )
+              setSyncMessage('Чертёж готов — откроется на всех устройствах')
+              window.setTimeout(() => {
+                setSyncMessage((msg) =>
+                  msg === 'Чертёж готов — откроется на всех устройствах' ? null : msg,
+                )
+              }, 2500)
+            } catch {
+              setSyncMessage('Чертёж загружен, превью догружается — откроется через несколько секунд.')
+            }
+          } else if (kind === 'pdf') {
+            setSyncMessage('PDF готов — откроется на всех устройствах')
+            window.setTimeout(() => {
+              setSyncMessage((msg) => (msg === 'PDF готов — откроется на всех устройствах' ? null : msg))
+            }, 2500)
+          }
         } else {
           const url = URL.createObjectURL(file)
           setAssets((prev) =>
@@ -544,6 +668,8 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
     }
     for (const id of toRemove) {
       pendingSyncIdsRef.current.delete(id)
+      evictDwgPreviewMemoryForFile(id)
+      await deleteDwgDxfPreviewsForFile(id)
       await deleteProjectFile(id)
     }
     setAssets((prev) => {
@@ -553,12 +679,14 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
       return prev.filter((item) => !toRemove.includes(item.id))
     })
     if (viewerPdf && toRemove.includes(viewerPdf.id)) setViewerPdf(null)
+    if (viewerOffice && toRemove.includes(viewerOffice.id)) setViewerOffice(null)
     if (viewerDwg && toRemove.includes(viewerDwg.id)) {
       setViewerDwg(null)
-      setDwgFile(null)
       setDwgDxfText(null)
       setDwgLoadState('idle')
+      setDwgLoadPhase(null)
       dwgLayersLoadedRef.current = false
+      clearDwgPngObjectUrl()
     }
     if (currentFolderId && toRemove.includes(currentFolderId)) {
       setCurrentFolderId(null)
@@ -566,63 +694,136 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
     if (serverReachable) void refreshFromRemote()
   }
 
-  const openDwgViewer = async (row: ProjectAsset) => {
+  const openDwgViewer = async (row: ProjectAsset, opts?: { regenerate?: boolean }) => {
+    const openGen = ++dwgOpenGenRef.current
     setViewerPdf(null)
+    setViewerOffice(null)
     setViewerDwg(row)
-    setDwgFile(null)
+    setDwgErrorDetail(null)
+    dwgLayersLoadedRef.current = false
+
+    const shouldRegenerate = opts?.regenerate === true
+    clearDwgPngObjectUrl()
+    void loadDwgPng(row, { regenerate: shouldRegenerate })
+
+    if (
+      !shouldRegenerate &&
+      hasDwgPreviewInMemory(row.id, row.uploadedAtIso, row.dxfPreviewAtIso)
+    ) {
+      try {
+        const dxfText = await resolveDwgDxfText(siteId, row.id, row.uploadedAtIso, {
+          remoteActive,
+          fetchBlob: () => resolveProjectBlob(row.id),
+          dxfPreviewAtIso: row.dxfPreviewAtIso,
+        })
+        if (dwgOpenGenRef.current !== openGen) return
+        setDwgDxfText(dxfText)
+        setDwgLoadState('idle')
+        setDwgLoadPhase(null)
+        return
+      } catch {
+        /* ниже обычный путь */
+      }
+    }
+
     setDwgDxfText(null)
     setDwgLoadState('loading')
-    dwgLayersLoadedRef.current = false
+    setDwgLoadPhase('fetching')
     try {
-      await initWasm()
-      const blob = await resolveProjectBlob(row.id)
-      if (!blob) throw new Error('dwg_blob_missing')
-      const file = new File([blob], row.name, { type: row.mime || 'application/acad' })
-      setDwgFile(file)
-    } catch {
+      const dxfText = await resolveDwgDxfText(siteId, row.id, row.uploadedAtIso, {
+        remoteActive,
+        fetchBlob: () => resolveProjectBlob(row.id),
+        onPhase: (phase) => {
+          if (dwgOpenGenRef.current === openGen) setDwgLoadPhase(phase)
+        },
+        dxfPreviewAtIso: row.dxfPreviewAtIso,
+        regenerate: shouldRegenerate,
+      })
+      if (dwgOpenGenRef.current !== openGen) return
+      setDwgDxfText(dxfText)
+      setDwgLoadState('idle')
+      if (shouldRegenerate) void refreshFromRemote()
+    } catch (err) {
+      if (dwgOpenGenRef.current !== openGen) return
+      const msg = err instanceof Error ? err.message : ''
+      setDwgErrorDetail(
+        msg.includes('conversion failed') ||
+          msg.includes('error code') ||
+          msg.includes('dxf_conversion_failed')
+          ? 'Не удалось разобрать этот DWG. Обновите страницу и попробуйте снова — сервер конвертирует файл заново. Если снова ошибка, напишите нам.'
+          : 'Не удалось открыть DWG. Обновите страницу и попробуйте ещё раз.',
+      )
       setDwgLoadState('error')
+      setDwgLoadPhase(null)
     }
   }
 
-  useEffect(() => {
-    if (!viewerDwg) return
-    if (!dwgFile && !dwgDxfText) return
-    const t = window.setTimeout(() => smartFitToRoad(), 180)
-    return () => window.clearTimeout(t)
-  }, [viewerDwg, dwgFile, dwgDxfText])
-
-  useEffect(() => {
-    if (!viewerDwg) return
-    if (dwgLoadState !== 'loading') return
-    if (!dwgFile) return
-    if (dwgDxfText) return
-
-    const currentDwgId = viewerDwg.id
-    let cancelled = false
-
-    const t = window.setTimeout(async () => {
-      if (cancelled) return
-      if (dwgLayersLoadedRef.current) return
-
-      try {
-        const blob = await resolveProjectBlob(currentDwgId)
-        if (!blob) throw new Error('dwg_blob_missing')
-        const arrayBuffer = await blob.arrayBuffer()
-        const dxfText = await convertDwgToDxf(arrayBuffer, { timeout: 60000 })
-        if (!dxfText || dxfText.trim().length === 0) throw new Error('dwg_to_dxf_empty')
-        if (cancelled) return
-        setDwgDxfText(dxfText)
-      } catch {
-        if (cancelled) return
-        setDwgLoadState('error')
-      }
-    }, 15000)
-
-    return () => {
-      cancelled = true
-      window.clearTimeout(t)
+  const openProjectAsset = (row: ProjectAsset) => {
+    const mode = projectOpenMode(row)
+    if (mode === 'pdf') {
+      setViewerDwg(null)
+      setViewerOffice(null)
+      setViewerPdf(row)
+      return
     }
-  }, [viewerDwg, dwgLoadState, dwgFile, dwgDxfText])
+    if (mode === 'dwg') {
+      void openDwgViewer(row)
+      return
+    }
+    if (mode === 'image' || mode === 'spreadsheet' || mode === 'word' || mode === 'text') {
+      setViewerPdf(null)
+      setViewerDwg(null)
+      setViewerOffice(row)
+      return
+    }
+    // Остальное — скачивание
+    const a = document.createElement('a')
+    a.href = row.url
+    a.download = row.name
+    a.rel = 'noopener'
+    a.click()
+  }
+
+  const warmDwgPreview = useCallback(
+    (row: Pick<
+      ProjectAsset,
+      'id' | 'uploadedAtIso' | 'dxfPreviewAtIso' | 'pngPreviewAtIso' | 'pngPreviewStatus'
+    >) => {
+      if (!remoteActive) return
+      prefetchDwgPreview(siteId, row.id, row.uploadedAtIso, {
+        remoteActive: true,
+        fetchBlob: () => resolveProjectBlob(row.id),
+        dxfPreviewAtIso: row.dxfPreviewAtIso,
+      })
+      prefetchDwgPngPreview(siteId, row.id, {
+        cacheKey: row.pngPreviewAtIso ?? row.uploadedAtIso,
+        pngPreviewStatus: row.pngPreviewStatus,
+      })
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- resolveProjectBlob из замыкания
+    [siteId, remoteActive],
+  )
+
+  useEffect(() => {
+    if (!viewerDwg) return
+    if (!dwgDxfText && dwgPngState !== 'ready') return
+    const t = window.setTimeout(() => fitDwgToView(), 180)
+    return () => window.clearTimeout(t)
+  }, [viewerDwg, dwgDxfText, dwgPngState, dwgPngObjectUrl])
+
+  useEffect(() => {
+    if (!featuredDrawing || featuredDrawing.kind !== 'dwg') return
+    warmDwgPreview(featuredDrawing)
+  }, [featuredDrawing, warmDwgPreview])
+
+  useEffect(() => {
+    if (!remoteActive || assets.length === 0) return
+    prefetchAllDwgPreviews(siteId, assets, {
+      remoteActive: true,
+      fetchBlob: (fileId) => resolveProjectBlob(fileId),
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- прогрев при смене списка файлов
+  }, [siteId, remoteActive, assets])
 
   return (
     <>
@@ -700,7 +901,8 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
                   <button
                     type="button"
                     className={styles.ctaPrimary}
-                    onClick={() => void openDwgViewer(featuredDrawing)}
+                    onClick={() => void openProjectAsset(featuredDrawing)}
+                    onPointerEnter={() => warmDwgPreview(featuredDrawing)}
                   >
                     Открыть
                   </button>
@@ -940,26 +1142,26 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
                     <ul className={styles.browserList}>
                       {archiveFiles.map((row) => {
                         const isFolder = row.kind === 'folder'
-                        const canOpen = row.kind === 'pdf' || row.kind === 'dwg'
+                        const previewable = !isFolder && canPreviewInApp(row)
                         return (
                           <li key={row.id} className={styles.browserRow}>
                             <button
                               type="button"
                               className={styles.fileMain}
-                              disabled={!isFolder && !canOpen}
                               onClick={() => {
                                 if (isFolder) {
                                   setCurrentFolderId(row.id)
                                   return
                                 }
-                                if (row.kind === 'pdf') {
-                                  setViewerDwg(null)
-                                  setViewerPdf(row)
-                                } else if (row.kind === 'dwg') {
-                                  void openDwgViewer(row)
-                                }
+                                openProjectAsset(row)
                               }}
-                              title={isFolder ? 'Открыть папку' : canOpen ? 'Открыть' : row.name}
+                              title={
+                                isFolder
+                                  ? 'Открыть папку'
+                                  : previewable
+                                    ? 'Открыть'
+                                    : 'Скачать'
+                              }
                             >
                               <span
                                 className={`${styles.fileIcon} ${
@@ -1010,7 +1212,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
                               </span>
                               <span className={styles.fileName}>{row.name}</span>
                             </button>
-                            <span className={styles.colType}>{kindLabel(row.kind)}</span>
+                            <span className={styles.colType}>{kindLabel(row.kind, row.name)}</span>
                             <span className={styles.colSize}>
                               {isFolder ? '—' : formatSize(row.sizeBytes)}
                             </span>
@@ -1027,18 +1229,11 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
                                   Открыть
                                 </button>
                               ) : null}
-                              {canOpen ? (
+                              {previewable ? (
                                 <button
                                   type="button"
                                   className={styles.rowBtn}
-                                  onClick={() => {
-                                    if (row.kind === 'pdf') {
-                                      setViewerDwg(null)
-                                      setViewerPdf(row)
-                                    } else {
-                                      void openDwgViewer(row)
-                                    }
-                                  }}
+                                  onClick={() => openProjectAsset(row)}
                                 >
                                   Открыть
                                 </button>
@@ -1119,53 +1314,91 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
                     <p className={styles.viewerTitleDark}>{viewerDwg.name}</p>
                   </div>
                   <div className={styles.viewerActions}>
-                    <button
-                      type="button"
-                      className={styles.viewerBtn}
-                      onClick={() => smartFitToRoad()}
-                    >
-                      Подогнать
-                    </button>
                     <a className={styles.viewerBtn} href={viewerDwg.url} download={viewerDwg.name}>
                       Скачать DWG
                     </a>
                     <button
                       type="button"
                       className={styles.viewerBtnClose}
-                      onClick={() => setViewerDwg(null)}
+                      onClick={() => {
+                        setViewerDwg(null)
+                        setDwgDxfText(null)
+                        setDwgLoadState('idle')
+                        setDwgLoadPhase(null)
+                        dwgLayersLoadedRef.current = false
+                        clearDwgPngObjectUrl()
+                      }}
                     >
                       Закрыть
                     </button>
                   </div>
                 </div>
                 <div className={styles.dwgCanvasWrap} ref={dwgCanvasWrapRef}>
+                  {viewerDwg?.dxfPreviewEngine === 'libredwg' ? (
+                    <p className={styles.dwgPreviewWarn}>
+                      Чертёж открыт в упрощённом режиме — часть линий может не отображаться. Нажмите
+                      «Обновить чертёж» или обратитесь к администратору (нужен ACadSharp на сервере).
+                    </p>
+                  ) : null}
                   {dwgLoadState === 'error' ? (
-                    <p className={styles.dwgLoading}>Не удалось открыть DWG в браузере.</p>
-                  ) : !dwgFile && !dwgDxfText ? (
-                    <p className={styles.dwgLoading}>Открываем DWG…</p>
+                    <div className={styles.dwgError}>
+                      <p className={styles.dwgLoading}>
+                        {dwgErrorDetail ?? 'Не удалось открыть DWG в браузере.'}
+                      </p>
+                      {viewerDwg ? (
+                        <a className={styles.viewerBtn} href={viewerDwg.url} download={viewerDwg.name}>
+                          Скачать DWG
+                        </a>
+                      ) : null}
+                    </div>
+                  ) : !dwgDxfText &&
+                    !(remoteActive && (dwgPngState === 'loading' || dwgPngState === 'ready')) ? (
+                    <p className={styles.dwgLoading}>
+                      {dwgLoadPhase === 'converting'
+                        ? 'Готовим чертёж к просмотру…'
+                        : 'Загружаем чертёж…'}
+                    </p>
                   ) : (
-                    <CadViewer
-                      ref={dwgCadRef}
-                      file={dwgDxfText ?? dwgFile}
-                      theme="dark"
-                      tool="pan"
-                      formatConverters={dwgFile ? [dwgConverter] : undefined}
-                      options={{
-                        minZoom: 0.001,
-                        maxZoom: 2000,
-                        zoomSpeed: 1.035,
+                    <DwgViewerChrome
+                      key={viewerDwg.id}
+                      dxfText={dwgDxfText ?? ''}
+                      pngUrl={dwgPngObjectUrl}
+                      pngState={dwgPngState}
+                      pngWorldMeta={dwgPngWorldMeta}
+                      preferPlan={remoteActive}
+                      drawingName={viewerDwg.name}
+                      cadRef={dwgCadRef}
+                      rasterRef={dwgRasterRef}
+                      wrapRef={dwgCanvasWrapRef}
+                      onLayersLoaded={handleDwgLayersLoaded}
+                      onRasterBlank={() => {
+                        if (dwgPngRevokeRef.current) {
+                          URL.revokeObjectURL(dwgPngRevokeRef.current)
+                          dwgPngRevokeRef.current = null
+                        }
+                        setDwgPngObjectUrl(null)
+                        setDwgPngState('failed')
                       }}
-                      onLayersLoaded={() => {
-                        dwgLayersLoadedRef.current = true
-                        setDwgLoadState('idle')
-                        smartFitToRoad()
-                      }}
-                      style={{ width: '100%', height: '100%' }}
                     />
                   )}
                 </div>
               </div>
             </div>,
+            document.body,
+          )
+        : null}
+
+      {viewerOffice
+        ? createPortal(
+            <ProjectOfficeViewer
+              name={viewerOffice.name}
+              url={viewerOffice.url}
+              mode={
+                projectOpenMode(viewerOffice) as 'image' | 'spreadsheet' | 'word' | 'text'
+              }
+              resolveBlob={() => resolveProjectBlob(viewerOffice.id)}
+              onClose={() => setViewerOffice(null)}
+            />,
             document.body,
           )
         : null}

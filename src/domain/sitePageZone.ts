@@ -43,7 +43,7 @@ export const SITE_PAGE_ZONES: Record<
   },
   brigadier: {
     kicker: 'Бригадир',
-    title: 'Смена на объекте',
+    title: 'Управление сменой',
     lead: 'Задания дня, поставки на сегодня и журнал смены.',
   },
   supply: {
@@ -139,11 +139,6 @@ export const ZONES_BY_DUTY: Record<SiteDutyRole, readonly SitePageZoneId[]> = {
 /** Зоны для должности — единая точка для фильтра страницы объекта. */
 export function zonesForDuty(duty: SiteDutyRole): readonly SitePageZoneId[] {
   return ZONES_BY_DUTY[duty]
-}
-
-/** Главная: портфельные KPI — руководству и ПТО. */
-export function homeShowsPortfolioKpi(duty: SiteDutyRole): boolean {
-  return duty === 'manager' || duty === 'deputy' || duty === 'pto'
 }
 
 /** Главная: хабы парка и приёмки — руководству и ПТО. */

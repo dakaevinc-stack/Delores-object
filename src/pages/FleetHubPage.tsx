@@ -77,26 +77,8 @@ export function FleetHubPage() {
             <span className={styles.backArrow} aria-hidden>
               ←
             </span>
-            На главный обзор
+            На главную
           </Link>
-          <button
-            type="button"
-            className={styles.addBtn}
-            onClick={() => setAdding(true)}
-            aria-label="Добавить технику в парк"
-          >
-            <span className={styles.addBtnIcon} aria-hidden>
-              <svg viewBox="0 0 20 20" width="14" height="14" fill="none">
-                <path
-                  d="M10 4v12M4 10h12"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </span>
-            <span className={styles.addBtnLabel}>Добавить технику</span>
-          </button>
         </div>
 
         <div className={styles.heroMain}>
@@ -104,8 +86,7 @@ export function FleetHubPage() {
             <p className={styles.kicker}>Парк техники</p>
             <h1 className={styles.title}>Спецтехника</h1>
             <p className={styles.lead}>
-              Выберите класс — откроется парк с госномерами, ТО, страховками и журналом
-              ремонтов.
+              Госномера, ТО, страховки и ремонты — по каждому классу техники.
             </p>
 
             <div className={styles.heroStats} aria-label="Сводка парка">
@@ -196,8 +177,31 @@ export function FleetHubPage() {
             <p className={styles.catalogEmptyText}>
               {filter === 'control'
                 ? 'Когда появятся просрочки ДК, страховки, открытые ремонты или пропуска — классы покажутся здесь'
-                : 'Нажмите «Добавить технику», чтобы завести первую единицу'}
+                : 'Добавьте первую единицу — класс появится в каталоге автоматически'}
             </p>
+            {filter !== 'control' ? (
+              <button
+                type="button"
+                className={styles.addCard}
+                onClick={() => setAdding(true)}
+                aria-label="Добавить технику в парк"
+              >
+                <span className={styles.addCardIcon} aria-hidden>
+                  <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                    <path
+                      d="M10 4v12M4 10h12"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </span>
+                <span className={styles.addCardBody}>
+                  <span className={styles.addCardTitle}>Добавить технику</span>
+                  <span className={styles.addCardMeta}>Новая единица в парк</span>
+                </span>
+              </button>
+            ) : null}
           </div>
         ) : (
           <div className={styles.grid}>
@@ -245,6 +249,39 @@ export function FleetHubPage() {
                 </Link>
               )
             })}
+            <button
+              type="button"
+              className={styles.addCard}
+              onClick={() => setAdding(true)}
+              aria-label="Добавить технику в парк"
+              style={{ ['--card-i' as string]: String(visibleCategories.length) }}
+            >
+              <span className={styles.addCardIcon} aria-hidden>
+                <svg viewBox="0 0 20 20" width="18" height="18" fill="none">
+                  <path
+                    d="M10 4v12M4 10h12"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </span>
+              <span className={styles.addCardBody}>
+                <span className={styles.addCardTitle}>Добавить технику</span>
+                <span className={styles.addCardMeta}>Новая единица в парк</span>
+              </span>
+              <span className={styles.addCardChevron} aria-hidden>
+                <svg viewBox="0 0 20 20" width="16" height="16" fill="none">
+                  <path
+                    d="M7 4l6 6-6 6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+            </button>
           </div>
         )}
       </section>

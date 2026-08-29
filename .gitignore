@@ -41,3 +41,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# .NET tool build outputs
+tools/**/bin/
+tools/**/obj/
+tools/**/publish/

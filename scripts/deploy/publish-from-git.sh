@@ -40,6 +40,15 @@ cd "$INSTALL_DIR"
 npm ci
 npm run build
 
+if [[ -f scripts/install-dwg2dxf.sh ]] && command -v dotnet >/dev/null 2>&1; then
+  bash scripts/install-dwg2dxf.sh || echo "Предупреждение: dwg2dxf (ACadSharp) не установлен — DWG-превью могут быть урезаны." >&2
+fi
+
+if [[ -f scripts/generate-dwg-previews.mjs ]]; then
+  DELORESH_SITE_FORMS_DATA="${DATA_ROOT:-/var/lib/deloresh/site-forms}" \
+    node scripts/generate-dwg-previews.mjs --force || true
+fi
+
 mkdir -p "$WEB_ROOT"
 rsync -a --delete "$INSTALL_DIR/dist/" "$WEB_ROOT/"
 

@@ -99,6 +99,18 @@
     padding-left: max(10px, env(safe-area-inset-left, 0px));
   }
 
+  .hubRow {
+    margin-bottom: 16px;
+    gap: 10px;
+  }
+
+  .objectsPanel {
+    margin-bottom: 16px;
+    padding-top: 16px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+    border-radius: 22px;
+  }
+
   .toolbar > * {
     min-width: 0;
     width: 100%;
@@ -862,19 +874,32 @@
   }
 }
 
-/* Парк техники + внешняя панель приёмки (две колонки на широких экранах) */
+/* Хабы: спецтехника, приёмка, объекты — один ряд на широких экранах */
 .hubRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 12px;
+  gap: 10px;
   align-items: stretch;
-  margin: 0 0 22px;
+  margin: 0 0 18px;
 }
 
-@media (min-width: 820px) {
+@media (min-width: 1100px) {
   .hubRow {
+    gap: 10px;
+  }
+
+  .hubRow[data-count='3'] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1099px) {
+  .hubRow[data-count='3'] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
+  }
+
+  .hubRow[data-count='3'] > :last-child {
+    grid-column: 1 / -1;
   }
 }
 
@@ -885,16 +910,23 @@
   }
 }
 
-.objectsSection {
+@media (min-width: 1100px) {
+  .hubRow[data-count='3'] > * {
+    min-height: 228px;
+  }
+}
+
+.objectsPanel {
   position: relative;
-  margin-top: 8px;
+  margin: 8px 0 22px;
   scroll-margin-top: 20px;
-  padding: 20px 18px 18px;
+  padding: 20px max(18px, env(safe-area-inset-right, 0px)) 18px
+    max(18px, env(safe-area-inset-left, 0px));
   border-radius: 28px;
   border: 1px solid rgba(255, 255, 255, 0.7);
   background:
     radial-gradient(70% 55% at 10% 8%, rgba(255, 255, 255, 0.95) 0%, transparent 58%),
-    radial-gradient(50% 45% at 92% 6%, rgba(238, 45, 58, 0.05) 0%, transparent 52%),
+    radial-gradient(50% 45% at 92% 6%, rgba(23, 42, 77, 0.06) 0%, transparent 52%),
     linear-gradient(
       165deg,
       rgba(255, 255, 255, 0.78) 0%,
@@ -908,19 +940,6 @@
     inset 0 -1px 0 rgba(15, 28, 54, 0.04),
     inset 0 0 0 1px rgba(255, 255, 255, 0.4),
     0 22px 56px rgba(10, 18, 36, 0.08);
-}
-
-.objectsHead {
-  margin-bottom: 12px;
-}
-
-.objectsTitle {
-  margin: 0;
-  font-size: var(--heading-block-size);
-  font-weight: var(--heading-block-weight);
-  letter-spacing: var(--heading-block-tracking);
-  line-height: var(--heading-block-line);
-  color: var(--text-strong);
 }
 
 .toolbar {

@@ -136,7 +136,6 @@ function attachmentMetaChips(
 
 export function SiteBrigadierSubmittedReportsSection({
   siteId,
-  siteName,
   reports,
   serverBacked = false,
   objectMediaManifest = [],
@@ -249,18 +248,6 @@ export function SiteBrigadierSubmittedReportsSection({
   const canCollapse = reportCount > 0 || mediaPool.length > 0
   const showBody = !canCollapse || sectionExpanded || (reportCount === 0 && mediaPool.length === 0)
 
-  const metaBits: string[] = []
-  if (reportCount > 0) {
-    metaBits.push(
-      `${reportCount} ${pluralRu(reportCount, ['отчёт', 'отчёта', 'отчётов'])}`,
-    )
-  }
-  if (photoCount > 0) {
-    metaBits.push(
-      `${photoCount} ${pluralRu(photoCount, ['фото', 'фото', 'фото'])}`,
-    )
-  }
-
   return (
     <section
       ref={sectionAnchorRef}
@@ -285,13 +272,7 @@ export function SiteBrigadierSubmittedReportsSection({
             Фото / Отчёты
           </h2>
           <p className={styles.lead}>
-            {metaBits.length > 0
-              ? metaBits.join(' · ')
-              : `Объект «${siteName}» — пока пусто`}
-            {'. '}
-            {canCollapse && !sectionExpanded
-              ? 'Откройте журнал.'
-              : 'Загрузка сверху, списки — по строке ниже.'}
+            Сменные отчёты и медиа с площадки.
           </p>
         </div>
         {canCollapse ? (

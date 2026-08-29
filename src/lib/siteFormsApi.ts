@@ -14,6 +14,12 @@ import {
 import { parseBrigadierReportsJson } from './brigadierReportsRepository'
 import type { StoredSiteMedia } from './mediaRepository'
 import { parseProcurementRequestsJson } from './procurementRequestsRepository'
+import { parsePngWorldMeta, type PngPreviewWorldMeta } from './dwgPngBounds'
+
+export type PngPreviewRemote = {
+  blob: Blob
+  worldBounds: PngPreviewWorldMeta | null
+}
 
 function apiBase(): string {
   const raw = import.meta.env.VITE_SITE_FORMS_API_BASE
@@ -670,31 +676,227 @@ export async function fetchProjectFileBlobRemote(
   }
 }
 
+export async function fetchProjectFileDxfPreviewRemote(
+  siteId: string,
+  fileId: string,
+  opts?: {
+    /** Сколько ждать серверную конвертацию (мс). По умолчанию 3 минуты. */
+    timeoutMs?: number
+    onWait?: () => void
+    /** Версия превью с сервера — сброс HTTP-кэша браузера */
+    dxfPreviewAtIso?: string
+    uploadedAtIso?: string
+    /** Принудительная пересборка на сервере (нужен write secret) */
+    regenerate?: boolean
+  },
+): Promise<string | null> {
+  const timeoutMs = opts?.timeoutMs ?? 180_000
+  const started = Date.now()
+  let attempt = 0
+  const cacheKey =
+    opts?.dxfPreviewAtIso?.trim() ||
+    opts?.uploadedAtIso?.trim() ||
+    String(Math.floor(started / 60_000))
+
+  while (Date.now() - started < timeoutMs) {
+    attempt += 1
+    try {
+      const qs = new URLSearchParams({ v: cacheKey })
+      if (opts?.regenerate) qs.set('regenerate', '1')
+      const res = await fetch(
+        `${siteUrl(siteId, `/project-files/${encodeURIComponent(fileId)}/dxf-preview`)}?${qs}`,
+        opts?.regenerate
+          ? { headers: writeHeaders(false) }
+          : undefined,
+      )
+      if (res.ok) {
+        const text = await res.text()
+        if (text.trim()) return text
+      }
+      // 404/500 — превью ещё готовится или одноразовый сбой; ждём и пробуем снова.
+      if (res.status === 404 || res.status === 500 || res.status === 502 || res.status === 503) {
+        opts?.onWait?.()
+        const delay = Math.min(2500, 400 + attempt * 350)
+        await new Promise((r) => setTimeout(r, delay))
+        continue
+      }
+      return null
+    } catch {
+      opts?.onWait?.()
+      await new Promise((r) => setTimeout(r, 800))
+    }
+  }
+  return null
+}
+
+export function projectFilePngPreviewUrl(
+  siteId: string,
+  fileId: string,
+  cacheKey?: string,
+): string {
+  const b = apiBase()
+  const qs = cacheKey ? `?v=${encodeURIComponent(cacheKey)}` : ''
+  return `${b}/api/sites/${encodeURIComponent(siteId)}/project-files/${encodeURIComponent(fileId)}/png-preview${qs}`
+}
+
+/** Точный масштаб PNG для измерений (pixelsPerUnit + bounds). */
+export async function fetchProjectFilePngWorldMetaRemote(
+  siteId: string,
+  fileId: string,
+): Promise<PngPreviewWorldMeta | null> {
+  try {
+    const res = await fetch(
+      siteUrl(siteId, `/project-files/${encodeURIComponent(fileId)}/png-world-meta`),
+    )
+    if (!res.ok) return null
+    return parsePngWorldMeta(await res.json())
+  } catch {
+    return null
+  }
+}
+
+/** Ждёт серверный PNG (ACadSharp.Image) — цветной план как в AutoCAD. */
+export async function fetchProjectFilePngPreviewRemote(
+  siteId: string,
+  fileId: string,
+  opts?: {
+    timeoutMs?: number
+    onWait?: () => void
+    cacheKey?: string
+    regenerate?: boolean
+  },
+): Promise<PngPreviewRemote | null> {
+  const timeoutMs = opts?.timeoutMs ?? 90_000
+  const started = Date.now()
+  let attempt = 0
+  let notFoundStreak = 0
+  let networkFailStreak = 0
+  const cacheKey =
+    opts?.cacheKey?.trim() || String(Math.floor(started / 60_000))
+
+  while (Date.now() - started < timeoutMs) {
+    attempt += 1
+    try {
+      const qs = new URLSearchParams({ v: cacheKey })
+      if (opts?.regenerate) qs.set('regenerate', '1')
+      const res = await fetch(
+        `${siteUrl(siteId, `/project-files/${encodeURIComponent(fileId)}/png-preview`)}?${qs}`,
+        opts?.regenerate ? { headers: writeHeaders(false) } : undefined,
+      )
+      if (res.ok) {
+        const blob = await res.blob()
+        if (blob.size > 64) {
+          const boundsHeader = res.headers.get('X-Deloresh-Png-Bounds')
+          let worldBounds: PngPreviewWorldMeta | null = null
+          if (boundsHeader) {
+            try {
+              worldBounds = parsePngWorldMeta(JSON.parse(boundsHeader))
+            } catch {
+              /* ignore malformed header */
+            }
+          }
+          return { blob, worldBounds }
+        }
+      }
+      networkFailStreak = 0
+
+      let errCode = ''
+      try {
+        const ct = res.headers.get('content-type') ?? ''
+        if (ct.includes('application/json')) {
+          const body = (await res.json()) as { error?: string; permanent?: boolean }
+          errCode = body.error ?? ''
+          if (body.permanent || errCode === 'png_preview_failed' || errCode === 'not_found') {
+            return null
+          }
+        }
+      } catch {
+        /* ignore parse */
+      }
+
+      if (res.status === 404) {
+        if (errCode === 'not_found') return null
+        if (errCode === 'png_preview_missing') {
+          notFoundStreak = 0
+        } else {
+          notFoundStreak += 1
+          if (notFoundStreak >= 3) return null
+        }
+      }
+
+      if (res.status === 500 || res.status === 502 || res.status === 503) {
+        if (errCode === 'png_preview_failed') return null
+        if (errCode === 'png_preview_pending') {
+          notFoundStreak = 0
+          opts?.onWait?.()
+          const delay = Math.min(3000, 500 + attempt * 400)
+          await new Promise((r) => setTimeout(r, delay))
+          continue
+        }
+        opts?.onWait?.()
+        const delay = Math.min(3000, 500 + attempt * 400)
+        await new Promise((r) => setTimeout(r, delay))
+        continue
+      }
+
+      if (res.status === 404) {
+        opts?.onWait?.()
+        const delay = Math.min(3000, 500 + attempt * 400)
+        await new Promise((r) => setTimeout(r, delay))
+        continue
+      }
+
+      return null
+    } catch {
+      networkFailStreak += 1
+      if (networkFailStreak >= 3) return null
+      opts?.onWait?.()
+      await new Promise((r) => setTimeout(r, 800))
+    }
+  }
+  return null
+}
+
+export function projectFileDxfPreviewUrl(siteId: string, fileId: string): string {
+  const b = apiBase()
+  return `${b}/api/sites/${encodeURIComponent(siteId)}/project-files/${encodeURIComponent(fileId)}/dxf-preview`
+}
+
+function projectFileRecordHeader(record: StoredSiteProjectFile): string {
+  const json = JSON.stringify(record)
+  const bytes = new TextEncoder().encode(json)
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!)
+  return `b64.${btoa(binary)}`
+}
+
 export async function createProjectFileRemote(
   siteId: string,
   record: StoredSiteProjectFile,
   file?: Blob | null,
 ): Promise<RemoteWriteResult> {
   try {
-    const metaRes = await fetch(siteUrl(siteId, '/project-files'), {
+    if (record.kind === 'folder' || !file) {
+      const metaRes = await fetch(siteUrl(siteId, '/project-files'), {
+        method: 'POST',
+        headers: writeHeaders(true),
+        body: JSON.stringify({ record }),
+      })
+      if (!metaRes.ok) return classifyResponse(metaRes.status)
+      return { ok: true }
+    }
+
+    // Один запрос: blob + превью на сервере → в manifest сразу готовый файл.
+    const res = await fetch(siteUrl(siteId, '/project-files'), {
       method: 'POST',
-      headers: writeHeaders(true),
-      body: JSON.stringify({ record }),
-    })
-    if (!metaRes.ok) return classifyResponse(metaRes.status)
-
-    if (record.kind === 'folder' || !file) return { ok: true }
-
-    const blobRes = await fetch(
-      siteUrl(siteId, `/project-files/${encodeURIComponent(record.id)}/blob`),
-      {
-        method: 'PUT',
-        headers: writeHeaders(false),
-        body: file,
+      headers: {
+        ...writeHeaders(false),
+        'X-Project-File-Record': projectFileRecordHeader(record),
       },
-    )
-    if (blobRes.ok) return { ok: true }
-    return classifyResponse(blobRes.status)
+      body: file,
+    })
+    if (res.ok) return { ok: true }
+    return classifyResponse(res.status)
   } catch {
     return { ok: false, reason: 'network', status: null }
   }

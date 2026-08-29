@@ -1,3 +1,5 @@
+import type { PngPreviewWorldMeta } from './dwgPngBounds'
+
 export type SiteProjectFileKind = 'pdf' | 'dwg' | 'file' | 'folder'
 
 export type StoredSiteProjectFile = {
@@ -10,13 +12,56 @@ export type StoredSiteProjectFile = {
   uploadedAtIso: string
   /** null / отсутствует — в корне папки документов */
   parentId?: string | null
+  /** Gzip DXF-превью на сервере — для мгновенного открытия DWG */
+  dxfPreviewBytes?: number
+  dxfPreviewAtIso?: string
+  /** pending | ready | failed — статус автоконвертации на сервере */
+  dxfPreviewStatus?: 'pending' | 'ready' | 'failed'
+  /** acadsharp — полный чертёж; libredwg — возможны пропуски */
+  dxfPreviewEngine?: 'acadsharp' | 'libredwg'
+  /** PNG-превью с заливками как в AutoCAD */
+  pngPreviewBytes?: number
+  pngPreviewAtIso?: string
+  pngPreviewStatus?: 'pending' | 'ready' | 'failed'
+  /** Точные границы мира, использованные при генерации PNG (для измерений). */
+  pngWorldBounds?: PngPreviewWorldMeta
+}
+
+/** Сигнатура для синхронизации между устройствами (включая готовность превью). */
+export function projectFileSyncSignature(row: StoredSiteProjectFile): string {
+  return [
+    row.kind,
+    row.id,
+    row.parentId ?? '',
+    row.name,
+    row.sizeBytes,
+    row.uploadedAtIso,
+    row.dxfPreviewStatus ?? '',
+    row.dxfPreviewAtIso ?? '',
+    row.pngPreviewStatus ?? '',
+    row.pngPreviewAtIso ?? '',
+    row.pngWorldBounds?.pixelsPerUnit ?? '',
+  ].join(':')
 }
 
 const DB_NAME = 'deloresh-site-projects'
-const DB_VERSION = 1
+const DB_VERSION = 2
 const STORE_FILES = 'files'
 const STORE_BLOBS = 'blobs'
+const STORE_DXF_PREVIEWS = 'dxf-previews'
 const INDEX_BY_SITE = 'by-site'
+
+type StoredDxfPreview = {
+  id: string
+  fileId: string
+  uploadedAtIso: string
+  blob: Blob
+  cachedAtIso: string
+}
+
+function dxfPreviewId(fileId: string, uploadedAtIso: string, previewAtIso?: string): string {
+  return `full-v1:${fileId}:${uploadedAtIso}:${previewAtIso ?? 'none'}`
+}
 
 let dbPromise: Promise<IDBDatabase> | null = null
 
@@ -35,6 +80,9 @@ function openDb(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(STORE_BLOBS)) {
         db.createObjectStore(STORE_BLOBS, { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains(STORE_DXF_PREVIEWS)) {
+        db.createObjectStore(STORE_DXF_PREVIEWS, { keyPath: 'id' })
       }
     }
     req.onsuccess = () => resolve(req.result)
@@ -76,6 +124,7 @@ export function detectProjectFileKind(file: { name: string; type?: string }): Si
   if (name.endsWith('.pdf') || mime === 'application/pdf') return 'pdf'
   if (
     name.endsWith('.dwg') ||
+    name.endsWith('.dxf') ||
     mime.includes('acad') ||
     mime.includes('dwg') ||
     mime === 'image/vnd.dwg'
@@ -131,10 +180,72 @@ export async function putProjectFile(record: StoredSiteProjectFile, blob: Blob):
   })
 }
 
+export async function getDwgDxfPreview(
+  fileId: string,
+  uploadedAtIso: string,
+  previewAtIso?: string,
+): Promise<string | null> {
+  return runTx(STORE_DXF_PREVIEWS, 'readonly', (tx) => {
+    return new Promise<string | null>((resolve, reject) => {
+      const req = tx.objectStore(STORE_DXF_PREVIEWS).get(dxfPreviewId(fileId, uploadedAtIso, previewAtIso))
+      req.onsuccess = () => {
+        const row = req.result as StoredDxfPreview | undefined
+        if (!row?.blob) {
+          resolve(null)
+          return
+        }
+        void row.blob.text().then(resolve).catch(() => resolve(null))
+      }
+      req.onerror = () => reject(req.error)
+    })
+  })
+}
+
+export async function putDwgDxfPreview(
+  fileId: string,
+  uploadedAtIso: string,
+  dxfText: string,
+  previewAtIso?: string,
+): Promise<void> {
+  const record: StoredDxfPreview = {
+    id: dxfPreviewId(fileId, uploadedAtIso, previewAtIso),
+    fileId,
+    uploadedAtIso,
+    blob: new Blob([dxfText], { type: 'application/dxf' }),
+    cachedAtIso: new Date().toISOString(),
+  }
+  await runTx(STORE_DXF_PREVIEWS, 'readwrite', (tx) => {
+    tx.objectStore(STORE_DXF_PREVIEWS).put(record)
+  })
+}
+
+export async function deleteDwgDxfPreviewsForFile(fileId: string): Promise<void> {
+  await runTx(STORE_DXF_PREVIEWS, 'readwrite', (tx) => {
+    const store = tx.objectStore(STORE_DXF_PREVIEWS)
+    const req = store.openCursor()
+    req.onsuccess = () => {
+      const cursor = req.result
+      if (!cursor) return
+      const row = cursor.value as StoredDxfPreview
+      if (row.fileId === fileId) cursor.delete()
+      cursor.continue()
+    }
+  })
+}
+
 export async function deleteProjectFile(id: string): Promise<void> {
-  await runTx([STORE_FILES, STORE_BLOBS], 'readwrite', (tx) => {
+  await runTx([STORE_FILES, STORE_BLOBS, STORE_DXF_PREVIEWS], 'readwrite', (tx) => {
     tx.objectStore(STORE_FILES).delete(id)
     tx.objectStore(STORE_BLOBS).delete(id)
+    const previewStore = tx.objectStore(STORE_DXF_PREVIEWS)
+    const req = previewStore.openCursor()
+    req.onsuccess = () => {
+      const cursor = req.result
+      if (!cursor) return
+      const row = cursor.value as StoredDxfPreview
+      if (row.fileId === id) cursor.delete()
+      cursor.continue()
+    }
   })
 }
 

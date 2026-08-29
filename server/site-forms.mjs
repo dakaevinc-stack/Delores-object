@@ -16,6 +16,24 @@ import {
   formatDriverTripNotifyText,
   namesMatchDriver,
 } from '../src/lib/driverTripNotify.mjs'
+import {
+  deleteAllDwgPreviews,
+  deleteDxfPreview,
+  deletePngPreview,
+  isDxfPreviewStale,
+  isPngPreviewInflight,
+  kickPngPreview,
+  markDxfPreviewReady,
+  markDxfPreviewStatus,
+  markPngPreviewFailed,
+  markPngPreviewReady,
+  readDxfPreview,
+  readPngPreview,
+  readPngPreviewMeta,
+  regenerateDwgPreviews,
+  writeDwgPreviews,
+  writePngPreview,
+} from './dwg-preview.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = Number(process.env.DELORESH_SITE_FORMS_PORT || 8787) || 8787
@@ -120,6 +138,27 @@ async function saveProjectFileRecord(baseDir, manifestPath, siteId, record, buf)
   await saveProjectFileMetadata(baseDir, manifestPath, siteId, record)
   await fs.mkdir(path.join(baseDir, 'blobs'), { recursive: true })
   await fs.writeFile(path.join(baseDir, 'blobs', record.id), buf)
+  if (record.kind === 'dwg' && buf.length > 0) {
+    // Ждём конвертацию здесь — к моменту «загрузка готова» превью уже есть → открытие мгновенное.
+    try {
+      await markDxfPreviewStatus(manifestPath, record.id, 'pending')
+      const { previewBytes, engine, pngBytes, pngWorldBounds } = await writeDwgPreviews(baseDir, record.id, buf)
+      await markDxfPreviewReady(manifestPath, record.id, previewBytes, engine)
+      if (typeof pngBytes === 'number') {
+        await markPngPreviewReady(manifestPath, record.id, pngBytes, pngWorldBounds)
+      } else {
+        await markPngPreviewFailed(manifestPath, record.id)
+      }
+    } catch (e) {
+      console.error('[site-forms] dxf preview failed', record.id, e)
+      try {
+        await markDxfPreviewStatus(manifestPath, record.id, 'failed')
+      } catch {
+        /* ignore */
+      }
+      throw e
+    }
+  }
 }
 
 /** @param {string} filePath */
@@ -285,6 +324,12 @@ function checkWrite(req, res) {
   if (got === WRITE_SECRET) return true
   sendJson(res, 403, { error: 'write_forbidden' })
   return false
+}
+
+function hasWriteSecret(req) {
+  if (!WRITE_SECRET) return true
+  const got = String(req.headers['x-deloresh-write-secret'] ?? '').trim()
+  return got === WRITE_SECRET
 }
 
 async function ensureBotUsername() {
@@ -1247,6 +1292,12 @@ const server = http.createServer(async (req, res) => {
       if (parts.length === 4 && req.method === 'GET') {
         const list = await readJsonArray(manifestPath)
         const valid = list.filter(isProjectFileRecord)
+        for (const row of valid) {
+          if (/** @type {{ kind?: string, pngWorldBounds?: unknown }} */ (row).kind !== 'dwg') continue
+          if (/** @type {{ pngWorldBounds?: unknown }} */ (row).pngWorldBounds) continue
+          const sidecar = await readPngPreviewMeta(baseDir, /** @type {{ id: string }} */ (row).id)
+          if (sidecar) /** @type {{ pngWorldBounds: unknown }} */ (row).pngWorldBounds = sidecar
+        }
         sendJson(res, 200, valid)
         return
       }
@@ -1271,7 +1322,204 @@ const server = http.createServer(async (req, res) => {
         }
         await fs.mkdir(path.join(baseDir, 'blobs'), { recursive: true })
         await fs.writeFile(path.join(baseDir, 'blobs', fileId), buf)
+        for (const row of list) {
+          if (!row || typeof row !== 'object' || /** @type {{id?: string}} */ (row).id !== fileId) {
+            continue
+          }
+          /** @type {{ sizeBytes: number, uploadedAtIso: string }} */ (row).sizeBytes = buf.length
+          /** @type {{ uploadedAtIso: string }} */ (row).uploadedAtIso = new Date().toISOString()
+          break
+        }
+        await writeJsonArray(manifestPath, list)
+        if (/** @type {{kind?: string}} */ (meta).kind === 'dwg') {
+          try {
+            await markDxfPreviewStatus(manifestPath, fileId, 'pending')
+            const { previewBytes, engine, pngBytes, pngWorldBounds } = await writeDwgPreviews(baseDir, fileId, buf)
+            await markDxfPreviewReady(manifestPath, fileId, previewBytes, engine)
+            if (typeof pngBytes === 'number') {
+              await markPngPreviewReady(manifestPath, fileId, pngBytes, pngWorldBounds)
+            } else {
+              await markPngPreviewFailed(manifestPath, fileId)
+            }
+          } catch (e) {
+            console.error('[site-forms] dxf preview failed', fileId, e)
+            try {
+              await markDxfPreviewStatus(manifestPath, fileId, 'failed')
+            } catch {
+              /* ignore */
+            }
+            sendJson(res, 500, { error: 'dxf_preview_failed' })
+            return
+          }
+        }
         sendJson(res, 200, { ok: true })
+        return
+      }
+
+      if (parts.length === 6 && parts[5] === 'dxf-preview' && req.method === 'GET') {
+        const fileId = safeMediaId(parts[4])
+        if (!fileId) {
+          sendJson(res, 400, { error: 'bad_id' })
+          return
+        }
+        const list = await readJsonArray(manifestPath)
+        const meta = list.find((x) => isProjectFileRecord(x) && /** @type {{id:string}} */ (x).id === fileId)
+        if (!meta || /** @type {{kind?: string}} */ (meta).kind !== 'dwg') {
+          sendJson(res, 404, { error: 'not_found' })
+          return
+        }
+        const blobPath = path.join(baseDir, 'blobs', fileId)
+        const forceRegenerate =
+          hasWriteSecret(req) &&
+          (req.headers['x-dxf-preview-regenerate'] === '1' ||
+            new URL(req.url ?? '', 'http://local').searchParams.get('regenerate') === '1')
+        try {
+          let gz = forceRegenerate ? null : await readDxfPreview(baseDir, fileId)
+          if (!forceRegenerate && gz && (await isDxfPreviewStale(baseDir, fileId))) {
+            gz = null
+          }
+          if (forceRegenerate) {
+            const buf = await fs.readFile(blobPath)
+            const { previewBytes, engine, pngBytes, pngWorldBounds } = await regenerateDwgPreviews(
+              baseDir,
+              fileId,
+              buf,
+            )
+            await markDxfPreviewReady(manifestPath, fileId, previewBytes, engine)
+            if (typeof pngBytes === 'number') {
+              await markPngPreviewReady(manifestPath, fileId, pngBytes, pngWorldBounds)
+            } else {
+              await markPngPreviewFailed(manifestPath, fileId)
+            }
+            gz = await readDxfPreview(baseDir, fileId)
+          } else if (!gz) {
+            const buf = await fs.readFile(blobPath)
+            const { previewBytes, engine, pngBytes, pngWorldBounds } = await writeDwgPreviews(baseDir, fileId, buf)
+            await markDxfPreviewReady(manifestPath, fileId, previewBytes, engine)
+            if (typeof pngBytes === 'number') {
+              await markPngPreviewReady(manifestPath, fileId, pngBytes, pngWorldBounds)
+            } else {
+              await markPngPreviewFailed(manifestPath, fileId)
+            }
+            gz = await readDxfPreview(baseDir, fileId)
+          }
+          const freshList = await readJsonArray(manifestPath)
+          const freshMeta = freshList.find(
+            (x) => isProjectFileRecord(x) && /** @type {{id:string}} */ (x).id === fileId,
+          )
+          const previewAt =
+            typeof /** @type {{ dxfPreviewAtIso?: string }} */ (freshMeta)?.dxfPreviewAtIso ===
+            'string'
+              ? /** @type {{ dxfPreviewAtIso: string }} */ (freshMeta).dxfPreviewAtIso
+              : /** @type {{ uploadedAtIso: string }} */ (meta).uploadedAtIso
+          setCors(res)
+          res.statusCode = 200
+          res.setHeader('Content-Type', 'application/dxf')
+          res.setHeader('Content-Encoding', 'gzip')
+          res.setHeader('Cache-Control', 'private, no-cache')
+          res.setHeader('ETag', `"${fileId}-${previewAt}"`)
+          res.end(gz)
+        } catch (e) {
+          if (/** @type {NodeJS.ErrnoException} */ (e).code === 'ENOENT') {
+            sendJson(res, 404, { error: 'blob_missing' })
+          } else {
+            console.error('[site-forms] dxf preview read failed', fileId, e)
+            sendJson(res, 500, { error: 'dxf_preview_failed' })
+          }
+        }
+        return
+      }
+
+      if (parts.length === 6 && parts[5] === 'png-world-meta' && req.method === 'GET') {
+        const fileId = safeMediaId(parts[4])
+        if (!fileId) {
+          sendJson(res, 400, { error: 'bad_id' })
+          return
+        }
+        const list = await readJsonArray(manifestPath)
+        const meta = list.find((x) => isProjectFileRecord(x) && /** @type {{id:string}} */ (x).id === fileId)
+        if (!meta || /** @type {{kind?: string}} */ (meta).kind !== 'dwg') {
+          sendJson(res, 404, { error: 'not_found' })
+          return
+        }
+        const sidecar = await readPngPreviewMeta(baseDir, fileId)
+        const bounds =
+          sidecar ??
+          /** @type {{ pngWorldBounds?: Record<string, unknown> }} */ (meta).pngWorldBounds ??
+          null
+        if (!bounds) {
+          sendJson(res, 404, { error: 'png_world_meta_missing' })
+          return
+        }
+        sendJson(res, 200, bounds)
+        return
+      }
+
+      if (parts.length === 6 && parts[5] === 'png-preview' && req.method === 'GET') {
+        const fileId = safeMediaId(parts[4])
+        if (!fileId) {
+          sendJson(res, 400, { error: 'bad_id' })
+          return
+        }
+        const list = await readJsonArray(manifestPath)
+        const meta = list.find((x) => isProjectFileRecord(x) && /** @type {{id:string}} */ (x).id === fileId)
+        if (!meta || /** @type {{kind?: string}} */ (meta).kind !== 'dwg') {
+          sendJson(res, 404, { error: 'not_found' })
+          return
+        }
+        try {
+          let png = await readPngPreview(baseDir, fileId)
+          const forceRegenerate =
+            hasWriteSecret(req) &&
+            new URL(req.url ?? '', 'http://local').searchParams.get('regenerate') === '1'
+          if (forceRegenerate) {
+            await deletePngPreview(baseDir, fileId)
+            png = null
+          }
+          const pngStatus = /** @type {{ pngPreviewStatus?: string }} */ (meta).pngPreviewStatus
+          if (!png && pngStatus === 'failed' && !forceRegenerate) {
+            sendJson(res, 503, { error: 'png_preview_failed', permanent: true })
+            return
+          }
+          if (!png) {
+            if (!forceRegenerate && (isPngPreviewInflight(baseDir, fileId) || pngStatus === 'pending')) {
+              sendJson(res, 503, { error: 'png_preview_pending' })
+              return
+            }
+            const blobPath = path.join(baseDir, 'blobs', fileId)
+            kickPngPreview(baseDir, fileId, manifestPath, () => fs.readFile(blobPath))
+            sendJson(res, 503, { error: 'png_preview_pending' })
+            return
+          }
+          if (!png) {
+            sendJson(res, 404, { error: 'png_preview_missing' })
+            return
+          }
+          const previewAt =
+            typeof /** @type {{ pngPreviewAtIso?: string }} */ (meta).pngPreviewAtIso === 'string'
+              ? /** @type {{ pngPreviewAtIso: string }} */ (meta).pngPreviewAtIso
+              : /** @type {{ uploadedAtIso: string }} */ (meta).uploadedAtIso
+          const pngWorldBounds =
+            (await readPngPreviewMeta(baseDir, fileId)) ??
+            /** @type {{ pngWorldBounds?: Record<string, unknown> }} */ (meta).pngWorldBounds ??
+            null
+          setCors(res)
+          res.statusCode = 200
+          res.setHeader('Content-Type', 'image/png')
+          res.setHeader('Cache-Control', 'private, no-cache')
+          res.setHeader('ETag', `"${fileId}-png-${previewAt}"`)
+          if (pngWorldBounds) {
+            res.setHeader('X-Deloresh-Png-Bounds', JSON.stringify(pngWorldBounds))
+          }
+          res.end(png)
+        } catch (e) {
+          if (/** @type {NodeJS.ErrnoException} */ (e).code === 'ENOENT') {
+            sendJson(res, 404, { error: 'blob_missing' })
+          } else {
+            console.error('[site-forms] png preview read failed', fileId, e)
+            sendJson(res, 500, { error: 'png_preview_failed' })
+          }
+        }
         return
       }
 
@@ -1393,6 +1641,11 @@ const server = http.createServer(async (req, res) => {
         const blobPath = path.join(baseDir, 'blobs', fileId)
         try {
           await fs.unlink(blobPath)
+        } catch (e) {
+          if (/** @type {NodeJS.ErrnoException} */ (e).code !== 'ENOENT') throw e
+        }
+        try {
+          await deleteAllDwgPreviews(baseDir, fileId)
         } catch (e) {
           if (/** @type {NodeJS.ErrnoException} */ (e).code !== 'ENOENT') throw e
         }

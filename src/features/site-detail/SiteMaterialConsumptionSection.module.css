@@ -33,12 +33,47 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 16px;
-  row-gap: 12px;
-  padding: 22px 24px 18px 28px;
+  box-sizing: border-box;
+  min-height: 188px;
+  padding: 14px 14px 16px 18px;
 }
 
 .headCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   min-width: 0;
+}
+
+.headCopy .kicker,
+.headCopy .title,
+.headCopy .lead {
+  margin: 0;
+}
+
+.headToggle {
+  position: static;
+  align-self: center;
+  justify-self: end;
+  margin: 0;
+  padding: 0;
+  z-index: 2;
+  flex-shrink: 0;
+}
+
+@media (min-width: 861px) {
+  .head {
+    height: 136px;
+    min-height: 136px;
+    padding: 20px 24px 16px 28px;
+  }
+
+  .headCopy .lead {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
 }
 
 .kicker {
@@ -69,13 +104,6 @@
   letter-spacing: var(--heading-block-tracking);
   line-height: var(--heading-block-line);
   color: var(--text-strong);
-}
-
-.headToggle {
-  flex-shrink: 0;
-  align-self: center;
-  justify-self: end;
-  margin: 0;
 }
 
 .lead {
@@ -518,7 +546,12 @@
 
 @media (max-width: 480px) {
   .head {
-    padding: 16px 16px 14px 18px;
+    min-height: 188px;
+    padding:
+      14px
+      max(14px, env(safe-area-inset-right, 0px))
+      16px
+      max(18px, env(safe-area-inset-left, 0px));
   }
 
   .body {

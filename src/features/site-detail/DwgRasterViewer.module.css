@@ -1,0 +1,55 @@
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  align-self: stretch;
+  overflow: hidden;
+  background: #2b2b2b;
+  cursor: grab;
+  touch-action: none;
+}
+
+.stage:active {
+  cursor: grabbing;
+}
+
+.img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  transform-origin: center center;
+  user-select: none;
+  pointer-events: none;
+  image-rendering: auto;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.stage:has(.img[data-ready='true']) .img {
+  opacity: 1;
+}
+
+.loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: auto;
+}

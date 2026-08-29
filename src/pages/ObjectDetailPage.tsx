@@ -404,7 +404,7 @@ export function ObjectDetailPage() {
             Аналитика / План работ
           </h2>
           <p className={styles.summaryLead}>
-            KPI, график и производственный план — в одном месте.
+            KPI, график и производственный план.
           </p>
         </div>
         <CollapseToggle

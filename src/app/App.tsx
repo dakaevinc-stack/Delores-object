@@ -15,6 +15,9 @@ const FleetCategoryPage = lazy(() =>
 const FleetVehiclePage = lazy(() =>
   import('../pages/FleetVehiclePage').then((m) => ({ default: m.FleetVehiclePage })),
 )
+const ObjectsHubPage = lazy(() =>
+  import('../pages/ObjectsHubPage').then((m) => ({ default: m.ObjectsHubPage })),
+)
 const AddObjectPage = lazy(() =>
   import('../pages/AddObjectPage').then((m) => ({ default: m.AddObjectPage })),
 )
@@ -66,6 +69,14 @@ export function App() {
               <RequireFleetAccess>
                 <FleetCategoryPage />
               </RequireFleetAccess>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/objects"
+          element={
+            <RequireAuth>
+              <ObjectsHubPage />
             </RequireAuth>
           }
         />

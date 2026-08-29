@@ -826,18 +826,47 @@
 
 .dwgCanvasWrap {
   flex: 1;
-  min-height: 360px;
-  background: linear-gradient(180deg, #0b1222 0%, #0f1b31 100%);
+  min-height: 0;
+  background: #2b2b2b;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  overflow: hidden;
+  touch-action: none;
 }
 
 .dwgLoading {
-  margin: 0;
+  margin: auto;
   color: rgba(255, 255, 255, 0.85);
   font-size: 13px;
   font-weight: 700;
+}
+
+.dwgPreviewWarn {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 8px 14px;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: #fde68a;
+  background: rgba(180, 83, 9, 0.35);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.dwgError {
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+  max-width: 36em;
+  margin: auto;
+  padding: 24px;
+  text-align: center;
+}
+
+.dwgError .dwgLoading {
+  margin: 0;
+  line-height: 1.45;
+  font-weight: 600;
 }
 
 /* Mobile */
@@ -878,15 +907,77 @@
   }
 
   .viewerHead,
-  .viewerHeadDark,
+  .viewerHeadDark {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
   .viewerActions {
-    flex-direction: column;
+    flex-direction: row;
     align-items: stretch;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .viewerBtn {
-    min-height: 44px;
+    flex: 1 1 0;
+    min-height: 36px;
     justify-content: center;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+}
+
+/* Альбом на телефоне: низкий viewport — ужимаем шапку, чертёж получает высоту */
+@media (max-height: 520px) and (orientation: landscape) {
+  .viewerScreen {
+    max-height: 100dvh;
+  }
+
+  .viewerHead,
+  .viewerHeadDark {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding:
+      max(4px, env(safe-area-inset-top, 0px))
+      max(10px, env(safe-area-inset-right, 0px))
+      4px
+      max(10px, env(safe-area-inset-left, 0px));
+  }
+
+  .viewerKicker,
+  .viewerKickerDark {
+    display: none;
+  }
+
+  .viewerTitle,
+  .viewerTitleDark {
+    font-size: 12.5px;
+    line-height: 1.2;
+    max-width: min(46vw, 280px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .viewerActions {
+    flex: 0 0 auto;
+    flex-direction: row;
+  }
+
+  .viewerBtn,
+  .viewerBtnClose {
+    flex: 0 0 auto;
+    min-height: 30px;
+    padding: 0 10px;
+    font-size: 11px;
+  }
+
+  .dwgPreviewWarn {
+    padding: 4px 10px;
+    font-size: 11px;
   }
 }
 

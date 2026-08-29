@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import styles from './LoginIntroOverlay.module.css'
 import {
   getLoginIntroPlayer,
-  preloadLoginIntroPlayer,
   stopLoginIntroPlayback,
 } from './loginIntroPlayer'
 
@@ -124,12 +123,4 @@ export function LoginIntroOverlay({ onDone }: Props) {
     </div>,
     document.body,
   )
-}
-
-export function preloadLoginIntro(): void {
-  preloadLoginIntroPlayer()
-}
-
-export function unlockLoginIntroAudio(): void {
-  /* alias — старт через beginLoginIntroPlayback */
 }

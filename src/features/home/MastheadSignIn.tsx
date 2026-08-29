@@ -9,7 +9,7 @@ import {
   useLocalSession,
 } from '../../lib/useLocalSession'
 import { requestLoginIntro, clearLoginIntroPending } from './loginIntroPending'
-import { preloadLoginIntro } from './LoginIntroOverlay'
+import { preloadLoginIntroPlayer } from './loginIntroPlayer'
 import { beginLoginIntroPlayback, stopLoginIntroPlayback } from './loginIntroPlayer'
 import {
   loadRememberedLogin,
@@ -81,7 +81,7 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
 
   useEffect(() => {
     if (!session) {
-      preloadLoginIntro()
+      preloadLoginIntroPlayer()
       const remembered = loadRememberedLogin()
       if (remembered) setLogin(remembered)
     }

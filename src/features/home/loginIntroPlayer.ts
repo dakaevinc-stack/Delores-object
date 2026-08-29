@@ -47,9 +47,13 @@ export function beginLoginIntroPlayback(): void {
     /* noop */
   }
   const kick = () => {
-    void video.play().catch(() => {
+    const playAttempt = video.play()
+    if (!playAttempt || typeof playAttempt.catch !== 'function') return
+    void playAttempt.catch(() => {
       video.muted = true
-      void video.play().then(() => {
+      const mutedAttempt = video.play()
+      if (!mutedAttempt || typeof mutedAttempt.then !== 'function') return
+      void mutedAttempt.then(() => {
         video.muted = false
         video.defaultMuted = false
         video.removeAttribute('muted')

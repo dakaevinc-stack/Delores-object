@@ -1,42 +1,9 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
-import { useAllSites } from '../lib/useAllSites'
-import { countSitesByStatus } from '../domain/executiveDashboard'
-import { ExecutiveKpiStrip } from '../features/dashboard/ExecutiveKpiStrip'
-import { ObjectCardGrid } from '../features/objects/ObjectCardGrid'
-import { ObjectSearch } from '../features/objects/ObjectSearch'
-import {
-  ObjectStatusFilter,
-  type StatusFilterValue,
-} from '../features/objects/ObjectStatusFilter'
-import { resolveSiteStatus } from '../domain/objectStatus'
-import { isFleetUnitOnControl } from '../domain/fleet'
-import { useFleetRegistry } from '../features/fleet/useFleetRegistry'
 import { HubCard } from '../features/home/HubCard'
 import { MastheadSignIn } from '../features/home/MastheadSignIn'
 import { useLocalSession } from '../lib/useLocalSession'
-import { homeShowsHubs, homeShowsPortfolioKpi } from '../domain/sitePageZone'
+import { homeShowsHubs } from '../domain/sitePageZone'
 import styles from './HomePage.module.css'
-
-function pluralizeUnits(n: number): string {
-  const mod10 = n % 10
-  const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return 'единица'
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'единицы'
-  return 'единиц'
-}
-
-function pluralizeClasses(n: number): string {
-  const mod10 = n % 10
-  const mod100 = n % 100
-  if (mod10 === 1 && mod100 !== 11) return 'класс'
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'класса'
-  return 'классов'
-}
-
-function normalizeQuery(q: string) {
-  return q.trim().toLocaleLowerCase('ru-RU')
-}
 
 function capitalize(s: string): string {
   if (!s) return s
@@ -46,8 +13,8 @@ function capitalize(s: string): string {
 const FLEET_ICON = (
   <svg
     viewBox="0 0 48 32"
-    width="30"
-    height="20"
+    width="36"
+    height="24"
     fill="none"
     aria-hidden
     focusable="false"
@@ -82,8 +49,8 @@ const FLEET_ICON = (
 const INSPECTION_ICON = (
   <svg
     viewBox="0 0 32 32"
-    width="26"
-    height="26"
+    width="30"
+    height="30"
     fill="none"
     aria-hidden
     focusable="false"
@@ -136,6 +103,36 @@ const INSPECTION_ICON = (
   </svg>
 )
 
+const OBJECTS_ICON = (
+  <svg
+    viewBox="0 0 32 32"
+    width="30"
+    height="30"
+    fill="none"
+    aria-hidden
+    focusable="false"
+  >
+    <path
+      d="M6 26V12l10-6 10 6v14"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M12 26v-8h8v8"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M11 14h2M19 14h2M11 18h2M19 18h2"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+)
+
 const inspectionDashboardUrl = (
   import.meta.env.VITE_AMEDA_INSPECTION_DASHBOARD_URL as string | undefined
 )?.trim()
@@ -149,49 +146,8 @@ if (import.meta.env.DEV && !inspectionDashboardUrl) {
 
 export function HomePage() {
   const session = useLocalSession()
-  const [query, setQuery] = useState('')
-  const [status, setStatus] = useState<StatusFilterValue>('all')
-  const objectsSectionRef = useRef<HTMLElement>(null)
-  const sites = useAllSites()
-  const { vehicles: fleetVehicles, categories: fleetCategories } =
-    useFleetRegistry()
-  const fleetUnits = fleetVehicles.length
-  /** Классы, в которых сейчас есть хотя бы одна единица. */
-  const fleetClasses = useMemo(() => {
-    const used = new Set(fleetVehicles.map((v) => v.categoryId))
-    return fleetCategories.filter((c) => used.has(c.id)).length
-  }, [fleetVehicles, fleetCategories])
-  /** На контроле: ДК/страховка/открытый ремонт/просроченный пропуск. */
-  const fleetOnControl = useMemo(
-    () => fleetVehicles.filter((v) => isFleetUnitOnControl(v)).length,
-    [fleetVehicles],
-  )
 
-  const portfolioCounts = useMemo(() => countSitesByStatus(sites), [sites])
-
-  const filtered = useMemo(() => {
-    const nq = normalizeQuery(query)
-    return sites.filter((site) => {
-      if (status !== 'all' && resolveSiteStatus(site) !== status) return false
-      if (!nq) return true
-      return site.name.toLocaleLowerCase('ru-RU').includes(nq)
-    })
-  }, [query, status, sites])
-
-  const scrollToObjects = useCallback(() => {
-    objectsSectionRef.current?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-    })
-  }, [])
-
-  const selectStatusFromKpi = useCallback(
-    (next: StatusFilterValue) => {
-      setStatus((prev) => (next !== 'all' && prev === next ? 'all' : next))
-      scrollToObjects()
-    },
-    [scrollToObjects],
-  )
+  const showHubs = session?.duty ? homeShowsHubs(session.duty) : false
 
   const todayDate = new Date().toLocaleDateString('ru-RU', {
     day: 'numeric',
@@ -252,74 +208,45 @@ export function HomePage() {
       </header>
 
       {session ? (
-        <>
-          {homeShowsHubs(session.duty) ? (
-            <div className={styles.hubRow}>
+        <div className={styles.hubRow} data-count={showHubs ? 3 : 1}>
+          {showHubs ? (
+            <>
               <HubCard
                 to="/spectehnika"
                 ariaLabel="Открыть парк техники"
                 title="Спецтехника"
-                badge={{
-                  kind: 'stats',
-                  items: [
-                    { num: fleetUnits, unit: pluralizeUnits(fleetUnits) },
-                    { num: fleetClasses, unit: pluralizeClasses(fleetClasses) },
-                  ],
-                }}
+                lead="Карточки техники, сроки документов и ремонты."
+                tone="fleet"
                 icon={FLEET_ICON}
                 tags={['ТО', 'Страховки', 'Пропуска', 'Ремонты', 'Расходы']}
-                cta="В парк"
+                cta="Открыть"
               />
 
               <HubCard
                 href={inspectionDashboardUrl || undefined}
-                ariaLabel="Открыть панель приёма и учёта спецтехники в новой вкладке"
-                title="Приём и учёт спецтехники"
-                badge={{
-                  kind: 'stats',
-                  items: [
-                    { num: fleetUnits, unit: 'на учёте' },
-                    { num: fleetOnControl, unit: 'на контроле' },
-                  ],
-                }}
+                ariaLabel="Открыть панель приёмки техники в новой вкладке"
+                title="Приёмка техники"
+                lead="Приёмка, фиксация и контроль техники."
+                tone="inspect"
                 icon={INSPECTION_ICON}
                 tags={['Чек-листы', 'Фото', 'История', 'Решения', 'Отчёты']}
-                cta="К приёмке"
+                cta="Открыть"
                 unavailableReason="Панель пока не подключена — обратитесь к администратору."
               />
-            </div>
+            </>
           ) : null}
 
-          {homeShowsPortfolioKpi(session.duty) ? (
-            <ExecutiveKpiStrip
-              counts={portfolioCounts}
-              activeStatus={status}
-              onSelectStatus={selectStatusFromKpi}
-            />
-          ) : null}
-
-          <section
-            ref={objectsSectionRef}
-            className={styles.objectsSection}
-            aria-labelledby="objects-heading"
-          >
-            <div className={styles.objectsHead}>
-              <h2 className={styles.objectsTitle} id="objects-heading">
-                Действующие объекты
-              </h2>
-            </div>
-
-            <div className={styles.toolbar} aria-label="Поиск и фильтры по списку">
-              <ObjectSearch value={query} onChange={setQuery} />
-              <ObjectStatusFilter value={status} onChange={setStatus} />
-            </div>
-
-            <ObjectCardGrid
-              sites={filtered}
-              filteredEmpty={sites.length > 0 && filtered.length === 0}
-            />
-          </section>
-        </>
+          <HubCard
+            to="/objects"
+            ariaLabel="Открыть список объектов"
+            title="Объекты"
+            lead="Сроки, материалы и ход работ по каждой площадке."
+            tone="sites"
+            icon={OBJECTS_ICON}
+            tags={['Поиск', 'Статус', 'Прогресс', 'Сроки', 'План']}
+            cta="Открыть"
+          />
+        </div>
       ) : null}
     </div>
   )
