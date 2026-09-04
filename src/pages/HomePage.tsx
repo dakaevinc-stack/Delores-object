@@ -335,7 +335,7 @@ export function HomePage() {
               }
               tone="tasks"
               icon={TASKS_ICON}
-              tags={['Сегодня', 'Срок', 'Исполнитель', 'Файлы', 'Чат']}
+              tags={['Сегодня', 'Срок', 'Файлы', 'Исполнитель', 'Чат']}
               cta="Открыть"
               badge={unseen}
               expanded={tasksOpen}
