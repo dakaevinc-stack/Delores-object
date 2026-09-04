@@ -135,10 +135,15 @@ export function HubCard({
 
         <div className={styles.foot}>
           {tags.length > 0 ? (
-            <ul className={styles.tags} aria-label={`Разделы: ${title}`}>
-              {tags.map((tag) => (
+            <ul
+              className={styles.tags}
+              data-count={Math.min(tags.length, 5)}
+              aria-label={`Разделы: ${title}`}
+            >
+              {tags.slice(0, 5).map((tag) => (
                 <li key={tag} className={styles.tag}>
-                  {tag}
+                  <span className={styles.tagMark} aria-hidden />
+                  <span className={styles.tagLabel}>{tag}</span>
                 </li>
               ))}
             </ul>

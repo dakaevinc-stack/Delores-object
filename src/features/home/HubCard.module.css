@@ -313,7 +313,7 @@
   text-wrap: pretty;
 }
 
-/* --- foot: tags + cta ------------------------------------- */
+/* --- foot: capability rail + cta -------------------------- */
 
 .foot {
   display: flex;
@@ -324,12 +324,36 @@
 }
 
 .tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  --tag-gap: 1px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--tag-gap);
   margin: 0;
-  padding: 0;
+  padding: var(--tag-gap);
   list-style: none;
+  border-radius: 14px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.14) 0%,
+      rgba(255, 255, 255, 0.05) 100%
+    );
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 10px 28px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.tags[data-count='2'] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tags[data-count='3'] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.tags[data-count='4'] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .tagsSpacer {
@@ -337,33 +361,88 @@
 }
 
 .tag {
-  display: inline-flex;
+  position: relative;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  min-height: 24px;
-  padding: 0 9px;
-  border-radius: 7px;
-  font-family: var(--sans, system-ui, sans-serif);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  line-height: 1;
-  color: rgba(245, 248, 253, 0.88);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  justify-content: center;
+  gap: 7px;
+  min-height: 52px;
+  padding: 10px 4px 9px;
+  text-align: center;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 42%),
+    rgba(7, 12, 24, 0.42);
   transition:
-    background 0.25s ease,
-    color 0.25s ease,
-    box-shadow 0.25s ease;
+    background 0.28s ease,
+    transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.tagMark {
+  width: 16px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--hub-accent) 85%, #fff) 50%,
+    transparent 100%
+  );
+  box-shadow: 0 0 10px color-mix(in srgb, var(--hub-accent) 55%, transparent);
+  opacity: 0.9;
+  transition:
+    width 0.28s ease,
+    opacity 0.28s ease,
+    box-shadow 0.28s ease;
+}
+
+.tagLabel {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  max-width: 100%;
+  font-family: var(--sans, system-ui, sans-serif);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: rgba(245, 248, 253, 0.82);
+  transition: color 0.25s ease;
 }
 
 .interactive:hover .tag,
 .expandable:hover .tag {
-  background: color-mix(in srgb, var(--hub-accent) 16%, rgba(255, 255, 255, 0.07));
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--hub-accent) 28%, rgba(255, 255, 255, 0.12)),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--hub-accent) 14%, rgba(255, 255, 255, 0.06)) 0%,
+      rgba(7, 12, 24, 0.28) 100%
+    );
+}
+
+.interactive:hover .tagMark,
+.expandable:hover .tagMark {
+  width: 22px;
+  opacity: 1;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--hub-accent) 70%, transparent);
+}
+
+.interactive:hover .tagLabel,
+.expandable:hover .tagLabel {
+  color: #fff;
+}
+
+.interactive:hover .tag:hover,
+.expandable:hover .tag:hover {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--hub-accent) 28%, rgba(255, 255, 255, 0.1)) 0%,
+      rgba(7, 12, 24, 0.2) 100%
+    );
+  z-index: 1;
 }
 
 .footRow {
@@ -507,13 +586,29 @@
   }
 
   .tag {
-    min-height: 22px;
-    font-size: 10px;
-    padding: 0 8px;
+    min-height: 48px;
+    padding: 8px 3px 7px;
+    gap: 6px;
+  }
+
+  .tagLabel {
+    font-size: 9px;
+    letter-spacing: 0.04em;
+  }
+
+  .tags {
+    border-radius: 12px;
   }
 
   .cta {
     height: 34px;
+  }
+}
+
+@container (max-width: 300px) {
+  .tagLabel {
+    font-size: 8.5px;
+    letter-spacing: 0.03em;
   }
 }
 
@@ -538,6 +633,8 @@
   .cta,
   .ctaArrow,
   .tag,
+  .tagMark,
+  .tagLabel,
   .sheen,
   .glow,
   .edge {
