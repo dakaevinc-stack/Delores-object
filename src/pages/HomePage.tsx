@@ -330,8 +330,8 @@ export function HomePage() {
               title="Задачи"
               lead={
                 unseen > 0
-                  ? `${unseen} новых — поставьте срок и проверьте исполнение.`
-                  : 'Поставьте задачу сотруднику, срок и переписку по делу.'
+                  ? `${unseen} новых — назначить и проконтролировать`
+                  : 'Назначить сотруднику и проконтролировать'
               }
               tone="tasks"
               icon={TASKS_ICON}
@@ -350,7 +350,7 @@ export function HomePage() {
                   to="/spectehnika"
                   ariaLabel="Открыть парк техники"
                   title="Спецтехника"
-                  lead="Карточки техники, сроки документов и ремонты."
+                  lead="Техника, документы и ремонты"
                   tone="fleet"
                   icon={FLEET_ICON}
                   tags={['ТО', 'Страховки', 'Пропуска', 'Ремонты', 'Расходы']}
@@ -361,7 +361,7 @@ export function HomePage() {
                   href={inspectionDashboardUrl || undefined}
                   ariaLabel="Открыть панель приёмки техники в новой вкладке"
                   title="Приёмка техники"
-                  lead="Приёмка, фиксация и контроль техники."
+                  lead="Приёмка и контроль на площадке"
                   tone="inspect"
                   icon={INSPECTION_ICON}
                   tags={['Чек-листы', 'Фото', 'История', 'Решения', 'Отчёты']}
@@ -375,7 +375,7 @@ export function HomePage() {
               to="/objects"
               ariaLabel="Открыть список объектов"
               title="Объекты"
-              lead="Сроки, материалы и ход работ по каждой площадке."
+              lead="Сроки, материалы и ход работ"
               tone="sites"
               icon={OBJECTS_ICON}
               tags={['Поиск', 'Статус', 'Прогресс', 'Сроки', 'План']}
