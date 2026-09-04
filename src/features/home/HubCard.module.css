@@ -327,30 +327,12 @@
 }
 
 .tags {
-  --tag-count: 5;
-  display: grid;
-  grid-template-columns: repeat(var(--tag-count), minmax(0, 1fr));
-  gap: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
   margin: 0;
   padding: 0;
   list-style: none;
-  width: 100%;
-}
-
-.tags[data-count='2'] {
-  --tag-count: 2;
-}
-
-.tags[data-count='3'] {
-  --tag-count: 3;
-}
-
-.tags[data-count='4'] {
-  --tag-count: 4;
-}
-
-.tags[data-count='5'] {
-  --tag-count: 5;
 }
 
 .tagsSpacer {
@@ -362,16 +344,12 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 5px;
-  width: 100%;
-  min-width: 0;
-  min-height: 30px;
-  padding: 5px 4px;
-  box-sizing: border-box;
+  gap: 7px;
+  min-height: 28px;
+  padding: 0 11px 0 9px;
   border-radius: 999px;
   font-family: var(--sans, system-ui, sans-serif);
-  line-height: 1.15;
+  line-height: 1;
   color: rgba(245, 248, 253, 0.94);
   background:
     linear-gradient(
@@ -397,8 +375,8 @@
 
 .tagGem {
   flex: none;
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: linear-gradient(
     145deg,
@@ -415,13 +393,9 @@
 }
 
 .tagText {
-  min-width: 0;
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  text-align: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
@@ -591,18 +565,18 @@
   }
 
   .tag {
-    min-height: 28px;
-    padding: 4px 3px;
-    gap: 4px;
+    min-height: 26px;
+    padding: 0 10px 0 8px;
+    gap: 6px;
   }
 
   .tagText {
-    font-size: 9px;
+    font-size: 10px;
   }
 
   .tagGem {
-    width: 4px;
-    height: 4px;
+    width: 5px;
+    height: 5px;
   }
 
   .cta {
