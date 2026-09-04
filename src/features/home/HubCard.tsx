@@ -136,24 +136,11 @@ export function HubCard({
         <div className={styles.foot}>
           {tags.length > 0 ? (
             <ul className={styles.tags} aria-label={`Разделы: ${title}`}>
-              {tags.slice(0, 3).map((tag, index) => (
+              {tags.map((tag, index) => (
                 <li
                   key={tag}
                   className={styles.tag}
                   style={{ '--i': index } as CSSProperties}
-                >
-                  <span className={styles.tagGem} aria-hidden />
-                  <span className={styles.tagText}>{tag}</span>
-                </li>
-              ))}
-              {tags.length > 3 ? (
-                <li className={styles.tagBreak} aria-hidden />
-              ) : null}
-              {tags.slice(3, 5).map((tag, index) => (
-                <li
-                  key={tag}
-                  className={styles.tag}
-                  style={{ '--i': index + 3 } as CSSProperties}
                 >
                   <span className={styles.tagGem} aria-hidden />
                   <span className={styles.tagText}>{tag}</span>

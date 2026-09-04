@@ -1,6 +1,6 @@
 /* Deloresh Objects — minimal offline shell for PWA install + SPA refresh */
-const SHELL = 'deloresh-shell-v34'
-const ASSETS = 'deloresh-assets-v34'
+const SHELL = 'deloresh-shell-v33'
+const ASSETS = 'deloresh-assets-v33'
 
 const ASSET_RE = /\.(?:js|mjs|css|svg|png|ico|json|webmanifest|woff2?)$/i
 
