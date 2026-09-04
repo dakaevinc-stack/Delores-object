@@ -335,16 +335,7 @@ export function HomePage() {
               }
               tone="tasks"
               icon={TASKS_ICON}
-              signals={[
-                {
-                  label: 'Новые',
-                  value: taskCounts.new ?? 0,
-                  hot: (taskCounts.new ?? 0) > 0,
-                },
-                { label: 'В работе', value: taskCounts.in_progress ?? 0 },
-                { label: 'Готово', value: taskCounts.done ?? 0 },
-                { label: 'Всего', value: taskCounts.all ?? 0 },
-              ]}
+              tags={['Сегодня', 'Срок', 'Исполнитель', 'Файлы', 'Чат']}
               cta="Открыть"
               badge={unseen}
               expanded={tasksOpen}
@@ -373,7 +364,7 @@ export function HomePage() {
                   lead="Приёмка, фиксация и контроль техники."
                   tone="inspect"
                   icon={INSPECTION_ICON}
-                  tags={['Чеклист', 'Фото', 'История', 'Решения', 'Отчёты']}
+                  tags={['Чек-листы', 'Фото', 'История', 'Решения', 'Отчёты']}
                   cta="Открыть"
                   unavailableReason="Панель пока не подключена — обратитесь к администратору."
                 />

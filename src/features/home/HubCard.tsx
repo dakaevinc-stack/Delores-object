@@ -2,32 +2,27 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import styles from './HubCard.module.css'
 
-export type HubSignal = {
-  label: string
-  /** Живое значение (иначе — порядковый индекс 01…) */
-  value?: string | number
-  /** Подсветка «требует внимания» */
-  hot?: boolean
-}
-
 type HubCardProps = {
   title: string
   icon: ReactNode
   ariaLabel: string
+  /** Короткий лид под заголовком */
   lead?: string
-  /** Короткие метки — превратятся в приборную шкалу */
+  /** Короткие метки раздела */
   tags?: string[]
-  /** Приборная шкала с опциональными цифрами (приоритетнее tags) */
-  signals?: HubSignal[]
   cta?: string
   to?: string
   href?: string
   unavailableReason?: string
+  /** Акцент: fleet — синий, inspect — красный, sites — стальной, tasks — исполнение */
   tone?: 'fleet' | 'inspect' | 'sites' | 'tasks'
+  /** Раскрывающаяся панель вместо перехода по ссылке */
   expanded?: boolean
   onToggle?: () => void
   ariaControls?: string
+  /** id заголовка для aria-labelledby у раскрываемой панели */
   headingId?: string
+  /** Красный бейдж (например число новых задач) */
   badge?: number
 }
 
@@ -52,16 +47,10 @@ function ArrowRight() {
   )
 }
 
-function formatSignalValue(value: string | number): string {
-  if (typeof value === 'number') return value > 99 ? '99+' : String(value).padStart(2, '0')
-  return value.trim()
-}
-
 export function HubCard({
   title,
   lead,
   tags = [],
-  signals,
   icon,
   cta = 'Открыть',
   ariaLabel,
@@ -86,7 +75,6 @@ export function HubCard({
           : styles.toneFleet
   const ctaLabel = onToggle ? (expanded ? 'Свернуть' : cta) : cta
   const kicker = TONE_KICKER[tone]
-  const items: HubSignal[] = (signals ?? tags.map((label) => ({ label }))).slice(0, 5)
 
   const ctaNode = onToggle ? (
     <button
@@ -146,36 +134,14 @@ export function HubCard({
         {lead ? <p className={styles.lead}>{lead}</p> : null}
 
         <div className={styles.foot}>
-          {items.length > 0 ? (
-            <div className={styles.hudWrap}>
-              <span className={styles.hudFrame} aria-hidden />
-              <span className={`${styles.hudCorner} ${styles.hudCornerTl}`} aria-hidden />
-              <span className={`${styles.hudCorner} ${styles.hudCornerTr}`} aria-hidden />
-              <span className={`${styles.hudCorner} ${styles.hudCornerBl}`} aria-hidden />
-              <span className={`${styles.hudCorner} ${styles.hudCornerBr}`} aria-hidden />
-              <ul
-                className={styles.hud}
-                data-count={items.length}
-                aria-label={`Разделы: ${title}`}
-              >
-                {items.map((item) => {
-                  const live = item.value !== undefined && item.value !== ''
-                  return (
-                    <li
-                      key={item.label}
-                      className={`${styles.hudCell} ${item.hot ? styles.hudHot : ''} ${live ? styles.hudLive : ''}`}
-                    >
-                      {live ? (
-                        <span className={styles.hudValue}>
-                          {formatSignalValue(item.value as string | number)}
-                        </span>
-                      ) : null}
-                      <span className={styles.hudLabel}>{item.label}</span>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
+          {tags.length > 0 ? (
+            <ul className={styles.tags} aria-label={`Разделы: ${title}`}>
+              {tags.map((tag) => (
+                <li key={tag} className={styles.tag}>
+                  {tag}
+                </li>
+              ))}
+            </ul>
           ) : (
             <span className={styles.tagsSpacer} aria-hidden />
           )}
