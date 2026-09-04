@@ -90,14 +90,21 @@ curl -fsSL https://raw.githubusercontent.com/dakaevinc-stack/Delores-object/main
 
 ## 2. Обновление после изменений в коде
 
-После каждого `git push origin main` запустите ту же команду — она
-подтянет свежий код, пересоберёт фронт и перезапустит бэкенд:
+**С Mac, из текущей папки (без обязательного git push):**
+
+```bash
+npm run deploy:live -- root@94.242.58.24
+```
+
+См. также [OWN-PROJECT.ru.md](./OWN-PROJECT.ru.md).
+
+**Через GitHub:** после `git push origin main` —
 
 ```bash
 npm run deploy:server -- <логин>@94.242.58.24
 ```
 
-Или, если хочется только пересобрать фронт без переустановки сервиса
+Или только пересобрать фронт из уже лежащего на сервере репо
 (быстрее на ~30 секунд):
 
 ```bash

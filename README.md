@@ -37,18 +37,29 @@ npm run preview
 
 Статика окажется в каталоге **`dist/`** — её можно раздавать любым статическим хостингом (Nginx, S3, Netlify, Cloudflare Pages и т.д.).
 
-### Развёртывание на VPS (94.242.58.24) одной командой
+### Развёртывание на VPS (94.242.58.24)
 
-Полный пошаговый гайд: **[docs/DEPLOY.ru.md](docs/DEPLOY.ru.md)**.
+**Если Cursor недоступен — проект всё равно ваш.** Краткая инструкция:
+**[docs/OWN-PROJECT.ru.md](docs/OWN-PROJECT.ru.md)** (правка в VS Code, деплой, домен, бэкап).
+
+Полный пошаговый гайд сервера: **[docs/DEPLOY.ru.md](docs/DEPLOY.ru.md)**.
 Подключение Telegram-группы как источника отчётов бригадира: **[docs/TELEGRAM-BRIDGE.ru.md](docs/TELEGRAM-BRIDGE.ru.md)**.
+Полевой тест сотрудниками на объектах: **[docs/FIELD-TEST.ru.md](docs/FIELD-TEST.ru.md)**
+(учётки и текст для чата — локально в `docs/FIELD-TEST-HANDOUT.local.md`, в git не попадает).
 
-С вашего Mac, из корня проекта:
+С вашего Mac, из корня проекта — **выложить текущую папку на прод** (удобно каждый день):
 
 ```bash
-npm run deploy:server -- <ваш-логин>@94.242.58.24
+npm run deploy:live -- root@94.242.58.24
 ```
 
-Wrapper подключится по SSH, скачает свежий `server-bootstrap.sh` из
+Либо классика «сначала push в GitHub, потом сервер подтянет main»:
+
+```bash
+npm run deploy:server -- root@94.242.58.24
+```
+
+`deploy:server` подключится по SSH, скачает свежий `server-bootstrap.sh` из
 ветки `main` на GitHub и запустит его на сервере. Bootstrap идемпотентный:
 ставит Node.js 20 + nginx, создаёт пользователя `deploy`, клонирует репозиторий, собирает фронт, ставит systemd-сервис `site-forms` (бэкенд заявок/отчётов/медиа) и nginx-конфиг с проксированием `/api → 127.0.0.1:8787`. После завершения шеф открывает `http://<IP>/`.
 
