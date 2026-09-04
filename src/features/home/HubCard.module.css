@@ -329,12 +329,10 @@
 .tags {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   gap: 7px;
   margin: 0;
   padding: 0;
   list-style: none;
-  width: 100%;
 }
 
 .tagsSpacer {
