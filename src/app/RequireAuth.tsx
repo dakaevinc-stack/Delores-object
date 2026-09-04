@@ -13,7 +13,11 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   if (!session) {
     return <Navigate to="/" replace state={{ from: location.pathname }} />
   }
-  if (session.duty === 'driver' && !location.pathname.startsWith('/driver')) {
+  if (
+    session.duty === 'driver' &&
+    !location.pathname.startsWith('/driver') &&
+    !location.pathname.startsWith('/tasks')
+  ) {
     return <Navigate to="/driver" replace />
   }
   return children

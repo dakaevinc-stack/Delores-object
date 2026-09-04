@@ -339,6 +339,44 @@ export async function fetchDriverTripsRemote(): Promise<DriverTrip[] | null> {
   }
 }
 
+export async function fetchStaffTasksRemote(): Promise<unknown[] | null> {
+  try {
+    const res = await fetch(`${apiBase()}/api/staff-tasks`)
+    if (!res.ok) return null
+    const json: unknown = await res.json()
+    if (!Array.isArray(json)) return []
+    return json
+  } catch {
+    return null
+  }
+}
+
+export async function putStaffTasksRemote(tasks: readonly unknown[]): Promise<boolean> {
+  try {
+    const res = await fetch(`${apiBase()}/api/staff-tasks`, {
+      method: 'PUT',
+      headers: writeHeaders(true),
+      body: JSON.stringify(tasks),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+export async function upsertStaffTaskRemote(task: unknown): Promise<boolean> {
+  try {
+    const res = await fetch(`${apiBase()}/api/staff-tasks`, {
+      method: 'POST',
+      headers: writeHeaders(true),
+      body: JSON.stringify(task),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
 export type FleetRegistryRemote = {
   added: unknown[]
   removedIds: string[]
@@ -452,6 +490,40 @@ export async function putWorkDayPlanRemote(
 ): Promise<boolean> {
   try {
     const res = await fetch(siteUrl(siteId, '/work-day-plan'), {
+      method: 'PUT',
+      headers: writeHeaders(true),
+      body: JSON.stringify(bundle),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+export async function fetchPlanMarksRemote(
+  siteId: string,
+): Promise<{ siteId: string; marks: unknown[] } | null> {
+  try {
+    const res = await fetch(siteUrl(siteId, '/plan-marks'))
+    if (!res.ok) return null
+    const json: unknown = await res.json()
+    if (!json || typeof json !== 'object' || Array.isArray(json)) return null
+    const r = json as Record<string, unknown>
+    if (r.siteId !== siteId || !Array.isArray(r.marks)) {
+      return { siteId, marks: [] }
+    }
+    return { siteId, marks: r.marks }
+  } catch {
+    return null
+  }
+}
+
+export async function putPlanMarksRemote(
+  siteId: string,
+  bundle: { siteId: string; marks: unknown[] },
+): Promise<boolean> {
+  try {
+    const res = await fetch(siteUrl(siteId, '/plan-marks'), {
       method: 'PUT',
       headers: writeHeaders(true),
       body: JSON.stringify(bundle),
@@ -654,7 +726,9 @@ export async function deleteObjectMediaRemote(siteId: string, mediaId: string): 
 
 export async function fetchProjectFilesRemote(siteId: string): Promise<StoredSiteProjectFile[] | null> {
   try {
-    const res = await fetch(siteUrl(siteId, '/project-files'))
+    const res = await fetch(siteUrl(siteId, '/project-files'), {
+      signal: AbortSignal.timeout(60_000),
+    })
     if (!res.ok) return null
     const json: unknown = await res.json()
     return parseProjectFilesJson(json)
@@ -705,9 +779,10 @@ export async function fetchProjectFileDxfPreviewRemote(
       if (opts?.regenerate) qs.set('regenerate', '1')
       const res = await fetch(
         `${siteUrl(siteId, `/project-files/${encodeURIComponent(fileId)}/dxf-preview`)}?${qs}`,
-        opts?.regenerate
-          ? { headers: writeHeaders(false) }
-          : undefined,
+        {
+          ...(opts?.regenerate ? { headers: writeHeaders(false) } : {}),
+          signal: AbortSignal.timeout(15_000),
+        },
       )
       if (res.ok) {
         const text = await res.text()
@@ -764,9 +839,13 @@ export async function fetchProjectFilePngPreviewRemote(
     onWait?: () => void
     cacheKey?: string
     regenerate?: boolean
+    /** Таймаут одного HTTP-запроса (мс). Без него fetch зависает при «мёртвом» сервере. */
+    requestTimeoutMs?: number
   },
 ): Promise<PngPreviewRemote | null> {
-  const timeoutMs = opts?.timeoutMs ?? 90_000
+  // Крупные DWG (ACadSharp PNG) на сервере могут идти 3–6 мин — не обрываем раньше.
+  const timeoutMs = opts?.timeoutMs ?? 360_000
+  const requestTimeoutMs = opts?.requestTimeoutMs ?? 12_000
   const started = Date.now()
   let attempt = 0
   let notFoundStreak = 0
@@ -781,7 +860,10 @@ export async function fetchProjectFilePngPreviewRemote(
       if (opts?.regenerate) qs.set('regenerate', '1')
       const res = await fetch(
         `${siteUrl(siteId, `/project-files/${encodeURIComponent(fileId)}/png-preview`)}?${qs}`,
-        opts?.regenerate ? { headers: writeHeaders(false) } : undefined,
+        {
+          ...(opts?.regenerate ? { headers: writeHeaders(false) } : {}),
+          signal: AbortSignal.timeout(requestTimeoutMs),
+        },
       )
       if (res.ok) {
         const blob = await res.blob()
@@ -849,9 +931,10 @@ export async function fetchProjectFilePngPreviewRemote(
       return null
     } catch {
       networkFailStreak += 1
-      if (networkFailStreak >= 3) return null
       opts?.onWait?.()
-      await new Promise((r) => setTimeout(r, 800))
+      // Сервер может временно не отвечать — ждём до общего timeoutMs, не сдаёмся на 2-м обрыве.
+      const delay = Math.min(5000, 600 + networkFailStreak * 400)
+      await new Promise((r) => setTimeout(r, delay))
     }
   }
   return null
@@ -911,6 +994,24 @@ export async function deleteProjectFileRemote(siteId: string, fileId: string): P
     return res.ok
   } catch {
     return false
+  }
+}
+
+/** Сделать DWG основным чертежом карточки объекта (на всех устройствах). */
+export async function featureProjectFileRemote(
+  siteId: string,
+  fileId: string,
+): Promise<RemoteWriteResult> {
+  try {
+    const res = await fetch(siteUrl(siteId, `/project-files/${encodeURIComponent(fileId)}`), {
+      method: 'PATCH',
+      headers: writeHeaders(true),
+      body: JSON.stringify({ featured: true }),
+    })
+    if (res.ok) return { ok: true }
+    return classifyResponse(res.status)
+  } catch {
+    return { ok: false, reason: 'network', status: null }
   }
 }
 

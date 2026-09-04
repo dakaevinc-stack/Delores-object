@@ -1,7 +1,21 @@
-import { Navigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, Navigate } from 'react-router-dom'
 import { HubCard } from '../features/home/HubCard'
 import { MastheadSignIn } from '../features/home/MastheadSignIn'
+import {
+  peekLoginIntroPending,
+  subscribeLoginIntroFinished,
+} from '../features/home/loginIntroPending'
+import { TasksPanel } from '../features/tasks/TasksPanel'
+import { TaskCreateModal } from '../features/tasks/TaskCreateModal'
+import {
+  canCreateStaffTasks,
+  countUnseenForAssignee,
+  filterStaffTasks,
+  type StaffTaskFilter,
+} from '../domain/staffTask'
 import { useLocalSession } from '../lib/useLocalSession'
+import { useStaffTasks } from '../lib/useStaffTasks'
 import { homeShowsHubs } from '../domain/sitePageZone'
 import styles from './HomePage.module.css'
 
@@ -133,6 +147,58 @@ const OBJECTS_ICON = (
   </svg>
 )
 
+const TASKS_ICON = (
+  <svg
+    viewBox="0 0 32 32"
+    width="30"
+    height="30"
+    fill="none"
+    aria-hidden
+    focusable="false"
+  >
+    <rect
+      x="5"
+      y="8"
+      width="22"
+      height="19"
+      rx="4"
+      fill="currentColor"
+      fillOpacity="0.16"
+    />
+    <rect
+      x="5"
+      y="8"
+      width="22"
+      height="19"
+      rx="4"
+      stroke="currentColor"
+      strokeWidth="2"
+    />
+    <path d="M5 13.5h22" stroke="currentColor" strokeWidth="2" />
+    <path
+      d="M11 6v5M21 6v5"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <path
+      d="M10.5 19.5h4M10.5 23h7"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      opacity="0.85"
+    />
+    <circle cx="22" cy="22" r="5.4" fill="#0b1a33" stroke="currentColor" strokeWidth="1.5" />
+    <path
+      d="M19.8 22.1l1.5 1.5 3.1-3.2"
+      stroke="#fff"
+      strokeWidth="1.85"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
 const inspectionDashboardUrl = (
   import.meta.env.VITE_AMEDA_INSPECTION_DASHBOARD_URL as string | undefined
 )?.trim()
@@ -146,8 +212,52 @@ if (import.meta.env.DEV && !inspectionDashboardUrl) {
 
 export function HomePage() {
   const session = useLocalSession()
+  const { tasks, create } = useStaffTasks()
+  const [tasksOpen, setTasksOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [taskFilter, setTaskFilter] = useState<StaffTaskFilter>('assigned_to_me')
+  const [hubRevealed, setHubRevealed] = useState(() => {
+    if (typeof window === 'undefined') return true
+    if (!session) return false
+    return !peekLoginIntroPending()
+  })
+
+  useEffect(() => {
+    return subscribeLoginIntroFinished(() => setHubRevealed(true))
+  }, [])
+
+  useEffect(() => {
+    if (!session) {
+      setHubRevealed(false)
+      return
+    }
+    if (!peekLoginIntroPending()) setHubRevealed(true)
+  }, [session])
 
   const showHubs = session?.duty ? homeShowsHubs(session.duty) : false
+  const canCreate = session ? canCreateStaffTasks(session.duty) : false
+  const hubCount = showHubs ? 4 : 2
+
+  const unseen = session ? countUnseenForAssignee(tasks, session.login) : 0
+
+  const visibleTasks = useMemo(() => {
+    if (!session) return []
+    return filterStaffTasks(tasks, { login: session.login, filter: taskFilter })
+  }, [tasks, session, taskFilter])
+
+  const taskCounts = useMemo(() => {
+    if (!session) return {}
+    const mine = filterStaffTasks(tasks, {
+      login: session.login,
+      filter: 'assigned_to_me',
+    })
+    return {
+      all: mine.length,
+      new: mine.filter((t) => t.status === 'new').length,
+      in_progress: mine.filter((t) => t.status === 'in_progress').length,
+      done: mine.filter((t) => t.status === 'done').length,
+    }
+  }, [tasks, session])
 
   const todayDate = new Date().toLocaleDateString('ru-RU', {
     day: 'numeric',
@@ -208,45 +318,101 @@ export function HomePage() {
       </header>
 
       {session ? (
-        <div className={styles.hubRow} data-count={showHubs ? 3 : 1}>
-          {showHubs ? (
-            <>
-              <HubCard
-                to="/spectehnika"
-                ariaLabel="Открыть парк техники"
-                title="Спецтехника"
-                lead="Карточки техники, сроки документов и ремонты."
-                tone="fleet"
-                icon={FLEET_ICON}
-                tags={['ТО', 'Страховки', 'Пропуска', 'Ремонты', 'Расходы']}
-                cta="Открыть"
-              />
+        <>
+          <div
+            className={[styles.hubRow, hubRevealed ? styles.hubRowRevealed : styles.hubRowHidden]
+              .filter(Boolean)
+              .join(' ')}
+            data-count={hubCount}
+          >
+            <HubCard
+              ariaLabel="Открыть задачи"
+              title="Задачи"
+              lead={unseen > 0 ? `${unseen} новых` : 'Назначить и контролировать'}
+              tone="tasks"
+              icon={TASKS_ICON}
+              tags={['Новые', 'В работе', 'Готово']}
+              cta="Открыть"
+              badge={unseen}
+              expanded={tasksOpen}
+              onToggle={() => setTasksOpen((v) => !v)}
+              ariaControls="home-tasks-panel"
+              headingId="home-tasks-heading"
+            />
 
-              <HubCard
-                href={inspectionDashboardUrl || undefined}
-                ariaLabel="Открыть панель приёмки техники в новой вкладке"
-                title="Приёмка техники"
-                lead="Приёмка, фиксация и контроль техники."
-                tone="inspect"
-                icon={INSPECTION_ICON}
-                tags={['Чек-листы', 'Фото', 'История', 'Решения', 'Отчёты']}
-                cta="Открыть"
-                unavailableReason="Панель пока не подключена — обратитесь к администратору."
+            {showHubs ? (
+              <>
+                <HubCard
+                  to="/spectehnika"
+                  ariaLabel="Открыть парк техники"
+                  title="Спецтехника"
+                  lead="Карточки техники, сроки документов и ремонты."
+                  tone="fleet"
+                  icon={FLEET_ICON}
+                  tags={['ТО', 'Страховки', 'Пропуска', 'Ремонты', 'Расходы']}
+                  cta="Открыть"
+                />
+
+                <HubCard
+                  href={inspectionDashboardUrl || undefined}
+                  ariaLabel="Открыть панель приёмки техники в новой вкладке"
+                  title="Приёмка техники"
+                  lead="Приёмка, фиксация и контроль техники."
+                  tone="inspect"
+                  icon={INSPECTION_ICON}
+                  tags={['Чек-листы', 'Фото', 'История', 'Решения', 'Отчёты']}
+                  cta="Открыть"
+                  unavailableReason="Панель пока не подключена — обратитесь к администратору."
+                />
+              </>
+            ) : null}
+
+            <HubCard
+              to="/objects"
+              ariaLabel="Открыть список объектов"
+              title="Объекты"
+              lead="Сроки, материалы и ход работ по каждой площадке."
+              tone="sites"
+              icon={OBJECTS_ICON}
+              tags={['Поиск', 'Статус', 'Прогресс', 'Сроки', 'План']}
+              cta="Открыть"
+            />
+          </div>
+
+          {tasksOpen ? (
+            <div id="home-tasks-panel">
+              <TasksPanel
+                tasks={visibleTasks}
+                filter={taskFilter}
+                onFilterChange={setTaskFilter}
+                canCreate={canCreate}
+                onCreate={() => setCreateOpen(true)}
+                title="Мои задачи"
+                subtitle="Сегодня и ближайшие"
+                counts={taskCounts}
               />
-            </>
+              <p className={styles.tasksAllWrap}>
+                <Link className={styles.tasksAllLink} to="/tasks">
+                  Все задачи →
+                </Link>
+              </p>
+            </div>
           ) : null}
 
-          <HubCard
-            to="/objects"
-            ariaLabel="Открыть список объектов"
-            title="Объекты"
-            lead="Сроки, материалы и ход работ по каждой площадке."
-            tone="sites"
-            icon={OBJECTS_ICON}
-            tags={['Поиск', 'Статус', 'Прогресс', 'Сроки', 'План']}
-            cta="Открыть"
+          <TaskCreateModal
+            open={createOpen}
+            excludeLogin={session.login}
+            onClose={() => setCreateOpen(false)}
+            onSubmit={(values) => {
+              create({
+                ...values,
+                creatorLogin: session.login,
+                creatorName: session.fullName,
+              })
+              setTasksOpen(true)
+            }}
           />
-        </div>
+        </>
       ) : null}
     </div>
   )

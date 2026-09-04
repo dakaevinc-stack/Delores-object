@@ -9,6 +9,7 @@ const EXACT_KEYS = [
   'fleet:registry',
   'deloresh-procurement-authors',
   'deloresh-driver-trips:v1',
+  'deloresh-staff-tasks:v1',
   'deloresh-local-session:v1',
 ] as const
 

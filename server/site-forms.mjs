@@ -229,6 +229,46 @@ function isWorkDayPlanBundle(x, siteId) {
 }
 
 /** @param {unknown} x */
+function isPlanMarkRow(x) {
+  if (!x || typeof x !== 'object') return false
+  const r = /** @type {Record<string, unknown>} */ (x)
+  const kindOk =
+    r.kind === 'accepted' || r.kind === 'ckkb' || r.kind === 'issue' || r.kind === 'note'
+  const spaceOk = r.space === 'plan' || r.space === 'world'
+  const updatedOk =
+    r.updatedAtIso === undefined || typeof r.updatedAtIso === 'string'
+  const deletedOk =
+    r.deletedAtIso === undefined || typeof r.deletedAtIso === 'string'
+  const attachmentsOk =
+    r.attachmentIds === undefined ||
+    (Array.isArray(r.attachmentIds) &&
+      r.attachmentIds.every((x) => typeof x === 'string'))
+  return (
+    typeof r.id === 'string' &&
+    typeof r.siteId === 'string' &&
+    typeof r.fileId === 'string' &&
+    kindOk &&
+    spaceOk &&
+    typeof r.text === 'string' &&
+    typeof r.author === 'string' &&
+    typeof r.createdAtIso === 'string' &&
+    updatedOk &&
+    deletedOk &&
+    attachmentsOk &&
+    r.shape != null &&
+    typeof r.shape === 'object'
+  )
+}
+
+/** @param {unknown} x */
+function isPlanMarksBundle(x, siteId) {
+  if (!x || typeof x !== 'object' || Array.isArray(x)) return false
+  const r = /** @type {Record<string, unknown>} */ (x)
+  if (r.siteId !== siteId || !Array.isArray(r.marks)) return false
+  return r.marks.every(isPlanMarkRow)
+}
+
+/** @param {unknown} x */
 function isDeliveryPointRow(x) {
   if (!x || typeof x !== 'object') return false
   const r = /** @type {Record<string, unknown>} */ (x)
@@ -495,6 +535,50 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    if (parts[0] === 'api' && parts[1] === 'staff-tasks' && parts.length === 2) {
+      const file = path.join(DATA_ROOT, 'staff-tasks.json')
+      if (req.method === 'GET') {
+        const list = await readJsonArray(file)
+        sendJson(res, 200, list)
+        return
+      }
+      if (req.method === 'PUT') {
+        if (!checkWrite(req, res)) return
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        if (!Array.isArray(body)) {
+          sendJson(res, 400, { error: 'invalid_staff_tasks' })
+          return
+        }
+        const cleaned = body.filter(
+          (x) =>
+            x &&
+            typeof x === 'object' &&
+            typeof /** @type {{id?: unknown}} */ (x).id === 'string' &&
+            typeof /** @type {{title?: unknown}} */ (x).title === 'string' &&
+            typeof /** @type {{assigneeLogin?: unknown}} */ (x).assigneeLogin === 'string' &&
+            typeof /** @type {{creatorLogin?: unknown}} */ (x).creatorLogin === 'string',
+        )
+        await writeJsonArray(file, cleaned)
+        sendJson(res, 200, { ok: true, count: cleaned.length })
+        return
+      }
+      if (req.method === 'POST') {
+        if (!checkWrite(req, res)) return
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        if (!body || typeof body !== 'object' || typeof body.id !== 'string') {
+          sendJson(res, 400, { error: 'invalid_staff_task' })
+          return
+        }
+        const list = await readJsonArray(file)
+        const next = [body, ...list.filter((x) => !x || /** @type {{id?: unknown}} */ (x).id !== body.id)]
+        await writeJsonArray(file, next)
+        sendJson(res, 200, { ok: true })
+        return
+      }
+    }
+
     if (
       parts[0] === 'api' &&
       parts[1] === 'driver-trips' &&
@@ -700,6 +784,42 @@ const server = http.createServer(async (req, res) => {
           return
         }
         await writeJsonArray(file, body)
+        sendJson(res, 200, { ok: true })
+        return
+      }
+    }
+
+    if (
+      parts[0] === 'api' &&
+      parts[1] === 'sites' &&
+      parts[2] &&
+      parts[3] === 'plan-marks' &&
+      parts.length === 4
+    ) {
+      const siteId = safeSiteId(parts[2])
+      if (!siteId) {
+        sendJson(res, 400, { error: 'bad_site_id' })
+        return
+      }
+      const file = path.join(DATA_ROOT, 'sites', siteId, 'plan-marks.json')
+      if (req.method === 'GET') {
+        const obj = await readJsonObject(file)
+        if (!isPlanMarksBundle(obj, siteId)) {
+          sendJson(res, 200, { siteId, marks: [] })
+          return
+        }
+        sendJson(res, 200, obj)
+        return
+      }
+      if (req.method === 'PUT') {
+        if (!checkWrite(req, res)) return
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        if (!isPlanMarksBundle(body, siteId)) {
+          sendJson(res, 400, { error: 'invalid_plan_marks' })
+          return
+        }
+        await writeJsonFile(file, { siteId, marks: body.marks })
         sendJson(res, 200, { ok: true })
         return
       }
@@ -1482,7 +1602,8 @@ const server = http.createServer(async (req, res) => {
             return
           }
           if (!png) {
-            if (!forceRegenerate && (isPngPreviewInflight(baseDir, fileId) || pngStatus === 'pending')) {
+            // pending без inflight = джоба умерла (рестарт API) — перезапускаем, иначе UI ждёт вечно
+            if (!forceRegenerate && isPngPreviewInflight(baseDir, fileId)) {
               sendJson(res, 503, { error: 'png_preview_pending' })
               return
             }
@@ -1623,6 +1744,48 @@ const server = http.createServer(async (req, res) => {
             throw e
           }
         }
+        return
+      }
+
+      if (parts.length === 5 && req.method === 'PATCH') {
+        if (!checkWrite(req, res)) return
+        const fileId = safeMediaId(parts[4])
+        if (!fileId) {
+          sendJson(res, 400, { error: 'bad_id' })
+          return
+        }
+        const raw = await readBody(req)
+        const patch = JSON.parse(raw)
+        if (!patch || typeof patch !== 'object') {
+          sendJson(res, 400, { error: 'invalid_patch' })
+          return
+        }
+        const list = await readJsonArray(manifestPath)
+        const idx = list.findIndex(
+          (x) => isProjectFileRecord(x) && /** @type {{id:string}} */ (x).id === fileId,
+        )
+        if (idx === -1) {
+          sendJson(res, 404, { error: 'not_found' })
+          return
+        }
+        const cur = /** @type {Record<string, unknown>} */ (list[idx])
+        if (/** @type {{featured?: unknown}} */ (patch).featured === true) {
+          if (cur.kind !== 'dwg') {
+            sendJson(res, 400, { error: 'not_dwg' })
+            return
+          }
+          const now = new Date().toISOString()
+          for (const row of list) {
+            if (!row || typeof row !== 'object') continue
+            const rec = /** @type {Record<string, unknown>} */ (row)
+            if (rec.kind === 'dwg') delete rec.featuredAtIso
+          }
+          cur.featuredAtIso = now
+          await writeJsonArray(manifestPath, list)
+          sendJson(res, 200, { ok: true, featuredAtIso: now })
+          return
+        }
+        sendJson(res, 400, { error: 'unsupported_patch' })
         return
       }
 

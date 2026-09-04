@@ -195,6 +195,11 @@ export function DriverCabinetPage() {
           Укажите ФИО как у диспетчера. Каждый рейс — отдельно: откуда забрать и куда везти.
         </p>
         <p className={styles.dateLine}>{todayLabel}</p>
+        <p className={styles.tasksLinkWrap}>
+          <Link className={styles.tasksLink} to="/tasks">
+            Мои задачи →
+          </Link>
+        </p>
       </header>
 
       <label className={styles.field}>

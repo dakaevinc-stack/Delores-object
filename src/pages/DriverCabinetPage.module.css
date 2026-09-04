@@ -81,6 +81,25 @@
   text-transform: capitalize;
 }
 
+.tasksLinkWrap {
+  margin: 12px 0 0;
+}
+
+.tasksLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 2px;
+  font: 700 15px/1.2 Inter, system-ui, sans-serif;
+  color: var(--accent, #1c4b82);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tasksLink:active {
+  opacity: 0.75;
+}
+
 .field {
   display: flex;
   flex-direction: column;

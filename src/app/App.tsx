@@ -27,6 +27,12 @@ const ObjectDetailPage = lazy(() =>
 const DriverCabinetPage = lazy(() =>
   import('../pages/DriverCabinetPage').then((m) => ({ default: m.DriverCabinetPage })),
 )
+const TasksPage = lazy(() =>
+  import('../pages/TasksPage').then((m) => ({ default: m.TasksPage })),
+)
+const TaskDetailPage = lazy(() =>
+  import('../pages/TaskDetailPage').then((m) => ({ default: m.TaskDetailPage })),
+)
 function RouteFallback() {
   return (
     <div className="route-loading" role="status" aria-live="polite">
@@ -101,6 +107,22 @@ export function App() {
           element={
             <RequireAuth>
               <DriverCabinetPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/tasks"
+          element={
+            <RequireAuth>
+              <TasksPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/tasks/:taskId"
+          element={
+            <RequireAuth>
+              <TaskDetailPage />
             </RequireAuth>
           }
         />

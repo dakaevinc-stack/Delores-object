@@ -883,17 +883,101 @@
   margin: 0 0 18px;
 }
 
+.tasksAllWrap {
+  margin: -8px 0 20px;
+  padding: 0 4px;
+  text-align: right;
+}
+
+.tasksAllLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  font: 700 14px/1 Inter, system-ui, sans-serif;
+  color: var(--accent, #1c4b82);
+  text-decoration: none;
+}
+
+.hubRowHidden {
+  opacity: 0;
+  transform: translateY(18px);
+  pointer-events: none;
+}
+
+.hubRowRevealed {
+  animation: hubRowReveal 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hubRowRevealed > * {
+  animation: hubCardReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hubRowRevealed > *:nth-child(1) {
+  animation-delay: 0.06s;
+}
+
+.hubRowRevealed > *:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.hubRowRevealed > *:nth-child(3) {
+  animation-delay: 0.18s;
+}
+
+.hubRowRevealed > *:nth-child(4) {
+  animation-delay: 0.24s;
+}
+
+@keyframes hubRowReveal {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hubCardReveal {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (min-width: 1100px) {
   .hubRow {
     gap: 10px;
   }
 
+  .hubRow[data-count='2'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .hubRow[data-count='3'] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .hubRow[data-count='4'] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .hubRow[data-count='3'] > *,
+  .hubRow[data-count='4'] > * {
+    min-height: 228px;
   }
 }
 
 @media (min-width: 640px) and (max-width: 1099px) {
+  .hubRow[data-count='2'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .hubRow[data-count='3'] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -901,18 +985,16 @@
   .hubRow[data-count='3'] > :last-child {
     grid-column: 1 / -1;
   }
+
+  .hubRow[data-count='4'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 1440px) {
   .hubRow {
     gap: 16px;
     margin: 0 0 26px;
-  }
-}
-
-@media (min-width: 1100px) {
-  .hubRow[data-count='3'] > * {
-    min-height: 228px;
   }
 }
 
@@ -972,5 +1054,16 @@
     animation: none;
     opacity: 0.45;
     transform: none;
+  }
+
+  .hubRowRevealed,
+  .hubRowRevealed > * {
+    animation: none;
+  }
+
+  .hubRowHidden {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
   }
 }

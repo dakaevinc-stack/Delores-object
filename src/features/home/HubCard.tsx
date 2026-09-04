@@ -14,20 +14,23 @@ type HubCardProps = {
   to?: string
   href?: string
   unavailableReason?: string
-  /** Акцент: fleet — синий, inspect — красный, sites — стальной */
-  tone?: 'fleet' | 'inspect' | 'sites'
+  /** Акцент: fleet — синий, inspect — красный, sites — стальной, tasks — исполнение */
+  tone?: 'fleet' | 'inspect' | 'sites' | 'tasks'
   /** Раскрывающаяся панель вместо перехода по ссылке */
   expanded?: boolean
   onToggle?: () => void
   ariaControls?: string
   /** id заголовка для aria-labelledby у раскрываемой панели */
   headingId?: string
+  /** Красный бейдж (например число новых задач) */
+  badge?: number
 }
 
 const TONE_KICKER: Record<NonNullable<HubCardProps['tone']>, string> = {
   fleet: 'Парк',
   inspect: 'Контроль',
   sites: 'Площадки',
+  tasks: 'Исполнение',
 }
 
 function ArrowRight() {
@@ -59,6 +62,7 @@ export function HubCard({
   onToggle,
   ariaControls,
   headingId,
+  badge,
 }: HubCardProps) {
   const available = Boolean(to || href || onToggle)
   const toneClass =
@@ -66,7 +70,9 @@ export function HubCard({
       ? styles.toneInspect
       : tone === 'sites'
         ? styles.toneSites
-        : styles.toneFleet
+        : tone === 'tasks'
+          ? styles.toneTasks
+          : styles.toneFleet
   const ctaLabel = onToggle ? (expanded ? 'Свернуть' : cta) : cta
   const kicker = TONE_KICKER[tone]
 
@@ -102,6 +108,11 @@ export function HubCard({
       <span className={styles.grid} aria-hidden />
       <span className={styles.scan} aria-hidden />
       <span className={styles.sheen} aria-hidden />
+      {typeof badge === 'number' && badge > 0 ? (
+        <span className={styles.badge} aria-label={`Новых: ${badge}`}>
+          {badge > 99 ? '99+' : badge}
+        </span>
+      ) : null}
 
       <div className={styles.shell}>
         <div className={styles.top}>
@@ -150,11 +161,25 @@ export function HubCard({
 
   const className = `${styles.card} ${toneClass} ${
     onToggle ? styles.expandable : available ? styles.interactive : styles.static
-  }`
+  } ${typeof badge === 'number' && badge > 0 ? styles.hasBadge : ''}`
 
   if (onToggle) {
     return (
-      <article className={className} aria-label={ariaLabel}>
+      <article
+        className={className}
+        aria-label={ariaLabel}
+        onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onToggle()
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        aria-controls={ariaControls}
+      >
         {body}
       </article>
     )
