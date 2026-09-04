@@ -14,7 +14,7 @@ type HubCardProps = {
   to?: string
   href?: string
   unavailableReason?: string
-  /** Акцент: fleet — синий, inspect — красный, sites — стальной, tasks — янтарь */
+  /** Акцент: fleet — синий, inspect — красный, sites — стальной, tasks — исполнение */
   tone?: 'fleet' | 'inspect' | 'sites' | 'tasks'
   /** Раскрывающаяся панель вместо перехода по ссылке */
   expanded?: boolean
@@ -22,7 +22,7 @@ type HubCardProps = {
   ariaControls?: string
   /** id заголовка для aria-labelledby у раскрываемой панели */
   headingId?: string
-  /** Бейдж на иконке (например число новых задач) */
+  /** Красный бейдж (например число новых задач) */
   badge?: number
 }
 
@@ -75,7 +75,6 @@ export function HubCard({
           : styles.toneFleet
   const ctaLabel = onToggle ? (expanded ? 'Свернуть' : cta) : cta
   const kicker = TONE_KICKER[tone]
-  const showBadge = typeof badge === 'number' && badge > 0
 
   const ctaNode = onToggle ? (
     <button
@@ -109,34 +108,35 @@ export function HubCard({
       <span className={styles.grid} aria-hidden />
       <span className={styles.scan} aria-hidden />
       <span className={styles.sheen} aria-hidden />
+      {typeof badge === 'number' && badge > 0 ? (
+        <span className={styles.badge} aria-label={`Новых: ${badge}`}>
+          {badge > 99 ? '99+' : badge}
+        </span>
+      ) : null}
 
       <div className={styles.shell}>
-        <div className={styles.head}>
-          <p className={styles.kicker}>{kicker}</p>
-          <span className={`${styles.icon} ${showBadge ? styles.iconBadged : ''}`} aria-hidden>
+        <div className={styles.top}>
+          <span className={styles.icon} aria-hidden>
             <span className={styles.iconCore}>{icon}</span>
-            {showBadge ? (
-              <span className={styles.badge} aria-label={`Новых: ${badge}`}>
-                {badge > 99 ? '99+' : badge}
-              </span>
-            ) : null}
           </span>
+          <div className={styles.topCopy}>
+            <p className={styles.kicker}>{kicker}</p>
+            {onToggle ? (
+              <h2 className={styles.title} id={headingId}>
+                {title}
+              </h2>
+            ) : (
+              <h3 className={styles.title}>{title}</h3>
+            )}
+          </div>
         </div>
 
-        {onToggle ? (
-          <h2 className={styles.title} id={headingId}>
-            {title}
-          </h2>
-        ) : (
-          <h3 className={styles.title}>{title}</h3>
-        )}
-
-        <p className={styles.lead}>{lead || '\u00a0'}</p>
+        {lead ? <p className={styles.lead}>{lead}</p> : null}
 
         <div className={styles.foot}>
           {tags.length > 0 ? (
             <ul className={styles.tags} aria-label={`Разделы: ${title}`}>
-              {tags.slice(0, 3).map((tag) => (
+              {tags.map((tag) => (
                 <li key={tag} className={styles.tag}>
                   {tag}
                 </li>
@@ -159,14 +159,9 @@ export function HubCard({
     </>
   )
 
-  const className = [
-    styles.card,
-    toneClass,
-    onToggle ? styles.expandable : available ? styles.interactive : styles.static,
-    expanded ? styles.isExpanded : '',
-  ]
-    .filter(Boolean)
-    .join(' ')
+  const className = `${styles.card} ${toneClass} ${
+    onToggle ? styles.expandable : available ? styles.interactive : styles.static
+  } ${typeof badge === 'number' && badge > 0 ? styles.hasBadge : ''}`
 
   if (onToggle) {
     return (

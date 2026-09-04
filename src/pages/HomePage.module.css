@@ -969,7 +969,7 @@
 
   .hubRow[data-count='3'] > *,
   .hubRow[data-count='4'] > * {
-    min-height: 248px;
+    min-height: 228px;
   }
 }
 
