@@ -328,10 +328,14 @@ export function HomePage() {
             <HubCard
               ariaLabel="Открыть задачи"
               title="Задачи"
-              lead={unseen > 0 ? `${unseen} новых` : 'Назначить и контролировать'}
+              lead={
+                unseen > 0
+                  ? `${unseen} новых — поставьте срок и проверьте исполнение.`
+                  : 'Поставьте задачу сотруднику, срок и переписку по делу.'
+              }
               tone="tasks"
               icon={TASKS_ICON}
-              tags={['Новые', 'В работе', 'Готово']}
+              tags={['Сегодня', 'Срок', 'Исполнитель', 'Файлы', 'Чат']}
               cta="Открыть"
               badge={unseen}
               expanded={tasksOpen}
