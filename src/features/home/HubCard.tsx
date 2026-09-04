@@ -1,28 +1,33 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import styles from './HubCard.module.css'
+
+export type HubSignal = {
+  label: string
+  /** Живое значение (иначе — порядковый индекс 01…) */
+  value?: string | number
+  /** Подсветка «требует внимания» */
+  hot?: boolean
+}
 
 type HubCardProps = {
   title: string
   icon: ReactNode
   ariaLabel: string
-  /** Короткий лид под заголовком */
   lead?: string
-  /** Короткие метки раздела */
+  /** Короткие метки — превратятся в приборную шкалу */
   tags?: string[]
+  /** Приборная шкала с опциональными цифрами (приоритетнее tags) */
+  signals?: HubSignal[]
   cta?: string
   to?: string
   href?: string
   unavailableReason?: string
-  /** Акцент: fleet — синий, inspect — красный, sites — стальной, tasks — исполнение */
   tone?: 'fleet' | 'inspect' | 'sites' | 'tasks'
-  /** Раскрывающаяся панель вместо перехода по ссылке */
   expanded?: boolean
   onToggle?: () => void
   ariaControls?: string
-  /** id заголовка для aria-labelledby у раскрываемой панели */
   headingId?: string
-  /** Красный бейдж (например число новых задач) */
   badge?: number
 }
 
@@ -47,10 +52,17 @@ function ArrowRight() {
   )
 }
 
+function formatSignalValue(value: string | number | undefined, index: number): string {
+  if (typeof value === 'number') return value > 99 ? '99+' : String(value)
+  if (typeof value === 'string' && value.trim()) return value.trim()
+  return String(index + 1).padStart(2, '0')
+}
+
 export function HubCard({
   title,
   lead,
   tags = [],
+  signals,
   icon,
   cta = 'Открыть',
   ariaLabel,
@@ -75,6 +87,7 @@ export function HubCard({
           : styles.toneFleet
   const ctaLabel = onToggle ? (expanded ? 'Свернуть' : cta) : cta
   const kicker = TONE_KICKER[tone]
+  const items: HubSignal[] = (signals ?? tags.map((label) => ({ label }))).slice(0, 5)
 
   const ctaNode = onToggle ? (
     <button
@@ -134,14 +147,31 @@ export function HubCard({
         {lead ? <p className={styles.lead}>{lead}</p> : null}
 
         <div className={styles.foot}>
-          {tags.length > 0 ? (
-            <ul className={styles.tags} aria-label={`Разделы: ${title}`}>
-              {tags.map((tag) => (
-                <li key={tag} className={styles.tag}>
-                  {tag}
-                </li>
-              ))}
-            </ul>
+          {items.length > 0 ? (
+            <div className={styles.signalsWrap}>
+              <span className={styles.signalSpine} aria-hidden />
+              <ul
+                className={styles.signals}
+                data-count={items.length}
+                aria-label={`Показатели: ${title}`}
+              >
+                {items.map((item, index) => (
+                  <li
+                    key={item.label}
+                    className={`${styles.signal} ${item.hot ? styles.signalHot : ''}`}
+                    style={{ '--i': index } as CSSProperties}
+                  >
+                    <span className={styles.signalValue}>
+                      {formatSignalValue(item.value, index)}
+                    </span>
+                    <span className={styles.signalNode} aria-hidden>
+                      <span className={styles.signalCore} />
+                    </span>
+                    <span className={styles.signalLabel}>{item.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : (
             <span className={styles.tagsSpacer} aria-hidden />
           )}

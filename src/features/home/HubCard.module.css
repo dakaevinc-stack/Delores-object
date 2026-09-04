@@ -313,7 +313,7 @@
   text-wrap: pretty;
 }
 
-/* --- foot: tags + cta ------------------------------------- */
+/* --- foot: telemetry spine + cta -------------------------- */
 
 .foot {
   display: flex;
@@ -323,47 +323,216 @@
   padding-top: 4px;
 }
 
-.tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.signalsWrap {
+  position: relative;
+  margin: 2px 0 0;
+}
+
+.signals {
+  --signal-count: 5;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--signal-count), minmax(0, 1fr));
+  align-items: start;
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
+  min-height: 58px;
+}
+
+.signals[data-count='2'] {
+  --signal-count: 2;
+}
+
+.signals[data-count='3'] {
+  --signal-count: 3;
+}
+
+.signals[data-count='4'] {
+  --signal-count: 4;
+}
+
+.signals[data-count='5'] {
+  --signal-count: 5;
+}
+
+.signalSpine {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 28px;
+  height: 1px;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--hub-accent) 55%, rgba(255, 255, 255, 0.35)) 18%,
+    color-mix(in srgb, var(--hub-accent) 40%, rgba(255, 255, 255, 0.25)) 50%,
+    color-mix(in srgb, var(--hub-accent) 55%, rgba(255, 255, 255, 0.35)) 82%,
+    transparent 100%
+  );
+  opacity: 0.55;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--hub-accent) 25%, transparent);
+  transition: opacity 0.35s ease, box-shadow 0.35s ease;
+}
+
+.interactive:hover .signalSpine,
+.expandable:hover .signalSpine {
+  opacity: 0.95;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--hub-accent) 45%, transparent);
+}
+
+.signal {
+  --i: 0;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  text-align: center;
+}
+
+.signalValue {
+  display: block;
+  min-height: 1.1em;
+  margin-bottom: 6px;
+  font-family: var(--display, Manrope, system-ui, sans-serif);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  text-shadow: 0 0 18px color-mix(in srgb, var(--hub-accent) 35%, transparent);
+  opacity: 0.92;
+  transform: translateY(2px);
+  transition:
+    transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
+    color 0.25s ease,
+    text-shadow 0.35s ease,
+    opacity 0.25s ease;
+  transition-delay: calc(var(--i) * 35ms);
+}
+
+.signalNode {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.signalCore {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--hub-accent) 80%, #fff);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.35),
+    0 0 12px color-mix(in srgb, var(--hub-accent) 55%, transparent);
+  transition:
+    transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
+    box-shadow 0.35s ease,
+    background 0.25s ease;
+  transition-delay: calc(var(--i) * 35ms);
+}
+
+.signalNode::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--hub-accent) 45%, rgba(255, 255, 255, 0.25));
+  opacity: 0.55;
+  transform: scale(0.85);
+  transition:
+    transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 0.35s ease;
+  transition-delay: calc(var(--i) * 35ms);
+}
+
+.signalLabel {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  max-width: 100%;
+  margin-top: 8px;
+  padding: 0 2px;
+  font-family: var(--sans, system-ui, sans-serif);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: rgba(245, 248, 253, 0.58);
+  transition:
+    color 0.25s ease,
+    transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition-delay: calc(var(--i) * 35ms);
+}
+
+.signalHot .signalValue {
+  color: #ffe08a;
+  text-shadow: 0 0 16px rgba(238, 45, 58, 0.45);
+}
+
+.signalHot .signalCore {
+  background: #ee2d3a;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.45),
+    0 0 14px rgba(238, 45, 58, 0.65);
+  animation: signalPulse 1.8s ease-in-out infinite;
+}
+
+.interactive:hover .signalValue,
+.expandable:hover .signalValue {
+  transform: translateY(0);
+  opacity: 1;
+  text-shadow: 0 0 22px color-mix(in srgb, var(--hub-accent) 55%, transparent);
+}
+
+.interactive:hover .signalCore,
+.expandable:hover .signalCore {
+  transform: scale(1.15);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.55),
+    0 0 16px color-mix(in srgb, var(--hub-accent) 70%, transparent);
+}
+
+.interactive:hover .signalNode::before,
+.expandable:hover .signalNode::before {
+  transform: scale(1.35);
+  opacity: 1;
+}
+
+.interactive:hover .signalLabel,
+.expandable:hover .signalLabel {
+  color: rgba(245, 248, 253, 0.92);
+  transform: translateY(-1px);
 }
 
 .tagsSpacer {
   display: none;
 }
 
-.tag {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  padding: 0 9px;
-  border-radius: 7px;
-  font-family: var(--sans, system-ui, sans-serif);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  line-height: 1;
-  color: rgba(245, 248, 253, 0.88);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  transition:
-    background 0.25s ease,
-    color 0.25s ease,
-    box-shadow 0.25s ease;
-}
-
-.interactive:hover .tag,
-.expandable:hover .tag {
-  background: color-mix(in srgb, var(--hub-accent) 16%, rgba(255, 255, 255, 0.07));
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--hub-accent) 28%, rgba(255, 255, 255, 0.12)),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+@keyframes signalPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.45),
+      0 0 10px rgba(238, 45, 58, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.55),
+      0 0 18px rgba(238, 45, 58, 0.85);
+  }
 }
 
 .footRow {
@@ -506,10 +675,17 @@
     font-size: 13.5px;
   }
 
-  .tag {
-    min-height: 22px;
-    font-size: 10px;
-    padding: 0 8px;
+  .signals {
+    min-height: 54px;
+  }
+
+  .signalValue {
+    font-size: 14px;
+  }
+
+  .signalLabel {
+    font-size: 8.5px;
+    letter-spacing: 0.05em;
   }
 
   .cta {
@@ -537,11 +713,19 @@
   .icon,
   .cta,
   .ctaArrow,
-  .tag,
+  .signalValue,
+  .signalCore,
+  .signalLabel,
+  .signalNode::before,
   .sheen,
   .glow,
-  .edge {
+  .edge,
+  .signalSpine {
     transition: none;
+  }
+
+  .signalHot .signalCore {
+    animation: none;
   }
 
   .scan {
