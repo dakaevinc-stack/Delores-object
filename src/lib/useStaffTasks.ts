@@ -12,12 +12,14 @@ import {
 } from '../lib/staffTasksRepository'
 import type { StaffTask, StaffTaskAttachment, StaffTaskStatus } from '../domain/staffTask'
 
+const EMPTY_TASKS: StaffTask[] = []
+
 function getSnapshot(): StaffTask[] {
   return loadStaffTasks()
 }
 
 function getServerSnapshot(): StaffTask[] {
-  return []
+  return EMPTY_TASKS
 }
 
 export function useStaffTasks() {

@@ -14,6 +14,10 @@ import {
 const KEY = 'deloresh-staff-tasks:v1'
 const CHANGE = 'deloresh-staff-tasks-change'
 
+/** Стабильная ссылка для useSyncExternalStore (новый массив на каждый getSnapshot → Maximum update depth). */
+let cachedTasks: StaffTask[] | null = null
+let cachedRaw: string | null | undefined
+
 function storage(): Storage | null {
   try {
     if (typeof window === 'undefined') return null
@@ -26,6 +30,11 @@ function storage(): Storage | null {
 function emit(): void {
   if (typeof window === 'undefined') return
   window.dispatchEvent(new Event(CHANGE))
+}
+
+function invalidateCache(): void {
+  cachedTasks = null
+  cachedRaw = undefined
 }
 
 function isTask(x: unknown): x is StaffTask {
@@ -174,26 +183,49 @@ export function mergeStaffTasks(
 
 export function loadStaffTasks(): StaffTask[] {
   const s = storage()
-  if (!s) return seedDemo()
+  if (!s) {
+    if (!cachedTasks) cachedTasks = seedDemo()
+    return cachedTasks
+  }
   const raw = s.getItem(KEY)
+  if (raw === cachedRaw && cachedTasks) return cachedTasks
+
   if (!raw) {
     const seeded = seedDemo()
-    s.setItem(KEY, JSON.stringify(seeded))
+    const serialized = JSON.stringify(seeded)
+    s.setItem(KEY, serialized)
+    cachedRaw = serialized
+    cachedTasks = seeded
     return seeded
   }
   try {
     const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return seedDemo()
-    return parsed.filter(isTask)
+    if (!Array.isArray(parsed)) {
+      const seeded = seedDemo()
+      cachedRaw = raw
+      cachedTasks = seeded
+      return seeded
+    }
+    const list = parsed.filter(isTask)
+    cachedRaw = raw
+    cachedTasks = list
+    return list
   } catch {
-    return seedDemo()
+    const seeded = seedDemo()
+    cachedRaw = raw
+    cachedTasks = seeded
+    return seeded
   }
 }
 
 function saveAll(tasks: readonly StaffTask[]): void {
   const s = storage()
   if (!s) return
-  s.setItem(KEY, JSON.stringify(tasks))
+  const serialized = JSON.stringify(tasks)
+  if (serialized === cachedRaw) return
+  s.setItem(KEY, serialized)
+  cachedRaw = serialized
+  cachedTasks = [...tasks]
   emit()
 }
 
@@ -204,7 +236,10 @@ export function replaceStaffTasks(tasks: readonly StaffTask[]): void {
 export function subscribeStaffTasks(onChange: () => void): () => void {
   if (typeof window === 'undefined') return () => {}
   const onStorage = (e: StorageEvent) => {
-    if (e.key === null || e.key === KEY) onChange()
+    if (e.key === null || e.key === KEY) {
+      invalidateCache()
+      onChange()
+    }
   }
   window.addEventListener('storage', onStorage)
   window.addEventListener(CHANGE, onChange)
@@ -356,8 +391,11 @@ export async function syncStaffTasksFromRemote(): Promise<boolean> {
     return putStaffTasksRemote(local)
   }
   const merged = mergeStaffTasks(local, remote)
-  saveAll(merged)
-  if (JSON.stringify(merged) !== JSON.stringify(remote)) {
+  const mergedRaw = JSON.stringify(merged)
+  if (mergedRaw !== JSON.stringify(local)) {
+    saveAll(merged)
+  }
+  if (mergedRaw !== JSON.stringify(remote)) {
     await putStaffTasksRemote(merged)
   }
   return true
