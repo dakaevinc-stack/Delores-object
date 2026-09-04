@@ -313,7 +313,7 @@
   text-wrap: pretty;
 }
 
-/* --- foot: telemetry spine + cta -------------------------- */
+/* --- foot: premium hi-tech HUD strip + cta ---------------- */
 
 .foot {
   display: flex;
@@ -323,216 +323,204 @@
   padding-top: 4px;
 }
 
-.signalsWrap {
+.hudWrap {
   position: relative;
-  margin: 2px 0 0;
+  border-radius: 12px;
 }
 
-.signals {
-  --signal-count: 5;
+.hud {
+  --hud-count: 5;
   position: relative;
   display: grid;
-  grid-template-columns: repeat(var(--signal-count), minmax(0, 1fr));
-  align-items: start;
-  gap: 0;
+  grid-template-columns: repeat(var(--hud-count), minmax(0, 1fr));
   margin: 0;
   padding: 0;
   list-style: none;
-  min-height: 58px;
+  isolation: isolate;
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, transparent 40%),
+    rgba(4, 8, 18, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+  overflow: hidden;
 }
 
-.signals[data-count='2'] {
-  --signal-count: 2;
+.hud[data-count='2'] {
+  --hud-count: 2;
 }
 
-.signals[data-count='3'] {
-  --signal-count: 3;
+.hud[data-count='3'] {
+  --hud-count: 3;
 }
 
-.signals[data-count='4'] {
-  --signal-count: 4;
+.hud[data-count='4'] {
+  --hud-count: 4;
 }
 
-.signals[data-count='5'] {
-  --signal-count: 5;
+.hud[data-count='5'] {
+  --hud-count: 5;
 }
 
-.signalSpine {
+.hudFrame {
   position: absolute;
-  left: 10%;
-  right: 10%;
-  top: 28px;
-  height: 1px;
+  inset: 0;
   pointer-events: none;
-  z-index: 0;
+  z-index: 2;
   background: linear-gradient(
     90deg,
     transparent 0%,
-    color-mix(in srgb, var(--hub-accent) 55%, rgba(255, 255, 255, 0.35)) 18%,
-    color-mix(in srgb, var(--hub-accent) 40%, rgba(255, 255, 255, 0.25)) 50%,
-    color-mix(in srgb, var(--hub-accent) 55%, rgba(255, 255, 255, 0.35)) 82%,
+    color-mix(in srgb, var(--hub-accent) 55%, transparent) 50%,
     transparent 100%
   );
-  opacity: 0.55;
-  box-shadow: 0 0 12px color-mix(in srgb, var(--hub-accent) 25%, transparent);
-  transition: opacity 0.35s ease, box-shadow 0.35s ease;
+  opacity: 0.35;
+  height: 1px;
+  top: 0;
+  bottom: auto;
+  transition: opacity 0.35s ease;
 }
 
-.interactive:hover .signalSpine,
-.expandable:hover .signalSpine {
-  opacity: 0.95;
-  box-shadow: 0 0 18px color-mix(in srgb, var(--hub-accent) 45%, transparent);
+.interactive:hover .hudFrame,
+.expandable:hover .hudFrame {
+  opacity: 0.85;
 }
 
-.signal {
-  --i: 0;
+.hudCorner {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+  z-index: 3;
+  border-color: color-mix(in srgb, var(--hub-accent) 70%, #fff);
+  border-style: solid;
+  opacity: 0.7;
+  transition: opacity 0.3s ease, border-color 0.3s ease;
+}
+
+.hudCornerTl {
+  top: 0;
+  left: 0;
+  border-width: 1.5px 0 0 1.5px;
+  border-top-left-radius: 11px;
+}
+
+.hudCornerTr {
+  top: 0;
+  right: 0;
+  border-width: 1.5px 1.5px 0 0;
+  border-top-right-radius: 11px;
+}
+
+.hudCornerBl {
+  bottom: 0;
+  left: 0;
+  border-width: 0 0 1.5px 1.5px;
+  border-bottom-left-radius: 11px;
+}
+
+.hudCornerBr {
+  bottom: 0;
+  right: 0;
+  border-width: 0 1.5px 1.5px 0;
+  border-bottom-right-radius: 11px;
+}
+
+.interactive:hover .hudCorner,
+.expandable:hover .hudCorner {
+  opacity: 1;
+}
+
+.hudCell {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0;
+  justify-content: center;
+  gap: 5px;
   min-width: 0;
+  min-height: 48px;
+  padding: 10px 4px;
   text-align: center;
+  background: transparent;
+  transition: background 0.28s ease;
 }
 
-.signalValue {
-  display: block;
-  min-height: 1.1em;
-  margin-bottom: 6px;
-  font-family: var(--display, Manrope, system-ui, sans-serif);
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: #fff;
-  text-shadow: 0 0 18px color-mix(in srgb, var(--hub-accent) 35%, transparent);
-  opacity: 0.92;
-  transform: translateY(2px);
-  transition:
-    transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
-    color 0.25s ease,
-    text-shadow 0.35s ease,
-    opacity 0.25s ease;
-  transition-delay: calc(var(--i) * 35ms);
-}
-
-.signalNode {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 14px;
-  height: 14px;
-  flex: none;
-}
-
-.signalCore {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--hub-accent) 80%, #fff);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.35),
-    0 0 12px color-mix(in srgb, var(--hub-accent) 55%, transparent);
-  transition:
-    transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
-    box-shadow 0.35s ease,
-    background 0.25s ease;
-  transition-delay: calc(var(--i) * 35ms);
-}
-
-.signalNode::before {
+.hudCell:not(:last-child)::after {
   content: '';
   position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--hub-accent) 45%, rgba(255, 255, 255, 0.25));
-  opacity: 0.55;
-  transform: scale(0.85);
-  transition:
-    transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1),
-    opacity 0.35s ease;
-  transition-delay: calc(var(--i) * 35ms);
+  top: 18%;
+  bottom: 18%;
+  right: 0;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.14) 30%,
+    rgba(255, 255, 255, 0.14) 70%,
+    transparent 100%
+  );
 }
 
-.signalLabel {
+.hudValue {
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--hub-accent) 55%, #fff);
+  transition: color 0.25s ease;
+}
+
+.hudLabel {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
   max-width: 100%;
-  margin-top: 8px;
-  padding: 0 2px;
   font-family: var(--sans, system-ui, sans-serif);
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   line-height: 1.2;
-  color: rgba(245, 248, 253, 0.58);
-  transition:
-    color 0.25s ease,
-    transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1);
-  transition-delay: calc(var(--i) * 35ms);
+  color: rgba(245, 248, 253, 0.55);
+  transition: color 0.25s ease;
 }
 
-.signalHot .signalValue {
-  color: #ffe08a;
-  text-shadow: 0 0 16px rgba(238, 45, 58, 0.45);
+.hudLive {
+  min-height: 56px;
+  gap: 6px;
 }
 
-.signalHot .signalCore {
-  background: #ee2d3a;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.45),
-    0 0 14px rgba(238, 45, 58, 0.65);
-  animation: signalPulse 1.8s ease-in-out infinite;
+.hudHot .hudValue {
+  color: #ff6b74;
 }
 
-.interactive:hover .signalValue,
-.expandable:hover .signalValue {
-  transform: translateY(0);
-  opacity: 1;
-  text-shadow: 0 0 22px color-mix(in srgb, var(--hub-accent) 55%, transparent);
+.hudHot .hudLabel {
+  color: rgba(255, 214, 218, 0.82);
 }
 
-.interactive:hover .signalCore,
-.expandable:hover .signalCore {
-  transform: scale(1.15);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.55),
-    0 0 16px color-mix(in srgb, var(--hub-accent) 70%, transparent);
+.interactive:hover .hudCell,
+.expandable:hover .hudCell {
+  background: color-mix(in srgb, var(--hub-accent) 8%, transparent);
 }
 
-.interactive:hover .signalNode::before,
-.expandable:hover .signalNode::before {
-  transform: scale(1.35);
-  opacity: 1;
+.interactive:hover .hudValue,
+.expandable:hover .hudValue {
+  color: #fff;
 }
 
-.interactive:hover .signalLabel,
-.expandable:hover .signalLabel {
-  color: rgba(245, 248, 253, 0.92);
-  transform: translateY(-1px);
+.interactive:hover .hudLabel,
+.expandable:hover .hudLabel {
+  color: rgba(245, 248, 253, 0.88);
 }
 
 .tagsSpacer {
   display: none;
-}
-
-@keyframes signalPulse {
-  0%,
-  100% {
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.45),
-      0 0 10px rgba(238, 45, 58, 0.45);
-  }
-  50% {
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.55),
-      0 0 18px rgba(238, 45, 58, 0.85);
-  }
 }
 
 .footRow {
@@ -675,17 +663,22 @@
     font-size: 13.5px;
   }
 
-  .signals {
-    min-height: 54px;
+  .hudCell {
+    min-height: 44px;
+    padding: 9px 3px;
   }
 
-  .signalValue {
-    font-size: 14px;
+  .hudLive {
+    min-height: 52px;
   }
 
-  .signalLabel {
+  .hudValue {
+    font-size: 12px;
+  }
+
+  .hudLabel {
     font-size: 8.5px;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
   }
 
   .cta {
@@ -713,19 +706,16 @@
   .icon,
   .cta,
   .ctaArrow,
-  .signalValue,
-  .signalCore,
-  .signalLabel,
-  .signalNode::before,
+  .hudCell,
+  .hudValue,
+  .hudLabel,
+  .hudFrame,
+  .hudCorner,
   .sheen,
   .glow,
   .edge,
   .signalSpine {
     transition: none;
-  }
-
-  .signalHot .signalCore {
-    animation: none;
   }
 
   .scan {

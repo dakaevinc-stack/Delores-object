@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import styles from './HubCard.module.css'
 
@@ -52,10 +52,9 @@ function ArrowRight() {
   )
 }
 
-function formatSignalValue(value: string | number | undefined, index: number): string {
-  if (typeof value === 'number') return value > 99 ? '99+' : String(value)
-  if (typeof value === 'string' && value.trim()) return value.trim()
-  return String(index + 1).padStart(2, '0')
+function formatSignalValue(value: string | number): string {
+  if (typeof value === 'number') return value > 99 ? '99+' : String(value).padStart(2, '0')
+  return value.trim()
 }
 
 export function HubCard({
@@ -148,28 +147,33 @@ export function HubCard({
 
         <div className={styles.foot}>
           {items.length > 0 ? (
-            <div className={styles.signalsWrap}>
-              <span className={styles.signalSpine} aria-hidden />
+            <div className={styles.hudWrap}>
+              <span className={styles.hudFrame} aria-hidden />
+              <span className={`${styles.hudCorner} ${styles.hudCornerTl}`} aria-hidden />
+              <span className={`${styles.hudCorner} ${styles.hudCornerTr}`} aria-hidden />
+              <span className={`${styles.hudCorner} ${styles.hudCornerBl}`} aria-hidden />
+              <span className={`${styles.hudCorner} ${styles.hudCornerBr}`} aria-hidden />
               <ul
-                className={styles.signals}
+                className={styles.hud}
                 data-count={items.length}
-                aria-label={`Показатели: ${title}`}
+                aria-label={`Разделы: ${title}`}
               >
-                {items.map((item, index) => (
-                  <li
-                    key={item.label}
-                    className={`${styles.signal} ${item.hot ? styles.signalHot : ''}`}
-                    style={{ '--i': index } as CSSProperties}
-                  >
-                    <span className={styles.signalValue}>
-                      {formatSignalValue(item.value, index)}
-                    </span>
-                    <span className={styles.signalNode} aria-hidden>
-                      <span className={styles.signalCore} />
-                    </span>
-                    <span className={styles.signalLabel}>{item.label}</span>
-                  </li>
-                ))}
+                {items.map((item) => {
+                  const live = item.value !== undefined && item.value !== ''
+                  return (
+                    <li
+                      key={item.label}
+                      className={`${styles.hudCell} ${item.hot ? styles.hudHot : ''} ${live ? styles.hudLive : ''}`}
+                    >
+                      {live ? (
+                        <span className={styles.hudValue}>
+                          {formatSignalValue(item.value as string | number)}
+                        </span>
+                      ) : null}
+                      <span className={styles.hudLabel}>{item.label}</span>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ) : (
