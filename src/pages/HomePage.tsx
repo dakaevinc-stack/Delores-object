@@ -215,7 +215,7 @@ export function HomePage() {
   const { tasks, create } = useStaffTasks()
   const [tasksOpen, setTasksOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
-  const [taskFilter, setTaskFilter] = useState<StaffTaskFilter>('assigned_to_me')
+  const [taskFilter, setTaskFilter] = useState<StaffTaskFilter>('all')
   const [hubRevealed, setHubRevealed] = useState(() => {
     if (typeof window === 'undefined') return true
     if (!session) return false
@@ -249,7 +249,7 @@ export function HomePage() {
     if (!session) return {}
     const mine = filterStaffTasks(tasks, {
       login: session.login,
-      filter: 'assigned_to_me',
+      filter: 'all',
     })
     return {
       all: mine.length,

@@ -9,13 +9,10 @@ import {
 import styles from './TasksPanel.module.css'
 
 const FILTERS: { id: StaffTaskFilter; label: string }[] = [
-  { id: 'assigned_to_me', label: 'Мне' },
   { id: 'all', label: 'Все' },
   { id: 'new', label: 'Новые' },
   { id: 'in_progress', label: 'В работе' },
   { id: 'done', label: 'Готово' },
-  { id: 'today', label: 'Сегодня' },
-  { id: 'assigned_by_me', label: 'Я поставил' },
 ]
 
 type TasksPanelProps = {
@@ -71,7 +68,7 @@ export function TasksPanel({
                 ? counts?.in_progress
                 : f.id === 'done'
                   ? counts?.done
-                  : f.id === 'all' || f.id === 'assigned_to_me'
+                  : f.id === 'all'
                     ? counts?.all
                     : undefined
           return (

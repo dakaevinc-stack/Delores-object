@@ -15,7 +15,7 @@ import styles from './TasksPage.module.css'
 export function TasksPage() {
   const session = useLocalSession()
   const { tasks, create } = useStaffTasks()
-  const [filter, setFilter] = useState<StaffTaskFilter>('assigned_to_me')
+  const [filter, setFilter] = useState<StaffTaskFilter>('all')
   const [createOpen, setCreateOpen] = useState(false)
 
   const canCreate = session ? canCreateStaffTasks(session.duty) : false
@@ -29,7 +29,7 @@ export function TasksPage() {
     if (!session) return {}
     const mine = filterStaffTasks(tasks, {
       login: session.login,
-      filter: 'assigned_to_me',
+      filter: 'all',
     })
     return {
       all: mine.length,
