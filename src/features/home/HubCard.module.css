@@ -53,7 +53,8 @@
 }
 
 .toneTasks {
-  --hub-accent: #ee2d3a;
+  /* Янтарь из палитры проекта (между brand-red и ok) — не путать с приёмкой */
+  --hub-accent: #f4a21b;
 }
 
 .badge {
