@@ -1,15 +1,16 @@
 /* ============================================================
-   Hub cards — premium glass / hi-tech portals
+   Hub cards — единая сетка: кикер+иконка → заголовок → лид → теги → CTA
    ============================================================ */
 
 .card {
-  --hub-pad: clamp(16px, 1.6vw, 20px);
+  --hub-pad: clamp(16px, 1.5vw, 20px);
   --hub-r: 22px;
   --hub-ink: #f5f8fd;
   --hub-ink-soft: rgba(245, 248, 253, 0.78);
   --hub-ink-mute: rgba(245, 248, 253, 0.48);
   --hub-accent: #3d7ad6;
   --hub-accent-soft: color-mix(in srgb, var(--hub-accent) 28%, transparent);
+  --hub-lead-lines: 2;
 
   position: relative;
   display: block;
@@ -53,31 +54,9 @@
 }
 
 .toneTasks {
-  --hub-accent: #ee2d3a;
+  --hub-accent: #d4a017;
 }
 
-.badge {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 8;
-  min-width: 24px;
-  height: 24px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: var(--brand-red, #ee2d3a);
-  color: #fff;
-  font: 800 12px/24px var(--sans, system-ui, sans-serif);
-  text-align: center;
-  box-shadow: 0 6px 14px rgba(238, 45, 58, 0.35);
-  pointer-events: none;
-}
-
-.hasBadge {
-  /* место под бейдж уже absolute */
-}
-
-/* Левый акцентный rail */
 .edge {
   position: absolute;
   left: 0;
@@ -167,9 +146,9 @@
 .shell {
   position: relative;
   z-index: 5;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  display: grid;
+  grid-template-rows: auto auto minmax(2.9em, auto) 1fr;
+  gap: 10px;
   height: 100%;
   min-height: 0;
   padding: var(--hub-pad) var(--hub-pad) var(--hub-pad) calc(var(--hub-pad) + 4px);
@@ -189,6 +168,13 @@
     0 1px 0 rgba(255, 255, 255, 0.24) inset,
     0 32px 64px rgba(10, 18, 36, 0.38),
     0 0 40px color-mix(in srgb, var(--hub-accent) 18%, transparent);
+}
+
+.isExpanded {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--hub-accent) 55%, rgba(255, 255, 255, 0.2)),
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 24px 56px rgba(10, 18, 36, 0.32);
 }
 
 .interactive:hover .edge,
@@ -222,20 +208,32 @@
   opacity: 0.9;
 }
 
-/* --- top: icon + kicker/title ----------------------------- */
+/* --- head: kicker left, icon right ----------------------- */
 
-.top {
+.head {
   display: flex;
-  align-items: flex-start;
-  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   min-width: 0;
+}
+
+.kicker {
+  margin: 0;
+  font-family: var(--sans, system-ui, sans-serif);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--hub-accent) 72%, #fff);
+  line-height: 1.2;
 }
 
 .icon {
   position: relative;
   flex: none;
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   border-radius: 14px;
   color: #fff;
   background:
@@ -265,45 +263,51 @@
   height: 100%;
 }
 
+.iconBadged {
+  /* бейдж снаружи правого верхнего угла иконки */
+}
+
+.badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  z-index: 2;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--brand-red, #ee2d3a);
+  color: #fff;
+  font: 800 11px/22px var(--sans, system-ui, sans-serif);
+  text-align: center;
+  box-shadow:
+    0 0 0 2px #0f1c36,
+    0 6px 14px rgba(238, 45, 58, 0.35);
+  pointer-events: none;
+}
+
 .interactive:hover .icon,
 .expandable:hover .icon {
   transform: translateY(-2px);
 }
 
-.topCopy {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  flex: 1 1 auto;
-  padding-top: 2px;
-}
-
-.kicker {
-  margin: 0;
-  font-family: var(--sans, system-ui, sans-serif);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--hub-accent) 72%, #fff);
-  line-height: 1.2;
-}
-
 .title {
   margin: 0;
+  padding-right: 4px;
   font-family: var(--display, inherit);
-  font-size: clamp(20px, 1.6vw, 24px);
+  font-size: clamp(20px, 1.55vw, 24px);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.15;
   color: var(--hub-ink);
   text-wrap: balance;
+  min-height: 1.15em;
 }
 
 .lead {
   margin: 0;
-  max-width: 34em;
+  max-width: 36em;
+  min-height: calc(1.45em * var(--hub-lead-lines));
   font-family: var(--sans, system-ui, sans-serif);
   font-size: clamp(13px, 1.05vw, 14.5px);
   font-weight: 500;
@@ -311,6 +315,10 @@
   line-height: 1.45;
   color: var(--hub-ink-soft);
   text-wrap: pretty;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 /* --- foot: tags + cta ------------------------------------- */
@@ -318,9 +326,10 @@
 .foot {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  justify-content: flex-end;
+  gap: 12px;
   margin-top: auto;
-  padding-top: 4px;
+  min-height: 0;
 }
 
 .tags {
@@ -330,10 +339,12 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  min-height: 24px;
 }
 
 .tagsSpacer {
-  display: none;
+  display: block;
+  min-height: 24px;
 }
 
 .tag {
@@ -454,12 +465,12 @@
 }
 
 .ctaArrowOpen {
-  transform: rotate(-90deg);
+  transform: rotate(90deg);
 }
 
 .interactive:hover .ctaArrowOpen,
 .expandable:hover .ctaArrowOpen {
-  transform: rotate(-90deg) translateX(2px);
+  transform: rotate(90deg);
 }
 
 .ctaNote {
@@ -485,21 +496,17 @@
   }
 
   .shell {
-    gap: 11px;
-  }
-
-  .top {
-    gap: 12px;
+    gap: 9px;
   }
 
   .icon {
-    width: 46px;
-    height: 46px;
+    width: 44px;
+    height: 44px;
     border-radius: 13px;
   }
 
   .title {
-    font-size: 19px;
+    font-size: 20px;
   }
 
   .lead {
@@ -517,18 +524,18 @@
   }
 }
 
-@container (max-width: 360px) {
-  .icon {
-    width: 44px;
-    height: 44px;
-  }
-
+@container (max-width: 280px) {
   .title {
     font-size: 18px;
   }
 
   .kicker {
     letter-spacing: 0.12em;
+  }
+
+  .icon {
+    width: 42px;
+    height: 42px;
   }
 }
 
