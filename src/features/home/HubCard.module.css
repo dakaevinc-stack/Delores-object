@@ -316,7 +316,7 @@
   text-overflow: ellipsis;
 }
 
-/* --- foot: tags + cta ------------------------------------- */
+/* --- foot: premium glass chips + cta ---------------------- */
 
 .foot {
   display: flex;
@@ -329,7 +329,7 @@
 .tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 7px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -340,33 +340,88 @@
 }
 
 .tag {
+  --i: 0;
+  position: relative;
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
-  padding: 0 9px;
-  border-radius: 7px;
+  gap: 7px;
+  min-height: 28px;
+  padding: 0 11px 0 9px;
+  border-radius: 999px;
   font-family: var(--sans, system-ui, sans-serif);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
   line-height: 1;
-  color: rgba(245, 248, 253, 0.88);
-  background: rgba(255, 255, 255, 0.06);
+  color: rgba(245, 248, 253, 0.94);
+  background:
+    linear-gradient(
+      165deg,
+      rgba(255, 255, 255, 0.16) 0%,
+      color-mix(in srgb, var(--hub-accent) 14%, rgba(255, 255, 255, 0.04)) 42%,
+      rgba(255, 255, 255, 0.03) 100%
+    );
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    0 0 0 1px color-mix(in srgb, var(--hub-accent) 22%, rgba(255, 255, 255, 0.14)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 6px 14px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
   transition:
-    background 0.25s ease,
+    transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
+    background 0.3s ease,
     color 0.25s ease,
-    box-shadow 0.25s ease;
+    box-shadow 0.3s ease;
+  transition-delay: calc(var(--i) * 28ms);
+}
+
+.tagGem {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--hub-accent) 55%, #fff) 0%,
+    var(--hub-accent) 100%
+  );
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.35),
+    0 0 10px color-mix(in srgb, var(--hub-accent) 55%, transparent);
+  transition:
+    transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
+    box-shadow 0.3s ease;
+  transition-delay: calc(var(--i) * 28ms);
+}
+
+.tagText {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .interactive:hover .tag,
 .expandable:hover .tag {
-  background: color-mix(in srgb, var(--hub-accent) 16%, rgba(255, 255, 255, 0.07));
+  transform: translateY(-1px);
+  background:
+    linear-gradient(
+      165deg,
+      rgba(255, 255, 255, 0.22) 0%,
+      color-mix(in srgb, var(--hub-accent) 28%, rgba(255, 255, 255, 0.06)) 48%,
+      rgba(255, 255, 255, 0.04) 100%
+    );
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--hub-accent) 28%, rgba(255, 255, 255, 0.12)),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    0 0 0 1px color-mix(in srgb, var(--hub-accent) 42%, rgba(255, 255, 255, 0.18)),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.16),
+    0 10px 20px color-mix(in srgb, var(--hub-accent) 18%, rgba(0, 0, 0, 0.16));
+}
+
+.interactive:hover .tagGem,
+.expandable:hover .tagGem {
+  transform: scale(1.12);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 0 14px color-mix(in srgb, var(--hub-accent) 75%, transparent);
 }
 
 .footRow {
@@ -510,9 +565,18 @@
   }
 
   .tag {
-    min-height: 22px;
+    min-height: 26px;
+    padding: 0 10px 0 8px;
+    gap: 6px;
+  }
+
+  .tagText {
     font-size: 10px;
-    padding: 0 8px;
+  }
+
+  .tagGem {
+    width: 5px;
+    height: 5px;
   }
 
   .cta {
@@ -541,6 +605,7 @@
   .cta,
   .ctaArrow,
   .tag,
+  .tagGem,
   .sheen,
   .glow,
   .edge {

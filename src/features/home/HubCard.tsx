@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import styles from './HubCard.module.css'
 
@@ -136,9 +136,14 @@ export function HubCard({
         <div className={styles.foot}>
           {tags.length > 0 ? (
             <ul className={styles.tags} aria-label={`Разделы: ${title}`}>
-              {tags.map((tag) => (
-                <li key={tag} className={styles.tag}>
-                  {tag}
+              {tags.map((tag, index) => (
+                <li
+                  key={tag}
+                  className={styles.tag}
+                  style={{ '--i': index } as CSSProperties}
+                >
+                  <span className={styles.tagGem} aria-hidden />
+                  <span className={styles.tagText}>{tag}</span>
                 </li>
               ))}
             </ul>
