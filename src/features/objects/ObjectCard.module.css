@@ -154,6 +154,11 @@
   color: var(--status-bad);
 }
 
+.dot[data-status='neutral'] {
+  background: rgba(15, 28, 54, 0.28);
+  color: rgba(15, 28, 54, 0.28);
+}
+
 .status {
   font-family: var(--display, inherit);
   font-size: 10px;

@@ -1,7 +1,7 @@
 import type { SiteStatus } from '../../types/constructionSite'
 import styles from './ObjectStatusFilter.module.css'
 
-export type StatusFilterValue = 'all' | SiteStatus
+export type StatusFilterValue = 'all' | SiteStatus | 'closed'
 
 type Props = {
   value: StatusFilterValue
@@ -13,6 +13,7 @@ const OPTIONS: { value: StatusFilterValue; label: string }[] = [
   { value: 'normal', label: 'Нормально' },
   { value: 'attention', label: 'Внимание' },
   { value: 'critical', label: 'Критично' },
+  { value: 'closed', label: 'Закрытые' },
 ]
 
 export function ObjectStatusFilter({ value, onChange }: Props) {

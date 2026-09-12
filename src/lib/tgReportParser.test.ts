@@ -6,12 +6,10 @@ import {
 import { resolveSiteId } from './siteIdResolver.mjs'
 
 const SITES = [
-  { id: 'kirpichnogo-zavoda', name: 'пос. Кирпичного завода' },
+  { id: 'olympiyskaya-derevnya', name: 'Олимпийская деревня' },
   { id: 'brusilova', name: 'Брусилова' },
-  { id: 'scherbinka-vokzalnaya', name: 'Щербинка, Вокзальная' },
-  { id: 'proezd-28b', name: 'Проезд к вл. 28Б' },
-  { id: 'mcd2-butovo', name: 'МЦД-2 Бутово' },
-  { id: 'krekshino-ryabinovaya', name: 'Крекшино, Рябиновая' },
+  { id: 'anokhina', name: 'Анохина' },
+  { id: 'mcd2-butovo', name: 'Бутово' },
   { id: 'koshtoyantsa', name: 'Коштоянца' },
 ] as const
 
@@ -139,16 +137,12 @@ describe('Резолвер siteId', () => {
     expect(resolveSiteId('БРУСИЛОВА ул.', SITES)).toBe('brusilova')
   })
 
-  it('подстрочный матч: «Щербинка» → Щербинка, Вокзальная', () => {
-    // в имени объекта 2 слова, в пробе 1 — токен «щербинка» совпадает,
-    // других объектов с «щербинкой» нет
-    expect(resolveSiteId('Щербинка', SITES)).toBe('scherbinka-vokzalnaya')
+  it('подстрочный матч: «Олимпийская» → Олимпийская деревня', () => {
+    expect(resolveSiteId('Олимпийская', SITES)).toBe('olympiyskaya-derevnya')
   })
 
   it('ё/е и пунктуация не мешают', () => {
-    expect(resolveSiteId('пос Кирпичного завода', SITES)).toBe(
-      'kirpichnogo-zavoda',
-    )
+    expect(resolveSiteId('БРУСИЛОВА ул.', SITES)).toBe('brusilova')
   })
 
   it('возвращает null на полное «не то»', () => {

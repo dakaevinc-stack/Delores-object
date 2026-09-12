@@ -1,0 +1,1792 @@
+{
+  "generatedAtIso": "2026-09-12T14:56:34.332Z",
+  "source": "Объекты расход материалов / 12-09-2026_17-18-14",
+  "sites": [
+    {
+      "siteId": "olympiyskaya-derevnya",
+      "siteName": "Олимпийская деревня",
+      "closed": false,
+      "sourceFile": "ОЛИМПИЙМСКИЙ ПАРК (ДР) ШИРАЗ.xlsx",
+      "asOfIso": "2026-09-12T00:00:00.000Z",
+      "contractors": [
+        {
+          "id": "др",
+          "name": "ДР",
+          "sheet": "ОЛИМПИЙСКИЙ ПАРК ДР",
+          "lines": 10,
+          "qtySum": 8279.32
+        },
+        {
+          "id": "шираз",
+          "name": "ШИРАЗ",
+          "sheet": "Олимп парк ШИРАЗ",
+          "lines": 5,
+          "qtySum": 624.1
+        },
+        {
+          "id": "сасун",
+          "name": "Сасун",
+          "sheet": "ОЛИМПИЙС САСУН",
+          "lines": 1,
+          "qtySum": 1845
+        },
+        {
+          "id": "араик-армен",
+          "name": "АРАИК АРМЕН",
+          "sheet": "ОЛИМПИЙСКИЙ АРАИК АРМЕН",
+          "lines": 1,
+          "qtySum": 248
+        }
+      ],
+      "articles": [
+        {
+          "id": "sand-quarry::песок карьерный::m3",
+          "presetId": "sand-quarry",
+          "title": "Песок карьерный",
+          "group": "Земляные работы",
+          "unit": "m3",
+          "excelTitles": [
+            "Песок карьерный"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 1771
+            },
+            {
+              "contractorId": "шираз",
+              "contractorName": "ШИРАЗ",
+              "qty": 196
+            }
+          ],
+          "importedTotal": 1967
+        },
+        {
+          "id": "asphalt-type-b-mz::асфальтобетон мз::t",
+          "presetId": "asphalt-type-b-mz",
+          "title": "Асфальтобетон МЗ",
+          "group": "Асфальт",
+          "unit": "t",
+          "excelTitles": [
+            "асфальт МЗ (ДР) ,тонн"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 30.1
+            }
+          ],
+          "importedTotal": 30.1
+        },
+        {
+          "id": "crushed-granite-20-40::щебень 20 40::m3",
+          "presetId": "crushed-granite-20-40",
+          "title": "Щебень 20–40",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "Щебень М600 фр.20*40  м3"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 2831.92
+            },
+            {
+              "contractorId": "шираз",
+              "contractorName": "ШИРАЗ",
+              "qty": 282
+            }
+          ],
+          "importedTotal": 3113.92
+        },
+        {
+          "id": "concrete-b15::бетон b15 м200::m3",
+          "presetId": "concrete-b15",
+          "title": "Бетон B15 (М200)",
+          "group": "Бетон",
+          "unit": "m3",
+          "excelTitles": [
+            "Бетон  М-200 В15 П-2",
+            "БЕТОН М-300 МИКСЕР"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 1290
+            },
+            {
+              "contractorId": "шираз",
+              "contractorName": "ШИРАЗ",
+              "qty": 7
+            }
+          ],
+          "importedTotal": 1297
+        },
+        {
+          "id": "topsoil-chernozem::чернозем плодородный грунт::m3",
+          "presetId": "topsoil-chernozem",
+          "title": "Чернозём / плодородный грунт",
+          "group": "Благоустройство",
+          "unit": "m3",
+          "excelTitles": [
+            "Чернозем,м3"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 1722
+            },
+            {
+              "contractorId": "шираз",
+              "contractorName": "ШИРАЗ",
+              "qty": 120
+            },
+            {
+              "contractorId": "сасун",
+              "contractorName": "Сасун",
+              "qty": 1845
+            },
+            {
+              "contractorId": "араик-армен",
+              "contractorName": "АРАИК АРМЕН",
+              "qty": 248
+            }
+          ],
+          "importedTotal": 3935
+        },
+        {
+          "id": "asphalt-type-b::асфальт кз тип б марка 1::t",
+          "presetId": "asphalt-type-b",
+          "title": "Асфальт КЗ тип Б марка 1",
+          "group": "Асфальт",
+          "unit": "t",
+          "excelTitles": [
+            "Асфальт КЗ тип Б марка 1"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 150
+            }
+          ],
+          "importedTotal": 150
+        },
+        {
+          "id": "crushed-shgps-c4::щгпс с4::m3",
+          "presetId": "crushed-shgps-c4",
+          "title": "ЩГПС С4",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "ЩГПС"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 60
+            }
+          ],
+          "importedTotal": 60
+        },
+        {
+          "id": "crushed-granite-5-20::щебень 5 20::m3",
+          "presetId": "crushed-granite-5-20",
+          "title": "Щебень 5–20",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "Щебень 5*20"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 364
+            }
+          ],
+          "importedTotal": 364
+        },
+        {
+          "id": "sand-quarry::песок жирошкино::m3",
+          "presetId": "sand-quarry",
+          "title": "Песок Жирошкино",
+          "group": "Земляные работы",
+          "unit": "m3",
+          "excelTitles": [
+            "ПЕСОК С ЖИРОШКИНО в м3"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 60.3
+            },
+            {
+              "contractorId": "шираз",
+              "contractorName": "ШИРАЗ",
+              "qty": 19.1
+            }
+          ],
+          "importedTotal": 79.4
+        }
+      ]
+    },
+    {
+      "siteId": "anokhina",
+      "siteName": "Анохина",
+      "closed": false,
+      "sourceFile": "ул. АНОХИНА Мика Бату Женя.xlsx",
+      "asOfIso": "2026-09-12T00:00:00.000Z",
+      "contractors": [
+        {
+          "id": "др",
+          "name": "ДР",
+          "sheet": " АНОХИНА ДР",
+          "lines": 2,
+          "qtySum": 119
+        },
+        {
+          "id": "микаэл",
+          "name": "Микаэл",
+          "sheet": "МИКАЭЛ",
+          "lines": 6,
+          "qtySum": 1609.3
+        },
+        {
+          "id": "бату",
+          "name": "БАТУ",
+          "sheet": "БАТУ",
+          "lines": 7,
+          "qtySum": 2841.4
+        },
+        {
+          "id": "рустам-женя",
+          "name": "РУСТАМ ЖЕНЯ",
+          "sheet": " РУСТАМ ЖЕНЯ",
+          "lines": 4,
+          "qtySum": 178.5
+        },
+        {
+          "id": "агван",
+          "name": "АГВАН",
+          "sheet": "АГВАН",
+          "lines": 2,
+          "qtySum": 133
+        },
+        {
+          "id": "мск-хорт",
+          "name": "МСК-ХОРТ",
+          "sheet": "МСК-ХОРТ Роман,Витал, Илья,Па",
+          "lines": 4,
+          "qtySum": 554.6
+        },
+        {
+          "id": "эдик-гуликян",
+          "name": "ЭДИК ГУЛИКЯН",
+          "sheet": "ЭДИК ГУЛИКЯН",
+          "lines": 5,
+          "qtySum": 2392
+        },
+        {
+          "id": "вануш",
+          "name": "ВАНУШ",
+          "sheet": "ВАНУШ",
+          "lines": 5,
+          "qtySum": 1692
+        },
+        {
+          "id": "вартан",
+          "name": "ВАРТАН",
+          "sheet": "ВАРТАН",
+          "lines": 5,
+          "qtySum": 1275.4
+        },
+        {
+          "id": "армен-арамян",
+          "name": "АРМЕН АРАМЯН",
+          "sheet": "АРМЕН АРАМЯН ОЧ",
+          "lines": 5,
+          "qtySum": 1370.5
+        },
+        {
+          "id": "зоро",
+          "name": "ЗОРО",
+          "sheet": "ЗОРО!!!",
+          "lines": 5,
+          "qtySum": 1145.9
+        },
+        {
+          "id": "денис",
+          "name": "ДЕНИС",
+          "sheet": "ДЕНИС",
+          "lines": 4,
+          "qtySum": 483
+        }
+      ],
+      "articles": [
+        {
+          "id": "sand-quarry::песок карьерный::m3",
+          "presetId": "sand-quarry",
+          "title": "Песок карьерный",
+          "group": "Земляные работы",
+          "unit": "m3",
+          "excelTitles": [
+            "Песок карьерный"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 55
+            },
+            {
+              "contractorId": "микаэл",
+              "contractorName": "Микаэл",
+              "qty": 357
+            },
+            {
+              "contractorId": "бату",
+              "contractorName": "БАТУ",
+              "qty": 1035
+            },
+            {
+              "contractorId": "рустам-женя",
+              "contractorName": "РУСТАМ ЖЕНЯ",
+              "qty": 57
+            },
+            {
+              "contractorId": "мск-хорт",
+              "contractorName": "МСК-ХОРТ",
+              "qty": 70
+            },
+            {
+              "contractorId": "эдик-гуликян",
+              "contractorName": "ЭДИК ГУЛИКЯН",
+              "qty": 828.1
+            },
+            {
+              "contractorId": "вануш",
+              "contractorName": "ВАНУШ",
+              "qty": 450
+            },
+            {
+              "contractorId": "вартан",
+              "contractorName": "ВАРТАН",
+              "qty": 380
+            },
+            {
+              "contractorId": "армен-арамян",
+              "contractorName": "АРМЕН АРАМЯН",
+              "qty": 585
+            },
+            {
+              "contractorId": "зоро",
+              "contractorName": "ЗОРО",
+              "qty": 264
+            },
+            {
+              "contractorId": "денис",
+              "contractorName": "ДЕНИС",
+              "qty": 66
+            }
+          ],
+          "importedTotal": 4147.1
+        },
+        {
+          "id": "crushed-granite-20-40::щебень 20 40::m3",
+          "presetId": "crushed-granite-20-40",
+          "title": "Щебень 20–40",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "Щебень М600 фр.20*40  м3"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 64
+            },
+            {
+              "contractorId": "микаэл",
+              "contractorName": "Микаэл",
+              "qty": 551
+            },
+            {
+              "contractorId": "бату",
+              "contractorName": "БАТУ",
+              "qty": 665.7
+            },
+            {
+              "contractorId": "рустам-женя",
+              "contractorName": "РУСТАМ ЖЕНЯ",
+              "qty": 34
+            },
+            {
+              "contractorId": "агван",
+              "contractorName": "АГВАН",
+              "qty": 98
+            },
+            {
+              "contractorId": "мск-хорт",
+              "contractorName": "МСК-ХОРТ",
+              "qty": 322.6
+            },
+            {
+              "contractorId": "эдик-гуликян",
+              "contractorName": "ЭДИК ГУЛИКЯН",
+              "qty": 1020.3
+            },
+            {
+              "contractorId": "вануш",
+              "contractorName": "ВАНУШ",
+              "qty": 783
+            },
+            {
+              "contractorId": "вартан",
+              "contractorName": "ВАРТАН",
+              "qty": 609
+            },
+            {
+              "contractorId": "армен-арамян",
+              "contractorName": "АРМЕН АРАМЯН",
+              "qty": 535
+            },
+            {
+              "contractorId": "зоро",
+              "contractorName": "ЗОРО",
+              "qty": 744
+            },
+            {
+              "contractorId": "денис",
+              "contractorName": "ДЕНИС",
+              "qty": 302
+            }
+          ],
+          "importedTotal": 5728.6
+        },
+        {
+          "id": "concrete-b15::бетон b15 м200::m3",
+          "presetId": "concrete-b15",
+          "title": "Бетон B15 (М200)",
+          "group": "Бетон",
+          "unit": "m3",
+          "excelTitles": [
+            "Бетон  М-200 В15 П-2"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "микаэл",
+              "contractorName": "Микаэл",
+              "qty": 196
+            },
+            {
+              "contractorId": "бату",
+              "contractorName": "БАТУ",
+              "qty": 261
+            },
+            {
+              "contractorId": "рустам-женя",
+              "contractorName": "РУСТАМ ЖЕНЯ",
+              "qty": 44
+            },
+            {
+              "contractorId": "агван",
+              "contractorName": "АГВАН",
+              "qty": 35
+            },
+            {
+              "contractorId": "эдик-гуликян",
+              "contractorName": "ЭДИК ГУЛИКЯН",
+              "qty": 223
+            },
+            {
+              "contractorId": "вануш",
+              "contractorName": "ВАНУШ",
+              "qty": 138
+            },
+            {
+              "contractorId": "вартан",
+              "contractorName": "ВАРТАН",
+              "qty": 132.5
+            },
+            {
+              "contractorId": "армен-арамян",
+              "contractorName": "АРМЕН АРАМЯН",
+              "qty": 125
+            },
+            {
+              "contractorId": "зоро",
+              "contractorName": "ЗОРО",
+              "qty": 84
+            },
+            {
+              "contractorId": "денис",
+              "contractorName": "ДЕНИС",
+              "qty": 75
+            }
+          ],
+          "importedTotal": 1313.5
+        },
+        {
+          "id": "crushed-granite-5-20::щебень 5 20::m3",
+          "presetId": "crushed-granite-5-20",
+          "title": "Щебень 5–20",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "ЩЕБЕНЬ 5*20"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "микаэл",
+              "contractorName": "Микаэл",
+              "qty": 129
+            },
+            {
+              "contractorId": "бату",
+              "contractorName": "БАТУ",
+              "qty": 346
+            },
+            {
+              "contractorId": "мск-хорт",
+              "contractorName": "МСК-ХОРТ",
+              "qty": 98
+            },
+            {
+              "contractorId": "эдик-гуликян",
+              "contractorName": "ЭДИК ГУЛИКЯН",
+              "qty": 203
+            },
+            {
+              "contractorId": "вануш",
+              "contractorName": "ВАНУШ",
+              "qty": 64
+            },
+            {
+              "contractorId": "вартан",
+              "contractorName": "ВАРТАН",
+              "qty": 114
+            },
+            {
+              "contractorId": "армен-арамян",
+              "contractorName": "АРМЕН АРАМЯН",
+              "qty": 66
+            },
+            {
+              "contractorId": "зоро",
+              "contractorName": "ЗОРО",
+              "qty": 35
+            },
+            {
+              "contractorId": "денис",
+              "contractorName": "ДЕНИС",
+              "qty": 40
+            }
+          ],
+          "importedTotal": 1095
+        },
+        {
+          "id": "sand-quarry::песок жирошкино::m3",
+          "presetId": "sand-quarry",
+          "title": "Песок Жирошкино",
+          "group": "Земляные работы",
+          "unit": "m3",
+          "excelTitles": [
+            "ПЕСОК С ЖИРОШКИНО в  м3",
+            "ПЕСОК С ЖИРОШКИНО в м3",
+            "ПЕСОК С ЖИРОШКИНО в тоннах"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "микаэл",
+              "contractorName": "Микаэл",
+              "qty": 215.3
+            },
+            {
+              "contractorId": "бату",
+              "contractorName": "БАТУ",
+              "qty": 114.7
+            },
+            {
+              "contractorId": "рустам-женя",
+              "contractorName": "РУСТАМ ЖЕНЯ",
+              "qty": 43.5
+            },
+            {
+              "contractorId": "эдик-гуликян",
+              "contractorName": "ЭДИК ГУЛИКЯН",
+              "qty": 117.6
+            },
+            {
+              "contractorId": "вануш",
+              "contractorName": "ВАНУШ",
+              "qty": 257
+            },
+            {
+              "contractorId": "вартан",
+              "contractorName": "ВАРТАН",
+              "qty": 39.9
+            },
+            {
+              "contractorId": "армен-арамян",
+              "contractorName": "АРМЕН АРАМЯН",
+              "qty": 59.5
+            },
+            {
+              "contractorId": "зоро",
+              "contractorName": "ЗОРО",
+              "qty": 18.9
+            }
+          ],
+          "importedTotal": 866.4
+        },
+        {
+          "id": "crushed-granite-40-70::щебень 40 70::m3",
+          "presetId": "crushed-granite-40-70",
+          "title": "Щебень 40–70",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "ЩЕБЕНЬ 40*70"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "микаэл",
+              "contractorName": "Микаэл",
+              "qty": 161
+            },
+            {
+              "contractorId": "бату",
+              "contractorName": "БАТУ",
+              "qty": 300
+            },
+            {
+              "contractorId": "мск-хорт",
+              "contractorName": "МСК-ХОРТ",
+              "qty": 64
+            }
+          ],
+          "importedTotal": 525
+        },
+        {
+          "id": "topsoil-chernozem::чернозем плодородный грунт::m3",
+          "presetId": "topsoil-chernozem",
+          "title": "Чернозём / плодородный грунт",
+          "group": "Благоустройство",
+          "unit": "m3",
+          "excelTitles": [
+            "Чернозем,м3"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "бату",
+              "contractorName": "БАТУ",
+              "qty": 119
+            }
+          ],
+          "importedTotal": 119
+        }
+      ]
+    },
+    {
+      "siteId": "brusilova",
+      "siteName": "Брусилова",
+      "closed": false,
+      "sourceFile": "ул. БРУСИЛОВА (ДР) АГВАН ЗОРО ДЕНИС БАТУ.xlsx",
+      "asOfIso": "2026-09-12T00:00:00.000Z",
+      "contractors": [
+        {
+          "id": "др",
+          "name": "ДР",
+          "sheet": "БРУСИЛОВА ДР",
+          "lines": 18,
+          "qtySum": 18124.69
+        },
+        {
+          "id": "агван",
+          "name": "АГВАН",
+          "sheet": "АГВАН",
+          "lines": 9,
+          "qtySum": 1769.04
+        },
+        {
+          "id": "зоро",
+          "name": "ЗОРО",
+          "sheet": "ЗОРО",
+          "lines": 11,
+          "qtySum": 4039.13
+        },
+        {
+          "id": "денис",
+          "name": "ДЕНИС",
+          "sheet": "ДЕНИС",
+          "lines": 9,
+          "qtySum": 3205.6
+        },
+        {
+          "id": "бату",
+          "name": "БАТУ",
+          "sheet": "БАТУ",
+          "lines": 4,
+          "qtySum": 477
+        }
+      ],
+      "articles": [
+        {
+          "id": "sand-quarry::песок карьерный::m3",
+          "presetId": "sand-quarry",
+          "title": "Песок карьерный",
+          "group": "Земляные работы",
+          "unit": "m3",
+          "excelTitles": [
+            "Песок карьерный",
+            "ПЕСОК С ЖИРОРШКИНО в м3"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 2609
+            },
+            {
+              "contractorId": "агван",
+              "contractorName": "АГВАН",
+              "qty": 442.4
+            },
+            {
+              "contractorId": "зоро",
+              "contractorName": "ЗОРО",
+              "qty": 817
+            },
+            {
+              "contractorId": "денис",
+              "contractorName": "ДЕНИС",
+              "qty": 619.7
+            },
+            {
+              "contractorId": "бату",
+              "contractorName": "БАТУ",
+              "qty": 135
+            }
+          ],
+          "importedTotal": 4623.1
+        },
+        {
+          "id": "sand-quarry::песок жирошкино::m3",
+          "presetId": "sand-quarry",
+          "title": "Песок Жирошкино",
+          "group": "Земляные работы",
+          "unit": "m3",
+          "excelTitles": [
+            "ПЕСОК С ЖИРОШКИНО В м3",
+            "ПЕСОК С ЖИРОШКИНО в м3",
+            "ПЕСОК С ЖИРОШКИНО в тоннах"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 2041.46
+            },
+            {
+              "contractorId": "зоро",
+              "contractorName": "ЗОРО",
+              "qty": 107.5
+            },
+            {
+              "contractorId": "денис",
+              "contractorName": "ДЕНИС",
+              "qty": 187.4
+            }
+          ],
+          "importedTotal": 2336.36
+        },
+        {
+          "id": "crushed-granite-5-20::щебень 5 20::m3",
+          "presetId": "crushed-granite-5-20",
+          "title": "Щебень 5–20",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "ЩЕБЕНЬ 5*20",
+            "Щебень М600 фр.5*20 м3"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 235.8
+            },
+            {
+              "contractorId": "агван",
+              "contractorName": "АГВАН",
+              "qty": 123
+            },
+            {
+              "contractorId": "зоро",
+              "contractorName": "ЗОРО",
+              "qty": 35
+            },
+            {
+              "contractorId": "денис",
+              "contractorName": "ДЕНИС",
+              "qty": 147
+            },
+            {
+              "contractorId": "бату",
+              "contractorName": "БАТУ",
+              "qty": 20
+            }
+          ],
+          "importedTotal": 560.8
+        },
+        {
+          "id": "crushed-granite-20-40::щебень 20 40::m3",
+          "presetId": "crushed-granite-20-40",
+          "title": "Щебень 20–40",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "Щебень М600 фр.20*40  м3",
+            "ЩЕБЕНЬ 20*40 в тоннах (НПК возит)",
+            "ЩЕБЕНЬ 20*40 В ТОННАХ (НПК ДЕНИС)"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 3366
+            },
+            {
+              "contractorId": "агван",
+              "contractorName": "АГВАН",
+              "qty": 582.9
+            },
+            {
+              "contractorId": "зоро",
+              "contractorName": "ЗОРО",
+              "qty": 1306.99
+            },
+            {
+              "contractorId": "денис",
+              "contractorName": "ДЕНИС",
+              "qty": 1424
+            },
+            {
+              "contractorId": "бату",
+              "contractorName": "БАТУ",
+              "qty": 306
+            }
+          ],
+          "importedTotal": 6985.89
+        },
+        {
+          "id": "concrete-b15::бетон b15 м200::m3",
+          "presetId": "concrete-b15",
+          "title": "Бетон B15 (М200)",
+          "group": "Бетон",
+          "unit": "m3",
+          "excelTitles": [
+            "Бетон  В15",
+            "БЕТОН М-300 МИКСЕР м3"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 906.5
+            },
+            {
+              "contractorId": "агван",
+              "contractorName": "АГВАН",
+              "qty": 284
+            },
+            {
+              "contractorId": "зоро",
+              "contractorName": "ЗОРО",
+              "qty": 429
+            },
+            {
+              "contractorId": "денис",
+              "contractorName": "ДЕНИС",
+              "qty": 440.5
+            },
+            {
+              "contractorId": "бату",
+              "contractorName": "БАТУ",
+              "qty": 16
+            }
+          ],
+          "importedTotal": 2076
+        },
+        {
+          "id": "concrete-b7-5::бетон тощий b7 5::m3",
+          "presetId": "concrete-b7-5",
+          "title": "Бетон тощий B7,5",
+          "group": "Бетон",
+          "unit": "m3",
+          "excelTitles": [
+            "Бетон тощий В 7,5"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 13
+            },
+            {
+              "contractorId": "агван",
+              "contractorName": "АГВАН",
+              "qty": 4
+            }
+          ],
+          "importedTotal": 17
+        },
+        {
+          "id": "topsoil-chernozem::чернозем плодородный грунт::m3",
+          "presetId": "topsoil-chernozem",
+          "title": "Чернозём / плодородный грунт",
+          "group": "Благоустройство",
+          "unit": "m3",
+          "excelTitles": [
+            "Чернозем,м3"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 400
+            },
+            {
+              "contractorId": "агван",
+              "contractorName": "АГВАН",
+              "qty": 260
+            },
+            {
+              "contractorId": "зоро",
+              "contractorName": "ЗОРО",
+              "qty": 660
+            },
+            {
+              "contractorId": "денис",
+              "contractorName": "ДЕНИС",
+              "qty": 100
+            }
+          ],
+          "importedTotal": 1420
+        },
+        {
+          "id": "asphalt-shma-20::щма 20::t",
+          "presetId": "asphalt-shma-20",
+          "title": "ЩМА-20",
+          "group": "Асфальт",
+          "unit": "t",
+          "excelTitles": [
+            "ЩМА-20"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 212.28
+            }
+          ],
+          "importedTotal": 212.28
+        },
+        {
+          "id": "asphalt-type-b::асфальт кз тип б марка 1::t",
+          "presetId": "asphalt-type-b",
+          "title": "Асфальт КЗ тип Б марка 1",
+          "group": "Асфальт",
+          "unit": "t",
+          "excelTitles": [
+            "Асфальт КЗ тип Б марка 1"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 1516.98
+            }
+          ],
+          "importedTotal": 1516.98
+        },
+        {
+          "id": "crushed-shgps-c4::щгпс с4::m3",
+          "presetId": "crushed-shgps-c4",
+          "title": "ЩГПС С4",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "ЩГПС С4 (НПК ДЕНИС в тоннах)",
+            "ЩГПС С4"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 552.91
+            },
+            {
+              "contractorId": "агван",
+              "contractorName": "АГВАН",
+              "qty": 42.74
+            },
+            {
+              "contractorId": "денис",
+              "contractorName": "ДЕНИС",
+              "qty": 26
+            }
+          ],
+          "importedTotal": 621.65
+        },
+        {
+          "id": "asphalt-sandy::асфальтобетон песчаный::t",
+          "presetId": "asphalt-sandy",
+          "title": "Асфальтобетон песчаный",
+          "group": "Асфальт",
+          "unit": "t",
+          "excelTitles": [
+            "Песчаный асфальт",
+            "Асфальт ПЕСЧАНКА",
+            "Песчаный асфальт, тонн"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 4495.45
+            },
+            {
+              "contractorId": "зоро",
+              "contractorName": "ЗОРО",
+              "qty": 90.02
+            },
+            {
+              "contractorId": "денис",
+              "contractorName": "ДЕНИС",
+              "qty": 8
+            }
+          ],
+          "importedTotal": 4593.47
+        },
+        {
+          "id": "asphalt-type-b-mz::асфальтобетон мз::t",
+          "presetId": "asphalt-type-b-mz",
+          "title": "Асфальтобетон МЗ",
+          "group": "Асфальт",
+          "unit": "t",
+          "excelTitles": [
+            "АСФАЛЬТ МЗ покупали у РУСАСФАЛЬТА"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 1007.06
+            }
+          ],
+          "importedTotal": 1007.06
+        },
+        {
+          "id": "asphalt-type-b::асфальт кз::t",
+          "presetId": "asphalt-type-b",
+          "title": "АСФАЛЬТ КЗ",
+          "group": "Асфальт",
+          "unit": "t",
+          "excelTitles": [
+            "АСФАЛЬТ КЗ"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 541.25
+            }
+          ],
+          "importedTotal": 541.25
+        },
+        {
+          "id": "crushed-granite-40-70::щебень 40 70::m3",
+          "presetId": "crushed-granite-40-70",
+          "title": "Щебень 40–70",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "ЩЕБЕНЬ 40*70"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 227
+            },
+            {
+              "contractorId": "агван",
+              "contractorName": "АГВАН",
+              "qty": 30
+            },
+            {
+              "contractorId": "зоро",
+              "contractorName": "ЗОРО",
+              "qty": 272
+            },
+            {
+              "contractorId": "денис",
+              "contractorName": "ДЕНИС",
+              "qty": 253
+            }
+          ],
+          "importedTotal": 782
+        },
+        {
+          "id": "crushed-shgps-c4::щгпс с4::t",
+          "presetId": "crushed-shgps-c4",
+          "title": "ЩГПС С4",
+          "group": "Основания",
+          "unit": "t",
+          "excelTitles": [
+            "ЩГПС С4 тонн"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "зоро",
+              "contractorName": "ЗОРО",
+              "qty": 171.62
+            }
+          ],
+          "importedTotal": 171.62
+        },
+        {
+          "id": "x::семена газонные кг::kg",
+          "presetId": null,
+          "title": "СЕМЕНА ГАЗОННЫЕ кг",
+          "group": "Благоустройство",
+          "unit": "kg",
+          "excelTitles": [
+            "СЕМЕНА ГАЗОННЫЕ кг"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "зоро",
+              "contractorName": "ЗОРО",
+              "qty": 150
+            }
+          ],
+          "importedTotal": 150
+        }
+      ]
+    },
+    {
+      "siteId": "mcd2-butovo",
+      "siteName": "Бутово",
+      "closed": false,
+      "sourceFile": "БУТОВО (ДР) ВАРТАН ВАНУШ.xlsx",
+      "asOfIso": "2026-09-12T00:00:00.000Z",
+      "contractors": [
+        {
+          "id": "др",
+          "name": "ДР",
+          "sheet": "БУТОВО ДР",
+          "lines": 15,
+          "qtySum": 16296.45
+        },
+        {
+          "id": "вартан",
+          "name": "ВАРТАН",
+          "sheet": "ВАРТАН",
+          "lines": 6,
+          "qtySum": 835.5
+        },
+        {
+          "id": "вануш",
+          "name": "ВАНУШ",
+          "sheet": "ВАНУШ",
+          "lines": 6,
+          "qtySum": 972.5
+        }
+      ],
+      "articles": [
+        {
+          "id": "sand-quarry::песок карьерный::m3",
+          "presetId": "sand-quarry",
+          "title": "Песок карьерный",
+          "group": "Земляные работы",
+          "unit": "m3",
+          "excelTitles": [
+            "Песок карьерный",
+            "ПЕСОК С ЖИРОРШКИНО в м3"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 3700
+            },
+            {
+              "contractorId": "вартан",
+              "contractorName": "ВАРТАН",
+              "qty": 441
+            },
+            {
+              "contractorId": "вануш",
+              "contractorName": "ВАНУШ",
+              "qty": 351
+            }
+          ],
+          "importedTotal": 4492
+        },
+        {
+          "id": "asphalt-type-b-mz::асфальтобетон мз::t",
+          "presetId": "asphalt-type-b-mz",
+          "title": "Асфальтобетон МЗ",
+          "group": "Асфальт",
+          "unit": "t",
+          "excelTitles": [
+            "асфальт МЗ (ДР) ,тонн"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 292.6
+            }
+          ],
+          "importedTotal": 292.6
+        },
+        {
+          "id": "asphalt-sandy::асфальтобетон песчаный::t",
+          "presetId": "asphalt-sandy",
+          "title": "Асфальтобетон песчаный",
+          "group": "Асфальт",
+          "unit": "t",
+          "excelTitles": [
+            "Песчаный асфальт, тонн"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 1593.27
+            }
+          ],
+          "importedTotal": 1593.27
+        },
+        {
+          "id": "curb-br-100-30-15::бортовой камень 15 давал::pcs",
+          "presetId": "curb-br-100-30-15",
+          "title": "Бортовой камень 15 (давал)",
+          "group": "Бортовой камень",
+          "unit": "pcs",
+          "excelTitles": [
+            "Бортовой камень 15 (давал)"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 480
+            }
+          ],
+          "importedTotal": 480
+        },
+        {
+          "id": "crushed-granite-20-40::щебень 20 40::m3",
+          "presetId": "crushed-granite-20-40",
+          "title": "Щебень 20–40",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "Щебень М600 фр.20*40  м3"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 2120.3
+            },
+            {
+              "contractorId": "вартан",
+              "contractorName": "ВАРТАН",
+              "qty": 110
+            },
+            {
+              "contractorId": "вануш",
+              "contractorName": "ВАНУШ",
+              "qty": 384
+            }
+          ],
+          "importedTotal": 2614.3
+        },
+        {
+          "id": "concrete-b15::бетон b15 м200::m3",
+          "presetId": "concrete-b15",
+          "title": "Бетон B15 (М200)",
+          "group": "Бетон",
+          "unit": "m3",
+          "excelTitles": [
+            "Бетон  В15",
+            "Бетон М-300 МИКСЕР С ДОСТАВКОЙ"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 830
+            },
+            {
+              "contractorId": "вартан",
+              "contractorName": "ВАРТАН",
+              "qty": 123.5
+            },
+            {
+              "contractorId": "вануш",
+              "contractorName": "ВАНУШ",
+              "qty": 82
+            }
+          ],
+          "importedTotal": 1035.5
+        },
+        {
+          "id": "concrete-b7-5::бетон тощий b7 5::m3",
+          "presetId": "concrete-b7-5",
+          "title": "Бетон тощий B7,5",
+          "group": "Бетон",
+          "unit": "m3",
+          "excelTitles": [
+            "Бетон тощий В 7,5"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 60
+            }
+          ],
+          "importedTotal": 60
+        },
+        {
+          "id": "topsoil-chernozem::чернозем плодородный грунт::m3",
+          "presetId": "topsoil-chernozem",
+          "title": "Чернозём / плодородный грунт",
+          "group": "Благоустройство",
+          "unit": "m3",
+          "excelTitles": [
+            "Чернозем,м3"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 340
+            }
+          ],
+          "importedTotal": 340
+        },
+        {
+          "id": "asphalt-shma-20::щма 20::t",
+          "presetId": "asphalt-shma-20",
+          "title": "ЩМА-20",
+          "group": "Асфальт",
+          "unit": "t",
+          "excelTitles": [
+            "ЩМА-20"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 2044.8
+            }
+          ],
+          "importedTotal": 2044.8
+        },
+        {
+          "id": "asphalt-type-b::асфальт кз тип б марка 2::t",
+          "presetId": "asphalt-type-b",
+          "title": "Асфальт КЗ тип Б марка 2",
+          "group": "Асфальт",
+          "unit": "t",
+          "excelTitles": [
+            "Асфальт КЗ тип Б марка 2"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 4282.38
+            }
+          ],
+          "importedTotal": 4282.38
+        },
+        {
+          "id": "crushed-granite-5-20::щебень 5 20::m3",
+          "presetId": "crushed-granite-5-20",
+          "title": "Щебень 5–20",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "ЩЕБЕНЬ 5*20"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 174
+            },
+            {
+              "contractorId": "вартан",
+              "contractorName": "ВАРТАН",
+              "qty": 40
+            },
+            {
+              "contractorId": "вануш",
+              "contractorName": "ВАНУШ",
+              "qty": 33
+            }
+          ],
+          "importedTotal": 247
+        },
+        {
+          "id": "sand-river-washed::песок мытый::m3",
+          "presetId": "sand-river-washed",
+          "title": "Песок мытый",
+          "group": "Земляные работы",
+          "unit": "m3",
+          "excelTitles": [
+            "ПЕСОК МЫТЫЙ ВОДИТЕЛЬ ПЕРЕПУТАЛ"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 60
+            }
+          ],
+          "importedTotal": 60
+        },
+        {
+          "id": "crushed-granite-40-70::щебень 40 70::m3",
+          "presetId": "crushed-granite-40-70",
+          "title": "Щебень 40–70",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "ЩЕБЕНЬ 40*70"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 30
+            },
+            {
+              "contractorId": "вартан",
+              "contractorName": "ВАРТАН",
+              "qty": 121
+            },
+            {
+              "contractorId": "вануш",
+              "contractorName": "ВАНУШ",
+              "qty": 35
+            }
+          ],
+          "importedTotal": 186
+        },
+        {
+          "id": "sand-quarry::песок жирошкино::m3",
+          "presetId": "sand-quarry",
+          "title": "Песок Жирошкино",
+          "group": "Земляные работы",
+          "unit": "m3",
+          "excelTitles": [
+            "ПЕСОК С ЖИРОШКИНО в м3"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 289.1
+            },
+            {
+              "contractorId": "вануш",
+              "contractorName": "ВАНУШ",
+              "qty": 87.5
+            }
+          ],
+          "importedTotal": 376.6
+        }
+      ]
+    },
+    {
+      "siteId": "koshtoyantsa",
+      "siteName": "Коштоянца",
+      "closed": false,
+      "sourceFile": "ул.КОШТОЯНЦА (ДР) ДР МСК-ХОРТ.xlsx",
+      "asOfIso": "2026-09-12T00:00:00.000Z",
+      "contractors": [
+        {
+          "id": "др",
+          "name": "ДР",
+          "sheet": "ул.КОШТОЯНЦА",
+          "lines": 9,
+          "qtySum": 2849.6
+        },
+        {
+          "id": "мск-хорт",
+          "name": "МСК-ХОРТ",
+          "sheet": "МСК-ХОРТ Роман,Илья,Антон Кошто",
+          "lines": 5,
+          "qtySum": 835
+        },
+        {
+          "id": "сасун",
+          "name": "Сасун",
+          "sheet": "САСУН был на  подмоге",
+          "lines": 1,
+          "qtySum": 20
+        }
+      ],
+      "articles": [
+        {
+          "id": "sand-quarry::песок карьерный::m3",
+          "presetId": "sand-quarry",
+          "title": "Песок карьерный",
+          "group": "Земляные работы",
+          "unit": "m3",
+          "excelTitles": [
+            "Песок карьерный"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 637
+            },
+            {
+              "contractorId": "мск-хорт",
+              "contractorName": "МСК-ХОРТ",
+              "qty": 26
+            }
+          ],
+          "importedTotal": 663
+        },
+        {
+          "id": "sand-quarry::песок жирошкино::m3",
+          "presetId": "sand-quarry",
+          "title": "Песок Жирошкино",
+          "group": "Земляные работы",
+          "unit": "m3",
+          "excelTitles": [
+            "ПЕСОК С ЖИРОШКИНО в м3"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 115.6
+            }
+          ],
+          "importedTotal": 115.6
+        },
+        {
+          "id": "crushed-granite-20-40::щебень 20 40::m3",
+          "presetId": "crushed-granite-20-40",
+          "title": "Щебень 20–40",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "Щебень М600 фр.20*40  м3"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 988
+            },
+            {
+              "contractorId": "мск-хорт",
+              "contractorName": "МСК-ХОРТ",
+              "qty": 102
+            }
+          ],
+          "importedTotal": 1090
+        },
+        {
+          "id": "concrete-b15::бетон b15 м200::m3",
+          "presetId": "concrete-b15",
+          "title": "Бетон B15 (М200)",
+          "group": "Бетон",
+          "unit": "m3",
+          "excelTitles": [
+            "Бетон  М-200 В15 П-2"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 388
+            },
+            {
+              "contractorId": "мск-хорт",
+              "contractorName": "МСК-ХОРТ",
+              "qty": 37
+            }
+          ],
+          "importedTotal": 425
+        },
+        {
+          "id": "topsoil-chernozem::чернозем плодородный грунт::m3",
+          "presetId": "topsoil-chernozem",
+          "title": "Чернозём / плодородный грунт",
+          "group": "Благоустройство",
+          "unit": "m3",
+          "excelTitles": [
+            "Чернозем,м3"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 474
+            },
+            {
+              "contractorId": "мск-хорт",
+              "contractorName": "МСК-ХОРТ",
+              "qty": 574
+            },
+            {
+              "contractorId": "сасун",
+              "contractorName": "Сасун",
+              "qty": 20
+            }
+          ],
+          "importedTotal": 1068
+        },
+        {
+          "id": "crushed-granite-5-20::щебень 5 20::m3",
+          "presetId": "crushed-granite-5-20",
+          "title": "Щебень 5–20",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "ЩЕБЕНЬ 5*20"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 185
+            }
+          ],
+          "importedTotal": 185
+        },
+        {
+          "id": "crushed-shgps-c4::щгпс с4::m3",
+          "presetId": "crushed-shgps-c4",
+          "title": "ЩГПС С4",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "ЩГПС"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 30
+            }
+          ],
+          "importedTotal": 30
+        },
+        {
+          "id": "crushed-granite-40-70::щебень 40 70::m3",
+          "presetId": "crushed-granite-40-70",
+          "title": "Щебень 40–70",
+          "group": "Основания",
+          "unit": "m3",
+          "excelTitles": [
+            "Щебень 40*70",
+            "ЩЕБЕНЬ  40*70"
+          ],
+          "planned": null,
+          "imported": [
+            {
+              "contractorId": "др",
+              "contractorName": "ДР",
+              "qty": 32
+            },
+            {
+              "contractorId": "мск-хорт",
+              "contractorName": "МСК-ХОРТ",
+              "qty": 96
+            }
+          ],
+          "importedTotal": 128
+        }
+      ]
+    }
+  ]
+}

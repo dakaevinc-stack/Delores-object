@@ -1,8 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import type { ProcurementRequest } from '../../domain/procurementRequest'
 import {
+  budgetHasPlan,
+  contractorsFromBudget,
   groupMaterialFacts,
   summarizeMaterialBudget,
+  viewBudgetForContractor,
   type MaterialArticleFact,
   type MaterialArticleStatus,
   type MaterialBudget,
@@ -23,48 +26,79 @@ const STATUS_LABEL: Record<MaterialArticleStatus, string> = {
   over: 'В минус',
 }
 
-function ArticleRow({ fact }: { fact: MaterialArticleFact }) {
+function ArticleRow({
+  fact,
+  crewLabel,
+}: {
+  fact: MaterialArticleFact
+  crewLabel: string | null
+}) {
   const { article, consumed, remaining, percent, status } = fact
   const unit = unitLabel(article.unit)
-  const remainAbs = Math.abs(remaining)
-  const barPct = Math.max(0, Math.min(100, percent))
+  const planned = article.planned
+  const noPlan = planned == null
 
   return (
-    <li className={`${styles.row} ${styles[`tone_${status}`]}`}>
+    <li className={`${styles.row} ${styles[`tone_${noPlan ? 'fact' : status}`]}`}>
       <span className={styles.rowDot} aria-hidden />
       <div className={styles.rowBody}>
         <div className={styles.rowTop}>
           <div className={styles.rowIdentity}>
             <span className={styles.rowTitle}>{article.title}</span>
-            <span className={styles.rowStatus}>{STATUS_LABEL[status]}</span>
+            <span className={styles.rowStatus}>
+              {crewLabel
+                ? `Факт ${crewLabel}`
+                : noPlan
+                  ? 'Факт всех бригад'
+                  : STATUS_LABEL[status]}
+            </span>
           </div>
           <div className={styles.rowFigures}>
             <p className={styles.rowQty}>
               <span className={styles.rowDone}>{formatQty(consumed)}</span>
-              <span className={styles.rowOf}>из</span>
-              <span className={styles.rowPlan}>
-                {formatQty(article.planned)} {unit}
-              </span>
-            </p>
-            <p className={styles.rowRemain}>
-              {remaining < 0 ? (
-                <>
-                  Перерасход <strong>{formatQty(remainAbs)} {unit}</strong>
-                </>
+              {noPlan ? (
+                <span className={styles.rowPlan}>{unit}</span>
               ) : (
                 <>
-                  Осталось <strong>{formatQty(remaining)} {unit}</strong>
+                  <span className={styles.rowOf}>из</span>
+                  <span className={styles.rowPlan}>
+                    {formatQty(planned)} {unit}
+                  </span>
                 </>
               )}
             </p>
+            {noPlan || remaining == null ? (
+              <p className={styles.rowRemain}>
+                {crewLabel ? 'Только эта бригада на объекте' : 'План в таблице не задан'}
+              </p>
+            ) : remaining < 0 ? (
+              <p className={styles.rowRemain}>
+                Перерасход{' '}
+                <strong>
+                  {formatQty(Math.abs(remaining))} {unit}
+                </strong>
+              </p>
+            ) : (
+              <p className={styles.rowRemain}>
+                Осталось{' '}
+                <strong>
+                  {formatQty(remaining)} {unit}
+                </strong>
+              </p>
+            )}
           </div>
         </div>
-        <div className={styles.rowTrack}>
-          <div className={styles.rowBar} aria-hidden>
-            <span className={styles.rowBarFill} style={{ width: `${barPct}%` }} />
+        {noPlan || percent == null ? null : (
+          <div className={styles.rowTrack}>
+            <div className={styles.rowBar} aria-hidden>
+              <span
+                className={styles.rowBarFill}
+                style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
+              />
+            </div>
+            <span className={styles.rowPercent}>{percent.toFixed(0)}%</span>
           </div>
-          <span className={styles.rowPercent}>{percent.toFixed(0)}%</span>
-        </div>
+        )}
       </div>
     </li>
   )
@@ -120,11 +154,20 @@ function MaterialGroup({
 
 export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
   const { expanded, toggle, anchorRef } = useAnchoredExpand(false)
+  const [crewId, setCrewId] = useState<string | null>(null)
+  const crews = useMemo(() => contractorsFromBudget(budget), [budget])
+  const hasPlan = useMemo(() => budgetHasPlan(budget), [budget])
+  const scoped = useMemo(() => viewBudgetForContractor(budget, crewId), [budget, crewId])
+  const crewLabel = crews.find((c) => c.contractorId === crewId)?.contractorName ?? null
   const summary = useMemo(
-    () => summarizeMaterialBudget(budget, requests),
-    [budget, requests],
+    () => summarizeMaterialBudget(scoped, crewId ? [] : requests),
+    [scoped, requests, crewId],
   )
   const groups = useMemo(() => groupMaterialFacts(summary.facts), [summary.facts])
+
+  const selectCrew = (id: string | null) => {
+    setCrewId((prev) => (prev === id ? null : id))
+  }
 
   return (
     <section
@@ -136,12 +179,16 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
         <div className={styles.headCopy}>
           <p className={styles.kicker}>
             <img className={styles.kickerMark} src="/brand-chevron.svg" alt="" aria-hidden />
-            Смета объекта
+            Ведомость расхода
           </p>
           <h2 className={styles.title} id="material-spend-heading">
             Расход материала
           </h2>
-          <p className={styles.lead}>Списание при приёмке. Перерасход уходит в минус.</p>
+          <p className={styles.lead}>
+            {crewLabel
+              ? `Показан только ${crewLabel} на этом объекте. Нажмите ещё раз — вернутся все.`
+              : 'Общие суммы по объекту. Нажмите бригаду — увидите только её расход.'}
+          </p>
           {!expanded ? (
             <dl className={styles.previewStats} aria-hidden>
               <div>
@@ -149,13 +196,20 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
                 <dd>{summary.facts.length}</dd>
               </div>
               <div>
-                <dt>Норма</dt>
-                <dd>{summary.okCount}</dd>
+                <dt>Бригад</dt>
+                <dd>{crews.length}</dd>
               </div>
-              <div className={summary.overCount ? styles.statBad : undefined}>
-                <dt>Минус</dt>
-                <dd>{summary.overCount}</dd>
-              </div>
+              {hasPlan ? (
+                <div className={summary.overCount ? styles.statBad : undefined}>
+                  <dt>Минус</dt>
+                  <dd>{summary.overCount}</dd>
+                </div>
+              ) : (
+                <div>
+                  <dt>План</dt>
+                  <dd>нет</dd>
+                </div>
+              )}
             </dl>
           ) : null}
         </div>
@@ -170,36 +224,80 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
 
       {expanded ? (
         <div id="material-spend-body" className={styles.body}>
-          <div className={styles.metrics} role="group" aria-label="Сводка по смете">
+          <div className={styles.metrics} role="group" aria-label="Сводка по расходу">
             <div className={styles.metric}>
               <span className={styles.metricLabel}>Статей</span>
               <span className={styles.metricValue}>{summary.facts.length}</span>
             </div>
             <div className={styles.metric}>
-              <span className={styles.metricLabel}>В норме</span>
-              <span className={styles.metricValue}>{summary.okCount}</span>
+              <span className={styles.metricLabel}>Бригад</span>
+              <span className={styles.metricValue}>{crews.length}</span>
             </div>
-            <div className={`${styles.metric} ${summary.lowCount ? styles.metricWarn : ''}`}>
-              <span className={styles.metricLabel}>Мало</span>
-              <span className={styles.metricValue}>{summary.lowCount}</span>
-            </div>
-            <div className={`${styles.metric} ${summary.overCount ? styles.metricBad : ''}`}>
-              <span className={styles.metricLabel}>В минус</span>
-              <span className={styles.metricValue}>{summary.overCount}</span>
-            </div>
+            {hasPlan ? (
+              <>
+                <div className={`${styles.metric} ${summary.lowCount ? styles.metricWarn : ''}`}>
+                  <span className={styles.metricLabel}>Мало</span>
+                  <span className={styles.metricValue}>{summary.lowCount}</span>
+                </div>
+                <div className={`${styles.metric} ${summary.overCount ? styles.metricBad : ''}`}>
+                  <span className={styles.metricLabel}>В минус</span>
+                  <span className={styles.metricValue}>{summary.overCount}</span>
+                </div>
+              </>
+            ) : (
+              <div className={styles.metric}>
+                <span className={styles.metricLabel}>Сейчас</span>
+                <span className={styles.metricValue}>{crewLabel ?? 'все'}</span>
+              </div>
+            )}
           </div>
 
-          {groups.map((g) => (
-            <MaterialGroup key={g.group} id={g.group} title={g.group}>
-              <ul className={styles.list}>
-                {g.facts.map((fact) => (
-                  <ArticleRow key={fact.article.id} fact={fact} />
-                ))}
-              </ul>
-            </MaterialGroup>
-          ))}
+          {crews.length > 0 ? (
+            <div className={styles.crewStrip} role="group" aria-label="Бригады на объекте">
+              <button
+                type="button"
+                className={styles.crewChip}
+                data-active={crewId == null ? 'true' : 'false'}
+                aria-pressed={crewId == null}
+                onClick={() => setCrewId(null)}
+              >
+                Все
+              </button>
+              {crews.map((crew) => (
+                <button
+                  key={crew.contractorId}
+                  type="button"
+                  className={styles.crewChip}
+                  data-active={crewId === crew.contractorId ? 'true' : 'false'}
+                  aria-pressed={crewId === crew.contractorId}
+                  onClick={() => selectCrew(crew.contractorId)}
+                >
+                  {crew.contractorName}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
-          {summary.unplanned.length > 0 ? (
+          {groups.length === 0 ? (
+            <p className={styles.emptyCrew}>У этой бригады на объекте нет расхода в ведомости.</p>
+          ) : (
+            groups.map((g) => (
+              <MaterialGroup
+                key={`${g.group}-${crewId ?? 'all'}`}
+                id={`${g.group}-${crewId ?? 'all'}`}
+                title={g.group}
+                defaultOpen={crewId != null}
+              >
+                <ul className={styles.list}>
+                  {g.facts.map((fact) => (
+                    <ArticleRow key={fact.article.id} fact={fact} crewLabel={crewLabel} />
+                  ))}
+                </ul>
+              </MaterialGroup>
+            ))
+          )}
+
+          {!crewId && summary.unplanned.length > 0 ? (
             <MaterialGroup id="unplanned" title="Вне сметы" className={styles.unplanned}>
               <ul className={styles.unplannedList}>
                 {summary.unplanned.map((row) => (

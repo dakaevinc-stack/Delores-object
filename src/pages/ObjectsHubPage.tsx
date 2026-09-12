@@ -30,7 +30,11 @@ export function ObjectsHubPage() {
   const filtered = useMemo(() => {
     const nq = normalizeQuery(query)
     return sites.filter((site) => {
-      if (status !== 'all' && resolveSiteStatus(site) !== status) return false
+      if (status === 'closed') return site.lifecycle === 'closed'
+      if (status !== 'all') {
+        if (site.lifecycle === 'closed') return false
+        if (resolveSiteStatus(site) !== status) return false
+      }
       if (!nq) return true
       return site.name.toLocaleLowerCase('ru-RU').includes(nq)
     })

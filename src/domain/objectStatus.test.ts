@@ -68,6 +68,23 @@ describe('resolveSiteStatus', () => {
     expect(resolveSiteStatus(s, today)).toBe('attention')
   })
 
+  it('закрытая площадка не становится критичной из-за прошедшей даты', () => {
+    const s = site({
+      id: 'closed-site',
+      status: 'normal',
+      lifecycle: 'closed',
+      endDateIso: '2026-05-15',
+      executive: {
+        planPercent: 0,
+        factPercent: 0,
+        summaryLine: '',
+        hasOpenRisks: false,
+        stages: [],
+      },
+    })
+    expect(resolveSiteStatus(s, today)).toBe('normal')
+  })
+
   it('закрытый по факту объект не становится критичным из-за прошедшей даты', () => {
     const s = site({
       id: 'done',

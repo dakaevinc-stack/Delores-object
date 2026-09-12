@@ -4,6 +4,9 @@
  */
 export type SiteStatus = 'normal' | 'attention' | 'critical'
 
+/** Площадка ещё в работе или уже сдана. Закрытые не удаляем — там ведомость. */
+export type SiteLifecycle = 'active' | 'closed'
+
 /**
  * Снимок этапа: основа для план/факт и будущего автоматического статуса.
  * Позже значения будут приходить из учёта работ; сейчас — mock.
@@ -77,6 +80,7 @@ export interface ConstructionSite extends SiteHealthInputs {
    * Статус для UI. Сейчас задаётся в mock; позже — результат `evaluateSiteStatus(site)`.
    */
   status: SiteStatus
+  lifecycle?: SiteLifecycle
   executive: SiteExecutiveSnapshot
 
   /** Необязательные поля, заполняемые при создании объекта пользователем. */

@@ -9,7 +9,7 @@ describe('anokhina site data', () => {
     expect(site?.name).toBe('Анохина')
   })
 
-  it('has work plan and material budget like olympiyskaya', () => {
+  it('has work plan and imported material budget', () => {
     expect(getWorkPlanForSite('anokhina')?.siteId).toBe('anokhina')
     expect(getMaterialBudgetForSite('anokhina')?.siteId).toBe('anokhina')
   })

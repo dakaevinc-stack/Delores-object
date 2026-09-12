@@ -27,6 +27,7 @@ function worse(a: SiteStatus, b: SiteStatus): SiteStatus {
  * Просроченный объект с незакрытыми работами не может быть «нормально».
  */
 export function resolveSiteStatus(site: ConstructionSite, from = new Date()): SiteStatus {
+  if (site.lifecycle === 'closed') return 'normal'
   let status = site.status
   const fact = site.executive.factPercent
   const plan = site.executive.planPercent

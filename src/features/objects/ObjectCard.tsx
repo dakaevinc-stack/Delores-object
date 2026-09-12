@@ -26,21 +26,27 @@ function deadlineMeta(site: ConstructionSite): string {
 }
 
 export function ObjectCard({ site }: Props) {
+  const closed = site.lifecycle === 'closed'
   const status = resolveSiteStatus(site)
-  const token = SITE_STATUS_TOKEN[status]
-  const label = SITE_STATUS_LABEL[status]
+  const token = closed ? 'neutral' : SITE_STATUS_TOKEN[status]
+  const label = closed ? 'Закрыт' : SITE_STATUS_LABEL[status]
   const fact = completionPercent(site)
   const plan = site.executive.planPercent
-  const meta = deadlineMeta(site)
+  const meta = closed ? 'Ведомость расхода сохранена' : deadlineMeta(site)
   const delta = fact - plan
   const planMissing =
-    !site.endDateIso && (!Number.isFinite(plan) || plan === 0) && (!Number.isFinite(fact) || fact === 0)
+    closed ||
+    (!site.endDateIso && (!Number.isFinite(plan) || plan === 0) && (!Number.isFinite(fact) || fact === 0))
 
   return (
     <Link
       className={styles.card}
       to={`/objects/${site.id}`}
-      aria-label={`${site.name}, ${label}, факт ${fact}%, план ${plan}%, ${meta}`}
+      aria-label={
+        closed
+          ? `${site.name}, закрыт, ${meta}`
+          : `${site.name}, ${label}, факт ${fact}%, план ${plan}%, ${meta}`
+      }
     >
       <span className={styles.face}>
         <span className={styles.specular} aria-hidden />
@@ -52,22 +58,24 @@ export function ObjectCard({ site }: Props) {
           {site.executive.hasOpenRisks ? (
             <span className={styles.risk}>Риск</span>
           ) : null}
-          <span className={styles.pct}>{fact}%</span>
+          {closed ? null : <span className={styles.pct}>{fact}%</span>}
         </div>
 
         <h2 className={styles.title}>{site.name}</h2>
 
-        <div
-          className={styles.track}
-          role="meter"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={fact}
-          aria-label={`Факт ${fact}%, план ${plan}%`}
-        >
-          <span className={styles.trackPlan} style={{ width: `${plan}%` }} />
-          <span className={styles.trackFact} style={{ width: `${fact}%` }} />
-        </div>
+        {closed ? null : (
+          <div
+            className={styles.track}
+            role="meter"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={fact}
+            aria-label={`Факт ${fact}%, план ${plan}%`}
+          >
+            <span className={styles.trackPlan} style={{ width: `${plan}%` }} />
+            <span className={styles.trackFact} style={{ width: `${fact}%` }} />
+          </div>
+        )}
 
         <div className={styles.foot}>
           <p className={styles.meta}>{meta}</p>
@@ -75,7 +83,7 @@ export function ObjectCard({ site }: Props) {
             className={styles.delta}
             data-tone={planMissing ? 'flat' : delta >= 0 ? 'up' : 'down'}
           >
-            {planMissing ? 'План не задан' : `${delta > 0 ? `+${delta}` : delta} к плану`}
+            {closed ? 'Закрыт' : planMissing ? 'План не задан' : `${delta > 0 ? `+${delta}` : delta} к плану`}
           </p>
         </div>
       </span>

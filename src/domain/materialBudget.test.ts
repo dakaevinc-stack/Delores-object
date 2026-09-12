@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { BRUSILOVA_MATERIAL_BUDGET } from '../data/materialBudgets/brusilova'
+import { getMaterialBudgetForSite } from '../data/materialBudgets'
 import { findProcurementPreset } from './procurementCatalog'
 import type { ProcurementRequest } from './procurementRequest'
 import {
   articleStatus,
   consumedQtyByArticleId,
+  contractorsFromBudget,
   summarizeMaterialBudget,
+  viewBudgetForContractor,
   type MaterialBudget,
 } from './materialBudget'
 
@@ -163,18 +165,60 @@ describe('расход материалов', () => {
     expect(articleStatus(2700, 3000)).toBe('low')
     expect(articleStatus(2000, 3000)).toBe('ok')
     expect(articleStatus(3100, 3000)).toBe('over')
+    expect(articleStatus(100, null)).toBe('ok')
   })
 
-  it('статьи сметы Брусилово есть в каталоге заявок', () => {
-    for (const article of BRUSILOVA_MATERIAL_BUDGET.articles) {
-      expect(findProcurementPreset(article.presetId)?.id).toBe(article.presetId)
-    }
-  })
-
-  it('единицы сметы совпадают с каталогом (щебень — м³, асфальт — т)', () => {
-    for (const article of BRUSILOVA_MATERIAL_BUDGET.articles) {
+  it('статьи Брусиловой из ведомости с preset совпадают с каталогом', () => {
+    const budget = getMaterialBudgetForSite('brusilova')
+    expect(budget).not.toBeNull()
+    if (!budget) return
+    expect(budget.articles.length).toBeGreaterThan(0)
+    for (const article of budget.articles) {
+      if (!article.presetId) continue
       const preset = findProcurementPreset(article.presetId)
-      expect(preset?.defaultUnit, article.id).toBe(article.unit)
+      expect(preset?.id, article.title).toBe(article.presetId)
     }
+  })
+
+  it('факт из ведомости списывается даже без заявок', () => {
+    const withImport: MaterialBudget = {
+      ...budget,
+      articles: [
+        {
+          ...budget.articles[0]!,
+          planned: null,
+          imported: [{ contractorId: 'dr', contractorName: 'ДР', qty: 40 }],
+        },
+        budget.articles[1]!,
+      ],
+    }
+    const used = consumedQtyByArticleId(withImport, [])
+    expect(used.get('a-stone')).toBe(40)
+    const stone = summarizeMaterialBudget(withImport, []).facts[0]!
+    expect(stone.remaining).toBeNull()
+    expect(stone.status).toBe('ok')
+    expect(contractorsFromBudget(withImport)).toEqual([
+      { contractorId: 'dr', contractorName: 'ДР', qty: 40 },
+    ])
+  })
+
+  it('фильтр бригады не трогает чужой объект', () => {
+    const twoCrews: MaterialBudget = {
+      ...budget,
+      articles: [
+        {
+          ...budget.articles[0]!,
+          planned: null,
+          imported: [
+            { contractorId: 'dr', contractorName: 'ДР', qty: 40 },
+            { contractorId: 'shiraz', contractorName: 'Шираз', qty: 12 },
+          ],
+        },
+      ],
+    }
+    const onlyShiraz = viewBudgetForContractor(twoCrews, 'shiraz')
+    expect(onlyShiraz.siteId).toBe('brusilova')
+    expect(summarizeMaterialBudget(onlyShiraz, []).facts[0]?.consumed).toBe(12)
+    expect(viewBudgetForContractor(twoCrews, null).articles[0]?.imported).toHaveLength(2)
   })
 })

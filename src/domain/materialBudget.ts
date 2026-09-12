@@ -12,6 +12,12 @@ import type { ProcurementLine, ProcurementRequest } from './procurementRequest'
  * Остаток < 0 — ушли в минус (перерасход).
  */
 
+export type MaterialContractorSpend = {
+  readonly contractorId: string
+  readonly contractorName: string
+  readonly qty: number
+}
+
 export type MaterialBudgetArticle = {
   readonly id: string
   /** Связь с каталогом заявок — по этому id списываем строки. */
@@ -19,8 +25,10 @@ export type MaterialBudgetArticle = {
   readonly title: string
   readonly group: string
   readonly unit: MeasurementUnitId
-  /** Сколько заложено в смету (инженерный расчёт). */
-  readonly planned: number
+  /** План из колонки «объем». Null — в ведомости плана не было, не выдумываем. */
+  readonly planned: number | null
+  /** Факт из дневной ведомости, по субподрядчикам / бригадам. */
+  readonly imported?: readonly MaterialContractorSpend[]
 }
 
 export type MaterialBudget = {
@@ -35,8 +43,8 @@ export type MaterialArticleStatus = 'ok' | 'low' | 'over'
 export type MaterialArticleFact = {
   readonly article: MaterialBudgetArticle
   readonly consumed: number
-  readonly remaining: number
-  readonly percent: number
+  readonly remaining: number | null
+  readonly percent: number | null
   readonly status: MaterialArticleStatus
 }
 
@@ -82,11 +90,20 @@ function findArticleForLine(
   return articles.find((a) => normalizeTitle(a.title) === title) ?? null
 }
 
+export function importedQtyByArticleId(budget: MaterialBudget): Map<string, number> {
+  const map = new Map<string, number>()
+  for (const article of budget.articles) {
+    const qty = (article.imported ?? []).reduce((sum, row) => sum + row.qty, 0)
+    if (qty > 0) map.set(article.id, qty)
+  }
+  return map
+}
+
 export function consumedQtyByArticleId(
   budget: MaterialBudget,
   requests: readonly ProcurementRequest[],
 ): Map<string, number> {
-  const map = new Map<string, number>()
+  const map = importedQtyByArticleId(budget)
   for (const req of requests) {
     if (req.siteId !== budget.siteId) continue
     req.items.forEach((line, index) => {
@@ -128,8 +145,8 @@ export function unplannedSpendFromRequests(
   return [...acc.values()]
 }
 
-export function articleStatus(consumed: number, planned: number): MaterialArticleStatus {
-  if (planned <= 0) return consumed > 0 ? 'over' : 'ok'
+export function articleStatus(consumed: number, planned: number | null): MaterialArticleStatus {
+  if (planned == null || !(planned > 0)) return 'ok'
   if (consumed > planned) return 'over'
   const left = planned - consumed
   if (left <= planned * 0.1) return 'low'
@@ -143,15 +160,18 @@ export function summarizeMaterialBudget(
   const consumed = consumedQtyByArticleId(budget, requests)
   const facts: MaterialArticleFact[] = budget.articles.map((article) => {
     const used = consumed.get(article.id) ?? 0
-    const remaining = article.planned - used
+    const planned = article.planned
+    const remaining = planned != null ? planned - used : null
     const percent =
-      article.planned > 0 ? Math.max(0, Math.min(100, (used / article.planned) * 100)) : 0
+      planned != null && planned > 0
+        ? Math.round(Math.max(0, Math.min(100, (used / planned) * 100)) * 10) / 10
+        : null
     return {
       article,
       consumed: used,
       remaining,
-      percent: Math.round(percent * 10) / 10,
-      status: articleStatus(used, article.planned),
+      percent,
+      status: articleStatus(used, planned),
     }
   })
   return {
@@ -161,6 +181,45 @@ export function summarizeMaterialBudget(
     lowCount: facts.filter((f) => f.status === 'low').length,
     okCount: facts.filter((f) => f.status === 'ok').length,
   }
+}
+
+export function contractorsFromBudget(
+  budget: MaterialBudget,
+): Array<{ contractorId: string; contractorName: string; qty: number }> {
+  const map = new Map<string, { contractorId: string; contractorName: string; qty: number }>()
+  for (const article of budget.articles) {
+    for (const row of article.imported ?? []) {
+      const prev = map.get(row.contractorId)
+      if (prev) prev.qty = Math.round((prev.qty + row.qty) * 1000) / 1000
+      else {
+        map.set(row.contractorId, {
+          contractorId: row.contractorId,
+          contractorName: row.contractorName,
+          qty: row.qty,
+        })
+      }
+    }
+  }
+  return [...map.values()].sort((a, b) => b.qty - a.qty || a.contractorName.localeCompare(b.contractorName, 'ru'))
+}
+
+export function budgetHasPlan(budget: MaterialBudget): boolean {
+  return budget.articles.some((a) => a.planned != null && a.planned > 0)
+}
+
+/** Один объект — один учёт. Фильтр не смешивает бригады с других площадок. */
+export function viewBudgetForContractor(
+  budget: MaterialBudget,
+  contractorId: string | null,
+): MaterialBudget {
+  if (!contractorId) return budget
+  const articles = budget.articles
+    .map((article) => ({
+      ...article,
+      imported: (article.imported ?? []).filter((row) => row.contractorId === contractorId),
+    }))
+    .filter((article) => (article.imported ?? []).some((row) => row.qty > 0))
+  return { ...budget, articles }
 }
 
 export function groupMaterialFacts(
