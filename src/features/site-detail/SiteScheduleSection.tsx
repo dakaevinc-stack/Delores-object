@@ -32,6 +32,8 @@ const STATUS_LABEL: Record<SiteLiveKpisStatus, string> = {
   attention: 'Внимание',
   critical: 'Отстаём',
   finished: 'Завершён',
+  unscheduled: 'План не задан',
+  overdue: 'Срок вышел',
 }
 
 const STATUS_TONE: Record<SiteLiveKpisStatus, 'normal' | 'attention' | 'critical' | 'muted'> = {
@@ -40,6 +42,8 @@ const STATUS_TONE: Record<SiteLiveKpisStatus, 'normal' | 'attention' | 'critical
   attention: 'attention',
   critical: 'critical',
   finished: 'normal',
+  unscheduled: 'muted',
+  overdue: 'critical',
 }
 
 function fmtPct(n: number): string {
@@ -97,8 +101,11 @@ export function SiteScheduleSection({ kpis, basePlan, reports }: Props) {
   const statusLabel = STATUS_LABEL[kpis.status]
 
   const curve = useMemo(
-    () => buildScheduleCurve(basePlan, reports, kpis.startIso, kpis.endIso, kpis.todayIso),
-    [basePlan, reports, kpis.startIso, kpis.endIso, kpis.todayIso],
+    () =>
+      kpis.hasSchedule
+        ? buildScheduleCurve(basePlan, reports, kpis.startIso, kpis.endIso, kpis.todayIso)
+        : [],
+    [basePlan, reports, kpis.hasSchedule, kpis.startIso, kpis.endIso, kpis.todayIso],
   )
 
   // recharts работает с массивом записей; ключи «План»/«Факт» — те же,
@@ -120,12 +127,15 @@ export function SiteScheduleSection({ kpis, basePlan, reports }: Props) {
     return exact ? exact.label : null
   }, [curve, kpis.todayIso])
 
-  const devNarrative =
-    kpis.deviationPercent > 0
-      ? `Отстаём от плана на ${fmtPct(kpis.deviationPercent)}%`
-      : kpis.deviationPercent < 0
-        ? `Опережаем план на ${fmtPct(Math.abs(kpis.deviationPercent))}%`
-        : 'Идём ровно по плану'
+  const devNarrative = !kpis.hasSchedule
+    ? 'Календарный план не задан — нет даты, от которой считать график'
+    : kpis.status === 'overdue'
+      ? 'Срок вышел, работы по факту не закрыты'
+      : kpis.deviationPercent > 0
+        ? `Отстаём от плана на ${fmtPct(kpis.deviationPercent)}%`
+        : kpis.deviationPercent < 0
+          ? `Опережаем план на ${fmtPct(Math.abs(kpis.deviationPercent))}%`
+          : 'Идём ровно по плану'
 
   return (
     <section
@@ -168,15 +178,28 @@ export function SiteScheduleSection({ kpis, basePlan, reports }: Props) {
           <p className={styles.metricValue}>{fmtSignedPct(kpis.deviationPercent)}%</p>
         </div>
         <div className={styles.metric}>
-          <p className={styles.metricLabel}>До завершения</p>
+          <p className={styles.metricLabel}>
+            {!kpis.hasSchedule ? 'Срок' : kpis.status === 'overdue' ? 'Срок вышел' : 'До завершения'}
+          </p>
           <p className={styles.metricValue}>
-            {kpis.daysToCompletion}{' '}
-            <span className={styles.metricUnit}>{pluralizeDays(kpis.daysToCompletion)}</span>
+            {!kpis.hasSchedule ? (
+              '—'
+            ) : (
+              <>
+                {kpis.status === 'overdue' ? kpis.daysOverdue : kpis.daysToCompletion}{' '}
+                <span className={styles.metricUnit}>
+                  {pluralizeDays(
+                    kpis.status === 'overdue' ? kpis.daysOverdue : kpis.daysToCompletion,
+                  )}
+                </span>
+              </>
+            )}
           </p>
         </div>
       </div>
 
-      <div className={styles.chartWrap}>
+      {kpis.hasSchedule ? (
+        <div className={styles.chartWrap}>
         <ResponsiveContainer width="100%" height={240}>
           <ComposedChart
             data={data}
@@ -269,7 +292,12 @@ export function SiteScheduleSection({ kpis, basePlan, reports }: Props) {
             Факт — накопленный по отчётам бригадира
           </span>
         </div>
-      </div>
+        </div>
+      ) : (
+        <p className={styles.chartEmpty}>
+          График появится, когда у объекта будут даты начала и окончания.
+        </p>
+      )}
     </section>
   )
 }

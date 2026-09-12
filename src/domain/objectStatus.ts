@@ -1,4 +1,5 @@
 import type { ConstructionSite, SiteStatus } from '../types/constructionSite'
+import { daysUntil } from './fleet'
 
 export const SITE_STATUS_LABEL: Record<SiteStatus, string> = {
   normal: 'Нормально',
@@ -15,12 +16,38 @@ export const SITE_STATUS_TOKEN: Record<
   critical: 'danger',
 }
 
+const RANK: Record<SiteStatus, number> = { normal: 0, attention: 1, critical: 2 }
+
+function worse(a: SiteStatus, b: SiteStatus): SiteStatus {
+  return RANK[a] >= RANK[b] ? a : b
+}
+
 /**
- * Единая точка входа для статуса на дашборде.
- * Сейчас: поле `status` в mock задаётся вручную.
- * Позже: агрегировать этапы, отклонения план/факт, сроки и риски из `ConstructionSite`
- * (в т.ч. `executive` и расширяемые `SiteHealthInputs`) в правило worst-of / пороговую модель.
+ * Статус карточки: худшее из записанного и того, что видно по сроку и факту.
+ * Просроченный объект с незакрытыми работами не может быть «нормально».
  */
-export function resolveSiteStatus(site: ConstructionSite): SiteStatus {
-  return site.status
+export function resolveSiteStatus(site: ConstructionSite, from = new Date()): SiteStatus {
+  let status = site.status
+  const fact = site.executive.factPercent
+  const plan = site.executive.planPercent
+  const complete = Number.isFinite(fact) && fact >= 99.5
+
+  if (site.endDateIso) {
+    const days = daysUntil(site.endDateIso, from)
+    if (Number.isFinite(days) && days < 0 && !complete) {
+      status = worse(status, days <= -14 ? 'critical' : 'attention')
+    }
+  }
+
+  if (site.executive.hasOpenRisks) {
+    status = worse(status, 'attention')
+  }
+
+  const gap = plan - fact
+  if (Number.isFinite(gap)) {
+    if (gap >= 12) status = worse(status, 'critical')
+    else if (gap >= 5) status = worse(status, 'attention')
+  }
+
+  return status
 }

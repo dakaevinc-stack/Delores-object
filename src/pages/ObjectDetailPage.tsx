@@ -7,7 +7,6 @@ import type { DriverTrip } from '../domain/driverTrip'
 import { applyAcceptedQuantitiesToPlan, applyWorkEntriesToPlan } from '../domain/workPlan'
 import { issuedQtyByPlanItemMap } from '../domain/workDayPlan'
 import { computeSiteLiveKpis, todayIsoMsk } from '../domain/siteKpis'
-import { getSiteDetailDashboard } from '../data/siteDetail.mock'
 import { getWorkPlanForSite } from '../data/workPlans'
 import {
   loadBrigadierReports,
@@ -329,17 +328,17 @@ export function ObjectDetailPage() {
     )
   }
 
-  const dashboard = getSiteDetailDashboard(site)
   const materialBudget = getMaterialBudgetForSite(site.id)
 
   // Реальный KPI считаем по `workPlan` + срокам объекта, чтобы сетка
   // не показывала «синтетические» mock-проценты, а двигалась вместе
   // с фактом из бригадирских отчётов и календарным графиком.
-  const liveKpis = (() => {
-    const startIso = site.startDateIso ?? dashboard.kpis.startDateIso
-    const endIso = site.endDateIso ?? dashboard.kpis.endDateIso
-    return computeSiteLiveKpis(workPlan, startIso, endIso, todayIsoMsk())
-  })()
+  const liveKpis = computeSiteLiveKpis(
+    workPlan,
+    site.startDateIso,
+    site.endDateIso,
+    todayIsoMsk(),
+  )
 
   // Зоны по должности из сессии; без сессии RequireAuth уже уводит на /.
   const visibleZones = zonesForDuty(session?.duty ?? 'manager')
@@ -433,8 +432,8 @@ export function ObjectDetailPage() {
             <SiteWorkPlanSection
               embedded
               plan={workPlan}
-              windowStartIso={liveKpis.startIso}
-              windowEndIso={liveKpis.endIso}
+              windowStartIso={liveKpis.hasSchedule ? liveKpis.startIso : undefined}
+              windowEndIso={liveKpis.hasSchedule ? liveKpis.endIso : undefined}
             />
           ) : null}
         </div>

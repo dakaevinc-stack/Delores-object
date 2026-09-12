@@ -19,6 +19,8 @@ const STATUS_LABEL: Record<SiteLiveKpisStatus, string> = {
   attention: 'Внимание',
   critical: 'Отстаём',
   finished: 'Завершён',
+  unscheduled: 'План не задан',
+  overdue: 'Срок вышел',
 }
 
 const STATUS_TONE: Record<SiteLiveKpisStatus, 'normal' | 'attention' | 'critical' | 'muted'> = {
@@ -27,6 +29,8 @@ const STATUS_TONE: Record<SiteLiveKpisStatus, 'normal' | 'attention' | 'critical
   attention: 'attention',
   critical: 'critical',
   finished: 'normal',
+  unscheduled: 'muted',
+  overdue: 'critical',
 }
 
 function fmtDate(iso: string): string {
@@ -82,12 +86,15 @@ export function SiteDetailKpiGrid({ kpis, embedded = false }: Props) {
           ? 'ahead'
           : 'normal'
 
-  const devNarrative =
-    kpis.deviationPercent > 0
-      ? 'отстаём от плана на сегодня'
-      : kpis.deviationPercent < 0
-        ? 'опережаем план на сегодня'
-        : 'идём ровно по плану'
+  const devNarrative = !kpis.hasSchedule
+    ? 'календарный план не задан'
+    : kpis.status === 'overdue'
+      ? 'срок вышел, факт не закрыт'
+      : kpis.deviationPercent > 0
+        ? 'отстаём от плана на сегодня'
+        : kpis.deviationPercent < 0
+          ? 'опережаем план на сегодня'
+          : 'идём ровно по плану'
 
   return (
     <section
@@ -159,19 +166,39 @@ export function SiteDetailKpiGrid({ kpis, embedded = false }: Props) {
           <header className={styles.cardHead}>
             <span className={styles.label}>Срок</span>
             <span className={styles.scheduleProgress}>
-              {Math.round(periodFillPercent)}% срока пройдено
+              {kpis.hasSchedule
+                ? kpis.status === 'overdue'
+                  ? 'календарь закончился'
+                  : `${Math.round(periodFillPercent)}% срока пройдено`
+                : 'даты не указаны'}
             </span>
           </header>
 
           <div className={styles.figure}>
-            <span className={styles.figureValue}>
-              {NUM_FMT.format(kpis.daysToCompletion)}
-            </span>
-            <span className={styles.figureSign}>
-              {pluralizeDays(kpis.daysToCompletion)}
-            </span>
+            {kpis.hasSchedule ? (
+              <>
+                <span className={styles.figureValue}>
+                  {NUM_FMT.format(
+                    kpis.status === 'overdue' ? kpis.daysOverdue : kpis.daysToCompletion,
+                  )}
+                </span>
+                <span className={styles.figureSign}>
+                  {pluralizeDays(
+                    kpis.status === 'overdue' ? kpis.daysOverdue : kpis.daysToCompletion,
+                  )}
+                </span>
+              </>
+            ) : (
+              <span className={styles.figureValue}>—</span>
+            )}
           </div>
-          <p className={styles.figureSub}>до завершения</p>
+          <p className={styles.figureSub}>
+            {!kpis.hasSchedule
+              ? 'срок не задан'
+              : kpis.status === 'overdue'
+                ? 'срок вышел'
+                : 'до завершения'}
+          </p>
 
           <div className={styles.bar} aria-hidden>
             <span
@@ -187,11 +214,15 @@ export function SiteDetailKpiGrid({ kpis, embedded = false }: Props) {
           <dl className={styles.metaRow}>
             <div className={styles.metaCell}>
               <dt>Старт</dt>
-              <dd title={fmtDate(kpis.startIso)}>{fmtDateShort(kpis.startIso)}</dd>
+              <dd title={kpis.startIso ? fmtDate(kpis.startIso) : undefined}>
+                {kpis.startIso ? fmtDateShort(kpis.startIso) : '—'}
+              </dd>
             </div>
             <div className={styles.metaCell} data-align="right">
               <dt>Завершение</dt>
-              <dd title={fmtDate(kpis.endIso)}>{fmtDateShort(kpis.endIso)}</dd>
+              <dd title={kpis.endIso ? fmtDate(kpis.endIso) : undefined}>
+                {kpis.endIso ? fmtDateShort(kpis.endIso) : '—'}
+              </dd>
             </div>
           </dl>
         </article>

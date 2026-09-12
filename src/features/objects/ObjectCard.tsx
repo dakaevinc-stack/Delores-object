@@ -33,6 +33,8 @@ export function ObjectCard({ site }: Props) {
   const plan = site.executive.planPercent
   const meta = deadlineMeta(site)
   const delta = fact - plan
+  const planMissing =
+    !site.endDateIso && (!Number.isFinite(plan) || plan === 0) && (!Number.isFinite(fact) || fact === 0)
 
   return (
     <Link
@@ -69,8 +71,11 @@ export function ObjectCard({ site }: Props) {
 
         <div className={styles.foot}>
           <p className={styles.meta}>{meta}</p>
-          <p className={styles.delta} data-tone={delta >= 0 ? 'up' : 'down'}>
-            {delta > 0 ? `+${delta}` : delta} к плану
+          <p
+            className={styles.delta}
+            data-tone={planMissing ? 'flat' : delta >= 0 ? 'up' : 'down'}
+          >
+            {planMissing ? 'План не задан' : `${delta > 0 ? `+${delta}` : delta} к плану`}
           </p>
         </div>
       </span>

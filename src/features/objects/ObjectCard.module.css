@@ -275,6 +275,10 @@
   color: var(--status-bad);
 }
 
+.delta[data-tone='flat'] {
+  color: rgba(15, 28, 54, 0.48);
+}
+
 /* Карточка «добавить» — те же слоты, фирменные navy / red */
 .cardAdd .face {
   background:

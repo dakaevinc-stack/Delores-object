@@ -22,6 +22,11 @@ export type SiteLiveKpisStatus =
   | 'attention'
   | 'critical'
   | 'finished'
+  | 'unscheduled'
+  | 'overdue'
+
+/** Факт считается закрытым только когда работы сданы, а не когда вышел календарь. */
+const FACT_COMPLETE = 99.5
 
 export type SiteLiveKpis = {
   /** Средний процент готовности по всем активным позициям плана. */
@@ -33,12 +38,16 @@ export type SiteLiveKpis = {
   startIso: string
   endIso: string
   todayIso: string
+  /** Есть ли обе календарные даты. Без них план «на сегодня» не считается. */
+  hasSchedule: boolean
   /** Полная длительность периода, дней. */
   daysTotal: number
   /** Сколько дней прошло от старта до сегодня (>= 0). */
   daysSinceStart: number
   /** Сколько дней осталось до конца (>= 0). */
   daysToCompletion: number
+  /** Сколько дней просрочено, если срок вышел, а факт не закрыт. */
+  daysOverdue: number
   /** Сколько срока пройдено к сегодня, % (та же величина, что и planToDatePercent, но без округления для шкал). */
   scheduleProgressPercent: number
   status: SiteLiveKpisStatus
@@ -77,26 +86,53 @@ export function todayIsoMsk(): string {
   return msk.toISOString().slice(0, 10)
 }
 
+function isIsoDay(value: string | undefined | null): value is string {
+  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value))
+}
+
 export function computeSiteLiveKpis(
   plan: WorkPlan | null,
-  startIso: string,
-  endIso: string,
+  startIso: string | undefined | null,
+  endIso: string | undefined | null,
   todayIso: string,
 ): SiteLiveKpis {
+  const fact = plan ? summarizeWorkPlan(plan).averagePercent : 0
+  const hasSchedule = isIsoDay(startIso) && isIsoDay(endIso)
+
+  if (!hasSchedule) {
+    return {
+      factPercent: round1(fact),
+      planToDatePercent: 0,
+      deviationPercent: 0,
+      startIso: startIso ?? '',
+      endIso: endIso ?? '',
+      todayIso,
+      hasSchedule: false,
+      daysTotal: 0,
+      daysSinceStart: 0,
+      daysToCompletion: 0,
+      daysOverdue: 0,
+      scheduleProgressPercent: 0,
+      status: 'unscheduled',
+    }
+  }
+
   const total = Math.max(1, diffDaysIso(startIso, endIso))
   const sinceRaw = diffDaysIso(startIso, todayIso)
   const remainingRaw = diffDaysIso(todayIso, endIso)
   const since = Math.max(0, Math.min(total, sinceRaw))
   const remaining = Math.max(0, remainingRaw)
+  const overdue = remainingRaw < 0 ? -remainingRaw : 0
   const sched = clampPct((since / total) * 100)
-
-  const fact = plan ? summarizeWorkPlan(plan).averagePercent : 0
+  const complete = fact >= FACT_COMPLETE
 
   let status: SiteLiveKpisStatus
   if (sinceRaw <= 0 && remainingRaw > 0) {
     status = 'not_started'
-  } else if (remainingRaw <= 0) {
+  } else if (remainingRaw <= 0 && complete) {
     status = 'finished'
+  } else if (remainingRaw <= 0) {
+    status = 'overdue'
   } else {
     const dev = sched - fact
     if (dev >= 12) status = 'critical'
@@ -111,9 +147,11 @@ export function computeSiteLiveKpis(
     startIso,
     endIso,
     todayIso,
+    hasSchedule: true,
     daysTotal: total,
     daysSinceStart: since,
     daysToCompletion: remaining,
+    daysOverdue: overdue,
     scheduleProgressPercent: sched,
     status,
   }
