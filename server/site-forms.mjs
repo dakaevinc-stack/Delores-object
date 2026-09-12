@@ -362,6 +362,15 @@ function isBrigadierReportRow(x) {
   )
 }
 
+/** Пустое ФИО, тире и «нет» — не ответственный за смену. */
+function brigadierResponsibleValid(x) {
+  const s = String(x ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (/^(?:[-–—−]|нет|н\/д|н\/п|не указан|не указано)$/i.test(s)) return false
+  return s.length >= 2
+}
+
 /** Объём в workEntries — только число > 0. Иначе это не факт смены. */
 function brigadierWorkEntriesValid(x) {
   if (!x || typeof x !== 'object') return true
@@ -1487,7 +1496,11 @@ const server = http.createServer(async (req, res) => {
         if (!(await checkWrite(req, res))) return
         const raw = await readBody(req)
         const body = JSON.parse(raw)
-        if (!isBrigadierReportRow(body) || !brigadierWorkEntriesValid(body)) {
+        if (
+          !isBrigadierReportRow(body) ||
+          !brigadierWorkEntriesValid(body) ||
+          !brigadierResponsibleValid(/** @type {{responsible?: unknown}} */ (body).responsible)
+        ) {
           sendJson(res, 400, { error: 'invalid_report' })
           return
         }
@@ -1499,6 +1512,38 @@ const server = http.createServer(async (req, res) => {
         list.unshift(body)
         await writeJsonArray(file, list)
         sendJson(res, 201, { ok: true })
+        return
+      }
+
+      if (parts.length === 5 && req.method === 'PUT') {
+        if (!(await checkWrite(req, res))) return
+        const id = parts[4]
+        if (!id || id.includes('..')) {
+          sendJson(res, 400, { error: 'bad_id' })
+          return
+        }
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        if (
+          !isBrigadierReportRow(body) ||
+          !brigadierWorkEntriesValid(body) ||
+          !brigadierResponsibleValid(/** @type {{responsible?: unknown}} */ (body).responsible) ||
+          /** @type {{id?: unknown}} */ (body).id !== id
+        ) {
+          sendJson(res, 400, { error: 'invalid_report' })
+          return
+        }
+        const list = await readJsonArray(file)
+        const idx = list.findIndex(
+          (x) => isBrigadierReportRow(x) && /** @type {{id:string}} */ (x).id === id,
+        )
+        if (idx < 0) {
+          sendJson(res, 404, { error: 'not_found' })
+          return
+        }
+        list[idx] = body
+        await writeJsonArray(file, list)
+        sendJson(res, 200, { ok: true })
         return
       }
 

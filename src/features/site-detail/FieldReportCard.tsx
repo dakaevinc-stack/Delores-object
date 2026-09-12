@@ -64,11 +64,17 @@ type Props = {
   narrativeStructured?: BrigadierCommentSections | null
   /** ФИО ответственного: показывается аватар-кругом с инициалами в шапке. */
   responsibleName?: string
+  /** Кто сохранил отчёт — из сессии, отдельно от ответственного. */
+  authorName?: string
+  /** Основание последней правки. */
+  correctionNote?: string
   /** Краткие чипы статистики в подвале (📎 N вложений / ⚠ M проблем). */
   metaChips?: readonly FieldReportMetaChip[]
   /** Кнопка удалить — встраивается в подвал карточки. */
   onRemove?: () => void
   removeLabel?: string
+  onEdit?: () => void
+  editLabel?: string
   /**
    * Карточку можно сворачивать в шапку: тело прячется до клика по
    * кнопке-шеврону. В свёрнутом состоянии показываем компактную
@@ -485,9 +491,13 @@ export function FieldReportCard({
   narrativeComment,
   narrativeStructured,
   responsibleName,
+  authorName,
+  correctionNote,
   metaChips,
   onRemove,
   removeLabel = 'Удалить',
+  onEdit,
+  editLabel = 'Исправить',
   collapsible,
   defaultExpanded,
 }: Props) {
@@ -509,7 +519,11 @@ export function FieldReportCard({
       : []
   const showStructured = useStructured && narrativeStructured !== undefined
   const showFooter =
-    (metaChips && metaChips.length > 0) || Boolean(onRemove) || (chips && chips.length > 0)
+    (metaChips && metaChips.length > 0) ||
+    Boolean(onRemove) ||
+    Boolean(onEdit) ||
+    Boolean(correctionNote) ||
+    (chips && chips.length > 0)
 
   const previewChips: { id: string; icon: ReactElement; label: string }[] = []
   if (narrativeStructured?.works.length) {
@@ -580,15 +594,25 @@ export function FieldReportCard({
             </span>
           </span>
 
-          {responsibleName ? (
-            <div className={styles.responsible}>
-              <span className={styles.avatar} aria-hidden>
-                <span className={styles.avatarInitials}>{initials || '—'}</span>
-              </span>
-              <span className={styles.responsibleText}>
-                <span className={styles.responsibleKicker}>Ответственный</span>
-                <span className={styles.responsibleName}>{responsibleName}</span>
-              </span>
+          {responsibleName || authorName ? (
+            <div className={styles.people}>
+              {responsibleName ? (
+                <div className={styles.responsible}>
+                  <span className={styles.avatar} aria-hidden>
+                    <span className={styles.avatarInitials}>{initials || '—'}</span>
+                  </span>
+                  <span className={styles.responsibleText}>
+                    <span className={styles.responsibleKicker}>Ответственный за смену</span>
+                    <span className={styles.responsibleName}>{responsibleName}</span>
+                  </span>
+                </div>
+              ) : null}
+              {authorName ? (
+                <p className={styles.authorLine}>
+                  <span className={styles.responsibleKicker}>Сдал</span>
+                  <span className={styles.authorName}>{authorName}</span>
+                </p>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -845,18 +869,28 @@ export function FieldReportCard({
             ))}
           </div>
 
-          {onRemove ? (
-            <button
-              type="button"
-              className={styles.removeBtn}
-              onClick={onRemove}
-              aria-label={`${removeLabel} (с этого устройства)`}
-              title={`${removeLabel} с этого устройства`}
-            >
-              <TrashIcon />
-              <span className={styles.removeBtnLabel}>{removeLabel}</span>
-            </button>
-          ) : null}
+          <div className={styles.footerActions}>
+            {correctionNote ? (
+              <p className={styles.correctionNote}>{correctionNote}</p>
+            ) : null}
+            {onEdit ? (
+              <button type="button" className={styles.editBtn} onClick={onEdit}>
+                <span className={styles.removeBtnLabel}>{editLabel}</span>
+              </button>
+            ) : null}
+            {onRemove ? (
+              <button
+                type="button"
+                className={styles.removeBtn}
+                onClick={onRemove}
+                aria-label={removeLabel}
+                title={removeLabel}
+              >
+                <TrashIcon />
+                <span className={styles.removeBtnLabel}>{removeLabel}</span>
+              </button>
+            ) : null}
+          </div>
         </footer>
       ) : null}
     </article>

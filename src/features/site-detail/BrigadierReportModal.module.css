@@ -189,6 +189,18 @@
   color: var(--muted);
 }
 
+.authorReadout {
+  margin: 6px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.authorLogin {
+  font-weight: 600;
+  color: var(--muted);
+}
+
 .input {
   width: 100%;
   min-height: 48px;

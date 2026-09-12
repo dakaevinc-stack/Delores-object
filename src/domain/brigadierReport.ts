@@ -45,6 +45,36 @@ export function isPositivePerformedQty(n: unknown): n is number {
 
 export const PERFORMED_QTY_ERROR = 'Объём должен быть больше нуля'
 
+/** Пустое поле, тире и «нет» — это не ответственный за смену. */
+const RESPONSIBLE_PLACEHOLDER = /^(?:[-–—−]|нет|н\/д|н\/п|не указан|не указано)$/i
+
+export function parseResponsibleName(
+  raw: unknown,
+): { ok: true; value: string } | { ok: false; reason: 'empty' | 'placeholder' } {
+  const value = String(raw ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (RESPONSIBLE_PLACEHOLDER.test(value)) return { ok: false, reason: 'placeholder' }
+  if (value.length < 2) return { ok: false, reason: 'empty' }
+  return { ok: true, value }
+}
+
+export const RESPONSIBLE_REQUIRED_ERROR = 'Укажите ответственного за смену'
+
+export function displayResponsibleName(raw: unknown): string | undefined {
+  const parsed = parseResponsibleName(raw)
+  return parsed.ok ? parsed.value : undefined
+}
+
+export type BrigadierReportRevision = {
+  readonly revisedAtIso: string
+  readonly revisedByLogin: string
+  readonly revisedByName: string
+  readonly reason: string
+  readonly workEntries: readonly BrigadierWorkEntry[]
+  readonly responsible: string
+}
+
 export type BrigadierCriterionDraft = {
   id: string
   title: string
@@ -167,6 +197,11 @@ export type BrigadierStoredReport = {
   /** Структурированные проблемы; дублируются в `lines` при сохранении. */
   problems: readonly BrigadierStoredProblem[]
   responsible: string
+  /** Кто нажал «Сохранить» — из сессии, не из поля ФИО. */
+  authorLogin?: string
+  authorName?: string
+  /** Снимки факта до каждой правки. Последний — самое свежее исправление. */
+  revisions?: readonly BrigadierReportRevision[]
   /** Свободный комментарий к отчёту (текст). */
   comment: string
   attachments: readonly BrigadierStoredAttachment[]
@@ -176,4 +211,36 @@ export type BrigadierStoredReport = {
    * (например, если бригадир заполнил только проблемы) тоже допустим.
    */
   workEntries?: readonly BrigadierWorkEntry[]
+}
+
+export function applyReportCorrection(
+  previous: BrigadierStoredReport,
+  next: Pick<
+    BrigadierStoredReport,
+    'reportedAtIso' | 'lines' | 'problems' | 'responsible' | 'comment' | 'attachments' | 'workEntries'
+  >,
+  actor: {
+    login: string
+    name: string
+    reason: string
+    atIso?: string
+  },
+): BrigadierStoredReport {
+  const revision: BrigadierReportRevision = {
+    revisedAtIso: actor.atIso ?? new Date().toISOString(),
+    revisedByLogin: actor.login,
+    revisedByName: actor.name,
+    reason: actor.reason.trim(),
+    workEntries: previous.workEntries ?? [],
+    responsible: previous.responsible,
+  }
+  return {
+    ...previous,
+    ...next,
+    id: previous.id,
+    siteId: previous.siteId,
+    authorLogin: previous.authorLogin,
+    authorName: previous.authorName,
+    revisions: [...(previous.revisions ?? []), revision],
+  }
 }

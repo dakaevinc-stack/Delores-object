@@ -28,12 +28,15 @@
  *     начнём хранить ещё и должность/телефон), мигрируем без боли.
  */
 
+import { parseResponsibleName } from '../domain/brigadierReport'
+
 const RESPONSIBLE_KEY = 'deloresh:brigadier-report:last-responsible:v1'
 
 export function readLastResponsible(): string {
   if (typeof window === 'undefined') return ''
   try {
-    return window.localStorage.getItem(RESPONSIBLE_KEY) ?? ''
+    const parsed = parseResponsibleName(window.localStorage.getItem(RESPONSIBLE_KEY) ?? '')
+    return parsed.ok ? parsed.value : ''
   } catch {
     return ''
   }
@@ -41,10 +44,10 @@ export function readLastResponsible(): string {
 
 export function writeLastResponsible(value: string): void {
   if (typeof window === 'undefined') return
-  const trimmed = value.trim()
-  if (!trimmed) return
+  const parsed = parseResponsibleName(value)
+  if (!parsed.ok) return
   try {
-    window.localStorage.setItem(RESPONSIBLE_KEY, trimmed)
+    window.localStorage.setItem(RESPONSIBLE_KEY, parsed.value)
   } catch {
     // приватный режим / квота — отчёт уже отправлен, обойдёмся без prefill
   }

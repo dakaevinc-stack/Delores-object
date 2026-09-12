@@ -129,9 +129,9 @@ export function SiteReportingSection({ reports, todayIso }: Props) {
     status === 'empty'
       ? 'Отчёты пока не сдавались'
       : summary.today
-        ? `${TIME_FMT.format(new Date(summary.today.reportedAtIso))} · ${summary.today.responsible || 'Без подписи'}`
+        ? `${TIME_FMT.format(new Date(summary.today.reportedAtIso))} · ${summary.today.authorName || summary.today.responsible || 'Без подписи'}`
         : summary.last
-          ? `${SHORT_DATE_FMT.format(new Date(summary.last.reportedAtIso))} · ${summary.last.responsible || 'Без подписи'}`
+          ? `${SHORT_DATE_FMT.format(new Date(summary.last.reportedAtIso))} · ${summary.last.authorName || summary.last.responsible || 'Без подписи'}`
           : ''
 
   const lead =

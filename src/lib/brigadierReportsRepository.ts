@@ -1,5 +1,6 @@
 import {
   MEASUREMENT_UNITS,
+  type BrigadierReportRevision,
   type BrigadierStoredAttachment,
   type BrigadierStoredReport,
   type BrigadierWorkEntry,
@@ -92,17 +93,44 @@ function isWorkEntryLike(x: unknown): x is BrigadierWorkEntry {
   return MEASUREMENT_UNITS.some((u) => u.id === (w.unit as MeasurementUnitId))
 }
 
+function isRevisionLike(x: unknown): x is BrigadierReportRevision {
+  if (!x || typeof x !== 'object') return false
+  const r = x as Record<string, unknown>
+  return (
+    typeof r.revisedAtIso === 'string' &&
+    typeof r.revisedByLogin === 'string' &&
+    typeof r.revisedByName === 'string' &&
+    typeof r.reason === 'string' &&
+    typeof r.responsible === 'string' &&
+    Array.isArray(r.workEntries)
+  )
+}
+
 export function coerceReport(x: unknown): BrigadierStoredReport {
   const r = x as BrigadierStoredReport & {
     comment?: string
     workEntries?: readonly BrigadierWorkEntry[]
+    authorLogin?: string
+    authorName?: string
+    revisions?: unknown
   }
   const attachments = (r.attachments ?? []).filter(isAttachmentLike)
   const workEntriesRaw = Array.isArray(r.workEntries) ? r.workEntries : []
   const workEntries = workEntriesRaw.filter(isWorkEntryLike)
+  const revisionsRaw = Array.isArray(r.revisions)
+    ? r.revisions.filter(isRevisionLike).map((rev) => ({
+        ...rev,
+        workEntries: (Array.isArray(rev.workEntries) ? rev.workEntries : []).filter(isWorkEntryLike),
+      }))
+    : []
+  const authorLogin = typeof r.authorLogin === 'string' ? r.authorLogin.trim() : ''
+  const authorName = typeof r.authorName === 'string' ? r.authorName.trim() : ''
   return {
     ...r,
     comment: typeof r.comment === 'string' ? r.comment : '',
+    authorLogin: authorLogin || undefined,
+    authorName: authorName || undefined,
+    revisions: revisionsRaw.length > 0 ? revisionsRaw : undefined,
     attachments: attachments.map((a) => ({
       ...a,
       notPersisted: Boolean(a.notPersisted),
@@ -118,6 +146,10 @@ export async function materializeBrigadierReportForLocalStorage(
   const attachments: BrigadierStoredAttachment[] = []
 
   for (const a of report.attachments) {
+    if (!a.previewUrl || a.previewUrl.startsWith('data:')) {
+      attachments.push(a)
+      continue
+    }
     try {
       const res = await fetch(a.previewUrl)
       const blob = await res.blob()

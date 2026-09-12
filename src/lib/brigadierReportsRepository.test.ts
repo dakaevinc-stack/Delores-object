@@ -48,4 +48,32 @@ describe('brigadierReportsRepository', () => {
     })
     expect(report.workEntries?.map((w) => w.id)).toEqual(['b'])
   })
+
+  it('сохраняет автора и историю исправлений', () => {
+    const report = coerceReport({
+      id: 'rep-3',
+      siteId: 'site-a',
+      reportedAtIso: '2026-09-12T10:00:00.000Z',
+      lines: [],
+      problems: [],
+      responsible: 'Иванов',
+      authorLogin: 'Brigadier',
+      authorName: 'Бригадир',
+      comment: '',
+      attachments: [],
+      revisions: [
+        {
+          revisedAtIso: '2026-09-12T11:00:00.000Z',
+          revisedByLogin: 'Dakaev',
+          revisedByName: 'Дакаев',
+          reason: 'Объём',
+          responsible: 'Петров',
+          workEntries: [{ id: 'w1', planNumber: '1.1', planTitle: 'Бетон', qty: 4, unit: 'm3' }],
+        },
+      ],
+    })
+    expect(report.authorLogin).toBe('Brigadier')
+    expect(report.revisions).toHaveLength(1)
+    expect(report.revisions?.[0]?.reason).toBe('Объём')
+  })
 })

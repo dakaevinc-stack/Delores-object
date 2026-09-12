@@ -26,6 +26,7 @@ import type { StoredSiteMedia } from '../lib/mediaRepository'
 import {
   RemoteWriteFailure,
   createBrigadierReportRemote,
+  updateBrigadierReportRemote,
   createProcurementRequestRemote,
   deleteBrigadierReportRemote,
   deleteProcurementRequestRemote,
@@ -74,6 +75,7 @@ export function ObjectDetailPage() {
 
   const [composerOpen, setComposerOpen] = useState(false)
   const [composerKey, setComposerKey] = useState(0)
+  const [editingReport, setEditingReport] = useState<BrigadierStoredReport | null>(null)
   const [procurementOpen, setProcurementOpen] = useState(false)
   const [procurementKey, setProcurementKey] = useState(0)
   const [editingRequest, setEditingRequest] = useState<ProcurementRequest | null>(null)
@@ -351,6 +353,7 @@ export function ObjectDetailPage() {
   }
 
   const openBrigadierComposer = () => {
+    setEditingReport(null)
     setComposerKey((k) => k + 1)
     setComposerOpen(true)
   }
@@ -364,6 +367,11 @@ export function ObjectDetailPage() {
       objectMediaManifest={objectMediaManifest}
       objectMediaServerBacked={remoteObjectMediaActive}
       onObjectMediaSyncError={(msg) => setFormsApiMessage(msg)}
+      onEditReport={(report) => {
+        setEditingReport(report)
+        setComposerKey((k) => k + 1)
+        setComposerOpen(true)
+      }}
       onRemoveReport={async (id) => {
         if (remoteFormsRef.current) {
           const ok = await deleteBrigadierReportRemote(site.id, id)
@@ -623,18 +631,29 @@ export function ObjectDetailPage() {
       {composerOpen ? (
         <BrigadierReportModal
           key={composerKey}
-          onClose={() => setComposerOpen(false)}
+          onClose={() => {
+            setComposerOpen(false)
+            setEditingReport(null)
+          }}
           siteId={site.id}
           siteName={site.name}
           plan={workPlan}
+          author={{
+            login: session?.login ?? '',
+            name: session?.fullName ?? '',
+          }}
+          assignedResponsible={site.responsibleFio}
+          initial={editingReport}
           onSubmit={async (report) => {
             // 1) Сначала — пока живы оригинальные blob:URL — заливаем
             //    каждый файл на сервер отдельным запросом. Так JSON
             //    отчёта остаётся лёгким и других устройств не «душит»
             //    мегабайтами base64.
             const uploadResults = new Map<string, boolean>()
+            const isEdit = brigadierReportsRef.current.some((r) => r.id === report.id)
             if (remoteFormsRef.current) {
               for (const a of report.attachments) {
+                if (!a.previewUrl.startsWith('blob:')) continue
                 try {
                   const resp = await fetch(a.previewUrl)
                   const blob = await resp.blob()
@@ -684,7 +703,9 @@ export function ObjectDetailPage() {
                   notPersisted: uploadResults.get(a.id) === false,
                 })),
               }
-              const result = await createBrigadierReportRemote(site.id, lightReport)
+              const result = isEdit
+                ? await updateBrigadierReportRemote(site.id, lightReport)
+                : await createBrigadierReportRemote(site.id, lightReport)
               if (!result.ok) {
                 throw new RemoteWriteFailure(
                   describeRemoteWriteError(result, 'отчёт'),
@@ -692,7 +713,11 @@ export function ObjectDetailPage() {
               }
             }
 
-            setBrigadierReports((prev) => [persistedFinal, ...prev])
+            setBrigadierReports((prev) =>
+              isEdit
+                ? prev.map((r) => (r.id === persistedFinal.id ? persistedFinal : r))
+                : [persistedFinal, ...prev],
+            )
           }}
         />
       ) : null}

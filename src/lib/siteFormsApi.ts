@@ -1289,6 +1289,26 @@ export async function createBrigadierReportRemote(
   }
 }
 
+export async function updateBrigadierReportRemote(
+  siteId: string,
+  report: BrigadierStoredReport,
+): Promise<RemoteWriteResult> {
+  try {
+    const res = await fetch(
+      siteUrl(siteId, `/brigadier-reports/${encodeURIComponent(report.id)}`),
+      {
+        method: 'PUT',
+        headers: writeHeaders(true),
+        body: JSON.stringify(report),
+      },
+    )
+    if (res.ok) return { ok: true }
+    return classifyResponse(res.status)
+  } catch {
+    return { ok: false, reason: 'network', status: null }
+  }
+}
+
 export async function deleteBrigadierReportRemote(siteId: string, id: string): Promise<boolean> {
   try {
     const res = await fetch(siteUrl(siteId, `/brigadier-reports/${encodeURIComponent(id)}`), {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   brigadierProblemKindLabel,
+  displayResponsibleName,
   type BrigadierStoredReport,
 } from '../../domain/brigadierReport'
 import {
@@ -39,6 +40,7 @@ type Props = {
   objectMediaServerBacked?: boolean
   onObjectMediaSyncError?: (message: string) => void
   onRemoveReport: (id: string) => void | Promise<void>
+  onEditReport: (report: BrigadierStoredReport) => void
 }
 
 function resolveAttachment(
@@ -143,6 +145,7 @@ export function SiteBrigadierSubmittedReportsSection({
   objectMediaServerBacked = false,
   onObjectMediaSyncError,
   onRemoveReport,
+  onEditReport,
 }: Props) {
   const [localMedia, setLocalMedia] = useState<StoredSiteMedia[]>([])
   const [localPreviewById, setLocalPreviewById] = useState<Record<string, string>>({})
@@ -508,7 +511,13 @@ export function SiteBrigadierSubmittedReportsSection({
                           badgeKicker="День"
                           badge={dayBadge}
                           dateTimeIso={r.reportedAtIso}
-                          responsibleName={r.responsible}
+                          responsibleName={displayResponsibleName(r.responsible)}
+                          authorName={r.authorName}
+                          correctionNote={
+                            r.revisions && r.revisions.length > 0
+                              ? `Исправлено: ${r.revisions[r.revisions.length - 1]!.reason}`
+                              : undefined
+                          }
                           lines={r.lines}
                           narrativeComment={r.comment}
                           narrativeStructured={parseBrigadierComment(r.comment)}
@@ -520,8 +529,16 @@ export function SiteBrigadierSubmittedReportsSection({
                           }))}
                           attachments={attachments}
                           metaChips={meta}
-                          onRemove={() => onRemoveReport(r.id)}
-                          removeLabel="Скрыть на этом устройстве"
+                          onEdit={() => onEditReport(r)}
+                          editLabel="Исправить"
+                          onRemove={() => {
+                            const ok = window.confirm(
+                              'Удалить отчёт у всех? Факт этой смены снимется с плана.',
+                            )
+                            if (!ok) return
+                            void onRemoveReport(r.id)
+                          }}
+                          removeLabel="Удалить"
                         />
                       )
                     })}

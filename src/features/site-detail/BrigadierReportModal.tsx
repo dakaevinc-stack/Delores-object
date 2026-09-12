@@ -12,8 +12,11 @@ import {
   type BrigadierWorkEntryDraft,
   type MeasurementUnitId,
   brigadierProblemKindLabel,
+  applyReportCorrection,
   parsePerformedQty,
+  parseResponsibleName,
   PERFORMED_QTY_ERROR,
+  RESPONSIBLE_REQUIRED_ERROR,
   unitLabel,
 } from '../../domain/brigadierReport'
 import {
@@ -46,6 +49,12 @@ type Props = {
    */
   plan?: WorkPlan | null
   onSubmit: (report: BrigadierStoredReport) => void | Promise<void>
+  /** Кто сдаёт — из сессии. Не подставляется в поле ответственного. */
+  author: { login: string; name: string }
+  /** Назначенный на объект, если есть. */
+  assignedResponsible?: string
+  /** Если задан — это исправление уже сданного отчёта. */
+  initial?: BrigadierStoredReport | null
 }
 
 function newId() {
@@ -66,20 +75,61 @@ function parseDateTimeLocal(s: string): string {
   return d.toISOString()
 }
 
-export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit }: Props) {
+function seedResponsible(assigned?: string, existing?: string): string {
+  const fromExisting = parseResponsibleName(existing)
+  if (fromExisting.ok) return fromExisting.value
+  const fromAssigned = parseResponsibleName(assigned)
+  if (fromAssigned.ok) return fromAssigned.value
+  return readLastResponsible()
+}
+
+export function BrigadierReportModal({
+  onClose,
+  siteId,
+  siteName,
+  plan,
+  onSubmit,
+  author,
+  assignedResponsible,
+  initial,
+}: Props) {
   const uid = useId()
   const fileRef = useRef<HTMLInputElement>(null)
+  const editing = Boolean(initial)
 
-  const [reportedAtLocal, setReportedAtLocal] = useState(() => toDateTimeLocalValue(new Date()))
-  // Подставляем последнее введённое ФИО, если бригадир уже отправлял
-  // отчёты с этого устройства. См. brigadierReportPrefs — там описаны
-  // edge-cases (SSR, приватный режим Safari, два бригадира).
-  const [responsible, setResponsible] = useState(() => readLastResponsible())
+  const [reportedAtLocal, setReportedAtLocal] = useState(() =>
+    toDateTimeLocalValue(initial ? new Date(initial.reportedAtIso) : new Date()),
+  )
+  // Подставляем назначение на объект, иначе последнее введённое ФИО.
+  // Сессию сюда не кладём: автор сдачи и ответственный за смену — разные роли.
+  const [responsible, setResponsible] = useState(() =>
+    seedResponsible(assignedResponsible, initial?.responsible),
+  )
+  const [correctionReason, setCorrectionReason] = useState('')
   const [criteria, setCriteria] = useState<BrigadierCriterionDraft[]>([])
-  const [problems, setProblems] = useState<BrigadierProblemDraft[]>([])
+  const [problems, setProblems] = useState<BrigadierProblemDraft[]>(() =>
+    (initial?.problems ?? []).map((p) => ({
+      id: newId(),
+      kindId: p.kindId,
+      details: p.details,
+    })),
+  )
   const [attachments, setAttachments] = useState<BrigadierAttachmentDraft[]>([])
-  const [reportComment, setReportComment] = useState('')
-  const [workEntries, setWorkEntries] = useState<BrigadierWorkEntryDraft[]>([])
+  const [keptAttachments, setKeptAttachments] = useState(
+    () => (initial?.attachments ?? []).slice(),
+  )
+  const [reportComment, setReportComment] = useState(() => initial?.comment ?? '')
+  const [workEntries, setWorkEntries] = useState<BrigadierWorkEntryDraft[]>(() =>
+    (initial?.workEntries ?? []).map((w) => ({
+      id: w.id,
+      planNumber: w.planNumber,
+      planTitle: w.planTitle,
+      qty: String(w.qty),
+      unit: w.unit,
+    })),
+  )
+  const assignedParsed = parseResponsibleName(assignedResponsible)
+  const assignedName = assignedParsed.ok ? assignedParsed.value : undefined
   const [planSearch, setPlanSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [qtyErrorIds, setQtyErrorIds] = useState<ReadonlySet<string>>(() => new Set())
@@ -356,7 +406,7 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
     const hasWork = filled.length > 0
     const hasComment = commentTrim.length > 0
     const hasProblems = filledProblems.length > 0
-    const hasMedia = attachments.length > 0
+    const hasMedia = attachments.length > 0 || keptAttachments.length > 0
     const hasPlanFact = filledWorkEntries.length > 0
 
     // Бригадиру важно простое правило: не отметил ни одной работы,
@@ -410,9 +460,24 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
       lines.push({ index: index++, text: `Комментарий — ${commentTrim}` })
     }
 
-    if (responsible.trim()) {
-      lines.push({ index: index++, text: `Ответственный — ${responsible.trim()}` })
+    const responsibleParsed = parseResponsibleName(responsible)
+    if (!responsibleParsed.ok) {
+      setError(RESPONSIBLE_REQUIRED_ERROR)
+      return
     }
+    if (!author.login.trim() || !author.name.trim()) {
+      setError('Войдите, чтобы сдать отчёт — иначе не будет автора сдачи.')
+      return
+    }
+    if (editing) {
+      const reason = correctionReason.trim()
+      if (reason.length < 3) {
+        setError('Напишите, что именно исправляете и почему.')
+        return
+      }
+    }
+
+    lines.push({ index: index++, text: `Ответственный — ${responsibleParsed.value}` })
 
     const mappedAttachments = attachments.map((a) => {
       const previewUrl = URL.createObjectURL(a.file)
@@ -429,17 +494,28 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
       }
     })
 
-    const report: BrigadierStoredReport = {
-      id: newId(),
-      siteId,
+    const nextFields = {
       reportedAtIso,
       lines,
       problems: filledProblems,
-      responsible: responsible.trim() || '—',
+      responsible: responsibleParsed.value,
       comment: commentTrim,
-      attachments: mappedAttachments,
+      attachments: [...keptAttachments, ...mappedAttachments],
       workEntries: filledWorkEntries.length > 0 ? filledWorkEntries : undefined,
     }
+    const report: BrigadierStoredReport = initial
+      ? applyReportCorrection(initial, nextFields, {
+          login: author.login,
+          name: author.name,
+          reason: correctionReason,
+        })
+      : {
+          id: newId(),
+          siteId,
+          ...nextFields,
+          authorLogin: author.login.trim(),
+          authorName: author.name.trim(),
+        }
 
     try {
       await Promise.resolve(onSubmit(report))
@@ -500,7 +576,7 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
               <span>Отчёт бригадира</span>
             </p>
             <h2 className={styles.title} id={`${uid}-title`}>
-              Смена за сегодня
+              {editing ? 'Исправление отчёта' : 'Смена за сегодня'}
             </h2>
             <p className={styles.sub}>
               <span>Объект</span>
@@ -913,17 +989,60 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
           </div>
 
           <div className={styles.block}>
+            <span className={styles.label}>Сдал</span>
+            <p className={styles.authorReadout}>
+              {author.name.trim() || '—'}
+              {author.login.trim() ? (
+                <span className={styles.authorLogin}> · {author.login}</span>
+              ) : null}
+            </p>
+            <p className={styles.hint}>
+              Автор берётся из входа. Его нельзя заменить свободным ФИО.
+            </p>
+          </div>
+
+          <div className={styles.block}>
             <label className={styles.label} htmlFor={`${uid}-r`}>
-              Ответственный
+              Ответственный за смену
             </label>
             <input
               id={`${uid}-r`}
               className={styles.input}
-              placeholder="ФИО"
+              placeholder="Кто отвечает за смену"
               value={responsible}
               onChange={(e) => setResponsible(e.target.value)}
+              required
+              aria-required="true"
             />
+            {assignedName &&
+            parseResponsibleName(responsible).ok &&
+            parseResponsibleName(responsible).value !== assignedName ? (
+              <p className={styles.hint}>
+                На объекте назначен {assignedName}. Автор сдачи остаётся из входа.
+              </p>
+            ) : assignedName ? (
+              <p className={styles.hint}>Подставлено назначение объекта.</p>
+            ) : (
+              <p className={styles.hint}>Без ответственного отчёт не сохранится.</p>
+            )}
           </div>
+
+          {editing ? (
+            <div className={styles.block}>
+              <label className={styles.label} htmlFor={`${uid}-fix`}>
+                Что исправляем
+              </label>
+              <textarea
+                id={`${uid}-fix`}
+                className={styles.problemTextarea}
+                rows={2}
+                placeholder="Например: ошиблись в объёме бетона"
+                value={correctionReason}
+                onChange={(e) => setCorrectionReason(e.target.value)}
+                required
+              />
+            </div>
+          ) : null}
 
           <div className={styles.block}>
             <label className={styles.label} htmlFor={`${uid}-comment`}>
@@ -980,6 +1099,27 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
                 </span>
               </button>
             </div>
+            {keptAttachments.length > 0 ? (
+              <ul className={styles.attachList}>
+                {keptAttachments.map((a) => (
+                  <li key={a.id} className={styles.attachRow}>
+                    <span className={styles.attachKind}>{a.kind === 'photo' ? 'Фото' : 'Видео'}</span>
+                    <span className={styles.attachName}>{a.name}</span>
+                    <span className={styles.attachMeta}>уже в отчёте</span>
+                    <button
+                      type="button"
+                      className={styles.attachRemove}
+                      onClick={() =>
+                        setKeptAttachments((prev) => prev.filter((row) => row.id !== a.id))
+                      }
+                      aria-label="Убрать файл из отчёта"
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             {attachments.length > 0 ? (
               <ul className={styles.attachList}>
                 {attachments.map((a) => (
@@ -1006,9 +1146,9 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
                   </li>
                 ))}
               </ul>
-            ) : (
+            ) : keptAttachments.length === 0 ? (
               <p className={styles.hint}>Файлы не выбраны — можно добавить фото или короткое видео.</p>
-            )}
+            ) : null}
             {attachments.length > 0 ? (
               <p className={styles.hint}>
                 Видео до ~5 МБ сохраняется в этом браузере; крупнее — отправьте в общий чат.
@@ -1023,7 +1163,7 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
               Отмена
             </button>
             <button type="submit" className={styles.primary}>
-              Сохранить отчёт
+              {editing ? 'Сохранить исправление' : 'Сохранить отчёт'}
             </button>
           </div>
         </form>

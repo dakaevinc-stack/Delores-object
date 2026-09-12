@@ -214,6 +214,8 @@ function buildBrigadierStoredReport(parsed, siteId, { id }) {
     lines,
     problems: [],
     responsible: parsed.responsible,
+    authorLogin: parsed.responsible ? `tg:${parsed.responsible}` : undefined,
+    authorName: parsed.responsible || undefined,
     comment,
     attachments: [],
   }
