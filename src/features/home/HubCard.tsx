@@ -75,6 +75,7 @@ export function HubCard({
           : styles.toneFleet
   const ctaLabel = onToggle ? (expanded ? 'Свернуть' : cta) : cta
   const kicker = TONE_KICKER[tone]
+  const accessibleName = `${title}. ${ariaLabel}`
 
   const ctaNode = onToggle ? (
     <button
@@ -172,7 +173,7 @@ export function HubCard({
     return (
       <article
         className={className}
-        aria-label={ariaLabel}
+        aria-label={accessibleName}
         onClick={onToggle}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -191,7 +192,7 @@ export function HubCard({
   }
   if (to) {
     return (
-      <Link className={className} to={to} aria-label={ariaLabel}>
+      <Link className={className} to={to} aria-label={accessibleName}>
         {body}
       </Link>
     )
@@ -204,7 +205,7 @@ export function HubCard({
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label={ariaLabel}
+        aria-label={accessibleName}
       >
         {body}
       </a>
@@ -212,7 +213,7 @@ export function HubCard({
   }
 
   return (
-    <div className={className} role="note" aria-label={ariaLabel}>
+    <div className={className} role="note" aria-label={accessibleName}>
       {body}
     </div>
   )

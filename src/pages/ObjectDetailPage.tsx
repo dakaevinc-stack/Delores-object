@@ -513,7 +513,7 @@ export function ObjectDetailPage() {
             zone="supply"
             layout="panel"
             collapsible
-            defaultExpanded={false}
+            defaultExpanded={Boolean(materialBudget)}
           >
             <SiteProcurementRequestsSection
               requests={procurementRequests}

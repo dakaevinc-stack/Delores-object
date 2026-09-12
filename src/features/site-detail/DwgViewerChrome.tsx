@@ -4578,6 +4578,7 @@ export function DwgViewerChrome({
               className={`${styles.toolBtn} ${planActive ? styles.toolBtnActive : ''}`}
               aria-pressed={planActive}
               title="Просмотр плана — перемещение и подгонка по экрану"
+              aria-label="План"
               onPointerDown={(e) => e.preventDefault()}
               onClick={selectPlan}
             >
@@ -4599,6 +4600,7 @@ export function DwgViewerChrome({
                     : 'Клик — точки. Кнопка «Заливка» — выделение зоны'
                   : 'Тап — точки (длина/площадь). Удержание — заливка'
             }
+            aria-label="Замер"
             onPointerDown={(e) => e.preventDefault()}
             onClick={selectMeasureTool}
           >

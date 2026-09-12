@@ -187,8 +187,8 @@ async function openObjectsAndMaybeDwg(page, mobile) {
   // Дождаться зума / тулбара после растра
   await page.getByTestId('dwg-zoom-dock').waitFor({ state: 'visible', timeout: 20000 }).catch(() => null)
 
-  const plan = page.getByRole('button', { name: /^план$/i }).first()
-  const measure = page.getByRole('button', { name: /замер/i }).first()
+  const plan = page.getByRole('button', { name: /^(план|просмотр)$/i }).first()
+  const measure = page.getByRole('button', { name: /^(замер|измерить)$/i }).first()
   const marks = page.getByRole('button', { name: /метк/i }).first()
   const marker = page.getByRole('button', { name: /маркер/i }).first()
   result.toolsOk =
@@ -200,10 +200,14 @@ async function openObjectsAndMaybeDwg(page, mobile) {
   }
 
   const dock = page.getByTestId('dwg-zoom-dock')
+  const zoomIn = page.getByRole('button', { name: /приблизить/i }).first()
   if (await dock.count()) {
     const btnBox = await page.getByTestId('dwg-zoom-in').boundingBox()
     const maxBtn = mobile ? 48 : 52
     result.zoomOk = Boolean(btnBox && btnBox.width <= maxBtn && btnBox.height <= maxBtn)
+  } else if (await zoomIn.count()) {
+    await zoomIn.click().catch(() => {})
+    result.zoomOk = true
   } else {
     result.zoomOk = true
   }

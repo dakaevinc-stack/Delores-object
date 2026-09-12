@@ -153,7 +153,7 @@ function MaterialGroup({
 }
 
 export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
-  const { expanded, toggle, anchorRef } = useAnchoredExpand(false)
+  const { expanded, toggle, anchorRef } = useAnchoredExpand(true)
   const [crewId, setCrewId] = useState<string | null>(null)
   const crews = useMemo(() => contractorsFromBudget(budget), [budget])
   const hasPlan = useMemo(() => budgetHasPlan(budget), [budget])
