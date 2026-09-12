@@ -318,6 +318,20 @@
   margin-top: 2px;
 }
 
+/* Заглушка вместо номерной таблички у техники без госномера. */
+.noPlate {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px dashed color-mix(in srgb, var(--text) 28%, transparent);
+  border-radius: 8px;
+  color: color-mix(in srgb, var(--text) 62%, transparent);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 .heroModel {
   margin: 4px 0 2px;
   font-size: var(--heading-block-size);
@@ -372,6 +386,38 @@
 /* ============================================================
    Статус-стрип
    ============================================================ */
+
+/* Отметка из учётной таблицы — предупреждающая полоса над паспортом. */
+.sourceNote {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(180, 83, 9, 0.22);
+  background: linear-gradient(180deg, #fffbeb 0%, #fef3c7 100%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 4px 12px rgba(180, 83, 9, 0.08);
+}
+
+.sourceNoteIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(180, 83, 9, 0.12);
+  color: #92400e;
+}
+
+.sourceNoteText {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #78350f;
+}
 
 .statusStrip {
   display: grid;

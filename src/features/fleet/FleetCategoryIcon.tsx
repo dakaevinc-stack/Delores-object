@@ -34,6 +34,19 @@ export function FleetCategoryIcon({ id, size = 24, title, ...rest }: Props) {
   )
 }
 
+/* Легковые — седан: покатая крыша, короткие свесы */
+function CarsIcon() {
+  return (
+    <>
+      <path d="M3 15h18" />
+      <path d="M4 15v-2.2l2.4-3.4A2 2 0 0 1 8 8.6h7.2a2 2 0 0 1 1.6.8l2.4 3.4V15" />
+      <path d="M7 9.2 6.2 12.8h11.6L17 9.2" />
+      <circle cx="7.5" cy="17" r="1.6" />
+      <circle cx="16.5" cy="17" r="1.6" />
+    </>
+  )
+}
+
 /* Малотоннажные — фургон / LCV: кабина + кузов, два колеса */
 function LightTrucksIcon() {
   return (
@@ -224,6 +237,7 @@ function GenericIcon() {
 
 /** id категории → силуэт (сверять с FLEET_CATEGORIES в fleet.mock.ts) */
 const ICONS: Record<FleetPresetCategoryId, () => ReactElement> = {
+  cars: CarsIcon, // Легковые автомобили
   'light-trucks': LightTrucksIcon, // Малотоннажные автомобили
   buses: BusesIcon, // Автобусы
   'special-trucks': SpecialTrucksIcon, // Автомобили специальные

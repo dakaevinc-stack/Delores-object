@@ -330,7 +330,7 @@ export function FleetCategoryPage() {
             return (
               <li key={v.id} className={styles.listItem}>
                 <Link className={styles.row} to={`/spectehnika/unit/${v.id}`}>
-                  <span className={styles.plate}>{v.plate}</span>
+                  <span className={styles.plate}>{v.plate || 'без номера'}</span>
                   <span className={styles.vin}>{v.vinOrFrame}</span>
                   <span className={styles.model}>{v.model}</span>
                   <span className={styles.badges}>

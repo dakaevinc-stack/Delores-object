@@ -21,6 +21,7 @@ import {
   putFleetRegistryRemote,
   putUserSitesRemote,
 } from './siteFormsApi'
+import { migrateLocalFleetData } from './fleetDataMigration'
 import { listUserSites, replaceUserSites } from './sitesRepository'
 import type { ConstructionSite } from '../types/constructionSite'
 import type { FleetCategory, FleetVehicle } from '../domain/fleet'
@@ -94,6 +95,10 @@ export async function bootstrapCrossDeviceSync(): Promise<void> {
   }
   if (started) return
   started = true
+
+  /* До обмена с сервером убираем локальный мусор — иначе тестовые машины и
+     мёртвые ключи от старой схемы id уедут обратно на сервер. */
+  migrateLocalFleetData()
 
   const remoteReg = await fetchFleetRegistryRemote()
   if (remoteReg) {

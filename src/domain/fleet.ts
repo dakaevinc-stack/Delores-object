@@ -32,6 +32,7 @@ export const FLEET_PART_LABEL_RU: Record<FleetSchematicPartId, string> = {
  * Для поиска в Record-ах и switch-ах — сюда нельзя класть кастомные строки.
  */
 export type FleetPresetCategoryId =
+  | 'cars'
   | 'light-trucks'
   | 'buses'
   | 'special-trucks'
@@ -63,6 +64,7 @@ export type FleetCategory = {
 
 /** Набор preset-id-шников для быстрых проверок «это из штатного списка?». */
 export const FLEET_PRESET_CATEGORY_IDS: readonly FleetPresetCategoryId[] = [
+  'cars',
   'light-trucks',
   'buses',
   'special-trucks',
@@ -99,6 +101,8 @@ export type FleetRepairRecord = {
 export type FleetMaintenancePlan = {
   lastServiceDateIso?: string
   lastServiceMileageKm?: number
+  /** Наработка на момент последнего ТО, моточасы (спецтехника). */
+  lastServiceEngineHours?: number
   nextDueDateIso?: string
   nextDueMileageKm?: number
   intervalKm?: number
@@ -112,7 +116,8 @@ export type FleetMaintenancePlan = {
 export type FleetInsurance = {
   policyNumber?: string
   insurer?: string
-  validUntilIso: string
+  /** Срок действия. Не задан — данных о полисе нет (UI покажет «Нет данных»). */
+  validUntilIso?: string
   /** Годовая страховая премия, ₽ (стоимость текущего полиса). */
   annualPremiumRub?: number
   /**
@@ -147,6 +152,20 @@ export type FleetFuel = 'diesel' | 'petrol' | 'gas' | 'hybrid' | 'electric'
 export type FleetTransmission = 'manual' | 'automatic' | 'robotic' | 'hydrostatic'
 export type FleetOwnership = 'owned' | 'leased' | 'rented'
 
+/**
+ * Состояние бортового оборудования (ГЛОНАСС, ДУТ, транспондер, ПЛАТОН,
+ * тахограф). «Не требуется» — законное отсутствие, это не то же самое,
+ * что «нет» (нужно, но не установлено) или «неизвестно».
+ */
+export type FleetEquipmentState = 'yes' | 'no' | 'not-required' | 'unknown'
+
+export const FLEET_EQUIPMENT_LABEL_RU: Record<FleetEquipmentState, string> = {
+  yes: 'Есть',
+  no: 'Нет',
+  'not-required': 'Не требуется',
+  unknown: 'Нет данных',
+}
+
 export type FleetSpecs = {
   /** Год выпуска */
   year?: number
@@ -166,6 +185,13 @@ export type FleetSpecs = {
   odometerKm?: number
   /** Моточасы (для спецтехники — экскаваторы, катки, погрузчики) */
   engineHours?: number
+  /**
+   * Дата снятия показаний счётчика (ISO). Пробег без даты вводит в
+   * заблуждение: непонятно, сегодняшний он или годовой давности.
+   */
+  meterAsOfIso?: string
+  /** Остаток топлива в баке на дату показаний, л. */
+  fuelRemainingL?: number
   /** Цвет кузова / кабины */
   color?: string
   /** Форма владения */
@@ -184,8 +210,24 @@ export type FleetSpecs = {
   trackerProvider?: string
   /** Идентификатор трекера в системе */
   trackerId?: string
+  /** Подключение к системе мониторинга (Виалон). */
+  telematics?: FleetEquipmentState
+  /** Датчик уровня топлива. */
+  fuelSensor?: FleetEquipmentState
+  /** Транспондер платных дорог. */
+  transponder?: FleetEquipmentState
+  /** Бортовое устройство «Платон». */
+  platon?: FleetEquipmentState
+  /** Тахограф с блоком СКЗИ. */
+  tachograph?: FleetEquipmentState
   /** Грузоподъёмность, кг (грузовики / тягачи / самосвалы) */
   payloadKg?: number
+  /** Максимальная разрешённая масса, кг — по ней считают пропуска и штрафы. */
+  maxMassKg?: number
+  /** Габаритная длина, см — важна для тралов и негабаритных перевозок. */
+  lengthCm?: number
+  /** Количество осей — влияет на «Платон» и разрешения. */
+  axleCount?: number
   /** Объём кузова, м³ (самосвалы / фургоны) */
   bodyVolumeM3?: number
   /** Требуемая категория прав (B, C, CE, D, тракторист‑машинист…) */
@@ -200,6 +242,8 @@ export type FleetSpecs = {
   vehiclePassportIssuedIso?: string
   /** Лизингодатель (актуально, когда `ownership: 'leased'`). */
   leasingCompany?: string
+  /** Дата окончания договора лизинга (ISO). */
+  leaseEndIso?: string
   /**
    * Фактический владелец по документам (СТС/ПТС) — юр. или физ. лицо.
    * Используется для аренды у частников и для случаев, когда машина
@@ -222,6 +266,8 @@ export type FleetVehicle = {
   technicalInspection?: FleetTechnicalInspection
   /** Техпаспорт: мощность, топливо, пробег и т.д. */
   specs?: FleetSpecs
+  /** Примечание из учётной таблицы («ПТС копия», «двигатель не работает»…). */
+  notes?: string
   /** Если задано — в карточке вместо схемы показываем фото (путь из `/public` или URL). */
   heroPhotoUrl?: string
   /** Какой силуэт рисовать до появления ваших PDF/SVG */
@@ -239,8 +285,17 @@ export function daysUntil(isoDate: string, from = new Date()): number {
   return Math.round((t1 - t0) / MS_DAY)
 }
 
-export function insuranceUrgency(validUntilIso: string, from = new Date()): InsuranceUrgency {
+/**
+ * Срочность полиса. Пустая или битая дата — `missing`: раньше такой полис
+ * молча показывался как «в порядке», хотя данных о нём просто нет.
+ */
+export function insuranceUrgency(
+  validUntilIso: string | undefined,
+  from = new Date(),
+): InsuranceUrgency | 'missing' {
+  if (!validUntilIso) return 'missing'
   const d = daysUntil(validUntilIso, from)
+  if (!Number.isFinite(d)) return 'missing'
   if (d < 0) return 'expired'
   if (d <= 14) return 'critical'
   if (d <= 45) return 'soon'
@@ -266,7 +321,7 @@ export function isFleetUnitOnControl(vehicle: FleetVehicle, from = new Date()): 
 
   if (!vehicle.insurance.notRequired) {
     const ins = insuranceUrgency(vehicle.insurance.validUntilIso, from)
-    if (ins === 'expired' || ins === 'critical') return true
+    if (ins === 'expired' || ins === 'critical' || ins === 'missing') return true
   }
 
   if (vehicle.repairs.some((r) => r.open)) return true

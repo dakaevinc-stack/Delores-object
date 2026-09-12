@@ -3,10 +3,12 @@ import {
   activeFaultParts,
   costBreakdown,
   daysUntil,
+  FLEET_EQUIPMENT_LABEL_RU,
   FLEET_PART_LABEL_RU,
   formatRub,
   insuranceUrgency,
   technicalInspectionUrgency,
+  type FleetEquipmentState,
   type FleetFuel,
   type FleetOwnership,
   type FleetPass,
@@ -45,7 +47,10 @@ function formatRubOrDash(v: number | undefined | null): string {
   return formatRub(v)
 }
 
-function insuranceBadgeText(u: InsuranceUrgency): string {
+/** Срочность полиса, включая «данных нет» — их нельзя выдавать за «в норме». */
+type InsuranceState = InsuranceUrgency | 'missing'
+
+function insuranceBadgeText(u: InsuranceState): string {
   switch (u) {
     case 'expired':
       return 'Истекла'
@@ -53,16 +58,19 @@ function insuranceBadgeText(u: InsuranceUrgency): string {
       return 'Срочно продлить'
     case 'soon':
       return 'Скоро окончание'
+    case 'missing':
+      return 'Нет данных'
     default:
       return 'В норме'
   }
 }
 
-function insurancePanelClass(u: InsuranceUrgency): string {
+function insurancePanelClass(u: InsuranceState): string {
   switch (u) {
     case 'expired':
       return styles.insuranceExpired
     case 'critical':
+    case 'missing':
       return styles.insuranceCritical
     case 'soon':
       return styles.insuranceSoon
@@ -71,8 +79,10 @@ function insurancePanelClass(u: InsuranceUrgency): string {
   }
 }
 
-function badgeClass(u: InsuranceUrgency): string {
-  if (u === 'expired' || u === 'critical') return `${styles.insuranceBadge} ${styles.badgeCritical}`
+function badgeClass(u: InsuranceState): string {
+  if (u === 'expired' || u === 'critical' || u === 'missing') {
+    return `${styles.insuranceBadge} ${styles.badgeCritical}`
+  }
   if (u === 'soon') return `${styles.insuranceBadge} ${styles.badgeSoon}`
   return styles.insuranceBadge
 }
@@ -156,26 +166,30 @@ function computeStatusStrip(v: FleetVehicle): StatusItem[] {
   /* Страховка */
   const insNotRequired = v.insurance.notRequired === true
   const insU = insuranceUrgency(v.insurance.validUntilIso)
-  const insDays = daysUntil(v.insurance.validUntilIso)
+  const insDays = v.insurance.validUntilIso ? daysUntil(v.insurance.validUntilIso) : 0
   const insTone: StatusTone = insNotRequired
     ? 'muted'
-    : insU === 'expired' || insU === 'critical'
+    : insU === 'expired' || insU === 'critical' || insU === 'missing'
       ? 'warn'
       : insU === 'soon'
         ? 'soon'
         : 'ok'
   const insValue = insNotRequired
     ? 'Не требуется'
-    : insU === 'expired'
-      ? `Просрочена ${Math.abs(insDays)} дн.`
-      : insU === 'critical'
-        ? `Истекает через ${insDays} дн.`
-        : insU === 'soon'
-          ? `Через ${insDays} дн.`
-          : 'В норме'
+    : insU === 'missing'
+      ? 'Нет данных'
+      : insU === 'expired'
+        ? `Просрочена ${Math.abs(insDays)} дн.`
+        : insU === 'critical'
+          ? `Истекает через ${insDays} дн.`
+          : insU === 'soon'
+            ? `Через ${insDays} дн.`
+            : 'В норме'
   const insMeta = insNotRequired
     ? 'Полуприцеп — ОСАГО не нужно'
-    : `до ${formatDate(v.insurance.validUntilIso)}`
+    : v.insurance.validUntilIso
+      ? `до ${formatDate(v.insurance.validUntilIso)}`
+      : 'срок не указан в учётной таблице'
 
   /* ТО */
   const nextIso = v.maintenance.nextDueDateIso
@@ -366,20 +380,25 @@ function buildSpecTiles(v: FleetVehicle): SpecTileDef[] {
       primary: true,
     })
   }
+  /* Дата снятия показаний обязательна в подписи: пробег «вообще» никому
+     не помогает — важно, на какое число он снят. */
+  const meterSub = s.meterAsOfIso ? `на ${formatDate(s.meterAsOfIso)}` : undefined
   if (s.odometerKm != null) {
     tiles.push({
       key: 'odo',
       icon: 'gauge',
       label: 'Пробег',
       value: `${s.odometerKm.toLocaleString('ru-RU')} км`,
+      sub: meterSub,
       primary: true,
     })
   } else if (s.engineHours != null) {
     tiles.push({
       key: 'hours',
       icon: 'clock',
-      label: 'Моточасы',
+      label: 'Наработка',
       value: `${s.engineHours.toLocaleString('ru-RU')} ч`,
+      sub: meterSub,
       primary: true,
     })
   }
@@ -402,6 +421,14 @@ function buildSpecTiles(v: FleetVehicle): SpecTileDef[] {
   if (s.payloadKg) {
     tiles.push({ key: 'payload', icon: 'scales', label: 'Грузоподъёмность', value: formatTons(s.payloadKg) })
   }
+  if (s.maxMassKg) {
+    tiles.push({
+      key: 'maxmass',
+      icon: 'scales',
+      label: 'Разрешённая масса',
+      value: formatTons(s.maxMassKg),
+    })
+  }
   if (s.bodyVolumeM3) {
     tiles.push({
       key: 'vol',
@@ -409,6 +436,17 @@ function buildSpecTiles(v: FleetVehicle): SpecTileDef[] {
       label: 'Объём кузова',
       value: `${s.bodyVolumeM3} м³`,
     })
+  }
+  if (s.lengthCm) {
+    tiles.push({
+      key: 'length',
+      icon: 'box',
+      label: 'Длина',
+      value: `${(s.lengthCm / 100).toLocaleString('ru-RU')} м`,
+    })
+  }
+  if (s.axleCount) {
+    tiles.push({ key: 'axles', icon: 'gear', label: 'Осей', value: String(s.axleCount) })
   }
   if (s.color) {
     tiles.push({
@@ -419,7 +457,17 @@ function buildSpecTiles(v: FleetVehicle): SpecTileDef[] {
       accent: COLOR_HEX[s.color.toLowerCase()] ?? '#e5e7eb',
     })
   }
+  if (s.fuelRemainingL != null) {
+    tiles.push({
+      key: 'fuel-left',
+      icon: 'fuel',
+      label: 'Топливо в баке',
+      value: `${s.fuelRemainingL.toLocaleString('ru-RU')} л`,
+      sub: meterSub,
+    })
+  }
   if (s.ownership) {
+    const leaseSub = s.leaseEndIso ? `лизинг до ${formatDate(s.leaseEndIso)}` : undefined
     tiles.push({
       key: 'own',
       icon: 'key',
@@ -427,10 +475,8 @@ function buildSpecTiles(v: FleetVehicle): SpecTileDef[] {
       value: OWN_RU[s.ownership],
       sub:
         s.ownership === 'leased'
-          ? s.leasingCompany
-          : s.ownership === 'rented'
-            ? s.registeredOwner
-            : s.registeredOwner,
+          ? [s.leasingCompany, leaseSub].filter(Boolean).join(' · ') || undefined
+          : s.registeredOwner,
     })
   }
   if (s.responsibleOperator || s.responsiblePhone) {
@@ -457,6 +503,24 @@ function buildSpecTiles(v: FleetVehicle): SpecTileDef[] {
   }
   if (s.acquiredDateIso) {
     tiles.push({ key: 'acq', icon: 'flag', label: 'В парке с', value: formatDate(s.acquiredDateIso) })
+  }
+
+  /* Бортовое оборудование. Показываем и «нет», и «не требуется»: отсутствие
+     обязательного тахографа или «Платона» — это штрафы, такое нельзя скрывать. */
+  const equipment: { key: string; icon: SpecIconKind; label: string; state?: FleetEquipmentState }[] = [
+    { key: 'eq-dut', icon: 'fuel', label: 'Датчик топлива (ДУТ)', state: s.fuelSensor },
+    { key: 'eq-transponder', icon: 'box', label: 'Транспондер', state: s.transponder },
+    { key: 'eq-platon', icon: 'id', label: '«Платон»', state: s.platon },
+    { key: 'eq-tacho', icon: 'clock', label: 'Тахограф (СКЗИ)', state: s.tachograph },
+  ]
+  for (const item of equipment) {
+    if (!item.state || item.state === 'unknown') continue
+    tiles.push({
+      key: item.key,
+      icon: item.icon,
+      label: item.label,
+      value: FLEET_EQUIPMENT_LABEL_RU[item.state],
+    })
   }
 
   return tiles
@@ -801,7 +865,9 @@ export function FleetVehiclePage() {
   if (!cat) return <Navigate to="/spectehnika" replace />
 
   const insU = insuranceUrgency(vehicle.insurance.validUntilIso)
-  const insDays = daysUntil(vehicle.insurance.validUntilIso)
+  const insDays = vehicle.insurance.validUntilIso
+    ? daysUntil(vehicle.insurance.validUntilIso)
+    : null
   const faults = activeFaultParts(vehicle)
   const costs = costBreakdown(vehicle)
   const statusItems = computeStatusStrip(vehicle)
@@ -816,8 +882,10 @@ export function FleetVehiclePage() {
       : `${import.meta.env.BASE_URL}${heroPhoto.replace(/^\//, '')}`
     : null
 
-  /* Визуальный прогресс полиса: сколько осталось от условных 365 дней. */
-  const insurancePct = Math.max(0, Math.min(100, Math.round((insDays / 365) * 100)))
+  /* Визуальный прогресс полиса: сколько осталось от условных 365 дней.
+     Срока нет — шкала пустая, а не полная. */
+  const insurancePct =
+    insDays == null ? 0 : Math.max(0, Math.min(100, Math.round((insDays / 365) * 100)))
   const insuranceNotRequired = vehicle.insurance.notRequired === true
 
   return (
@@ -829,7 +897,7 @@ export function FleetVehiclePage() {
         <span>/</span>
         <Link to={`/spectehnika/${vehicle.categoryId}`}>{cat.shortTitle}</Link>
         <span>/</span>
-        <span>{vehicle.plate}</span>
+        <span>{vehicle.plate || vehicle.model}</span>
       </nav>
 
       {/* ============================================================
@@ -915,7 +983,13 @@ export function FleetVehiclePage() {
             <span className={styles.heroKickerId}>Единица парка</span>
           </p>
           <div className={styles.heroPlateRow}>
-            <RussianLicensePlate plate={vehicle.plate} size="lg" />
+            {/* Прицепу госномер может быть не присвоен — рисовать пустую
+                табличку хуже, чем честно об этом сказать. */}
+            {vehicle.plate ? (
+              <RussianLicensePlate plate={vehicle.plate} size="lg" />
+            ) : (
+              <span className={styles.noPlate}>Без госномера</span>
+            )}
           </div>
           <h1 className={styles.heroModel}>{vehicle.model}</h1>
           <dl className={styles.heroFacts}>
@@ -965,6 +1039,19 @@ export function FleetVehiclePage() {
           </div>
         ))}
       </section>
+
+      {/* Отметка из учётной таблицы: «двигатель в нерабочем состоянии»,
+          «ПТС копия», «не переоформлен» — то, что нельзя прятать в мелочи. */}
+      {vehicle.notes ? (
+        <section className={styles.sourceNote} aria-label="Отметка в учёте">
+          <span className={styles.sourceNoteIcon} aria-hidden>
+            <StatusIcon kind="badge" />
+          </span>
+          <p className={styles.sourceNoteText}>
+            <strong>Отметка в учёте:</strong> {vehicle.notes}
+          </p>
+        </section>
+      ) : null}
 
       {/* ============================================================
           Паспорт техники — характеристики, принадлежность, оператор
@@ -1374,7 +1461,9 @@ export function FleetVehiclePage() {
             <dd className={styles.costMeta}>
               {vehicle.insurance.notRequired
                 ? 'ОСАГО не требуется'
-                : `Полис до ${formatDate(vehicle.insurance.validUntilIso)}`}
+                : vehicle.insurance.validUntilIso
+                  ? `Полис до ${formatDate(vehicle.insurance.validUntilIso)}`
+                  : 'Срок полиса не указан'}
             </dd>
           </div>
           <div className={`${styles.costCard} ${styles.costCardTotal}`}>
@@ -1411,12 +1500,16 @@ export function FleetVehiclePage() {
               <div className={styles.insuranceHero}>
                 <div className={styles.insuranceHeroText}>
                   <p className={styles.insuranceDate}>
-                    до {formatDate(vehicle.insurance.validUntilIso)}
+                    {vehicle.insurance.validUntilIso
+                      ? `до ${formatDate(vehicle.insurance.validUntilIso)}`
+                      : 'срок не указан'}
                   </p>
                   <p className={styles.insuranceCountdown}>
-                    {insDays < 0
-                      ? `Просрочено на ${Math.abs(insDays)} дн.`
-                      : `Осталось ${insDays} дн.`}
+                    {insDays == null
+                      ? 'В учётной таблице нет срока действия полиса'
+                      : insDays < 0
+                        ? `Просрочено на ${Math.abs(insDays)} дн.`
+                        : `Осталось ${insDays} дн.`}
                   </p>
                 </div>
                 <span className={badgeClass(insU)}>{insuranceBadgeText(insU)}</span>
@@ -1424,7 +1517,11 @@ export function FleetVehiclePage() {
               <div
                 className={styles.insuranceGauge}
                 role="img"
-                aria-label={`Осталось ${Math.max(insDays, 0)} из 365 дней полиса`}
+                aria-label={
+                  insDays == null
+                    ? 'Срок полиса неизвестен'
+                    : `Осталось ${Math.max(insDays, 0)} из 365 дней полиса`
+                }
               >
                 <span
                   className={styles.insuranceGaugeFill}
@@ -1539,6 +1636,9 @@ export function FleetVehiclePage() {
                       : '—'}
                     {vehicle.maintenance.lastServiceMileageKm != null
                       ? ` · ${vehicle.maintenance.lastServiceMileageKm.toLocaleString('ru-RU')} км`
+                      : null}
+                    {vehicle.maintenance.lastServiceEngineHours != null
+                      ? ` · ${vehicle.maintenance.lastServiceEngineHours.toLocaleString('ru-RU')} ч`
                       : null}
                   </td>
                 </tr>

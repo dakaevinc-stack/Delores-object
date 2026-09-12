@@ -408,10 +408,11 @@ export const PROCUREMENT_MATERIAL_PRESETS: readonly ProcurementPreset[] = [
   },
 
   /* ── Спецтехника (смена) ─────────────────────────────────────────────
-     Все 13 классов соответствуют реестру нашего парка
-     (FLEET_CATEGORIES в src/data/fleet.mock.ts). Когда туда добавляется
-     новый класс — добавьте такой же сюда, чтобы бригадир мог его
-     заявить. ID связан с fleetCategoryId через хвост `-<id>`. */
+     Классы соответствуют реестру нашего парка (FLEET_CATEGORIES в
+     src/data/fleet.mock.ts), кроме легковых: их сменами не заказывают.
+     Когда в парк добавляется новый рабочий класс — добавьте такой же
+     сюда, чтобы бригадир мог его заявить. ID связан с fleetCategoryId
+     через хвост `-<id>`. */
   {
     id: 'machinery-light-trucks',
     categoryId: 'machinery',

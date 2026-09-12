@@ -20,6 +20,10 @@
     "preview": "vite preview --host 0.0.0.0 --port 4173 --strictPort",
     "launch": "npm run build && npm run preview",
     "generate:dwg-previews": "node scripts/generate-dwg-previews.mjs",
+    "fleet:import": "node scripts/fleet-excel/build.mjs \"scripts/data/fleet-imports/База ТС Деловые Решения 14 05.26.xlsx\" \"scripts/data/fleet-imports/Бортовой журнал.xlsx\"",
+    "fleet:report": "node scripts/fleet-excel/report.mjs \"scripts/data/fleet-imports/База ТС Деловые Решения 14 05.26.xlsx\" \"scripts/data/fleet-imports/Бортовой журнал.xlsx\"",
+    "fleet:verify": "node scripts/fleet-excel/verify.mjs \"scripts/data/fleet-imports/Бортовой журнал.xlsx\"",
+    "fleet:plates": "node scripts/fleet-excel/audit-plates.mjs",
     "deploy:server": "bash scripts/deploy/from-mac.sh",
     "deploy:live": "bash scripts/deploy/publish-from-mac.sh"
   },
