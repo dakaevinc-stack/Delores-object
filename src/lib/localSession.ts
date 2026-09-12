@@ -1,12 +1,12 @@
 /**
- * Локальная сессия после входа по справочнику сотрудников.
- * Не серверная сессия — MVP до корпоративного auth.
+ * Локальная сессия после входа.
+ * Токен выдаёт сервер (`/api/auth/login`) — без него API задач недоступен.
  */
 
 import { STAFF_DIRECTORY } from '../domain/staffDirectory'
 import type { SiteDutyRole } from '../domain/sitePageZone'
 
-export const LOCAL_SESSION_KEY = 'deloresh-local-session:v1'
+export const LOCAL_SESSION_KEY = 'deloresh-local-session:v2'
 
 export type LocalSession = {
   readonly login: string
@@ -14,6 +14,8 @@ export type LocalSession = {
   readonly duty: SiteDutyRole
   readonly dutyLabel: string
   readonly signedInAt: string
+  /** Bearer для /api/staff-tasks и медиа. */
+  readonly token: string
 }
 
 function canUseStorage(): boolean {
@@ -35,11 +37,14 @@ function isDuty(value: unknown): value is SiteDutyRole {
 export function loadLocalSession(): LocalSession | null {
   if (!canUseStorage()) return null
   try {
-    const raw = localStorage.getItem(LOCAL_SESSION_KEY)
+    const raw =
+      localStorage.getItem(LOCAL_SESSION_KEY) ??
+      localStorage.getItem('deloresh-local-session:v1')
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<LocalSession>
     const login = typeof parsed.login === 'string' ? parsed.login.trim() : ''
-    if (!login || !isDuty(parsed.duty)) return null
+    const token = typeof parsed.token === 'string' ? parsed.token.trim() : ''
+    if (!login || !isDuty(parsed.duty) || !token) return null
 
     const staff = STAFF_DIRECTORY.find((m) => m.login === login)
     const fullName =
@@ -64,6 +69,7 @@ export function loadLocalSession(): LocalSession | null {
       duty: staff?.duty ?? parsed.duty,
       dutyLabel,
       signedInAt,
+      token,
     }
   } catch {
     return null
@@ -75,6 +81,7 @@ export function saveLocalSession(input: {
   fullName: string
   duty: SiteDutyRole
   dutyLabel: string
+  token: string
 }): LocalSession {
   const session: LocalSession = {
     login: input.login.trim(),
@@ -82,12 +89,14 @@ export function saveLocalSession(input: {
     duty: input.duty,
     dutyLabel: input.dutyLabel.trim(),
     signedInAt: new Date().toISOString(),
+    token: input.token.trim(),
   }
-  if (!session.login || !session.dutyLabel) {
+  if (!session.login || !session.dutyLabel || !session.token) {
     throw new Error('session fields required')
   }
   if (canUseStorage()) {
     localStorage.setItem(LOCAL_SESSION_KEY, JSON.stringify(session))
+    localStorage.removeItem('deloresh-local-session:v1')
   }
   return session
 }
@@ -95,6 +104,11 @@ export function saveLocalSession(input: {
 export function clearLocalSession(): void {
   if (!canUseStorage()) return
   localStorage.removeItem(LOCAL_SESSION_KEY)
+  try {
+    sessionStorage.removeItem('deloresh-hub-stagger:done')
+  } catch {
+    /* ignore */
+  }
 }
 
 export function sessionInitials(login: string): string {

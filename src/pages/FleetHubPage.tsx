@@ -87,6 +87,7 @@ export function FleetHubPage() {
             <h1 className={styles.title}>Спецтехника</h1>
             <p className={styles.lead}>
               Госномера, ТО, страховки и ремонты — по каждому классу техники.
+              Сейчас в каталоге демо-база; правки сохраняются на этом устройстве.
             </p>
 
             <div className={styles.heroStats} aria-label="Сводка парка">
@@ -102,7 +103,7 @@ export function FleetHubPage() {
               <span className={styles.statDivider} aria-hidden />
               <div className={styles.stat}>
                 <span className={styles.statValue}>{onControlCount}</span>
-                <span className={styles.statLabel}>на контроле</span>
+                <span className={styles.statLabel}>контроль</span>
               </div>
             </div>
           </div>

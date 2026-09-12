@@ -14,12 +14,30 @@ export type StaffTaskAttachment = {
   readonly byLogin: string
 }
 
+/** Голосовое сообщение в чате задачи (data URL, синхронизируется с сервером). */
+export type StaffTaskCommentAudio = {
+  readonly mime: string
+  readonly dataUrl: string
+  /** Длительность записи, секунды (округление вниз). */
+  readonly durationSec: number
+}
+
+/** Файл/фото в сообщении чата. */
+export type StaffTaskCommentFile = {
+  readonly name: string
+  readonly mime: string
+  readonly dataUrl: string
+}
+
 export type StaffTaskComment = {
   readonly id: string
   readonly authorLogin: string
   readonly authorName: string
+  /** Текст; может быть пустым, если есть audio или file. */
   readonly text: string
   readonly createdAtIso: string
+  readonly audio?: StaffTaskCommentAudio
+  readonly file?: StaffTaskCommentFile
 }
 
 export type StaffTask = {
@@ -43,6 +61,8 @@ export type StaffTask = {
   readonly updatedAtIso: string
   /** Исполнитель открывал карточку */
   readonly seenByAssignee: boolean
+  /** Мягкое удаление — задача скрыта в UI, tombstone для синхронизации */
+  readonly deletedAtIso?: string
 }
 
 export type StaffTaskFilter =
@@ -71,7 +91,11 @@ export function formatTaskDayRu(dueDate: string): string {
   const [y, m, d] = dueDate.split('-').map(Number)
   if (!y || !m || !d) return dueDate
   const dt = new Date(y, m - 1, d)
-  return dt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+  return dt.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
 }
 
 export function taskDueLabel(task: StaffTask, today = localDateKey()): string {
@@ -98,7 +122,7 @@ export function filterStaffTasks(
 ): StaffTask[] {
   const today = opts.today ?? localDateKey()
   const login = opts.login.trim().toLocaleLowerCase('en-US')
-  let list = tasks.filter((t) => isTaskForLogin(t, opts.login))
+  let list = tasks.filter((t) => !t.deletedAtIso && isTaskForLogin(t, opts.login))
 
   switch (opts.filter) {
     case 'new':
@@ -139,6 +163,7 @@ export function countUnseenForAssignee(
   const l = login.trim().toLocaleLowerCase('en-US')
   return tasks.filter(
     (t) =>
+      !t.deletedAtIso &&
       t.assigneeLogin.toLocaleLowerCase('en-US') === l &&
       !t.seenByAssignee &&
       t.status !== 'done',
@@ -152,4 +177,14 @@ export function canCreateStaffTasks(duty: string): boolean {
     duty === 'pto' ||
     duty === 'dispatcher'
   )
+}
+
+/** Удалять может только создатель задачи. */
+export function canDeleteStaffTask(
+  task: Pick<StaffTask, 'creatorLogin' | 'deletedAtIso'>,
+  login: string,
+): boolean {
+  if (task.deletedAtIso) return false
+  const l = login.trim().toLocaleLowerCase('en-US')
+  return task.creatorLogin.toLocaleLowerCase('en-US') === l
 }

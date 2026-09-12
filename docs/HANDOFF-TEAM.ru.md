@@ -1,15 +1,17 @@
 # Передача проекта команде разработки
 
-Документ для **нанятых IT-специалистов** (аутсорс, штат, студия): что это за продукт, как устроен репозиторий и с чего начать внедрение бэкенда и доработок.
+Документ для **нанятых IT-специалистов**: продукт, стек, где что лежит, что уже на сервере, что трогать осторожно.
 
-## Продукт (бизнес-контекст)
+См. также короткую карту правок: **[FOR-DEVELOPERS.ru.md](./FOR-DEVELOPERS.ru.md)**.
 
-- **Рабочее название в репозитории:** `deloresh-objects` (веб-клиент «Деловые Решения»).
-- **Назначение:** управленческий обзор **строительных объектов** и **парка спецтехники**: статусы, дашборд, карточки объектов, реестр техники по классам, детальная карточка единицы (ТО, страховка, ремонты, пропуска, паспортные поля, расходы в демо-режиме).
-- **Сейчас:** одностраничное приложение (**SPA**), данные частично из **моков в коде**, пользовательские изменения — в **`localStorage`** (до появления API).
-- **Цель эволюции:** бэкенд, авторизация, синхронизация, импорт/экспорт (Excel), мобильные сценарии, отчётность.
+## Продукт
 
-Заказчик будет **продолжать менять** требования и UI — заложите модульность и контракты API.
+- **Репозиторий:** `deloresh-objects` (бренд «Деловые Решения» / Deloresh Objects).
+- **Назначение:** операционка стройки — объекты, задачи сотрудникам, спецтехника, рейсы водителей, чертежи DWG, заявки/отчёты/медиа.
+- **Прод:** `http://94.242.58.24/` (домен/HTTPS — когда DNS укажет на этот VPS).
+- **GitHub:** https://github.com/dakaevinc-stack/Delores-object
+
+Заказчик будет **продолжать менять** UI и процессы — сохраняйте модульность и не ломайте синхронизацию между устройствами.
 
 ## Стек
 
@@ -17,72 +19,94 @@
 |------|------------|
 | UI | React 19, TypeScript, CSS Modules |
 | Сборка | Vite 8 |
-| Маршрутизация | React Router 7 |
-| Графики | Recharts (дашборд) |
-| Тесты | Vitest, Testing Library, jsdom |
-| Линт | ESLint 9 (flat config), typescript-eslint |
+| Маршруты | React Router 7 |
+| API | Node.js (`server/site-forms.mjs`), systemd `site-forms`, nginx `/api` → `:8787` |
+| Auth | `POST /api/auth/login` → Bearer; пароли только в `server/staff-passwords.mjs` |
+| Тесты | Vitest; живой аудит `npm run test:live`; viewport `npm run test:smoke` |
+| Деплой с Mac | `npm run deploy:live -- root@94.242.58.24` |
 
-Node.js **20+** (в CI — 22).
+Node.js **20+**.
 
-## Запуск и проверки
+## Запуск
 
 ```bash
 npm ci
-npm run dev          # http://localhost:5173
-npm run check        # lint + test + build — как в CI
+npm run dev              # SPA + при необходимости отдельно: npm run dev:site-forms-api
+npm run check            # lint + test + build
+npm run test:live        # smoke против прода (нужен SSH к VPS)
 ```
 
-См. также **README.md** в корне (мобильный доступ, `preview`, CI).
+Локально API: см. `.env.example` (`VITE_SITE_FORMS_API_BASE`, `VITE_SITE_FORMS_WRITE_SECRET`).
+На сервере секреты в `/etc/deloresh/site-forms.env` и `.env` у `deploy` (rsync **не** затирает `.env`).
 
-## Структура репозитория (ориентиры)
+## Архитектура данных (актуально)
+
+| Область | Где правда | Клиент |
+|---------|------------|--------|
+| Задачи, чат, seen, soft-delete | Сервер `staff-tasks.json` + merge | `staffTasksRepository`, `useStaffTasks` |
+| Медиа задач | `staff-task-blobs/` | `staffTaskMedia`, `StaffTaskMedia` |
+| Логин | Сессии `staff-sessions.json` | `localSession` **v2** (нужен `token`) |
+| Отчёты бригадира, заявки, медиа объектов, DWG-файлы | Сервер под `sites/<id>/…` | `siteFormsApi` |
+| План дня, метки на плане | Сервер | `workDayPlan*`, `dwgPlanMarksRepository` |
+| Парк / overrides / user-sites | Сервер + кэш | `crossDeviceSync`, `fleetRegistry` |
+| Часть цифр KPI / ТО / страховок | **Моки** в `src/data/*` | не путать с «живыми» формами |
+| Приёмка техники | Внешний Streamlit `:8501` | `VITE_AMEDA_INSPECTION_DASHBOARD_URL` |
+
+Кэш в `localStorage` — ускорение и офлайн-черновик; **источник истины для живых сущностей — API**.
+
+Данные на VPS: `/var/lib/deloresh/site-forms/`.  
+Бэкап: cron → `/var/backups/deloresh/` (`scripts/deploy/backup-site-forms.sh`).
+
+## Структура репозитория
 
 ```
 src/
-  app/           # App.tsx (ленивые маршруты), ErrorBoundary, main.tsx
-  pages/         # Экраны: HomePage, Fleet*, Object*, AddObject…
-  features/      # Фичи: fleet/* (редакторы, реестр, модалки), объекты…
-  domain/        # Типы и чистая логика (fleet.ts, статусы объектов…)
-  data/          # Моки (объекты, парк техники)
-  lib/           # Утилиты, sitesRepository, backup localStorage
-  types/         # Декларации (window.DELORESH_BACKUP и т.д.)
+  app/           # маршруты, ErrorBoundary
+  pages/         # экраны
+  features/      # UI фич (tasks, site-detail, fleet, driver…)
+  domain/        # чистая логика без I/O (staffTask, staffDirectory…)
+  data/          # моки / пресеты
+  lib/           # API-клиент, репозитории, sync
+server/          # site-forms.mjs, staff-auth, staff-passwords
+scripts/deploy/  # publish, nginx examples, backup cron
+docs/            # этот файл, OWN-PROJECT, DEPLOY, FIELD-TEST…
 ```
 
-Крупные файлы: **`FleetVehiclePage.tsx`** (~1700+ строк) — кандидат на разбиение по секциям (паспорт, документы, расходы, пропуска).
+### Крупные файлы (не рвать без нужды)
 
-## Данные сегодня
+| Файл | Зачем осторожность |
+|------|-------------------|
+| `DwgViewerChrome.tsx` (~5k строк) | Жесты, zoom, метки, мобильный UX |
+| `dwgPngRegionPick.ts`, measure/pick | Геометрия плана |
+| `FleetVehiclePage.tsx` | Много секций карточки |
+| `site-forms.mjs` | Все HTTP-ручки и merge |
+| `siteFormsApi.ts` | Клиентский контракт API |
 
-1. **Моки** — `src/data/constructionSites.mock.ts`, `src/data/fleet.mock.ts` (в т.ч. merge с «реальными» номерами через overrides в коде — см. файл).
-2. **Пользовательский слой** — `src/lib/sitesRepository.ts` (`deloresh-user-sites:v1`).
-3. **Парк** — `src/features/fleet/fleetRegistry.ts` (`fleet:registry`), `vehicleOverrides.ts` (`fleet:overrides:<vehicleId>`).
-4. **Прочее** — см. `docs/RECOVERY.ru.md` и `src/lib/deloreshLocalStorageBackup.ts`.
+Дробить имеет смысл **по секциям + тестам**, не «ради красоты».
 
-Резервная копия localStorage из браузера: **`window.DELORESH_BACKUP`** (после загрузки приложения).
+## Что передать разработчикам
 
-## Надёжность UI
+1. GitHub + этот файл + **FOR-DEVELOPERS.ru.md** + **DEPLOY.ru.md** + **OWN-PROJECT.ru.md**.
+2. SSH на VPS и понимание, что `.env` / write-secret / пароли сотрудников **не в git**.
+3. Критерии приёмки (пример: «задача с телефона A видна на B за 20 с»).
+4. Полевой чек-лист: **FIELD-TEST.ru.md**.
 
-- **Error Boundary** вокруг `App` в `main.tsx` — ловит необработанные ошибки рендера.
-- Ленивая подгрузка страниц — **`React.lazy`** в `App.tsx`.
+## Правила, чтобы не сломать прод
 
-## Что передать разработчикам «в руки»
-
-1. **Доступ к Git** (или архив репозитория).
-2. **Этот файл + README + docs/RECOVERY.ru.md**.
-3. **Описание желаемого бэкенда** (модель сущностей: организация, пользователи, объекты, единицы техники, документы, медиа, права).
-4. **Макеты / ссылки на Figma** (если есть).
-5. **Правила именования** госномеров, форматов дат, интеграций (1С, ГЛОНАСС и т.д.) — по мере появления.
-6. **Критерии приёмки** первой итерации (например: «логин + список техники с сервера + сохранение правок»).
-
-## Рекомендуемый порядок работ для бэкенда
-
-1. Контракт **OpenAPI** или аналог для: объектов, единиц техники, вложенных сущностей (ТО, страховка, ремонты, пропуска).
-2. Замена чтения/записи `localStorage` на **API-клиент** с офлайн-кэшем (по желанию).
-3. Миграция: экспорт текущего `DELORESH_BACKUP.exportJson()` у заказчика → импорт на стороне сервера (одноразовый скрипт).
+1. **Не класть пароли** в `src/` и не коммитить `server/staff-passwords.mjs`
+   (в git только `server/staff-passwords.example.mjs`).
+2. Задачи: любой upsert должен **мержить** comments/attachments; удаление — **soft-delete** (`deletedAtIso`), иначе устройства «воскресят» задачу.
+3. После деплоя: `sw.js` должен отдаваться с **no-cache** (см. nginx examples); bump версии в `public/sw.js`.
+4. Не делать полный `PUT` массива задач вместо upsert — гонки между телефонами.
+5. Перед релизом: `npm run check`; по возможности `npm run test:live`.
 
 ## Известные компромиссы
 
-- ESLint: правило `react-hooks/set-state-in-effect` отключено из‑за легаси-паттернов синхронизации с props.
-- Тестов пока мало — расширяйте по критичным сценариям (карточка техники, реестр).
+- Часть KPI/парка — демо-данные; заказчик знает.
+- HTTP без домена: микрофон/`getUserMedia` и полноценный PWA ограничены — нужен HTTPS.
+- Write-secret сейчас попадает в клиентский бандл (нужен для загрузок файлов) — не светить публично лишний раз; при утечке — ротация на сервере + rebuild.
+- ESLint: `react-hooks/set-state-in-effect` ослаблен из‑за sync с props.
 
 ## Контакты и процесс
 
-Заполните блок сами: ответственный с заказчика, чат, регламент релизов, ветка по умолчанию для CI (`main` / `master` в `.github/workflows/ci.yml`).
+Заполните: ответственный заказчика, чат, ветка CI (`main`), кто делает `deploy:live`.

@@ -129,14 +129,11 @@ step_clone_or_update() {
 
 step_build_frontend() {
     log "Собираю production-бандл (npm ci + npm run build)"
-    # Передаём VITE-переменные так, чтобы Vite их увидел в build-time.
-    # Секрет извлекаем из /etc/deloresh/site-forms.env (там он гарантированно есть).
-    local SECRET
-    SECRET="$(awk -F= '/^DELORESH_SITE_FORMS_WRITE_SECRET=/{print substr($0, index($0,"=")+1)}' "$ENV_FILE")"
+    # Write-secret в клиент не кладём — запись через Bearer после логина.
 
     sudo -u "$DEPLOY_USER" \
         VITE_AMEDA_INSPECTION_DASHBOARD_URL="$VITE_AMEDA_INSPECTION_DASHBOARD_URL" \
-        VITE_SITE_FORMS_WRITE_SECRET="$SECRET" \
+        VITE_SITE_FORMS_API_BASE="" \
         bash -lc "cd '$INSTALL_DIR' && npm ci && npm run build"
 
     log "Раскатываю dist/ → $WEB_ROOT (rsync --delete)"

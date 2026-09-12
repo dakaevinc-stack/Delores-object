@@ -33,17 +33,36 @@ function apiBase(): string {
 function writeHeaders(withJsonBody: boolean): HeadersInit {
   const h: Record<string, string> = {}
   if (withJsonBody) h['Content-Type'] = 'application/json'
-  const secret = import.meta.env.VITE_SITE_FORMS_WRITE_SECRET
-  if (typeof secret === 'string' && secret.trim()) {
-    h['X-Deloresh-Write-Secret'] = secret.trim()
+  try {
+    const raw =
+      typeof localStorage !== 'undefined'
+        ? localStorage.getItem('deloresh-local-session:v2')
+        : null
+    if (raw) {
+      const parsed = JSON.parse(raw) as { token?: unknown }
+      if (typeof parsed.token === 'string' && parsed.token.trim()) {
+        h.Authorization = `Bearer ${parsed.token.trim()}`
+      }
+    }
+  } catch {
+    /* ignore */
   }
   return h
 }
 
-/** Есть ли ключ записи в текущей сборке (нужен для POST/PUT на сервер). */
+/** Можно писать на сервер: есть Bearer-сессия (write-secret больше не в клиенте). */
 export function hasWriteSecret(): boolean {
-  const secret = import.meta.env.VITE_SITE_FORMS_WRITE_SECRET
-  return typeof secret === 'string' && secret.trim().length > 0
+  try {
+    const raw =
+      typeof localStorage !== 'undefined'
+        ? localStorage.getItem('deloresh-local-session:v2')
+        : null
+    if (!raw) return false
+    const parsed = JSON.parse(raw) as { token?: unknown }
+    return typeof parsed.token === 'string' && parsed.token.trim().length >= 16
+  } catch {
+    return false
+  }
 }
 
 function siteUrl(siteId: string, tail: string): string {
@@ -136,10 +155,10 @@ export function describeRemoteWriteError(
   what: 'отчёт' | 'заявку' | 'изменения' | 'удаление' | 'файл' | 'папку',
 ): string {
   if (result.reason === 'forbidden') {
-    if (import.meta.env.DEV && !hasWriteSecret()) {
-      return `Сервер отклонил ${what}: в .env не задан VITE_SITE_FORMS_WRITE_SECRET (тот же, что на сервере). Перезапустите npm run dev или загрузите файл на http://94.242.58.24.`
+    if (!hasWriteSecret()) {
+      return `Сервер отклонил ${what}: войдите в систему ещё раз (сессия нужна для сохранения).`
     }
-    return `Сервер отклонил ${what}: нет ключа записи. Обновите страницу (Ctrl+Shift+R) или сообщите администратору.`
+    return `Сервер отклонил ${what}. Обновите страницу или сообщите администратору.`
   }
   if (result.reason === 'too_large') {
     return `${what.charAt(0).toUpperCase()}${what.slice(1)} не приняли — слишком большой объём. Уменьшите видео или количество фото и повторите.`
@@ -341,7 +360,10 @@ export async function fetchDriverTripsRemote(): Promise<DriverTrip[] | null> {
 
 export async function fetchStaffTasksRemote(): Promise<unknown[] | null> {
   try {
-    const res = await fetch(`${apiBase()}/api/staff-tasks`)
+    const res = await fetch(`${apiBase()}/api/staff-tasks`, {
+      headers: writeHeaders(false),
+    })
+    if (res.status === 401) return null
     if (!res.ok) return null
     const json: unknown = await res.json()
     if (!Array.isArray(json)) return []
@@ -371,6 +393,110 @@ export async function upsertStaffTaskRemote(task: unknown): Promise<boolean> {
       headers: writeHeaders(true),
       body: JSON.stringify(task),
     })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+export async function deleteStaffTaskRemote(taskId: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${apiBase()}/api/staff-tasks/${encodeURIComponent(taskId)}`,
+      { method: 'DELETE', headers: writeHeaders(false) },
+    )
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+export type StaffLoginRemote =
+  | {
+      ok: true
+      token: string
+      login: string
+      fullName: string
+      duty: string
+      dutyLabel: string
+    }
+  | { ok: false; reason: 'auth' | 'network' }
+
+export async function loginStaffRemote(
+  login: string,
+  password: string,
+): Promise<StaffLoginRemote> {
+  try {
+    const res = await fetch(`${apiBase()}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ login, password }),
+    })
+    if (!res.ok) return { ok: false, reason: 'auth' }
+    const json = (await res.json()) as Record<string, unknown>
+    if (
+      typeof json.token !== 'string' ||
+      typeof json.login !== 'string' ||
+      typeof json.fullName !== 'string' ||
+      typeof json.duty !== 'string' ||
+      typeof json.dutyLabel !== 'string'
+    ) {
+      return { ok: false, reason: 'auth' }
+    }
+    return {
+      ok: true,
+      token: json.token,
+      login: json.login,
+      fullName: json.fullName,
+      duty: json.duty,
+      dutyLabel: json.dutyLabel,
+    }
+  } catch {
+    return { ok: false, reason: 'network' }
+  }
+}
+
+export async function uploadStaffTaskBlob(input: {
+  id: string
+  mime: string
+  name?: string
+  dataBase64: string
+}): Promise<{ url: string; mime: string } | null> {
+  try {
+    const res = await fetch(`${apiBase()}/api/staff-tasks/blobs`, {
+      method: 'POST',
+      headers: writeHeaders(true),
+      body: JSON.stringify(input),
+    })
+    if (!res.ok) return null
+    const json = (await res.json()) as Record<string, unknown>
+    if (typeof json.url !== 'string') return null
+    return {
+      url: json.url,
+      mime: typeof json.mime === 'string' ? json.mime : input.mime,
+    }
+  } catch {
+    return null
+  }
+}
+
+export async function fetchStaffTaskBlob(urlPath: string): Promise<Blob | null> {
+  try {
+    const path = urlPath.startsWith('http') ? urlPath : `${apiBase()}${urlPath}`
+    const res = await fetch(path, { headers: writeHeaders(false) })
+    if (!res.ok) return null
+    return await res.blob()
+  } catch {
+    return null
+  }
+}
+
+export async function markStaffTaskSeenRemote(taskId: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${apiBase()}/api/staff-tasks/${encodeURIComponent(taskId)}/seen`,
+      { method: 'POST', headers: writeHeaders(false) },
+    )
     return res.ok
   } catch {
     return false
@@ -781,14 +907,36 @@ export async function fetchProjectFileDxfPreviewRemote(
         `${siteUrl(siteId, `/project-files/${encodeURIComponent(fileId)}/dxf-preview`)}?${qs}`,
         {
           ...(opts?.regenerate ? { headers: writeHeaders(false) } : {}),
-          signal: AbortSignal.timeout(15_000),
+          signal: AbortSignal.timeout(180_000),
         },
       )
       if (res.ok) {
-        const text = await res.text()
-        if (text.trim()) return text
+        const text = await readDxfBody(res)
+        if (text?.trim()) return text
       }
-      // 404/500 — превью ещё готовится или одноразовый сбой; ждём и пробуем снова.
+
+      let errCode = ''
+      try {
+        const ct = res.headers.get('content-type') ?? ''
+        if (ct.includes('application/json')) {
+          const body = (await res.json()) as { error?: string }
+          errCode = body.error ?? ''
+        }
+      } catch {
+        /* ignore */
+      }
+
+      // Файла нет на сервере / конвертация навсегда сломана — сразу WASM/ошибка.
+      if (
+        res.status === 422 ||
+        errCode === 'dxf_preview_failed' ||
+        errCode === 'not_found' ||
+        errCode === 'blob_missing'
+      ) {
+        return null
+      }
+
+      // 503 pending / временный 404/5xx — ждём готовности.
       if (res.status === 404 || res.status === 500 || res.status === 502 || res.status === 503) {
         opts?.onWait?.()
         const delay = Math.min(2500, 400 + attempt * 350)
@@ -801,6 +949,35 @@ export async function fetchProjectFileDxfPreviewRemote(
       await new Promise((r) => setTimeout(r, 800))
     }
   }
+  return null
+}
+
+/** DXF может прийти как gzip (если браузер не разжал Content-Encoding). */
+async function readDxfBody(res: Response): Promise<string | null> {
+  const buf = new Uint8Array(await res.arrayBuffer())
+  if (buf.length < 8) return null
+
+  const decodeUtf8 = (bytes: Uint8Array) => new TextDecoder('utf-8').decode(bytes)
+  const looksLikeDxf = (text: string) => {
+    const head = text.slice(0, 400)
+    return /SECTION/i.test(head) || /HEADER/i.test(head) || /ENTITIES/i.test(head)
+  }
+
+  // gzip magic
+  if (buf[0] === 0x1f && buf[1] === 0x8b && typeof DecompressionStream !== 'undefined') {
+    try {
+      const stream = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))
+      const text = await new Response(stream).text()
+      if (looksLikeDxf(text)) return text
+    } catch {
+      /* fall through */
+    }
+  }
+
+  const plain = decodeUtf8(buf)
+  if (looksLikeDxf(plain)) return plain
+  // Иногда приходит уже текст без типичного заголовка — всё равно пробуем.
+  if (plain.trim().length > 32) return plain
   return null
 }
 
@@ -978,6 +1155,35 @@ export async function createProjectFileRemote(
       },
       body: file,
     })
+    if (res.ok) return { ok: true }
+    return classifyResponse(res.status)
+  } catch {
+    return { ok: false, reason: 'network', status: null }
+  }
+}
+
+/**
+ * Заменить содержимое файла, сохранив его id.
+ * Так отметки, заливки и расчёты остаются привязанными к чертежу,
+ * а сервер сам перерисовывает план под новую версию.
+ */
+export async function replaceProjectFileBlobRemote(
+  siteId: string,
+  record: StoredSiteProjectFile,
+  file: Blob,
+): Promise<RemoteWriteResult> {
+  try {
+    const res = await fetch(
+      siteUrl(siteId, `/project-files/${encodeURIComponent(record.id)}/blob`),
+      {
+        method: 'PUT',
+        headers: {
+          ...writeHeaders(false),
+          'X-Project-File-Record': projectFileRecordHeader(record),
+        },
+        body: file,
+      },
+    )
     if (res.ok) return { ok: true }
     return classifyResponse(res.status)
   } catch {

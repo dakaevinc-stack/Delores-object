@@ -25,4 +25,13 @@ export default defineConfig([
       'react-hooks/set-state-in-effect': 'off',
     },
   },
+  {
+    /* DWG overlay: live refs / timing в gesture-handlers — осознанный паттерн;
+       React Compiler rules дают ложные срабатывания на 5k+ строк viewer. */
+    files: ['src/features/site-detail/DwgViewerChrome.tsx'],
+    rules: {
+      'react-hooks/refs': 'off',
+      'react-hooks/purity': 'off',
+    },
+  },
 ])

@@ -23,6 +23,42 @@ export const MOCK_CONSTRUCTION_SITES: readonly ConstructionSite[] = [
     },
   },
   {
+    id: 'olympiyskaya-derevnya',
+    name: 'Олимпийская деревня',
+    status: 'attention',
+    startDateIso: '2026-04-17',
+    endDateIso: '2026-08-31',
+    executive: {
+      planPercent: 71,
+      factPercent: 63,
+      summaryLine: 'Бордюр 48/70 · асфальт 12/18',
+      hasOpenRisks: true,
+      stages: [
+        { id: 'prep', name: 'Подготовка', planPercent: 100, factPercent: 100 },
+        { id: 'curb', name: 'Бортовой камень', planPercent: 70, factPercent: 48 },
+        { id: 'asphalt', name: 'Асфальтобетон', planPercent: 18, factPercent: 12 },
+      ],
+    },
+  },
+  {
+    id: 'anokhina',
+    name: 'Анохина',
+    status: 'attention',
+    startDateIso: '2026-04-17',
+    endDateIso: '2026-08-31',
+    executive: {
+      planPercent: 71,
+      factPercent: 63,
+      summaryLine: 'Бордюр 48/70 · асфальт 12/18',
+      hasOpenRisks: true,
+      stages: [
+        { id: 'prep', name: 'Подготовка', planPercent: 100, factPercent: 100 },
+        { id: 'curb', name: 'Бортовой камень', planPercent: 70, factPercent: 48 },
+        { id: 'asphalt', name: 'Асфальтобетон', planPercent: 18, factPercent: 12 },
+      ],
+    },
+  },
+  {
     id: 'brusilova',
     name: 'Брусилова',
     status: 'attention',

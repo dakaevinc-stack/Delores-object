@@ -22,4 +22,24 @@ describe('PinchTracker', () => {
     t.clear()
     expect(t.pointerCount()).toBe(0)
   })
+
+  it('reports remaining finger after one pointer lifts from a pinch', () => {
+    const pinch = new PinchTracker()
+    pinch.down(1, { x: 10, y: 10 })
+    pinch.down(2, { x: 40, y: 10 })
+    expect(pinch.isPinching()).toBe(true)
+    pinch.up(2)
+    expect(pinch.isPinching()).toBe(false)
+    expect(pinch.pointerCount()).toBe(1)
+    const left = pinch.remaining()
+    expect(left).toEqual({ id: 1, point: { x: 10, y: 10 } })
+  })
+
+  it('remaining is null with 0 or 2 pointers', () => {
+    const pinch = new PinchTracker()
+    expect(pinch.remaining()).toBeNull()
+    pinch.down(1, { x: 0, y: 0 })
+    pinch.down(2, { x: 1, y: 1 })
+    expect(pinch.remaining()).toBeNull()
+  })
 })

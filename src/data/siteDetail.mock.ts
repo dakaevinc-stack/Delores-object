@@ -121,7 +121,12 @@ function buildCriteria(site: ConstructionSite): SiteDetailCriterion[] {
     let plan = def.basePlan
     let fact = Math.round(plan * (factor + (i % 4) * 0.012 - (gap > 0 ? 0.04 : 0)))
 
-    if (site.id === 'brusilova' && def.id === 'curb') {
+    if (
+      (site.id === 'brusilova' ||
+        site.id === 'olympiyskaya-derevnya' ||
+        site.id === 'anokhina') &&
+      def.id === 'curb'
+    ) {
       plan = 300
       fact = 250
     }

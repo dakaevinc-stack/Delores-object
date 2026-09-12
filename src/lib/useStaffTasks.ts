@@ -8,9 +8,16 @@ import {
   addStaffTaskComment,
   addStaffTaskAttachment,
   syncStaffTasksFromRemote,
+  deleteStaffTask,
   type CreateStaffTaskInput,
 } from '../lib/staffTasksRepository'
-import type { StaffTask, StaffTaskAttachment, StaffTaskStatus } from '../domain/staffTask'
+import type {
+  StaffTask,
+  StaffTaskAttachment,
+  StaffTaskCommentAudio,
+  StaffTaskCommentFile,
+  StaffTaskStatus,
+} from '../domain/staffTask'
 
 const EMPTY_TASKS: StaffTask[] = []
 
@@ -54,14 +61,21 @@ export function useStaffTasks() {
   )
   const markSeen = useCallback((id: string, login: string) => markStaffTaskSeen(id, login), [])
   const addComment = useCallback(
-    (id: string, authorLogin: string, authorName: string, text: string) =>
-      addStaffTaskComment(id, { authorLogin, authorName, text }),
+    (
+      id: string,
+      authorLogin: string,
+      authorName: string,
+      text: string,
+      audio?: StaffTaskCommentAudio,
+      file?: StaffTaskCommentFile,
+    ) => addStaffTaskComment(id, { authorLogin, authorName, text, audio, file }),
     [],
   )
   const addFile = useCallback(
     (id: string, attachment: StaffTaskAttachment) => addStaffTaskAttachment(id, attachment),
     [],
   )
+  const remove = useCallback((id: string) => deleteStaffTask(id), [])
 
-  return { tasks, create, setStatus, markSeen, addComment, addFile }
+  return { tasks, create, setStatus, markSeen, addComment, addFile, remove }
 }

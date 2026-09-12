@@ -8,31 +8,56 @@
   background: #2b2b2b;
   cursor: grab;
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .stage:active {
   cursor: grabbing;
 }
 
-.img {
+.srcImg {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: auto;
-  height: auto;
-  max-width: none;
-  max-height: none;
-  transform-origin: center center;
-  user-select: none;
-  pointer-events: none;
-  image-rendering: auto;
+  width: 0;
+  height: 0;
   opacity: 0;
-  transition: opacity 0.15s ease;
-  will-change: transform;
-  backface-visibility: hidden;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
 }
 
-.stage:has(.img[data-ready='true']) .img {
+.canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: auto;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stage:has(.canvas[data-ready='true']) .canvas {
   opacity: 1;
 }
 
@@ -42,14 +67,142 @@
   display: grid;
   place-items: center;
   margin: 0;
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 13px;
-  font-weight: 600;
 }
 
-.overlay {
+.loading::after {
+  content: '';
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-top-color: rgba(255, 255, 255, 0.85);
+  animation: rasterSpin 0.7s linear infinite;
+}
+
+@keyframes rasterSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.zoomDock {
   position: absolute;
-  inset: 0;
-  z-index: 2;
+  z-index: 6;
+  top: 50%;
+  right: max(10px, env(safe-area-inset-right, 0px));
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(180deg, rgba(32, 38, 48, 0.92) 0%, rgba(18, 22, 30, 0.94) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 10px 28px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   pointer-events: auto;
+  touch-action: manipulation;
+  /* Не даём flex/zoom страницы раздувать панель */
+  width: max-content;
+  max-width: 48px;
+  box-sizing: border-box;
+}
+
+.zoomBtn {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  max-width: 36px;
+  min-height: 36px;
+  max-height: 36px;
+  flex: 0 0 36px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.12s ease,
+    color 0.15s ease;
+}
+
+.zoomBtn svg {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  max-width: 16px;
+  max-height: 16px;
+  display: block;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.zoomBtn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.zoomBtn:active {
+  transform: scale(0.94);
+  background: rgba(238, 45, 58, 0.28);
+  border-color: rgba(238, 45, 58, 0.45);
+}
+
+.zoomBtn:focus-visible {
+  outline: 2px solid rgba(238, 45, 58, 0.7);
+  outline-offset: 2px;
+}
+
+@media (max-width: 719px) {
+  .zoomDock {
+    top: max(10px, env(safe-area-inset-top, 0px));
+    right: max(8px, env(safe-area-inset-right, 0px));
+    transform: none;
+    padding: 3px;
+    gap: 3px;
+    border-radius: 11px;
+    max-width: 42px;
+  }
+
+  .zoomBtn {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    max-width: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    flex: 0 0 34px;
+    border-radius: 9px;
+  }
+
+  .zoomBtn svg {
+    width: 15px;
+    height: 15px;
+    min-width: 15px;
+    min-height: 15px;
+    max-width: 15px;
+    max-height: 15px;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .zoomDock {
+    top: max(6px, env(safe-area-inset-top, 0px));
+    bottom: auto;
+    right: max(6px, env(safe-area-inset-right, 0px));
+    transform: none;
+  }
 }

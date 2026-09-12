@@ -40,6 +40,13 @@ server {
         try_files $uri =404;
     }
 
+    # Service Worker нельзя кэшировать как «immutable» — иначе телефоны месяцами
+    # сидят на старой версии после деплоя.
+    location = /sw.js {
+        add_header Cache-Control "no-cache, must-revalidate" always;
+        try_files $uri =404;
+    }
+
     # API заявок снабженцу, отчётов бригадира и медиа объектов.
     location /api/ {
         proxy_pass http://127.0.0.1:8787;

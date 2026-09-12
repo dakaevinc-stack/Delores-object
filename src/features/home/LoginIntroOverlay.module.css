@@ -13,9 +13,18 @@
   min-height: 100vh;
   overflow: hidden;
   opacity: 1;
-  transition: opacity 0.28s ease;
+  transition:
+    opacity 0.42s ease,
+    background 0.55s ease;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+}
+
+.screenHandoff {
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(255, 255, 255, 0.92) 0%, transparent 55%),
+    linear-gradient(180deg, #eef1f5 0%, #f4f5f7 48%, #f7f8fa 100%);
+  cursor: default;
 }
 
 .screenOut {
@@ -46,6 +55,92 @@
   object-position: center center;
   background: #cdd3d8;
   pointer-events: none;
+  transition:
+    opacity 0.55s ease,
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.55s ease;
+}
+
+.videoHandoff {
+  opacity: 0;
+  transform: scale(1.04);
+  filter: blur(10px);
+}
+
+.handoff {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: max(24px, env(safe-area-inset-top, 0px)) 24px max(24px, env(safe-area-inset-bottom, 0px));
+  text-align: center;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition:
+    opacity 0.45s ease 0.08s,
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.08s;
+}
+
+.handoffVisible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.handoffMark {
+  width: min(88px, 22vw);
+  height: auto;
+  margin-bottom: 4px;
+  filter: drop-shadow(0 8px 20px rgba(23, 42, 77, 0.12));
+  animation: handoffMarkIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.handoffKicker {
+  margin: 0;
+  font-family: var(--display, system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(23, 42, 77, 0.55);
+}
+
+.handoffName {
+  margin: 0;
+  max-width: min(92vw, 420px);
+  font-family: var(--display, system-ui, sans-serif);
+  font-size: clamp(22px, 5.5vw, 30px);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.handoffRole {
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(23, 42, 77, 0.1);
+  background: rgba(255, 255, 255, 0.72);
+  font-family: var(--display, system-ui, sans-serif);
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(23, 42, 77, 0.82);
+}
+
+@keyframes handoffMarkIn {
+  from {
+    opacity: 0;
+    transform: scale(0.88) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 /* На широких экранах — весь вертикальный кадр целиком */
@@ -88,6 +183,13 @@
 
 @media (prefers-reduced-motion: reduce) {
   .screen {
+    transition: opacity 0.2s ease;
+  }
+
+  .video,
+  .handoff,
+  .handoffMark {
     transition: none;
+    animation: none;
   }
 }

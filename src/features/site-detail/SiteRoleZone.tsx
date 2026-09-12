@@ -2,6 +2,7 @@ import { Children, useId, type ReactNode } from 'react'
 import { SITE_PAGE_ZONES, type SitePageZoneId } from '../../domain/sitePageZone'
 import { CollapseToggle } from './CollapseToggle'
 import { useAnchoredExpand } from './useAnchoredExpand'
+import panelKickerStyles from './sitePanelKicker.module.css'
 import styles from './SiteRoleZone.module.css'
 
 type Props = {
@@ -35,6 +36,9 @@ export function SiteRoleZone({
   const isPanel = layout === 'panel'
   const { expanded, toggle, anchorRef } = useAnchoredExpand(defaultExpanded)
   const showBody = hasBody && (!collapsible || expanded)
+  /** CTA (заявка / отчёт) — только когда зона открыта; в свёрнутом виде — одна кнопка «Открыть». */
+  const showActions = Boolean(actions) && (!collapsible || expanded)
+  const showHeaderControls = (collapsible && hasBody) || showActions
 
   return (
     <section
@@ -57,8 +61,8 @@ export function SiteRoleZone({
         ) : null}
         <div className={styles.headText}>
           {showKicker ? (
-            <p className={styles.kicker}>
-              <img className={styles.kickerMark} src="/brand-chevron.svg" alt="" aria-hidden />
+            <p className={`${panelKickerStyles.kicker} ${styles.zoneKicker}`}>
+              <img className={panelKickerStyles.mark} src="/brand-chevron.svg" alt="" aria-hidden />
               {copy.kicker}
             </p>
           ) : null}
@@ -67,9 +71,9 @@ export function SiteRoleZone({
           </h2>
           <p className={styles.lead}>{copy.lead}</p>
         </div>
-        {(collapsible && hasBody) || actions ? (
+        {showHeaderControls ? (
           <div className={styles.actions}>
-            {actions}
+            {showActions ? <div className={styles.actionCtas}>{actions}</div> : null}
             {collapsible && hasBody ? (
               <CollapseToggle
                 expanded={expanded}

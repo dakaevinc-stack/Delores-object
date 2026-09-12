@@ -35,7 +35,7 @@ const TONE_KICKER: Record<NonNullable<HubCardProps['tone']>, string> = {
 
 function ArrowRight() {
   return (
-    <svg viewBox="0 0 20 20" width="14" height="14" fill="none" aria-hidden focusable="false">
+    <svg viewBox="0 0 20 20" width="11" height="11" fill="none" aria-hidden focusable="false">
       <path
         d="M4 10h11M10 5l5 5-5 5"
         stroke="currentColor"

@@ -1,19 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { HubCard } from '../features/home/HubCard'
 import { MastheadSignIn } from '../features/home/MastheadSignIn'
 import {
   peekLoginIntroPending,
   subscribeLoginIntroFinished,
 } from '../features/home/loginIntroPending'
-import { TasksPanel } from '../features/tasks/TasksPanel'
-import { TaskCreateModal } from '../features/tasks/TaskCreateModal'
-import {
-  canCreateStaffTasks,
-  countUnseenForAssignee,
-  filterStaffTasks,
-  type StaffTaskFilter,
-} from '../domain/staffTask'
+import { countUnseenForAssignee, canCreateStaffTasks } from '../domain/staffTask'
 import { useLocalSession } from '../lib/useLocalSession'
 import { useStaffTasks } from '../lib/useStaffTasks'
 import { homeShowsHubs } from '../domain/sitePageZone'
@@ -212,14 +205,22 @@ if (import.meta.env.DEV && !inspectionDashboardUrl) {
 
 export function HomePage() {
   const session = useLocalSession()
-  const { tasks, create } = useStaffTasks()
-  const [tasksOpen, setTasksOpen] = useState(false)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [taskFilter, setTaskFilter] = useState<StaffTaskFilter>('all')
+  const { tasks } = useStaffTasks()
   const [hubRevealed, setHubRevealed] = useState(() => {
     if (typeof window === 'undefined') return true
     if (!session) return false
     return !peekLoginIntroPending()
+  })
+  /** animate = stagger раз за логин-сессию; static = уже играли в этой вкладке */
+  const [hubMotion] = useState<'animate' | 'static'>(() => {
+    try {
+      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('deloresh-hub-stagger:done')) {
+        return 'static'
+      }
+    } catch {
+      /* ignore */
+    }
+    return 'animate'
   })
 
   useEffect(() => {
@@ -234,30 +235,19 @@ export function HomePage() {
     if (!peekLoginIntroPending()) setHubRevealed(true)
   }, [session])
 
+  useEffect(() => {
+    if (!hubRevealed || hubMotion !== 'animate') return
+    try {
+      sessionStorage.setItem('deloresh-hub-stagger:done', '1')
+    } catch {
+      /* ignore */
+    }
+  }, [hubRevealed, hubMotion])
+
   const showHubs = session?.duty ? homeShowsHubs(session.duty) : false
-  const canCreate = session ? canCreateStaffTasks(session.duty) : false
   const hubCount = showHubs ? 4 : 2
 
   const unseen = session ? countUnseenForAssignee(tasks, session.login) : 0
-
-  const visibleTasks = useMemo(() => {
-    if (!session) return []
-    return filterStaffTasks(tasks, { login: session.login, filter: taskFilter })
-  }, [tasks, session, taskFilter])
-
-  const taskCounts = useMemo(() => {
-    if (!session) return {}
-    const mine = filterStaffTasks(tasks, {
-      login: session.login,
-      filter: 'all',
-    })
-    return {
-      all: mine.length,
-      new: mine.filter((t) => t.status === 'new').length,
-      in_progress: mine.filter((t) => t.status === 'in_progress').length,
-      done: mine.filter((t) => t.status === 'done').length,
-    }
-  }, [tasks, session])
 
   const todayDate = new Date().toLocaleDateString('ru-RU', {
     day: 'numeric',
@@ -270,6 +260,17 @@ export function HomePage() {
   if (session?.duty === 'driver') {
     return <Navigate to="/driver" replace />
   }
+
+  const hubRowClass = [
+    styles.hubRow,
+    !hubRevealed
+      ? styles.hubRowHidden
+      : hubMotion === 'animate'
+        ? styles.hubRowRevealed
+        : styles.hubRowStatic,
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <div className={[styles.page, session ? null : styles.pageGuest].filter(Boolean).join(' ')}>
@@ -286,15 +287,21 @@ export function HomePage() {
 
           <div className={styles.brandAuth}>
             <div className={styles.brandCell}>
-              <img
-                className={styles.brandLogo}
-                src="/brand-logotype.png?v=4"
-                alt="Деловые Решения. Когда бизнес — личное."
-                width={681}
-                height={376}
-                decoding="async"
-                fetchPriority="high"
-              />
+              <picture>
+                <source
+                  media="(max-width: 719px)"
+                  srcSet="/brand-mark.png?v=2"
+                />
+                <img
+                  className={styles.brandLogo}
+                  src="/brand-logotype.png?v=4"
+                  alt="Деловые Решения"
+                  width={681}
+                  height={376}
+                  decoding="async"
+                  fetchPriority="high"
+                />
+              </picture>
             </div>
 
             <div className={styles.mastheadToday} aria-label="Сегодняшняя дата">
@@ -318,105 +325,69 @@ export function HomePage() {
       </header>
 
       {session ? (
-        <>
-          <div
-            className={[styles.hubRow, hubRevealed ? styles.hubRowRevealed : styles.hubRowHidden]
-              .filter(Boolean)
-              .join(' ')}
-            data-count={hubCount}
-          >
-            <HubCard
-              ariaLabel="Открыть задачи"
-              title="Задачи"
-              lead={
-                unseen > 0
+        <div className={hubRowClass} data-count={hubCount}>
+          <HubCard
+            to="/tasks"
+            ariaLabel="Открыть задачи"
+            title="Задачи"
+            lead={
+              unseen > 0
+                ? canCreateStaffTasks(session.duty)
                   ? `${unseen} новых — назначить и контролировать`
-                  : 'Назначить и контролировать'
-              }
-              tone="tasks"
-              icon={TASKS_ICON}
-              tags={['Сегодня', 'Срок', 'Файлы', 'Исполнитель', 'Чат']}
-              cta="Открыть"
-              badge={unseen}
-              expanded={tasksOpen}
-              onToggle={() => setTasksOpen((v) => !v)}
-              ariaControls="home-tasks-panel"
-              headingId="home-tasks-heading"
-            />
+                  : `${unseen} новых — откройте и выполните`
+                : canCreateStaffTasks(session.duty)
+                  ? 'Назначить и контролировать'
+                  : 'Мои задачи на сегодня'
+            }
+            tone="tasks"
+            icon={TASKS_ICON}
+            tags={['Сегодня', 'Срок', 'Файлы', 'Исполнитель', 'Чат']}
+            cta="Открыть"
+            badge={unseen}
+          />
 
-            {showHubs ? (
-              <>
-                <HubCard
-                  to="/spectehnika"
-                  ariaLabel="Открыть парк техники"
-                  title="Спецтехника"
-                  lead="Техника, документы и ремонты"
-                  tone="fleet"
-                  icon={FLEET_ICON}
-                  tags={['ТО', 'Страховки', 'Пропуска', 'Ремонты', 'Расходы']}
-                  cta="Открыть"
-                />
-
-                <HubCard
-                  href={inspectionDashboardUrl || undefined}
-                  ariaLabel="Открыть панель приёмки техники в новой вкладке"
-                  title="Приёмка техники"
-                  lead="Приёмка и контроль на площадке"
-                  tone="inspect"
-                  icon={INSPECTION_ICON}
-                  tags={['Чек-листы', 'Фото', 'История', 'Решения', 'Отчёты']}
-                  cta="Открыть"
-                  unavailableReason="Панель пока не подключена — обратитесь к администратору."
-                />
-              </>
-            ) : null}
-
-            <HubCard
-              to="/objects"
-              ariaLabel="Открыть список объектов"
-              title="Объекты"
-              lead="Сроки, материалы и ход работ"
-              tone="sites"
-              icon={OBJECTS_ICON}
-              tags={['Поиск', 'Статус', 'Прогресс', 'Сроки', 'План']}
-              cta="Открыть"
-            />
-          </div>
-
-          {tasksOpen ? (
-            <div id="home-tasks-panel">
-              <TasksPanel
-                tasks={visibleTasks}
-                filter={taskFilter}
-                onFilterChange={setTaskFilter}
-                canCreate={canCreate}
-                onCreate={() => setCreateOpen(true)}
-                title="Мои задачи"
-                subtitle="Сегодня и ближайшие"
-                counts={taskCounts}
+          {showHubs ? (
+            <>
+              <HubCard
+                to="/spectehnika"
+                ariaLabel="Открыть парк техники"
+                title="Спецтехника"
+                lead="Техника, документы и ремонты"
+                tone="fleet"
+                icon={FLEET_ICON}
+                tags={['ТО', 'Страховки', 'Пропуска', 'Ремонты', 'Расходы']}
+                cta="Открыть"
               />
-              <p className={styles.tasksAllWrap}>
-                <Link className={styles.tasksAllLink} to="/tasks">
-                  Все задачи →
-                </Link>
-              </p>
-            </div>
+
+              <HubCard
+                href={inspectionDashboardUrl || undefined}
+                ariaLabel="Открыть панель приёмки техники в новой вкладке"
+                title="Приёмка техники"
+                lead={
+                  inspectionDashboardUrl
+                    ? 'Внешняя панель приёмки (Streamlit)'
+                    : 'Панель пока не подключена к этому сайту'
+                }
+                tone="inspect"
+                icon={INSPECTION_ICON}
+                tags={['Чек-листы', 'Фото', 'История', 'Решения', 'Отчёты']}
+                cta="Открыть"
+                unavailableReason="Нужен URL панели (VITE_AMEDA_INSPECTION_DASHBOARD_URL) при сборке — обратитесь к администратору."
+              />
+            </>
           ) : null}
 
-          <TaskCreateModal
-            open={createOpen}
-            excludeLogin={session.login}
-            onClose={() => setCreateOpen(false)}
-            onSubmit={(values) => {
-              create({
-                ...values,
-                creatorLogin: session.login,
-                creatorName: session.fullName,
-              })
-              setTasksOpen(true)
-            }}
+          <HubCard
+            to="/objects"
+            ariaLabel="Открыть список объектов"
+            title="Объекты"
+            lead="Сроки, материалы и ход работ"
+            tone="sites"
+            icon={OBJECTS_ICON}
+            tags={['Поиск', 'Статус', 'Прогресс', 'Сроки', 'План']}
+            cta="Открыть"
           />
-        </>
+        </div>
       ) : null}
     </div>
   )

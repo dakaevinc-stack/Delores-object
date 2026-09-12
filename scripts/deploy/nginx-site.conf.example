@@ -17,6 +17,17 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
+    location = /index.html {
+        add_header Cache-Control "no-cache, must-revalidate" always;
+        try_files $uri =404;
+    }
+
+    # Service Worker — без долгого кэша (иначе мобильные клиенты залипают на старой сборке).
+    location = /sw.js {
+        add_header Cache-Control "no-cache, must-revalidate" always;
+        try_files $uri =404;
+    }
+
     # API заявок снабженцу, отчётов бригадира, медиа объектов.
     location /api/ {
         proxy_pass http://127.0.0.1:8787;

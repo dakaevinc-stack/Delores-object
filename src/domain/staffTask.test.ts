@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   canCreateStaffTasks,
+  canDeleteStaffTask,
   countUnseenForAssignee,
   filterStaffTasks,
   isTaskForLogin,
@@ -41,6 +42,34 @@ describe('staffTask', () => {
     expect(canCreateStaffTasks('brigadier')).toBe(false)
     expect(canCreateStaffTasks('driver')).toBe(false)
     expect(canCreateStaffTasks('supply')).toBe(false)
+  })
+
+  it('allows delete only for creator', () => {
+    const t = task({ id: '1', title: 'A', creatorLogin: 'Isaev' })
+    expect(canDeleteStaffTask(t, 'Isaev')).toBe(true)
+    expect(canDeleteStaffTask(t, 'Gevenyan')).toBe(false)
+    expect(canDeleteStaffTask({ ...t, deletedAtIso: '2026-01-01T00:00:00.000Z' }, 'Isaev')).toBe(
+      false,
+    )
+  })
+
+  it('hides deleted tasks from filters and unseen', () => {
+    const today = localDateKey()
+    const list = [
+      task({ id: '1', title: 'Live', assigneeLogin: 'Gevenyan', dueDate: today }),
+      task({
+        id: '2',
+        title: 'Gone',
+        assigneeLogin: 'Gevenyan',
+        dueDate: today,
+        deletedAtIso: '2026-01-02T00:00:00.000Z',
+        seenByAssignee: false,
+      }),
+    ]
+    expect(filterStaffTasks(list, { login: 'Gevenyan', filter: 'all' }).map((t) => t.id)).toEqual([
+      '1',
+    ])
+    expect(countUnseenForAssignee(list, 'Gevenyan')).toBe(1)
   })
 
   it('matches assignee and creator case-insensitively', () => {
@@ -135,5 +164,39 @@ describe('staffTask', () => {
     expect(merged[0].status).toBe('in_progress')
     expect(merged[0].seenByAssignee).toBe(true)
     expect(merged[0].comments.map((c) => c.id).sort()).toEqual(['c1', 'c2'])
+  })
+
+  it('keeps soft-delete tombstone across merge', () => {
+    const local = task({
+      id: '1',
+      title: 'Alive',
+      updatedAtIso: '2026-01-03T00:00:00.000Z',
+    })
+    const remote = task({
+      id: '1',
+      title: 'Dead',
+      updatedAtIso: '2026-01-01T00:00:00.000Z',
+      deletedAtIso: '2026-01-02T00:00:00.000Z',
+    })
+    const merged = mergeStaffTasks([local], [remote])
+    expect(merged[0].deletedAtIso).toBe('2026-01-02T00:00:00.000Z')
+    expect(merged[0].title).toBe('Alive')
+  })
+
+  it('drops demo tasks and fills missing comments/attachments', () => {
+    const remote = {
+      id: 'real-1',
+      title: 'Real',
+      assigneeLogin: 'A',
+      creatorLogin: 'B',
+      dueDate: localDateKey(),
+      status: 'new' as const,
+      updatedAtIso: '2026-01-02T00:00:00.000Z',
+    }
+    const demo = task({ id: 'demo-task-9', title: 'Demo' })
+    const merged = mergeStaffTasks([demo], [remote as never])
+    expect(merged.map((t) => t.id)).toEqual(['real-1'])
+    expect(merged[0].comments).toEqual([])
+    expect(merged[0].attachments).toEqual([])
   })
 })

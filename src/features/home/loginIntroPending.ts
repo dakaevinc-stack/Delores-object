@@ -1,5 +1,6 @@
 const KEY = 'deloresh-pending-login-intro:v1'
 const EVENT = 'deloresh-login-intro'
+export const LOGIN_INTRO_FINISHED_EVENT = 'deloresh-login-intro-finished'
 
 /** Запросить брендовый ролик после успешного «Войти» (переживает редирект /driver). */
 export function requestLoginIntro(): void {
@@ -44,4 +45,18 @@ export function subscribeLoginIntroRequest(onRequest: () => void): () => void {
   const handler = () => onRequest()
   window.addEventListener(EVENT, handler)
   return () => window.removeEventListener(EVENT, handler)
+}
+
+/** Интро полностью завершено (мост + fade) — можно показывать кабинет. */
+export function notifyLoginIntroFinished(): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(LOGIN_INTRO_FINISHED_EVENT))
+  }
+}
+
+export function subscribeLoginIntroFinished(onFinished: () => void): () => void {
+  if (typeof window === 'undefined') return () => {}
+  const handler = () => onFinished()
+  window.addEventListener(LOGIN_INTRO_FINISHED_EVENT, handler)
+  return () => window.removeEventListener(LOGIN_INTRO_FINISHED_EVENT, handler)
 }

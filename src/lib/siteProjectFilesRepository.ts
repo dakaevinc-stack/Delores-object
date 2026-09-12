@@ -10,6 +10,8 @@ export type StoredSiteProjectFile = {
   mime: string
   sizeBytes: number
   uploadedAtIso: string
+  /** Когда файл выбрали основным чертежом карточки объекта (новее = приоритетнее). */
+  featuredAtIso?: string
   /** null / отсутствует — в корне папки документов */
   parentId?: string | null
   /** Gzip DXF-превью на сервере — для мгновенного открытия DWG */
@@ -36,9 +38,11 @@ export function projectFileSyncSignature(row: StoredSiteProjectFile): string {
     row.name,
     row.sizeBytes,
     row.uploadedAtIso,
+    row.featuredAtIso ?? '',
     row.dxfPreviewStatus ?? '',
     row.dxfPreviewAtIso ?? '',
     row.pngPreviewStatus ?? '',
+    row.pngPreviewAtIso ?? '',
     row.pngPreviewAtIso ?? '',
     row.pngWorldBounds?.pixelsPerUnit ?? '',
   ].join(':')

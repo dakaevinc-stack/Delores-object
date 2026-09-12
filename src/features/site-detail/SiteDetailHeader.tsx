@@ -13,20 +13,17 @@ type Props = {
   site: ConstructionSite
   /** PDF/DWG проекта — в той же карточке, без отдельной зоны. */
   documents?: ReactNode
-  /** Напоминание сдать отчёт — внутри hero, рядом со статусом объекта. */
+  /** Напоминание про отчёт — в шапке объекта, слева от факта %. */
   deadlineAlert?: ReactNode
-  /** Действия смены (заявка / отчёт) — справа в ряду с оповещением. */
-  heroActions?: ReactNode
 }
 
-export function SiteDetailHeader({ site, documents, deadlineAlert, heroActions }: Props) {
+export function SiteDetailHeader({ site, documents, deadlineAlert }: Props) {
   const status = resolveSiteStatus(site)
   const token = SITE_STATUS_TOKEN[status]
   const pct = completionPercent(site)
   const planPct = Math.round(site.executive.planPercent)
   const factPct = Math.max(0, Math.min(100, pct))
   const hasDocuments = Boolean(documents)
-  const showToolbar = Boolean(deadlineAlert || heroActions)
 
   return (
     <header className={styles.header}>
@@ -75,15 +72,20 @@ export function SiteDetailHeader({ site, documents, deadlineAlert, heroActions }
             ) : null}
           </div>
 
-          <div
-            className={styles.heroStat}
-            aria-label={`Факт ${pct} процентов, план ${planPct} процентов`}
-          >
-            <p className={styles.pct}>
-              <span className={styles.pctValue}>{pct}</span>
-              <span className={styles.pctSuffix}>%</span>
-            </p>
-            <p className={styles.pctCaption}>факт</p>
+          <div className={styles.heroTopEnd}>
+            {deadlineAlert ? (
+              <div className={styles.heroAlert}>{deadlineAlert}</div>
+            ) : null}
+            <div
+              className={styles.heroStat}
+              aria-label={`Факт ${pct} процентов, план ${planPct} процентов`}
+            >
+              <p className={styles.pct}>
+                <span className={styles.pctValue}>{pct}</span>
+                <span className={styles.pctSuffix}>%</span>
+              </p>
+              <p className={styles.pctCaption}>факт</p>
+            </div>
           </div>
         </div>
 
@@ -115,19 +117,6 @@ export function SiteDetailHeader({ site, documents, deadlineAlert, heroActions }
             </span>
           </div>
         </div>
-
-        {showToolbar ? (
-          <div className={styles.heroToolbar}>
-            {deadlineAlert ? (
-              <div className={styles.heroAlert}>{deadlineAlert}</div>
-            ) : (
-              <span className={styles.heroToolbarSpacer} aria-hidden />
-            )}
-            {heroActions ? (
-              <div className={styles.heroActions}>{heroActions}</div>
-            ) : null}
-          </div>
-        ) : null}
 
         {hasDocuments ? (
           <div className={styles.docs}>{documents}</div>

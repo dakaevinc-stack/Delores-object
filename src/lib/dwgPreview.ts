@@ -1,5 +1,9 @@
 import { convertDwgToDxf, initWasm } from '@cadview/dwg'
-import { fetchProjectFileDxfPreviewRemote, fetchProjectFilePngPreviewRemote } from './siteFormsApi'
+import {
+  fetchProjectFileDxfPreviewRemote,
+  fetchProjectFilePngPreviewRemote,
+  projectFilePngPreviewUrl,
+} from './siteFormsApi'
 import {
   getDwgDxfPreview,
   putDwgDxfPreview,
@@ -59,30 +63,28 @@ export async function resolveDwgDxfText(
   if (pending) return pending
 
   const job = (async () => {
-    // На сервере: LibreDWG + ACadSharp. Ждём готовую конвертацию, не падаем на слабый WASM в браузере.
-    if (opts.remoteActive) {
-      opts.onPhase?.('converting')
-      const remoteDxf = await fetchProjectFileDxfPreviewRemote(siteId, fileId, {
-        timeoutMs: 180_000,
-        onWait: () => opts.onPhase?.('converting'),
-        dxfPreviewAtIso: opts.dxfPreviewAtIso,
-        uploadedAtIso,
-        regenerate: opts.regenerate,
-      })
-      if (remoteDxf) {
-        memoryCache.set(key, remoteDxf)
-        void putDwgDxfPreview(fileId, uploadedAtIso, remoteDxf, opts.dxfPreviewAtIso)
-        opts.onPhase?.('rendering')
-        return remoteDxf
-      }
-      throw new Error('dxf_conversion_failed: server_preview_unavailable')
+    // Всегда пробуем серверное превью (даже если remoteActive ещё false —
+    // иначе 3 минуты «Загружаем…» на пустых 404, пока remoteActive не выставится).
+    opts.onPhase?.('converting')
+    const remoteDxf = await fetchProjectFileDxfPreviewRemote(siteId, fileId, {
+      timeoutMs: opts.remoteActive === false ? 12_000 : 180_000,
+      onWait: () => opts.onPhase?.('converting'),
+      dxfPreviewAtIso: opts.dxfPreviewAtIso,
+      uploadedAtIso,
+      regenerate: opts.regenerate,
+    })
+    if (remoteDxf) {
+      memoryCache.set(key, remoteDxf)
+      void putDwgDxfPreview(fileId, uploadedAtIso, remoteDxf, opts.dxfPreviewAtIso)
+      opts.onPhase?.('rendering')
+      return remoteDxf
     }
 
-    // Офлайн: только LibreDWG в браузере.
+    // Офлайн / файла нет на сервере: LibreDWG в браузере.
     opts.onPhase?.('fetching')
     const wasmInit = initWasm({ wasmUrl: DWG_WASM_URL })
     const blob = await opts.fetchBlob()
-    if (!blob) throw new Error('dwg_blob_missing')
+    if (!blob) throw new Error('dxf_conversion_failed: server_preview_unavailable')
     await wasmInit
 
     opts.onPhase?.('converting')
@@ -186,7 +188,7 @@ export function prefetchDwgPreview(
   })
 }
 
-/** Прогреть все DWG объекта — открытие потом из памяти. */
+/** Прогреть превью DWG объекта — без тяжёлого DXF, если PNG уже готов. */
 export function prefetchAllDwgPreviews(
   siteId: string,
   rows: readonly {
@@ -205,14 +207,25 @@ export function prefetchAllDwgPreviews(
   if (!opts.remoteActive) return
   for (const row of rows) {
     if (row.kind !== 'dwg') continue
+    // Готовый план — только HTTP-прогрев картинки (не Blob и не DXF).
+    if (row.pngPreviewStatus === 'ready') {
+      const cacheKey = row.pngPreviewAtIso ?? row.uploadedAtIso
+      const url = projectFilePngPreviewUrl(siteId, row.id, cacheKey)
+      if (typeof Image !== 'undefined') {
+        const img = new Image()
+        img.decoding = 'async'
+        img.src = url
+      }
+      continue
+    }
+    prefetchDwgPngPreview(siteId, row.id, {
+      cacheKey: row.pngPreviewAtIso ?? row.uploadedAtIso,
+      pngPreviewStatus: row.pngPreviewStatus,
+    })
     prefetchDwgPreview(siteId, row.id, row.uploadedAtIso, {
       remoteActive: true,
       fetchBlob: () => opts.fetchBlob(row.id),
       dxfPreviewAtIso: row.dxfPreviewAtIso,
-    })
-    prefetchDwgPngPreview(siteId, row.id, {
-      cacheKey: row.pngPreviewAtIso ?? row.uploadedAtIso,
-      pngPreviewStatus: row.pngPreviewStatus,
     })
   }
 }

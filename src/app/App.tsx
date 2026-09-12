@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { LoginIntroHost } from '../features/home/LoginIntroHost'
+import { PageEnter } from './PageEnter'
 import { RequireAuth, RequireFleetAccess } from './RequireAuth'
 
 const HomePage = lazy(() =>
@@ -46,7 +47,8 @@ export function App() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <LoginIntroHost />
-      <Routes>
+      <PageEnter>
+        <Routes>
         <Route path="/" element={<HomePage />} />
         <Route
           path="/spectehnika"
@@ -127,7 +129,8 @@ export function App() {
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+        </Routes>
+      </PageEnter>
     </Suspense>
   )
 }

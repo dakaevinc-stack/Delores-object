@@ -9,6 +9,15 @@ import { putUserSitesRemote } from './siteFormsApi'
 
 const STORAGE_KEY = 'deloresh-user-sites:v1'
 
+/** Разовые тестовые объекты (live-audit) — не показывать и не синкать обратно. */
+const DROPPED_USER_SITE_IDS = new Set(['audit-20260907-test-ne-rabochiy'])
+
+function isDroppedUserSite(site: Pick<ConstructionSite, 'id' | 'name'>): boolean {
+  if (DROPPED_USER_SITE_IDS.has(site.id)) return true
+  const name = site.name.trim()
+  return /^АУДИТ_\d{8}_ТЕСТ/i.test(name) || name.includes('ТЕСТ_НЕ_РАБОЧИЙ')
+}
+
 type Listener = () => void
 const listeners = new Set<Listener>()
 
@@ -28,7 +37,8 @@ function readFromStorage(): ConstructionSite[] {
         typeof x === 'object' &&
         typeof (x as ConstructionSite).id === 'string' &&
         typeof (x as ConstructionSite).name === 'string' &&
-        !!(x as ConstructionSite).executive,
+        !!(x as ConstructionSite).executive &&
+        !isDroppedUserSite(x as ConstructionSite),
     )
   } catch {
     return []
@@ -36,15 +46,16 @@ function readFromStorage(): ConstructionSite[] {
 }
 
 function persist(next: ConstructionSite[], syncRemote: boolean) {
+  const cleaned = next.filter((s) => !isDroppedUserSite(s))
   if (typeof localStorage !== 'undefined') {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned))
     } catch {
       /* квота/приватный режим — пропускаем */
     }
   }
   if (syncRemote) {
-    void putUserSitesRemote(next)
+    void putUserSitesRemote(cleaned)
   }
 }
 

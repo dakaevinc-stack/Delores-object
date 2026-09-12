@@ -387,8 +387,14 @@ function regionCircularity(area: number, perimeter: number): number {
 /** Почти идеальный круг — обычно колодец/точка на газоне, не участок покрытия. */
 export function isCircleLikeRegion(region: Pick<PickedRegion, 'vertices' | 'area' | 'perimeter'>): boolean {
   const circ = regionCircularity(region.area, region.perimeter)
-  // Только почти идеальный круг (колодец). Прямоугольники/покрытия ~0.5–0.8.
-  return circ >= 0.92
+  if (circ >= 0.86) return true
+  if (region.vertices.length < 6) return false
+  const xs = region.vertices.map((p) => p.x)
+  const ys = region.vertices.map((p) => p.y)
+  const bw = Math.max(...xs) - Math.min(...xs)
+  const bh = Math.max(...ys) - Math.min(...ys)
+  const aspect = Math.max(bw, bh) / Math.max(1e-6, Math.min(bw, bh))
+  return aspect <= 1.2 && circ >= 0.72
 }
 
 export function collectFilledRegions(doc: DxfDocument): PickedRegion[] {

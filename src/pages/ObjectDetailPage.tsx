@@ -64,6 +64,7 @@ import {
   type SitePageZoneId,
 } from '../domain/sitePageZone'
 import { useLocalSession } from '../lib/useLocalSession'
+import panelKickerStyles from '../features/site-detail/sitePanelKicker.module.css'
 import styles from './ObjectDetailPage.module.css'
 
 export function ObjectDetailPage() {
@@ -304,6 +305,8 @@ export function ObjectDetailPage() {
   // Пересчёт, когда дневные задания занимают объём в справке.
   const [dayPlanRevision, setDayPlanRevision] = useState(0)
   const workPlan = useMemo(() => {
+    // dayPlanRevision — явный триггер пересчёта после правок дневного плана
+    void dayPlanRevision
     if (!basePlan || !site) return null
     const withReports = applyWorkEntriesToPlan(basePlan, brigadierReports)
     const dayQty = issuedQtyByPlanItemMap(loadWorkDayPlan(site.id).assignments)
@@ -396,15 +399,15 @@ export function ObjectDetailPage() {
 
       <header className={styles.summaryPanelHead}>
         <div className={styles.summaryHeadCopy}>
-          <p className={styles.summaryKicker}>
-            <img className={styles.summaryKickerMark} src="/brand-chevron.svg" alt="" aria-hidden />
+          <p className={panelKickerStyles.kicker}>
+            <img className={panelKickerStyles.mark} src="/brand-chevron.svg" alt="" aria-hidden />
             Контроль
           </p>
           <h2 className={styles.summaryTitle} id="object-summary-heading">
             Аналитика / План работ
           </h2>
           <p className={styles.summaryLead}>
-            KPI, график и производственный план.
+            KPI и график по срокам объекта; цифры плана — ориентир (часть данных пока демо).
           </p>
         </div>
         <CollapseToggle
@@ -455,6 +458,24 @@ export function ObjectDetailPage() {
             layout="panel"
             collapsible
             defaultExpanded={false}
+            actions={
+              <>
+                <button
+                  type="button"
+                  className={styles.toolbarCtaCompact}
+                  onClick={openProcurementComposer}
+                >
+                  Заявка на материалы
+                </button>
+                <button
+                  type="button"
+                  className={styles.toolbarCtaCompact}
+                  onClick={openBrigadierComposer}
+                >
+                  Ввод отчёта
+                </button>
+              </>
+            }
           >
             <TodayDeliveriesBoard
               requests={procurementRequests}
@@ -565,26 +586,6 @@ export function ObjectDetailPage() {
             reports={brigadierReports}
             todayIso={liveKpis.todayIso}
           />
-        }
-        heroActions={
-          visibleZones.includes('brigadier') ? (
-            <>
-              <button
-                type="button"
-                className={styles.toolbarCtaCompact}
-                onClick={openProcurementComposer}
-              >
-                Заявка на материалы
-              </button>
-              <button
-                type="button"
-                className={styles.toolbarCtaCompact}
-                onClick={openBrigadierComposer}
-              >
-                Ввод отчёта
-              </button>
-            </>
-          ) : undefined
         }
       />
 

@@ -40,7 +40,7 @@
     0 22px 56px rgba(15, 28, 54, 0.28);
   overflow: hidden;
   isolation: isolate;
-  animation: heroIn 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: heroIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .heroGlow {
@@ -170,15 +170,17 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
-  animation: statsIn 0.65s 0.12s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: statsIn 0.65s 0.12s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .stat {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 4px;
   padding: 2px 22px;
   min-width: 112px;
+  text-align: center;
 }
 
 .statValue {
@@ -188,6 +190,7 @@
   line-height: 1;
   color: #ffffff;
   font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
 .statLabel {
@@ -196,6 +199,7 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(243, 245, 249, 0.5);
+  text-align: center;
 }
 
 .statDivider {
@@ -229,7 +233,7 @@
     0 1px 0 rgba(255, 255, 255, 0.14) inset,
     0 18px 40px rgba(0, 0, 0, 0.22);
   overflow: hidden;
-  animation: logoIn 0.7s 0.15s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: logoIn 0.7s 0.15s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .logoPlaque {
@@ -282,7 +286,7 @@
    ============================================================ */
 
 .catalog {
-  animation: catalogIn 0.55s 0.08s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: catalogIn 0.55s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .catalogHead {
@@ -517,10 +521,10 @@
   overflow: hidden;
   isolation: isolate;
   transition:
-    transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     border-color 0.28s ease,
     box-shadow 0.28s ease;
-  animation: cardIn 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: cardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: calc(0.04s * var(--card-i));
 }
 
@@ -600,7 +604,7 @@
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.18) inset,
     0 10px 22px rgba(15, 28, 54, 0.28);
-  transition: transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .card:hover .cardIcon {
@@ -691,7 +695,7 @@
   opacity: 0.55;
   transform: translateX(0);
   transition:
-    transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     opacity 0.28s ease,
     background 0.28s ease,
     border-color 0.28s ease;
@@ -732,11 +736,11 @@
   overflow: hidden;
   isolation: isolate;
   transition:
-    transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
     border-color 0.28s ease,
     box-shadow 0.28s ease,
     background 0.28s ease;
-  animation: cardIn 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: cardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: calc(0.04s * var(--card-i));
 }
 
@@ -827,7 +831,7 @@
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.18) inset,
     0 10px 22px rgba(15, 28, 54, 0.28);
-  transition: transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .addCard:hover .addCardIcon,

@@ -85,24 +85,6 @@
   align-self: center;
 }
 
-.kicker {
-  margin: 0 0 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--brand-red, #ee2d3a);
-}
-
-.kickerMark {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-}
-
 .title {
   margin: 0 0 6px;
   font-size: var(--heading-block-size);
@@ -162,8 +144,9 @@
   background: radial-gradient(circle, rgba(238, 45, 58, 0.18) 0%, transparent 68%);
 }
 
-.zone[data-site-zone='manager'] .kicker {
+.zone[data-site-zone='manager'] .zoneKicker {
   color: var(--brand-red, #ee2d3a);
+  background: rgba(238, 45, 58, 0.08);
 }
 
 .zone[data-site-zone='brigadier'] .head {
@@ -183,8 +166,9 @@
   background: radial-gradient(circle, rgba(180, 83, 9, 0.2) 0%, transparent 68%);
 }
 
-.zone[data-site-zone='brigadier'] .kicker {
+.zone[data-site-zone='brigadier'] .zoneKicker {
   color: #b45309;
+  background: rgba(180, 83, 9, 0.1);
 }
 
 .zone[data-site-zone='supply'] .head {
@@ -204,8 +188,9 @@
   background: radial-gradient(circle, rgba(15, 118, 110, 0.2) 0%, transparent 68%);
 }
 
-.zone[data-site-zone='supply'] .kicker {
+.zone[data-site-zone='supply'] .zoneKicker {
   color: #0f766e;
+  background: rgba(15, 118, 110, 0.1);
 }
 
 .zone[data-site-zone='dispatcher'] .head {
@@ -225,8 +210,9 @@
   background: radial-gradient(circle, rgba(29, 78, 216, 0.2) 0%, transparent 68%);
 }
 
-.zone[data-site-zone='dispatcher'] .kicker {
+.zone[data-site-zone='dispatcher'] .zoneKicker {
   color: #1d4ed8;
+  background: rgba(29, 78, 216, 0.1);
 }
 
 @media (max-width: 640px) {
@@ -237,11 +223,11 @@
   }
 
   .panelHead {
-    min-height: 188px;
+    min-height: 164px;
     padding:
-      14px
+      12px
       max(14px, env(safe-area-inset-right, 0px))
-      16px
+      14px
       max(18px, env(safe-area-inset-left, 0px));
   }
 }
@@ -308,8 +294,8 @@
   align-items: center;
   column-gap: 16px;
   box-sizing: border-box;
-  min-height: 188px;
-  padding: 14px 14px 16px 18px;
+  min-height: 164px;
+  padding: 12px 14px 14px 18px;
   border-bottom: 1px solid rgba(15, 23, 42, 0.07);
   background: linear-gradient(
     180deg,
@@ -325,7 +311,7 @@
   min-width: 0;
 }
 
-.panelHead .headText .kicker,
+.panelHead .headText .zoneKicker,
 .panelHead .headText .title,
 .panelHead .headText .lead {
   margin: 0;
@@ -339,6 +325,101 @@
   padding: 0;
   z-index: 2;
   flex-shrink: 0;
+  flex-wrap: nowrap;
+  gap: 8px;
+  max-width: none;
+}
+
+/* CTA слева, «Открыть» сразу справа в той же линии */
+.panelHead .actionCtas {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  animation: zoneCtaIn 0.22s ease both;
+}
+
+.panelHead .actionCtas > :global(button[class*='toolbarCta']) {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.panelHead .actions .headToggle {
+  flex: 0 0 auto;
+  margin-left: 4px;
+}
+
+@keyframes zoneCtaIn {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Свёрнутая шапка — как у «Фото / Отчёты» и «Аналитика»: текст + «Открыть» в одну линию. */
+.panelHead .headText .lead {
+  font-size: 13px;
+  line-height: 1.4;
+  max-width: 36ch;
+}
+
+@media (max-width: 860px) {
+  .panelHead {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 0;
+  }
+
+  .panelHead .actions {
+    justify-self: end;
+    width: auto;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+
+  .panelHead .actions .headToggle {
+    flex: 0 0 auto;
+    margin-left: 0;
+  }
+
+  .panelHead .headText .lead {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  /* Раскрытая зона с CTA — CTA и «Открыть» под текстом, как раньше. */
+  .panelHead:has(.actionCtas) {
+    grid-template-columns: 1fr;
+    align-items: start;
+    row-gap: 12px;
+  }
+
+  .panelHead:has(.actionCtas) .actions {
+    justify-self: stretch;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .panelHead:has(.actionCtas) .actionCtas {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .panelHead:has(.actionCtas) .actionCtas > :global(button[class*='toolbarCta']) {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    justify-content: center;
+  }
 }
 
 .zonePanel[data-collapsed='true'] .panelHead {
@@ -347,9 +428,9 @@
 
 @media (min-width: 861px) {
   .panelHead {
-    height: 136px;
-    min-height: 136px;
-    padding: 20px 24px 16px 28px;
+    height: 112px;
+    min-height: 112px;
+    padding: 16px 24px 12px 28px;
   }
 
   .panelHead .headText .lead {
@@ -441,8 +522,9 @@
   background: radial-gradient(circle, rgba(180, 83, 9, 0.16) 0%, transparent 68%);
 }
 
-.zonePanel[data-site-zone='brigadier'] .kicker {
+.zonePanel[data-site-zone='brigadier'] .zoneKicker {
   color: #b45309;
+  background: rgba(180, 83, 9, 0.1);
 }
 
 .zonePanel[data-site-zone='supply'] {
@@ -462,23 +544,9 @@
   background: radial-gradient(circle, rgba(15, 118, 110, 0.18) 0%, transparent 68%);
 }
 
-.zonePanel[data-site-zone='supply'] .kicker {
+.zonePanel[data-site-zone='supply'] .zoneKicker {
   color: #0f766e;
-  margin-bottom: 4px;
-}
-
-.zonePanel[data-site-zone='supply'] .panelHead {
-  padding: 16px 20px 14px 24px;
-  row-gap: 8px;
-}
-
-.zonePanel[data-site-zone='supply'] .title {
-  margin-bottom: 4px;
-}
-
-.zonePanel[data-site-zone='supply'] .lead {
-  font-size: 13px;
-  line-height: 1.35;
+  background: rgba(15, 118, 110, 0.1);
 }
 
 .zonePanel[data-site-zone='supply'] .panelBody {
@@ -511,8 +579,9 @@
   background: radial-gradient(circle, rgba(29, 78, 216, 0.18) 0%, transparent 68%);
 }
 
-.zonePanel[data-site-zone='dispatcher'] .kicker {
+.zonePanel[data-site-zone='dispatcher'] .zoneKicker {
   color: #1d4ed8;
+  background: rgba(29, 78, 216, 0.1);
 }
 
 /* Форма рейса уже в панели — убираем вторую «карточку-лист» внутри */

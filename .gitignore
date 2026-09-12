@@ -12,8 +12,11 @@ node_modules
 
 # Учётки сотрудников (пароли) — только локально
 docs/STAFF-CREDENTIALS.local.md
+docs/FIELD-TEST-HANDOUT.local.md
 docs/Учётные_записи_Deloresh.xlsx
 docs/*учётные*
+server/staff-passwords.mjs
+
 
 # JSON заявок и отчётов (server/site-forms.mjs)
 data/site-forms/

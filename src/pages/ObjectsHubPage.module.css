@@ -40,7 +40,7 @@
     0 22px 56px rgba(15, 28, 54, 0.28);
   overflow: hidden;
   isolation: isolate;
-  animation: heroIn 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: heroIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .heroGlow {
@@ -170,15 +170,18 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
-  animation: statsIn 0.65s 0.12s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: statsIn 0.65s 0.12s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .stat {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 4px;
   padding: 2px 22px;
   min-width: 112px;
+  text-align: center;
 }
 
 .statValue {
@@ -188,6 +191,7 @@
   line-height: 1;
   color: #ffffff;
   font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
 .statLabel {
@@ -196,6 +200,7 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgba(243, 245, 249, 0.5);
+  text-align: center;
 }
 
 .statDivider {
@@ -227,7 +232,7 @@
     0 1px 0 rgba(255, 255, 255, 0.14) inset,
     0 18px 40px rgba(0, 0, 0, 0.22);
   overflow: hidden;
-  animation: logoIn 0.7s 0.15s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  animation: logoIn 0.7s 0.15s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .logoPlaque {
@@ -435,14 +440,81 @@
   }
 }
 
-@media (max-width: 719px) {
+@media (max-width: 640px) {
+  .hero {
+    margin-bottom: 24px;
+    border-radius: 18px;
+    padding: 18px 16px 20px;
+  }
+
+  .heroTop {
+    margin-bottom: 18px;
+  }
+
+  .title {
+    font-size: 30px;
+  }
+
+  .lead {
+    font-size: 14.5px;
+  }
+
+  .logoFrame {
+    width: 100%;
+    max-width: none;
+    justify-self: stretch;
+    margin-inline: 0;
+    padding: 8px;
+    border-radius: 16px;
+    box-sizing: border-box;
+  }
+
+  .logoPlaque {
+    padding: 10px 14px;
+    border-radius: 12px;
+  }
+
+  .logoImg {
+    width: min(200px, 72%);
+    margin-inline: auto;
+  }
+
+  .heroStats {
+    width: 100%;
+    max-width: none;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    justify-items: stretch;
+    margin-inline: 0;
+    padding: 12px 0;
+    box-sizing: border-box;
+  }
+
   .stat {
     min-width: 0;
-    padding: 2px 14px;
+    width: 100%;
+    padding: 2px 8px;
+    gap: 5px;
+  }
+
+  .stat:not(:last-child) {
+    border-right: 1px solid rgba(255, 255, 255, 0.14);
   }
 
   .statValue {
     font-size: 24px;
+  }
+
+  .statLabel {
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  .statDivider {
+    display: none;
   }
 
   .panelHead {

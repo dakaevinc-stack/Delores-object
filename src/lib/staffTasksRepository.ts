@@ -7,9 +7,11 @@ import {
 } from '../domain/staffTask'
 import {
   fetchStaffTasksRemote,
-  putStaffTasksRemote,
+  markStaffTaskSeenRemote,
   upsertStaffTaskRemote,
+  deleteStaffTaskRemote,
 } from './siteFormsApi'
+import { slimMediaRef } from './staffTaskMedia'
 
 const KEY = 'deloresh-staff-tasks:v1'
 const CHANGE = 'deloresh-staff-tasks-change'
@@ -48,6 +50,83 @@ function isTask(x: unknown): x is StaffTask {
     typeof t.dueDate === 'string' &&
     (t.status === 'new' || t.status === 'in_progress' || t.status === 'done')
   )
+}
+
+function isDemoTaskId(id: string): boolean {
+  return id.startsWith('demo-task-')
+}
+
+function commentRichness(c: StaffTaskComment): number {
+  return (
+    (c.audio?.dataUrl ? 2 : 0) +
+    (c.file?.dataUrl ? 2 : 0) +
+    (c.text?.trim() ? 1 : 0)
+  )
+}
+
+function mergeComments(
+  a: readonly StaffTaskComment[],
+  b: readonly StaffTaskComment[],
+): StaffTaskComment[] {
+  const map = new Map<string, StaffTaskComment>()
+  for (const c of [...a, ...b]) {
+    if (!c || typeof c.id !== 'string') continue
+    const prev = map.get(c.id)
+    if (!prev || commentRichness(c) >= commentRichness(prev)) map.set(c.id, c)
+  }
+  return [...map.values()].sort((x, y) => x.createdAtIso.localeCompare(y.createdAtIso))
+}
+
+function mergeAttachments(
+  a: readonly StaffTaskAttachment[],
+  b: readonly StaffTaskAttachment[],
+): StaffTaskAttachment[] {
+  const map = new Map<string, StaffTaskAttachment>()
+  for (const item of [...a, ...b]) {
+    if (!item || typeof item.id !== 'string') continue
+    map.set(item.id, item)
+  }
+  return [...map.values()]
+}
+
+/** Нормализация формы задачи (битые/старые записи с сервера). */
+export function normalizeStaffTask(x: unknown): StaffTask | null {
+  if (!isTask(x)) return null
+  const t = x as StaffTask & Record<string, unknown>
+  const comments = Array.isArray(t.comments)
+    ? (t.comments as StaffTaskComment[]).filter(
+        (c) => c && typeof c.id === 'string' && typeof c.authorLogin === 'string',
+      )
+    : []
+  const attachments = Array.isArray(t.attachments)
+    ? (t.attachments as StaffTaskAttachment[]).filter(
+        (a) => a && typeof a.id === 'string' && typeof a.dataUrl === 'string',
+      )
+    : []
+  return {
+    id: t.id,
+    title: t.title,
+    body: typeof t.body === 'string' ? t.body : '',
+    dueDate: t.dueDate,
+    dueTime: typeof t.dueTime === 'string' ? t.dueTime : '',
+    status: t.status,
+    assigneeLogin: t.assigneeLogin,
+    assigneeName: typeof t.assigneeName === 'string' ? t.assigneeName : t.assigneeLogin,
+    creatorLogin: t.creatorLogin,
+    creatorName: typeof t.creatorName === 'string' ? t.creatorName : t.creatorLogin,
+    siteId: typeof t.siteId === 'string' ? t.siteId : null,
+    siteName: typeof t.siteName === 'string' ? t.siteName : null,
+    attachments,
+    comments,
+    createdAtIso:
+      typeof t.createdAtIso === 'string' ? t.createdAtIso : new Date().toISOString(),
+    updatedAtIso:
+      typeof t.updatedAtIso === 'string' ? t.updatedAtIso : new Date().toISOString(),
+    seenByAssignee: Boolean(t.seenByAssignee),
+    ...(typeof t.deletedAtIso === 'string' && t.deletedAtIso
+      ? { deletedAtIso: t.deletedAtIso }
+      : {}),
+  }
 }
 
 function seedDemo(): StaffTask[] {
@@ -149,18 +228,14 @@ function seedDemo(): StaffTask[] {
   ]
 }
 
-function mergeById<T extends { id: string }>(items: readonly T[]): T[] {
-  const map = new Map<string, T>()
-  for (const item of items) map.set(item.id, item)
-  return [...map.values()]
-}
-
 export function mergeStaffTasks(
   local: readonly StaffTask[],
   remote: readonly StaffTask[],
 ): StaffTask[] {
   const map = new Map<string, StaffTask>()
-  for (const t of [...remote, ...local]) {
+  for (const raw of [...remote, ...local]) {
+    const t = normalizeStaffTask(raw)
+    if (!t || isDemoTaskId(t.id)) continue
     const prev = map.get(t.id)
     if (!prev) {
       map.set(t.id, t)
@@ -168,11 +243,13 @@ export function mergeStaffTasks(
     }
     const newer = prev.updatedAtIso >= t.updatedAtIso ? prev : t
     const older = newer === prev ? t : prev
+    const deletedAtIso = newer.deletedAtIso || older.deletedAtIso
     map.set(t.id, {
       ...newer,
       seenByAssignee: newer.seenByAssignee || older.seenByAssignee,
-      comments: mergeById([...older.comments, ...newer.comments]),
-      attachments: mergeById([...older.attachments, ...newer.attachments]),
+      comments: mergeComments(older.comments, newer.comments),
+      attachments: mergeAttachments(older.attachments, newer.attachments),
+      ...(deletedAtIso ? { deletedAtIso } : {}),
     })
   }
   return [...map.values()].sort((a, b) => {
@@ -191,46 +268,99 @@ export function loadStaffTasks(): StaffTask[] {
   if (raw === cachedRaw && cachedTasks) return cachedTasks
 
   if (!raw) {
-    const seeded = seedDemo()
-    const serialized = JSON.stringify(seeded)
-    s.setItem(KEY, serialized)
+    // Пустой стор — не сеем демо. Пишем [] один раз, чтобы getSnapshot был стабильным.
+    const empty: StaffTask[] = []
+    const serialized = '[]'
+    try {
+      s.setItem(KEY, serialized)
+    } catch {
+      /* quota — держим только в памяти */
+    }
     cachedRaw = serialized
-    cachedTasks = seeded
-    return seeded
+    cachedTasks = empty
+    return empty
   }
   try {
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) {
-      const seeded = seedDemo()
       cachedRaw = raw
-      cachedTasks = seeded
-      return seeded
+      cachedTasks = []
+      return cachedTasks
     }
-    const list = parsed.filter(isTask)
+    const list = parsed
+      .map(normalizeStaffTask)
+      .filter((t): t is StaffTask => Boolean(t))
+      .filter((t) => !isDemoTaskId(t.id))
     cachedRaw = raw
     cachedTasks = list
     return list
   } catch {
-    const seeded = seedDemo()
     cachedRaw = raw
-    cachedTasks = seeded
-    return seeded
+    cachedTasks = []
+    return cachedTasks
+  }
+}
+
+function slimComment(c: StaffTaskComment): StaffTaskComment {
+  const audioRef = c.audio ? slimMediaRef(c.audio.dataUrl) : ''
+  const fileRef = c.file ? slimMediaRef(c.file.dataUrl) : ''
+  return {
+    id: c.id,
+    authorLogin: c.authorLogin,
+    authorName: c.authorName,
+    text: c.text,
+    createdAtIso: c.createdAtIso,
+    ...(c.audio && audioRef
+      ? {
+          audio: {
+            mime: c.audio.mime,
+            dataUrl: audioRef,
+            durationSec: c.audio.durationSec,
+          },
+        }
+      : {}),
+    ...(c.file && fileRef
+      ? {
+          file: {
+            name: c.file.name,
+            mime: c.file.mime,
+            dataUrl: fileRef,
+          },
+        }
+      : {}),
+  }
+}
+
+function slimTask(t: StaffTask): StaffTask {
+  return {
+    ...t,
+    attachments: t.attachments
+      .map((a) => ({ ...a, dataUrl: slimMediaRef(a.dataUrl) }))
+      .filter((a) => Boolean(a.dataUrl)),
+    comments: t.comments.map(slimComment),
   }
 }
 
 function saveAll(tasks: readonly StaffTask[]): void {
   const s = storage()
   if (!s) return
-  const serialized = JSON.stringify(tasks)
+  const slimmed = tasks.map(slimTask)
+  const serialized = JSON.stringify(slimmed)
   if (serialized === cachedRaw) return
-  s.setItem(KEY, serialized)
-  cachedRaw = serialized
-  cachedTasks = [...tasks]
-  emit()
+  try {
+    s.setItem(KEY, serialized)
+    cachedRaw = serialized
+    cachedTasks = [...slimmed]
+    emit()
+  } catch {
+    // QuotaExceeded — не роняем UI; оставляем кэш в памяти
+    cachedTasks = [...slimmed]
+    emit()
+  }
 }
 
-export function replaceStaffTasks(tasks: readonly StaffTask[]): void {
-  saveAll(tasks)
+function pushStaffTaskRemote(task: StaffTask): void {
+  void upsertStaffTaskRemote(slimTask(task))
 }
 
 export function subscribeStaffTasks(onChange: () => void): () => void {
@@ -270,7 +400,7 @@ export type CreateStaffTaskInput = {
 export function createStaffTask(input: CreateStaffTaskInput): StaffTask {
   const now = new Date().toISOString()
   const task: StaffTask = {
-    id: `task-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    id: `task-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
     title: input.title.trim(),
     body: input.body.trim(),
     dueDate: input.dueDate,
@@ -290,7 +420,7 @@ export function createStaffTask(input: CreateStaffTaskInput): StaffTask {
   }
   const next = [task, ...loadStaffTasks()]
   saveAll(next)
-  void upsertStaffTaskRemote(task)
+  pushStaffTaskRemote(task)
   return task
 }
 
@@ -301,6 +431,7 @@ export function updateStaffTaskStatus(
   const all = loadStaffTasks()
   const i = all.findIndex((t) => t.id === id)
   if (i < 0) return null
+  if (all[i].deletedAtIso) return null
   const updated: StaffTask = {
     ...all[i],
     status,
@@ -309,7 +440,28 @@ export function updateStaffTaskStatus(
   const next = [...all]
   next[i] = updated
   saveAll(next)
-  void upsertStaffTaskRemote(updated)
+  pushStaffTaskRemote(updated)
+  return updated
+}
+
+/** Мягкое удаление: tombstone + DELETE/upsert на сервер (другие устройства подхватят). */
+export function deleteStaffTask(id: string): StaffTask | null {
+  const all = loadStaffTasks()
+  const i = all.findIndex((t) => t.id === id)
+  if (i < 0) return null
+  if (all[i].deletedAtIso) return all[i]
+  const now = new Date().toISOString()
+  const updated: StaffTask = {
+    ...all[i],
+    deletedAtIso: now,
+    updatedAtIso: now,
+  }
+  const next = [...all]
+  next[i] = updated
+  saveAll(next)
+  void deleteStaffTaskRemote(id).then((ok) => {
+    if (!ok) pushStaffTaskRemote(updated)
+  })
   return updated
 }
 
@@ -321,32 +473,61 @@ export function markStaffTaskSeen(id: string, login: string): void {
   if (t.assigneeLogin.toLocaleLowerCase('en-US') !== login.trim().toLocaleLowerCase('en-US'))
     return
   if (t.seenByAssignee) return
+  // Не трогаем updatedAt и не шлём полный upsert — иначе можно затереть статус/чат.
   const updated: StaffTask = {
     ...t,
     seenByAssignee: true,
-    updatedAtIso: new Date().toISOString(),
   }
   const next = [...all]
   next[i] = updated
   saveAll(next)
-  void upsertStaffTaskRemote(updated)
+  void markStaffTaskSeenRemote(id)
 }
 
 export function addStaffTaskComment(
   id: string,
-  comment: Omit<StaffTaskComment, 'id' | 'createdAtIso'> & { text: string },
+  comment: Omit<StaffTaskComment, 'id' | 'createdAtIso'> & {
+    text: string
+    audio?: StaffTaskComment['audio']
+    file?: StaffTaskComment['file']
+  },
 ): StaffTask | null {
   const all = loadStaffTasks()
   const i = all.findIndex((t) => t.id === id)
   if (i < 0) return null
+  if (all[i].deletedAtIso) return null
   const text = comment.text.trim()
-  if (!text) return all[i]
+  const audio = comment.audio
+  const file = comment.file
+  const hasAudio = Boolean(audio?.dataUrl && audio.mime)
+  const hasFile = Boolean(file?.dataUrl && file.mime && file.name)
+  if (!text && !hasAudio && !hasFile) return all[i]
   const row: StaffTaskComment = {
-    id: `c-${Date.now().toString(36)}`,
+    id: `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${Math.random()
+      .toString(36)
+      .slice(2, 6)}`,
     authorLogin: comment.authorLogin,
     authorName: comment.authorName,
     text,
     createdAtIso: new Date().toISOString(),
+    ...(hasAudio
+      ? {
+          audio: {
+            mime: audio!.mime,
+            dataUrl: audio!.dataUrl,
+            durationSec: Math.max(0, Math.floor(audio!.durationSec || 0)),
+          },
+        }
+      : {}),
+    ...(hasFile
+      ? {
+          file: {
+            name: file!.name,
+            mime: file!.mime,
+            dataUrl: file!.dataUrl,
+          },
+        }
+      : {}),
   }
   const t = all[i]
   const updated: StaffTask = {
@@ -357,7 +538,7 @@ export function addStaffTaskComment(
   const next = [...all]
   next[i] = updated
   saveAll(next)
-  void upsertStaffTaskRemote(updated)
+  pushStaffTaskRemote(updated)
   return updated
 }
 
@@ -368,6 +549,7 @@ export function addStaffTaskAttachment(
   const all = loadStaffTasks()
   const i = all.findIndex((t) => t.id === id)
   if (i < 0) return null
+  if (all[i].deletedAtIso) return null
   const t = all[i]
   const updated: StaffTask = {
     ...t,
@@ -377,7 +559,7 @@ export function addStaffTaskAttachment(
   const next = [...all]
   next[i] = updated
   saveAll(next)
-  void upsertStaffTaskRemote(updated)
+  pushStaffTaskRemote(updated)
   return updated
 }
 
@@ -385,18 +567,30 @@ export function addStaffTaskAttachment(
 export async function syncStaffTasksFromRemote(): Promise<boolean> {
   const remoteRaw = await fetchStaffTasksRemote()
   if (remoteRaw === null) return false
-  const remote = remoteRaw.filter(isTask)
-  const local = loadStaffTasks()
-  if (remote.length === 0 && local.length > 0) {
-    return putStaffTasksRemote(local)
-  }
+  const remote = remoteRaw
+    .map(normalizeStaffTask)
+    .filter((t): t is StaffTask => Boolean(t))
+    .filter((t) => !isDemoTaskId(t.id))
+  const local = loadStaffTasks().filter((t) => !isDemoTaskId(t.id))
   const merged = mergeStaffTasks(local, remote)
+  const localRaw = JSON.stringify(local)
   const mergedRaw = JSON.stringify(merged)
-  if (mergedRaw !== JSON.stringify(local)) {
+  if (mergedRaw !== localRaw) {
     saveAll(merged)
   }
-  if (mergedRaw !== JSON.stringify(remote)) {
-    await putStaffTasksRemote(merged)
+  // Не делаем полный PUT всего массива (гонка между устройствами).
+  // Если на сервере пусто — аккуратно догружаем локальные через POST upsert.
+  if (remote.length === 0 && local.length > 0) {
+    for (const t of local) {
+      await upsertStaffTaskRemote(slimTask(t))
+    }
+    return true
+  }
+  // Локальные задачи, которых нет на сервере — тоже upsert.
+  // Tombstone удаления всегда пушим (иначе чужое устройство вернёт задачу).
+  const remoteIds = new Set(remote.map((t) => t.id))
+  for (const t of local) {
+    if (t.deletedAtIso || !remoteIds.has(t.id)) await upsertStaffTaskRemote(slimTask(t))
   }
   return true
 }

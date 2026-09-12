@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  clampRasterPan,
   computePngWorldMapping,
   rasterPlanScreenToWorld,
   rasterPlanWorldToScreen,
@@ -41,6 +42,50 @@ describe('dwgRasterMeasure', () => {
     const after = rasterPlanScreenToWorld({ ...state, ...next }, mapping, mx, my)
     expect(after.x).toBeCloseTo(before.x, 3)
     expect(after.y).toBeCloseTo(before.y, 3)
+  })
+
+  it('unclamped zoom keeps anchor even near screen edge', () => {
+    const state = fittedState()
+    const mx = 40
+    const my = 40
+    const mapping = computePngWorldMapping(state.imgW, state.imgH, bounds)
+    const before = rasterPlanScreenToWorld(state, mapping, mx, my)
+    let v = state
+    for (let i = 0; i < 12; i++) {
+      const next = zoomRasterViewAt(v, mx, my, 1.18, 64, 0.02, { clamp: false })
+      v = { ...v, ...next }
+    }
+    const after = rasterPlanScreenToWorld(v, mapping, mx, my)
+    expect(after.x).toBeCloseTo(before.x, 2)
+    expect(after.y).toBeCloseTo(before.y, 2)
+  })
+
+  it('hard pan clamp keeps most of the plan on screen', () => {
+    const state = fittedState()
+    const far = clampRasterPan({ ...state, scale: state.scale * 8 }, 50_000, -50_000)
+    const halfW = (state.imgW * state.scale * 8) / 2
+    // Не даём уехать так, чтобы на экране осталась крошечная полоска плана.
+    expect(Math.abs(far.x)).toBeLessThan(halfW + state.stageW)
+    expect(Math.abs(far.y)).toBeLessThan((state.imgH * state.scale * 8) / 2 + state.stageH)
+  })
+
+  it('clamps extreme zoom factors to avoid jumps', () => {
+    const state = fittedState()
+    const next = zoomRasterViewAt(state, 400, 300, 8)
+    expect(next.scale).toBeLessThanOrEqual(state.scale * 1.35 + 1e-9)
+  })
+
+  it('respects min scale floor', () => {
+    const state = fittedState()
+    const next = zoomRasterViewAt(state, 400, 300, 0.01, 64, state.scale * 0.8)
+    expect(next.scale).toBeCloseTo(state.scale * 0.8, 6)
+  })
+
+  it('keeps pan within soft screen bounds', () => {
+    const state = fittedState()
+    const far = clampRasterPan(state, 50_000, -50_000)
+    expect(Math.abs(far.x)).toBeLessThan(20_000)
+    expect(Math.abs(far.y)).toBeLessThan(20_000)
   })
 
   it('preserves rectangle area and perimeter through plan clicks', () => {

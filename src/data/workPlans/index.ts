@@ -1,7 +1,9 @@
 import type { WorkPlan } from '../../domain/workPlan'
+import { ANOKHINA_WORK_PLAN } from './anokhina'
 import { BRUSILOVA_WORK_PLAN } from './brusilova'
 import { KIRPICHNOGO_ZAVODA_WORK_PLAN } from './kirpichnogo-zavoda'
 import { KREKSHINO_RYABINOVAYA_WORK_PLAN } from './krekshino-ryabinovaya'
+import { OLYMPIYSKAYA_DEREVNYA_WORK_PLAN } from './olympiyskaya-derevnya'
 import { SCHERBINKA_VOKZALNAYA_WORK_PLAN } from './scherbinka-vokzalnaya'
 
 /**
@@ -13,7 +15,9 @@ import { SCHERBINKA_VOKZALNAYA_WORK_PLAN } from './scherbinka-vokzalnaya'
  * сюда.
  */
 const WORK_PLANS_BY_SITE: Readonly<Record<string, WorkPlan>> = {
+  anokhina: ANOKHINA_WORK_PLAN,
   brusilova: BRUSILOVA_WORK_PLAN,
+  'olympiyskaya-derevnya': OLYMPIYSKAYA_DEREVNYA_WORK_PLAN,
   'kirpichnogo-zavoda': KIRPICHNOGO_ZAVODA_WORK_PLAN,
   'krekshino-ryabinovaya': KREKSHINO_RYABINOVAYA_WORK_PLAN,
   'scherbinka-vokzalnaya': SCHERBINKA_VOKZALNAYA_WORK_PLAN,

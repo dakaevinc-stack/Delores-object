@@ -1,6 +1,6 @@
 # Деловые Решения — веб-обзор объектов и парка техники
 
-Локальное приложение на **React + Vite + TypeScript**: главная с дашбордом, объекты, реестр спецтехники с карточками единиц, редактированием ТО, страховок, ремонтов и пропусков. Данные демо хранятся в браузере (**localStorage**), чтобы можно было сразу пользоваться без сервера.
+Локальное приложение на **React + Vite + TypeScript**: объекты, задачи сотрудникам, спецтехника, рейсы, чертежи. В проде данные живут на **VPS** (`/api` → `site-forms`); часть справочников/KPI ещё в моках. Для передачи разработчикам: **[docs/HANDOFF-TEAM.ru.md](docs/HANDOFF-TEAM.ru.md)** и карта правок **[docs/FOR-DEVELOPERS.ru.md](docs/FOR-DEVELOPERS.ru.md)**.
 
 ## Быстрый старт
 
@@ -73,6 +73,8 @@ npm run deploy:server -- root@94.242.58.24
 | `npm run test` | Vitest (один прогон) |
 | `npm run test:watch` | Тесты в watch-режиме |
 | `npm run check` | lint + test + build (как в CI) |
+| `npm run test:live` | Живой smoke API/задач против прода (нужен SSH) |
+| `npm run test:smoke` | Viewport matrix (нужен `dist/`) |
 | `npm run launch` | Сборка + просмотр как на сервере (**http://localhost:4173/**) |
 
 ## Надёжность

@@ -1,11 +1,16 @@
 /**
- * HTTP API для заявок снабженцу, отчётов бригадира и оперативного обмена (фото/видео): JSON и файлы на диске по объектам.
+ * HTTP API Deloresh Objects: заявки, отчёты бригадира, медиа объектов, задачи сотрудников,
+ * auth, парк, рейсы, plan-marks, DWG preview и т.д. JSON и файлы на диске.
+ *
+ * Карта ручек / куда править клиент: docs/FOR-DEVELOPERS.ru.md
+ * Передача команде: docs/HANDOFF-TEAM.ru.md
  *
  * Запуск: node server/site-forms.mjs
  * Переменные:
  *   DELORESH_SITE_FORMS_PORT — порт (по умолчанию 8787)
  *   DELORESH_SITE_FORMS_DATA — каталог данных (по умолчанию ./data/site-forms рядом с репозиторием)
- *   DELORESH_SITE_FORMS_WRITE_SECRET — если задан, заголовок X-Deloresh-Write-Secret обязателен для POST/PATCH/DELETE
+ *   DELORESH_SITE_FORMS_WRITE_SECRET — если задан, заголовок X-Deloresh-Write-Secret для части записи
+ *   (задачи/blobs также принимают Bearer-сессию сотрудника)
  */
 
 import http from 'node:http'
@@ -17,11 +22,19 @@ import {
   namesMatchDriver,
 } from '../src/lib/driverTripNotify.mjs'
 import {
+  createStaffSession,
+  readBearerToken,
+  resolveStaffToken,
+  verifyStaffCredentials,
+} from './staff-auth.mjs'
+import {
   deleteAllDwgPreviews,
   deleteDxfPreview,
   deletePngPreview,
   isDxfPreviewStale,
+  isDxfPreviewInflight,
   isPngPreviewInflight,
+  kickDxfPreview,
   kickPngPreview,
   markDxfPreviewReady,
   markDxfPreviewStatus,
@@ -30,9 +43,11 @@ import {
   readDxfPreview,
   readPngPreview,
   readPngPreviewMeta,
+  markPngPreviewPending,
   regenerateDwgPreviews,
   writeDwgPreviews,
   writePngPreview,
+  shouldRetryFailedPng,
 } from './dwg-preview.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -65,7 +80,7 @@ function setCors(res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
   res.setHeader(
     'Access-Control-Allow-Headers',
-    'Content-Type, X-Deloresh-Write-Secret, X-Project-File-Record',
+    'Content-Type, Authorization, X-Deloresh-Write-Secret, X-Deloresh-Staff-Token, X-Project-File-Record',
   )
 }
 
@@ -139,24 +154,24 @@ async function saveProjectFileRecord(baseDir, manifestPath, siteId, record, buf)
   await fs.mkdir(path.join(baseDir, 'blobs'), { recursive: true })
   await fs.writeFile(path.join(baseDir, 'blobs', record.id), buf)
   if (record.kind === 'dwg' && buf.length > 0) {
-    // Ждём конвертацию здесь — к моменту «загрузка готова» превью уже есть → открытие мгновенное.
+    // Не ждём конвертацию в POST: ACadSharp DXF часто падает ~20с, Libre ещё дольше —
+    // nginx/браузер рвут запрос, UI вечно «Загружаем…», PNG даже не стартует.
+    // DXF и PNG — в фоне параллельно; GET отдаёт 503 pending пока не ready.
     try {
       await markDxfPreviewStatus(manifestPath, record.id, 'pending')
-      const { previewBytes, engine, pngBytes, pngWorldBounds } = await writeDwgPreviews(baseDir, record.id, buf)
-      await markDxfPreviewReady(manifestPath, record.id, previewBytes, engine)
-      if (typeof pngBytes === 'number') {
-        await markPngPreviewReady(manifestPath, record.id, pngBytes, pngWorldBounds)
-      } else {
-        await markPngPreviewFailed(manifestPath, record.id)
-      }
+      await markPngPreviewPending(manifestPath, record.id)
+      const readBuf = async () => buf
+      // PNG первым: заливка/план открываются без ожидания DXF (слот конвертации один).
+      kickPngPreview(baseDir, record.id, manifestPath, readBuf)
+      kickDxfPreview(baseDir, record.id, manifestPath, readBuf)
     } catch (e) {
-      console.error('[site-forms] dxf preview failed', record.id, e)
+      console.error('[site-forms] dwg preview kick failed', record.id, e)
       try {
         await markDxfPreviewStatus(manifestPath, record.id, 'failed')
+        await markPngPreviewFailed(manifestPath, record.id)
       } catch {
         /* ignore */
       }
-      throw e
     }
   }
 }
@@ -233,7 +248,11 @@ function isPlanMarkRow(x) {
   if (!x || typeof x !== 'object') return false
   const r = /** @type {Record<string, unknown>} */ (x)
   const kindOk =
-    r.kind === 'accepted' || r.kind === 'ckkb' || r.kind === 'issue' || r.kind === 'note'
+    r.kind === 'accepted' ||
+    r.kind === 'ckkb' ||
+    r.kind === 'issue' ||
+    r.kind === 'note' ||
+    r.kind === 'marker'
   const spaceOk = r.space === 'plan' || r.space === 'world'
   const updatedOk =
     r.updatedAtIso === undefined || typeof r.updatedAtIso === 'string'
@@ -266,6 +285,32 @@ function isPlanMarksBundle(x, siteId) {
   const r = /** @type {Record<string, unknown>} */ (x)
   if (r.siteId !== siteId || !Array.isArray(r.marks)) return false
   return r.marks.every(isPlanMarkRow)
+}
+
+/**
+ * Чертёж удалён — гасим его отметки.
+ * Жёсткое удаление не годится: PUT сливает списки, и телефон с устаревшим
+ * кэшем вернул бы их обратно. Оставляем только надгробие без геометрии.
+ * @param {string} siteId @param {string} fileId
+ */
+async function tombstonePlanMarksForFile(siteId, fileId) {
+  const file = path.join(DATA_ROOT, 'sites', siteId, 'plan-marks.json')
+  const existing = await readJsonObject(file)
+  if (!existing || !Array.isArray(existing.marks)) return
+  const now = new Date().toISOString()
+  let changed = false
+  const marks = existing.marks.map((m) => {
+    if (!m || typeof m !== 'object') return m
+    const row = /** @type {Record<string, unknown>} */ (m)
+    if (row.fileId !== fileId || row.deletedAtIso) return m
+    changed = true
+    const next = { ...row, shape: { type: 'point', x: 0, y: 0 }, deletedAtIso: now, updatedAtIso: now }
+    delete next.planW
+    delete next.planH
+    return next
+  })
+  if (!changed) return
+  await writeJsonFile(file, { ...existing, siteId, marks })
 }
 
 /** @param {unknown} x */
@@ -355,13 +400,19 @@ function isProjectFileRecord(x) {
 }
 
 /**
+ * Запись разрешена: write-secret (скрипты/админ) ИЛИ Bearer-сессия сотрудника.
  * @param {import('node:http').IncomingMessage} req
  * @param {import('node:http').ServerResponse} res
  */
-function checkWrite(req, res) {
+async function checkWrite(req, res) {
   if (!WRITE_SECRET) return true
   const got = String(req.headers['x-deloresh-write-secret'] ?? '').trim()
   if (got === WRITE_SECRET) return true
+  const token = readBearerToken(req)
+  if (token) {
+    const login = await resolveStaffToken(DATA_ROOT, token)
+    if (login) return true
+  }
   sendJson(res, 403, { error: 'write_forbidden' })
   return false
 }
@@ -370,6 +421,105 @@ function hasWriteSecret(req) {
   if (!WRITE_SECRET) return true
   const got = String(req.headers['x-deloresh-write-secret'] ?? '').trim()
   return got === WRITE_SECRET
+}
+
+/** Принудительная пересборка превью: write-secret или вошедший сотрудник. */
+async function canForceRegenerate(req) {
+  if (hasWriteSecret(req)) return true
+  const token = readBearerToken(req)
+  if (token) {
+    const login = await resolveStaffToken(DATA_ROOT, token)
+    if (login) return true
+  }
+  return false
+}
+
+/**
+ * Доступ к staff-tasks / blobs: Bearer-сессия или write-secret (деплой/админ).
+ * @param {import('node:http').IncomingMessage} req
+ * @param {import('node:http').ServerResponse} res
+ * @returns {Promise<{ login: string | null, admin: boolean } | null>}
+ */
+async function requireStaffAccess(req, res) {
+  const token = readBearerToken(req)
+  if (token) {
+    const login = await resolveStaffToken(DATA_ROOT, token)
+    if (login) return { login, admin: false }
+  }
+  if (hasWriteSecret(req)) return { login: null, admin: true }
+  sendJson(res, 401, { error: 'auth_required' })
+  return null
+}
+
+/**
+ * @param {any} older
+ * @param {any} newer
+ */
+function mergeStaffTaskRow(older, newer) {
+  const aIso = typeof older?.updatedAtIso === 'string' ? older.updatedAtIso : ''
+  const bIso = typeof newer?.updatedAtIso === 'string' ? newer.updatedAtIso : ''
+  const baseNewer = aIso >= bIso ? older : newer
+  const baseOlder = baseNewer === older ? newer : older
+  const comments = [
+    ...(Array.isArray(baseOlder.comments) ? baseOlder.comments : []),
+    ...(Array.isArray(baseNewer.comments) ? baseNewer.comments : []),
+  ]
+  const attachments = [
+    ...(Array.isArray(baseOlder.attachments) ? baseOlder.attachments : []),
+    ...(Array.isArray(baseNewer.attachments) ? baseNewer.attachments : []),
+  ]
+  /** @type {Map<string, any>} */
+  const cMap = new Map()
+  for (const c of comments) {
+    if (c && typeof c.id === 'string') cMap.set(c.id, c)
+  }
+  /** @type {Map<string, any>} */
+  const aMap = new Map()
+  for (const a of attachments) {
+    if (a && typeof a.id === 'string') aMap.set(a.id, a)
+  }
+  return {
+    ...baseNewer,
+    seenByAssignee: Boolean(baseNewer.seenByAssignee) || Boolean(baseOlder.seenByAssignee),
+    comments: [...cMap.values()],
+    attachments: [...aMap.values()],
+    ...(baseNewer.deletedAtIso || baseOlder.deletedAtIso
+      ? { deletedAtIso: baseNewer.deletedAtIso || baseOlder.deletedAtIso }
+      : {}),
+  }
+}
+
+/**
+ * @param {unknown[]} list
+ * @param {any} body
+ */
+function upsertStaffTaskMerged(list, body) {
+  const id = body.id
+  const next = []
+  let found = false
+  for (const item of list) {
+    if (!item || typeof item !== 'object') continue
+    const row = /** @type {{id?: unknown}} */ (item)
+    if (row.id === id) {
+      next.push(mergeStaffTaskRow(item, body))
+      found = true
+    } else {
+      next.push(item)
+    }
+  }
+  if (!found) next.unshift(body)
+  return next
+}
+
+function staffTaskVisibleToLogin(task, login) {
+  if (!task || typeof task !== 'object' || !login) return false
+  const t = /** @type {{assigneeLogin?: unknown, creatorLogin?: unknown, id?: unknown}} */ (task)
+  if (typeof t.id === 'string' && t.id.startsWith('demo-task-')) return false
+  const l = login.toLocaleLowerCase('en-US')
+  return (
+    String(t.assigneeLogin || '').toLocaleLowerCase('en-US') === l ||
+    String(t.creatorLogin || '').toLocaleLowerCase('en-US') === l
+  )
 }
 
 async function ensureBotUsername() {
@@ -477,6 +627,286 @@ const server = http.createServer(async (req, res) => {
       return
     }
 
+    if (parts[0] === 'api' && parts[1] === 'auth' && parts[2] === 'login' && req.method === 'POST') {
+      const raw = await readBody(req)
+      const body = JSON.parse(raw)
+      const login = body && typeof body.login === 'string' ? body.login : ''
+      const password = body && typeof body.password === 'string' ? body.password : ''
+      const member = verifyStaffCredentials(login, password)
+      if (!member) {
+        sendJson(res, 401, { error: 'invalid_credentials' })
+        return
+      }
+      const session = await createStaffSession(DATA_ROOT, member.login)
+      sendJson(res, 200, {
+        ok: true,
+        token: session.token,
+        exp: session.exp,
+        login: member.login,
+        fullName: member.fullName,
+        duty: member.duty,
+        dutyLabel: member.dutyLabel,
+      })
+      return
+    }
+
+    if (parts[0] === 'api' && parts[1] === 'staff-tasks' && parts[2] === 'blobs') {
+      const blobsDir = path.join(DATA_ROOT, 'staff-task-blobs')
+      if (parts.length === 3 && req.method === 'POST') {
+        const access = await requireStaffAccess(req, res)
+        if (!access) return
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        if (!body || typeof body !== 'object') {
+          sendJson(res, 400, { error: 'invalid_blob' })
+          return
+        }
+        const b = /** @type {Record<string, unknown>} */ (body)
+        const id = safeMediaId(typeof b.id === 'string' ? b.id : '')
+        if (!id) {
+          sendJson(res, 400, { error: 'bad_id' })
+          return
+        }
+        if (typeof b.dataBase64 !== 'string') {
+          sendJson(res, 400, { error: 'invalid_blob' })
+          return
+        }
+        const buf = Buffer.from(b.dataBase64, 'base64')
+        if (buf.length === 0 || buf.length > 3 * 1024 * 1024) {
+          sendJson(res, 413, { error: 'blob_too_large' })
+          return
+        }
+        const mime =
+          typeof b.mime === 'string' && b.mime.trim() ? b.mime.trim() : 'application/octet-stream'
+        await fs.mkdir(blobsDir, { recursive: true })
+        await fs.writeFile(path.join(blobsDir, id), buf)
+        await fs.writeFile(
+          path.join(blobsDir, `${id}.meta.json`),
+          JSON.stringify({
+            id,
+            mime,
+            name: typeof b.name === 'string' ? b.name : id,
+            sizeBytes: buf.length,
+            uploadedAtIso: new Date().toISOString(),
+            byLogin: access.login || 'admin',
+          }),
+          'utf8',
+        )
+        sendJson(res, 200, { ok: true, id, url: `/api/staff-tasks/blobs/${id}`, mime })
+        return
+      }
+      if (parts.length === 4 && req.method === 'GET') {
+        const access = await requireStaffAccess(req, res)
+        if (!access) return
+        const id = safeMediaId(parts[3])
+        if (!id) {
+          sendJson(res, 400, { error: 'bad_id' })
+          return
+        }
+        const filePath = path.join(blobsDir, id)
+        try {
+          const buf = await fs.readFile(filePath)
+          let mime = 'application/octet-stream'
+          try {
+            const meta = JSON.parse(await fs.readFile(path.join(blobsDir, `${id}.meta.json`), 'utf8'))
+            if (meta && typeof meta.mime === 'string') mime = meta.mime
+          } catch {
+            /* ignore */
+          }
+          setCors(res)
+          res.statusCode = 200
+          res.setHeader('Content-Type', mime)
+          res.setHeader('Cache-Control', 'private, max-age=86400')
+          res.end(buf)
+        } catch (e) {
+          if (/** @type {NodeJS.ErrnoException} */ (e).code === 'ENOENT') {
+            sendJson(res, 404, { error: 'not_found' })
+            return
+          }
+          throw e
+        }
+        return
+      }
+    }
+
+    if (parts[0] === 'api' && parts[1] === 'staff-tasks' && parts.length === 2) {
+      const file = path.join(DATA_ROOT, 'staff-tasks.json')
+      if (req.method === 'GET') {
+        const access = await requireStaffAccess(req, res)
+        if (!access) return
+        const list = await readJsonArray(file)
+        const visible = access.admin
+          ? list.filter((t) => t && typeof t === 'object' && !String(/** @type {{id?:unknown}} */ (t).id || '').startsWith('demo-task-'))
+          : list.filter((t) => staffTaskVisibleToLogin(t, /** @type {string} */ (access.login)))
+        sendJson(res, 200, visible)
+        return
+      }
+      if (req.method === 'PUT') {
+        if (!(await checkWrite(req, res))) return
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        if (!Array.isArray(body)) {
+          sendJson(res, 400, { error: 'invalid_staff_tasks' })
+          return
+        }
+        const incoming = body.filter(
+          (x) =>
+            x &&
+            typeof x === 'object' &&
+            typeof /** @type {{id?: unknown}} */ (x).id === 'string' &&
+            typeof /** @type {{title?: unknown}} */ (x).title === 'string' &&
+            typeof /** @type {{assigneeLogin?: unknown}} */ (x).assigneeLogin === 'string' &&
+            typeof /** @type {{creatorLogin?: unknown}} */ (x).creatorLogin === 'string' &&
+            !String(/** @type {{id: string}} */ (x).id).startsWith('demo-task-'),
+        )
+        const existing = await readJsonArray(file)
+        /** @type {Map<string, any>} */
+        const map = new Map()
+        for (const item of [...existing, ...incoming]) {
+          if (!item || typeof item !== 'object') continue
+          const id = /** @type {{id?: unknown}} */ (item).id
+          if (typeof id !== 'string' || id.startsWith('demo-task-')) continue
+          const prev = map.get(id)
+          if (!prev) {
+            map.set(id, item)
+            continue
+          }
+          map.set(id, mergeStaffTaskRow(prev, item))
+        }
+        const cleaned = [...map.values()]
+        await writeJsonArray(file, cleaned)
+        sendJson(res, 200, { ok: true, count: cleaned.length })
+        return
+      }
+      if (req.method === 'POST') {
+        const access = await requireStaffAccess(req, res)
+        if (!access) return
+        const raw = await readBody(req)
+        const body = JSON.parse(raw)
+        if (!body || typeof body !== 'object' || typeof body.id !== 'string') {
+          sendJson(res, 400, { error: 'invalid_staff_task' })
+          return
+        }
+        if (String(body.id).startsWith('demo-task-')) {
+          sendJson(res, 400, { error: 'demo_forbidden' })
+          return
+        }
+        const list = await readJsonArray(file)
+        const prev = list.find(
+          (x) => x && /** @type {{id?:unknown}} */ (x).id === body.id,
+        )
+        if (
+          !access.admin &&
+          access.login &&
+          !staffTaskVisibleToLogin(body, access.login)
+        ) {
+          // Создатель/исполнитель должны быть в теле; иначе нельзя писать чужую задачу
+          if (!prev || !staffTaskVisibleToLogin(prev, access.login)) {
+            sendJson(res, 403, { error: 'task_forbidden' })
+            return
+          }
+        }
+        // Soft-delete: только создатель или admin (write-secret)
+        const incomingDeleted =
+          typeof body.deletedAtIso === 'string' && body.deletedAtIso.length > 0
+        const wasDeleted =
+          prev &&
+          typeof /** @type {{deletedAtIso?: unknown}} */ (prev).deletedAtIso === 'string' &&
+          /** @type {{deletedAtIso: string}} */ (prev).deletedAtIso.length > 0
+        if (incomingDeleted && !wasDeleted && !access.admin) {
+          const creator = String(
+            (prev && /** @type {{creatorLogin?: unknown}} */ (prev).creatorLogin) ||
+              body.creatorLogin ||
+              '',
+          ).toLocaleLowerCase('en-US')
+          if (!access.login || creator !== access.login.toLocaleLowerCase('en-US')) {
+            sendJson(res, 403, { error: 'delete_forbidden' })
+            return
+          }
+        }
+        const next = upsertStaffTaskMerged(list, body)
+        await writeJsonArray(file, next)
+        sendJson(res, 200, { ok: true })
+        return
+      }
+    }
+
+    if (
+      parts[0] === 'api' &&
+      parts[1] === 'staff-tasks' &&
+      parts.length === 3 &&
+      req.method === 'DELETE'
+    ) {
+      const access = await requireStaffAccess(req, res)
+      if (!access) return
+      const id = parts[2]
+      if (!id || id.includes('..') || id.startsWith('demo-task-')) {
+        sendJson(res, 400, { error: 'bad_id' })
+        return
+      }
+      const file = path.join(DATA_ROOT, 'staff-tasks.json')
+      const list = await readJsonArray(file)
+      const idx = list.findIndex((x) => x && /** @type {{id?: unknown}} */ (x).id === id)
+      if (idx === -1) {
+        sendJson(res, 404, { error: 'not_found' })
+        return
+      }
+      const row = /** @type {Record<string, unknown>} */ (list[idx])
+      if (!access.admin) {
+        const creator = String(row.creatorLogin || '').toLocaleLowerCase('en-US')
+        if (!access.login || creator !== access.login.toLocaleLowerCase('en-US')) {
+          sendJson(res, 403, { error: 'delete_forbidden' })
+          return
+        }
+      }
+      if (typeof row.deletedAtIso === 'string' && row.deletedAtIso) {
+        sendJson(res, 200, { ok: true, already: true })
+        return
+      }
+      const now = new Date().toISOString()
+      list[idx] = { ...row, deletedAtIso: now, updatedAtIso: now }
+      await writeJsonArray(file, list)
+      sendJson(res, 200, { ok: true })
+      return
+    }
+
+    if (
+      parts[0] === 'api' &&
+      parts[1] === 'staff-tasks' &&
+      parts.length === 4 &&
+      parts[3] === 'seen' &&
+      req.method === 'POST'
+    ) {
+      const access = await requireStaffAccess(req, res)
+      if (!access) return
+      const id = parts[2]
+      if (!id || id.includes('..') || id.startsWith('demo-task-')) {
+        sendJson(res, 400, { error: 'bad_id' })
+        return
+      }
+      const file = path.join(DATA_ROOT, 'staff-tasks.json')
+      const list = await readJsonArray(file)
+      const idx = list.findIndex((x) => x && /** @type {{id?: unknown}} */ (x).id === id)
+      if (idx === -1) {
+        sendJson(res, 404, { error: 'not_found' })
+        return
+      }
+      const row = /** @type {Record<string, unknown>} */ (list[idx])
+      if (
+        !access.admin &&
+        access.login &&
+        String(row.assigneeLogin || '').toLocaleLowerCase('en-US') !==
+          access.login.toLocaleLowerCase('en-US')
+      ) {
+        sendJson(res, 403, { error: 'not_assignee' })
+        return
+      }
+      list[idx] = { ...row, seenByAssignee: true }
+      await writeJsonArray(file, list)
+      sendJson(res, 200, { ok: true })
+      return
+    }
+
     if (parts[0] === 'api' && parts[1] === 'geocode' && req.method === 'GET') {
       const q = (url.searchParams.get('q') || '').trim()
       const lat = url.searchParams.get('lat')
@@ -519,7 +949,7 @@ const server = http.createServer(async (req, res) => {
         return
       }
       if (req.method === 'POST') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const raw = await readBody(req)
         const body = JSON.parse(raw)
         if (!body || typeof body !== 'object' || typeof body.id !== 'string') {
@@ -531,50 +961,6 @@ const server = http.createServer(async (req, res) => {
         await writeJsonArray(file, next)
         const telegram = await notifyDriverTripTelegram(body)
         sendJson(res, 200, { ok: true, notified: { telegram } })
-        return
-      }
-    }
-
-    if (parts[0] === 'api' && parts[1] === 'staff-tasks' && parts.length === 2) {
-      const file = path.join(DATA_ROOT, 'staff-tasks.json')
-      if (req.method === 'GET') {
-        const list = await readJsonArray(file)
-        sendJson(res, 200, list)
-        return
-      }
-      if (req.method === 'PUT') {
-        if (!checkWrite(req, res)) return
-        const raw = await readBody(req)
-        const body = JSON.parse(raw)
-        if (!Array.isArray(body)) {
-          sendJson(res, 400, { error: 'invalid_staff_tasks' })
-          return
-        }
-        const cleaned = body.filter(
-          (x) =>
-            x &&
-            typeof x === 'object' &&
-            typeof /** @type {{id?: unknown}} */ (x).id === 'string' &&
-            typeof /** @type {{title?: unknown}} */ (x).title === 'string' &&
-            typeof /** @type {{assigneeLogin?: unknown}} */ (x).assigneeLogin === 'string' &&
-            typeof /** @type {{creatorLogin?: unknown}} */ (x).creatorLogin === 'string',
-        )
-        await writeJsonArray(file, cleaned)
-        sendJson(res, 200, { ok: true, count: cleaned.length })
-        return
-      }
-      if (req.method === 'POST') {
-        if (!checkWrite(req, res)) return
-        const raw = await readBody(req)
-        const body = JSON.parse(raw)
-        if (!body || typeof body !== 'object' || typeof body.id !== 'string') {
-          sendJson(res, 400, { error: 'invalid_staff_task' })
-          return
-        }
-        const list = await readJsonArray(file)
-        const next = [body, ...list.filter((x) => !x || /** @type {{id?: unknown}} */ (x).id !== body.id)]
-        await writeJsonArray(file, next)
-        sendJson(res, 200, { ok: true })
         return
       }
     }
@@ -660,7 +1046,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (parts[0] === 'api' && parts[1] === 'driver-notify' && parts[2] === 'bind' && req.method === 'POST') {
-      if (!checkWrite(req, res)) return
+      if (!(await checkWrite(req, res))) return
       const raw = await readBody(req)
       const body = JSON.parse(raw)
       const driverName = body && typeof body.driverName === 'string' ? body.driverName : ''
@@ -680,7 +1066,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (parts[0] === 'api' && parts[1] === 'driver-notify' && parts[2] === 'unbind' && req.method === 'POST') {
-      if (!checkWrite(req, res)) return
+      if (!(await checkWrite(req, res))) return
       const raw = await readBody(req)
       const body = JSON.parse(raw)
       const chatId =
@@ -702,7 +1088,7 @@ const server = http.createServer(async (req, res) => {
       parts.length === 3 &&
       req.method === 'DELETE'
     ) {
-      if (!checkWrite(req, res)) return
+      if (!(await checkWrite(req, res))) return
       const id = parts[2]
       if (!id || id.includes('..')) {
         sendJson(res, 400, { error: 'bad_id' })
@@ -730,7 +1116,7 @@ const server = http.createServer(async (req, res) => {
         return
       }
       if (req.method === 'PUT') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const raw = await readBody(req)
         const body = JSON.parse(raw)
         if (!isFleetRegistry(body)) {
@@ -755,7 +1141,7 @@ const server = http.createServer(async (req, res) => {
         return
       }
       if (req.method === 'PUT') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const raw = await readBody(req)
         const body = JSON.parse(raw)
         if (!body || typeof body !== 'object' || Array.isArray(body)) {
@@ -770,20 +1156,33 @@ const server = http.createServer(async (req, res) => {
 
     if (parts[0] === 'api' && parts[1] === 'user-sites' && parts.length === 2) {
       const file = path.join(DATA_ROOT, 'user-sites.json')
+      /** Live-audit / smoke leftovers — не хранить и не отдавать в список объектов. */
+      const isDroppedUserSite = (row) => {
+        const id = typeof row?.id === 'string' ? row.id : ''
+        const name = typeof row?.name === 'string' ? row.name : ''
+        return (
+          id === 'audit-20260907-test-ne-rabochiy' ||
+          /АУДИТ_\d{8}_ТЕСТ/i.test(name) ||
+          name.includes('ТЕСТ_НЕ_РАБОЧИЙ')
+        )
+      }
       if (req.method === 'GET') {
         const list = await readJsonArray(file)
-        sendJson(res, 200, list.filter(isUserSiteRow))
+        sendJson(res, 200, list.filter(isUserSiteRow).filter((row) => !isDroppedUserSite(row)))
         return
       }
       if (req.method === 'PUT') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const raw = await readBody(req)
         const body = JSON.parse(raw)
         if (!Array.isArray(body) || !body.every(isUserSiteRow)) {
           sendJson(res, 400, { error: 'invalid_user_sites' })
           return
         }
-        await writeJsonArray(file, body)
+        await writeJsonArray(
+          file,
+          body.filter((row) => !isDroppedUserSite(row)),
+        )
         sendJson(res, 200, { ok: true })
         return
       }
@@ -812,15 +1211,44 @@ const server = http.createServer(async (req, res) => {
         return
       }
       if (req.method === 'PUT') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const raw = await readBody(req)
         const body = JSON.parse(raw)
         if (!isPlanMarksBundle(body, siteId)) {
           sendJson(res, 400, { error: 'invalid_plan_marks' })
           return
         }
-        await writeJsonFile(file, { siteId, marks: body.marks })
-        sendJson(res, 200, { ok: true })
+        const existing = await readJsonObject(file)
+        const prevMarks =
+          existing && isPlanMarksBundle(existing, siteId)
+            ? /** @type {{ marks: any[] }} */ (existing).marks
+            : []
+        /** @type {Map<string, any>} */
+        const map = new Map()
+        for (const m of [...prevMarks, ...body.marks]) {
+          if (!m || typeof m !== 'object' || typeof m.id !== 'string') continue
+          const prev = map.get(m.id)
+          if (!prev) {
+            map.set(m.id, m)
+            continue
+          }
+          const a =
+            typeof prev.updatedAtIso === 'string'
+              ? prev.updatedAtIso
+              : typeof prev.createdAtIso === 'string'
+                ? prev.createdAtIso
+                : ''
+          const b =
+            typeof m.updatedAtIso === 'string'
+              ? m.updatedAtIso
+              : typeof m.createdAtIso === 'string'
+                ? m.createdAtIso
+                : ''
+          map.set(m.id, a >= b ? prev : m)
+        }
+        const marks = [...map.values()]
+        await writeJsonFile(file, { siteId, marks })
+        sendJson(res, 200, { ok: true, count: marks.length })
         return
       }
     }
@@ -848,7 +1276,7 @@ const server = http.createServer(async (req, res) => {
         return
       }
       if (req.method === 'PUT') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const raw = await readBody(req)
         const body = JSON.parse(raw)
         if (!isWorkDayPlanBundle(body, siteId)) {
@@ -876,7 +1304,7 @@ const server = http.createServer(async (req, res) => {
       const metaPath = path.join(baseDir, 'meta.json')
 
       if (parts.length === 4 && req.method === 'POST') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const raw = await readBody(req)
         const body = JSON.parse(raw)
         const id = safeMediaId(body?.id)
@@ -958,7 +1386,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (parts.length === 4 && req.method === 'POST') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const raw = await readBody(req)
         const body = JSON.parse(raw)
         if (!isProcurementRow(body)) {
@@ -977,7 +1405,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (parts.length === 5 && req.method === 'PATCH') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const id = parts[4]
         if (!id || id.includes('..')) {
           sendJson(res, 400, { error: 'bad_id' })
@@ -1008,7 +1436,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (parts.length === 5 && req.method === 'DELETE') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const id = parts[4]
         if (!id || id.includes('..')) {
           sendJson(res, 400, { error: 'bad_id' })
@@ -1043,7 +1471,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (parts.length === 4 && req.method === 'POST') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const raw = await readBody(req)
         const body = JSON.parse(raw)
         if (!isBrigadierReportRow(body)) {
@@ -1062,7 +1490,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (parts.length === 5 && req.method === 'DELETE') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const id = parts[4]
         if (!id || id.includes('..')) {
           sendJson(res, 400, { error: 'bad_id' })
@@ -1091,7 +1519,7 @@ const server = http.createServer(async (req, res) => {
       // важна для импортных скриптов: повторный вызов с тем же `id` не
       // создаёт дубликат, а перезаписывает blob и метаданные.
       if (parts.length === 6 && parts[5] === 'attachments' && req.method === 'POST') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const reportId = parts[4]
         if (!reportId || reportId.includes('..') || !/^[a-zA-Z0-9._-]+$/.test(reportId)) {
           sendJson(res, 400, { error: 'bad_report_id' })
@@ -1260,7 +1688,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (req.method === 'PUT') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const raw = await readBody(req)
         const body = JSON.parse(raw)
         if (!isDeliveryPointRow(body)) {
@@ -1273,7 +1701,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (req.method === 'DELETE') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         try {
           await fs.unlink(file)
         } catch (e) {
@@ -1335,7 +1763,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (parts.length === 4 && req.method === 'POST') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const raw = await readBody(req)
         const body = JSON.parse(raw)
         if (!body || typeof body !== 'object') {
@@ -1373,7 +1801,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (parts.length === 5 && req.method === 'DELETE') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const mediaId = safeMediaId(parts[4])
         if (!mediaId) {
           sendJson(res, 400, { error: 'bad_id' })
@@ -1423,7 +1851,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (parts.length === 6 && parts[5] === 'blob' && req.method === 'PUT') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const fileId = safeMediaId(parts[4])
         if (!fileId) {
           sendJson(res, 400, { error: 'bad_id' })
@@ -1435,6 +1863,26 @@ const server = http.createServer(async (req, res) => {
           sendJson(res, 404, { error: 'not_found' })
           return
         }
+        // Замена файла: имя/mime можно обновить, но вид (dwg/pdf) менять нельзя —
+        // иначе отметки и превью остались бы от другого типа документа.
+        const replaceHeader = req.headers['x-project-file-record']
+        let replaceMeta = null
+        if (replaceHeader) {
+          replaceMeta = parseProjectFileRecordHeader(replaceHeader)
+          // Отказ до чтения тела: сливаем запрос, иначе клиент получит обрыв вместо ответа.
+          if (!isProjectFileRecord(replaceMeta)) {
+            req.resume()
+            sendJson(res, 400, { error: 'invalid_project_file' })
+            return
+          }
+          if (
+            /** @type {{kind: string}} */ (replaceMeta).kind !== /** @type {{kind: string}} */ (meta).kind
+          ) {
+            req.resume()
+            sendJson(res, 409, { error: 'kind_mismatch' })
+            return
+          }
+        }
         const buf = await readBodyBuffer(req)
         if (!buf.length) {
           sendJson(res, 400, { error: 'empty_payload' })
@@ -1443,33 +1891,36 @@ const server = http.createServer(async (req, res) => {
         await fs.mkdir(path.join(baseDir, 'blobs'), { recursive: true })
         await fs.writeFile(path.join(baseDir, 'blobs', fileId), buf)
         for (const row of list) {
-          if (!row || typeof row !== 'object' || /** @type {{id?: string}} */ (row).id !== fileId) {
-            continue
+          if (!row || typeof row !== 'object') continue
+          // Без явных `;` две строки склеиваются в `buf.length(row)` — так этот
+          // маршрут и падал с 500, пока заменой файла никто не пользовался.
+          const target = /** @type {Record<string, unknown>} */ (row)
+          if (target.id !== fileId) continue
+          target.sizeBytes = buf.length
+          target.uploadedAtIso = new Date().toISOString()
+          if (replaceMeta) {
+            const src = /** @type {{ name?: string, mime?: string }} */ (replaceMeta)
+            if (src.name) target.name = src.name
+            if (src.mime) target.mime = src.mime
           }
-          /** @type {{ sizeBytes: number, uploadedAtIso: string }} */ (row).sizeBytes = buf.length
-          /** @type {{ uploadedAtIso: string }} */ (row).uploadedAtIso = new Date().toISOString()
           break
         }
         await writeJsonArray(manifestPath, list)
         if (/** @type {{kind?: string}} */ (meta).kind === 'dwg') {
           try {
             await markDxfPreviewStatus(manifestPath, fileId, 'pending')
-            const { previewBytes, engine, pngBytes, pngWorldBounds } = await writeDwgPreviews(baseDir, fileId, buf)
-            await markDxfPreviewReady(manifestPath, fileId, previewBytes, engine)
-            if (typeof pngBytes === 'number') {
-              await markPngPreviewReady(manifestPath, fileId, pngBytes, pngWorldBounds)
-            } else {
-              await markPngPreviewFailed(manifestPath, fileId)
-            }
+            await markPngPreviewPending(manifestPath, fileId)
+            const readBuf = async () => buf
+            kickPngPreview(baseDir, fileId, manifestPath, readBuf)
+            kickDxfPreview(baseDir, fileId, manifestPath, readBuf)
           } catch (e) {
-            console.error('[site-forms] dxf preview failed', fileId, e)
+            console.error('[site-forms] dwg preview kick failed', fileId, e)
             try {
               await markDxfPreviewStatus(manifestPath, fileId, 'failed')
+              await markPngPreviewFailed(manifestPath, fileId)
             } catch {
               /* ignore */
             }
-            sendJson(res, 500, { error: 'dxf_preview_failed' })
-            return
           }
         }
         sendJson(res, 200, { ok: true })
@@ -1490,9 +1941,24 @@ const server = http.createServer(async (req, res) => {
         }
         const blobPath = path.join(baseDir, 'blobs', fileId)
         const forceRegenerate =
-          hasWriteSecret(req) &&
+          (await canForceRegenerate(req)) &&
           (req.headers['x-dxf-preview-regenerate'] === '1' ||
             new URL(req.url ?? '', 'http://local').searchParams.get('regenerate') === '1')
+        const previewFailed =
+          !forceRegenerate &&
+          /** @type {{ dxfPreviewStatus?: string }} */ (meta).dxfPreviewStatus === 'failed'
+        if (previewFailed) {
+          // Не хороним навсегда: через cooldown снова ставим в очередь.
+          const failedAt = /** @type {{ dxfPreviewFailedAtIso?: string }} */ (meta).dxfPreviewFailedAtIso
+          const retry = shouldRetryFailedPng({
+            pngPreviewStatus: 'failed',
+            pngPreviewFailedAtIso: failedAt,
+          })
+          if (!retry) {
+            sendJson(res, 422, { error: 'dxf_preview_failed' })
+            return
+          }
+        }
         try {
           let gz = forceRegenerate ? null : await readDxfPreview(baseDir, fileId)
           if (!forceRegenerate && gz && (await isDxfPreviewStale(baseDir, fileId))) {
@@ -1513,15 +1979,19 @@ const server = http.createServer(async (req, res) => {
             }
             gz = await readDxfPreview(baseDir, fileId)
           } else if (!gz) {
-            const buf = await fs.readFile(blobPath)
-            const { previewBytes, engine, pngBytes, pngWorldBounds } = await writeDwgPreviews(baseDir, fileId, buf)
-            await markDxfPreviewReady(manifestPath, fileId, previewBytes, engine)
-            if (typeof pngBytes === 'number') {
-              await markPngPreviewReady(manifestPath, fileId, pngBytes, pngWorldBounds)
-            } else {
-              await markPngPreviewFailed(manifestPath, fileId)
+            // Не конвертируем в GET-запросе: клиент AbortSignal ~15с рвал длинную конвертацию.
+            if (isDxfPreviewInflight(baseDir, fileId)) {
+              sendJson(res, 503, { error: 'dxf_preview_pending' })
+              return
             }
-            gz = await readDxfPreview(baseDir, fileId)
+            kickPngPreview(baseDir, fileId, manifestPath, () => fs.readFile(blobPath))
+            kickDxfPreview(baseDir, fileId, manifestPath, () => fs.readFile(blobPath))
+            sendJson(res, 503, { error: 'dxf_preview_pending' })
+            return
+          }
+          if (!gz) {
+            sendJson(res, 503, { error: 'dxf_preview_pending' })
+            return
           }
           const freshList = await readJsonArray(manifestPath)
           const freshMeta = freshList.find(
@@ -1536,7 +2006,7 @@ const server = http.createServer(async (req, res) => {
           res.statusCode = 200
           res.setHeader('Content-Type', 'application/dxf')
           res.setHeader('Content-Encoding', 'gzip')
-          res.setHeader('Cache-Control', 'private, no-cache')
+          res.setHeader('Cache-Control', 'private, max-age=3600')
           res.setHeader('ETag', `"${fileId}-${previewAt}"`)
           res.end(gz)
         } catch (e) {
@@ -1544,6 +2014,11 @@ const server = http.createServer(async (req, res) => {
             sendJson(res, 404, { error: 'blob_missing' })
           } else {
             console.error('[site-forms] dxf preview read failed', fileId, e)
+            try {
+              await markDxfPreviewStatus(manifestPath, fileId, 'failed')
+            } catch {
+              /* ignore */
+            }
             sendJson(res, 500, { error: 'dxf_preview_failed' })
           }
         }
@@ -1590,7 +2065,7 @@ const server = http.createServer(async (req, res) => {
         try {
           let png = await readPngPreview(baseDir, fileId)
           const forceRegenerate =
-            hasWriteSecret(req) &&
+            (await canForceRegenerate(req)) &&
             new URL(req.url ?? '', 'http://local').searchParams.get('regenerate') === '1'
           if (forceRegenerate) {
             await deletePngPreview(baseDir, fileId)
@@ -1598,8 +2073,11 @@ const server = http.createServer(async (req, res) => {
           }
           const pngStatus = /** @type {{ pngPreviewStatus?: string }} */ (meta).pngPreviewStatus
           if (!png && pngStatus === 'failed' && !forceRegenerate) {
-            sendJson(res, 503, { error: 'png_preview_failed', permanent: true })
-            return
+            if (!shouldRetryFailedPng(/** @type {{ pngPreviewStatus?: string, pngPreviewFailedAtIso?: string }} */ (meta))) {
+              sendJson(res, 503, { error: 'png_preview_failed', retryable: true })
+              return
+            }
+            // cooldown прошёл — снова в очередь (не permanent)
           }
           if (!png) {
             // pending без inflight = джоба умерла (рестарт API) — перезапускаем, иначе UI ждёт вечно
@@ -1627,7 +2105,7 @@ const server = http.createServer(async (req, res) => {
           setCors(res)
           res.statusCode = 200
           res.setHeader('Content-Type', 'image/png')
-          res.setHeader('Cache-Control', 'private, no-cache')
+          res.setHeader('Cache-Control', 'private, max-age=3600')
           res.setHeader('ETag', `"${fileId}-png-${previewAt}"`)
           if (pngWorldBounds) {
             res.setHeader('X-Deloresh-Png-Bounds', JSON.stringify(pngWorldBounds))
@@ -1675,7 +2153,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (parts.length === 4 && req.method === 'POST') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
 
         const recordHeader = req.headers['x-project-file-record']
         if (recordHeader) {
@@ -1748,7 +2226,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (parts.length === 5 && req.method === 'PATCH') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const fileId = safeMediaId(parts[4])
         if (!fileId) {
           sendJson(res, 400, { error: 'bad_id' })
@@ -1790,7 +2268,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (parts.length === 5 && req.method === 'DELETE') {
-        if (!checkWrite(req, res)) return
+        if (!(await checkWrite(req, res))) return
         const fileId = safeMediaId(parts[4])
         if (!fileId) {
           sendJson(res, 400, { error: 'bad_id' })
@@ -1812,6 +2290,7 @@ const server = http.createServer(async (req, res) => {
         } catch (e) {
           if (/** @type {NodeJS.ErrnoException} */ (e).code !== 'ENOENT') throw e
         }
+        await tombstonePlanMarksForFile(siteId, fileId)
         sendJson(res, 200, { ok: true })
         return
       }

@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { type CadViewerRef } from '@cadview/react'
 import {
   evictDwgPreviewMemoryForFile,
-  hasDwgPreviewInMemory,
   prefetchAllDwgPreviews,
   prefetchDwgPreview,
   prefetchDwgPngPreview,
@@ -15,7 +14,9 @@ import {
 import { probeRasterPreviewBlank } from '../../lib/dwgRasterBlank'
 import { parsePngWorldMeta, type PngPreviewWorldMeta } from '../../lib/dwgPngBounds'
 import { fitCadViewerToDrawing } from '../../lib/dwgViewerFit'
+import { lockViewerViewport } from '../../lib/lockViewerViewport'
 import { canPreviewInApp, projectOpenMode } from '../../lib/projectFileOpen'
+import { listAllSites } from '../../lib/sitesRepository'
 import { DwgViewerChrome } from './DwgViewerChrome'
 import { type DwgRasterViewerRef } from './DwgRasterViewer'
 import { ProjectOfficeViewer } from './ProjectOfficeViewer'
@@ -36,15 +37,49 @@ import {
 import {
   createProjectFileRemote,
   deleteProjectFileRemote,
-  describeRemoteWriteError,
+  featureProjectFileRemote,
   fetchProjectFileBlobRemote,
   fetchProjectFilesRemote,
   fetchProjectFilePngPreviewRemote,
   fetchProjectFilePngWorldMetaRemote,
   hasWriteSecret,
   projectFileBlobUrl,
+  projectFilePngPreviewUrl,
+  replaceProjectFileBlobRemote,
 } from '../../lib/siteFormsApi'
+import { dropDwgPlanMarksForDeletedFile } from '../../lib/dwgPlanMarksRepository'
+import { pickFeaturedDrawing } from '../../lib/featuredDrawing'
+import { ensureCkkbHandoverFolder } from '../../lib/ckkbHandoverDocs'
+import { ensureCompletedWorksFolder } from '../../lib/completedWorksDocs'
 import styles from './SiteProjectHeaderCard.module.css'
+
+function pendingStorageKey(siteId: string) {
+  return `deloresh-pf-pending:${siteId}`
+}
+
+function deletedStorageKey(siteId: string) {
+  return `deloresh-pf-deleted:${siteId}`
+}
+
+function readIdSet(key: string): Set<string> {
+  try {
+    const raw = sessionStorage.getItem(key)
+    if (!raw) return new Set()
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return new Set()
+    return new Set(parsed.filter((x): x is string => typeof x === 'string'))
+  } catch {
+    return new Set()
+  }
+}
+
+function writeIdSet(key: string, ids: Set<string>) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify([...ids]))
+  } catch {
+    /* ignore */
+  }
+}
 
 type Props = {
   siteId: string
@@ -87,26 +122,48 @@ function formatUploaded(iso: string): string {
   })
 }
 
+/** Сколько ждать PNG: на слабой сети 2 МБ легко идут 40–90 сек. */
+function pngPreviewTimeoutMs(row: Pick<StoredSiteProjectFile, 'pngPreviewStatus'>): number {
+  if (row.pngPreviewStatus === 'ready') return 180_000
+  if (row.pngPreviewStatus === 'failed') return 360_000
+  return 240_000
+}
+
+function pngRequestTimeoutMs(row: Pick<StoredSiteProjectFile, 'pngPreviewStatus'>): number {
+  // Один HTTP-запрос: не рвать на 30с — Opera/мобильный VPN часто медленнее.
+  if (row.pngPreviewStatus === 'ready') return 120_000
+  if (row.pngPreviewStatus === 'failed') return 90_000
+  return 90_000
+}
+
 export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: Props) {
+  const siteName = listAllSites().find((s) => s.id === siteId)?.name ?? siteId
+  const canWrite = canUpload && hasWriteSecret()
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const replaceInputRef = useRef<HTMLInputElement | null>(null)
+  const replaceTargetRef = useRef<string | null>(null)
   const assetsRef = useRef<ProjectAsset[]>([])
   const busyRef = useRef(false)
   const syncBlockedRef = useRef(false)
   /** Локальные id, которые ещё ждут отправки на сервер (не «воскрешать» удалённые чужие). */
-  const pendingSyncIdsRef = useRef<Set<string>>(new Set())
+  const pendingSyncIdsRef = useRef<Set<string>>(readIdSet(pendingStorageKey(siteId)))
+  const deletedIdsRef = useRef<Set<string>>(readIdSet(deletedStorageKey(siteId)))
+
+  const persistPending = () => writeIdSet(pendingStorageKey(siteId), pendingSyncIdsRef.current)
+  const persistDeleted = () => writeIdSet(deletedStorageKey(siteId), deletedIdsRef.current)
 
   const [assets, setAssets] = useState<ProjectAsset[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [viewerPdf, setViewerPdf] = useState<ProjectAsset | null>(null)
   const [viewerDwg, setViewerDwg] = useState<ProjectAsset | null>(null)
   const [viewerOffice, setViewerOffice] = useState<ProjectAsset | null>(null)
   const [dwgDxfText, setDwgDxfText] = useState<string | null>(null)
   const [dwgLoadState, setDwgLoadState] = useState<'idle' | 'loading' | 'error'>('idle')
-  const [dwgLoadPhase, setDwgLoadPhase] = useState<DwgLoadPhase | null>(null)
+  const [, setDwgLoadPhase] = useState<DwgLoadPhase | null>(null)
   const [dwgErrorDetail, setDwgErrorDetail] = useState<string | null>(null)
   const [remoteActive, setRemoteActive] = useState(false)
-  const [syncMessage, setSyncMessage] = useState<string | null>(null)
   const [folderOpen, setFolderOpen] = useState(false)
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
   const [newFolderOpen, setNewFolderOpen] = useState(false)
@@ -121,101 +178,101 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
   const [dwgPngWorldMeta, setDwgPngWorldMeta] = useState<PngPreviewWorldMeta | null>(null)
   const [dwgPngState, setDwgPngState] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle')
 
+  const viewerOpen = Boolean(viewerPdf || viewerDwg || viewerOffice)
+  useEffect(() => {
+    if (!viewerOpen) return
+    return lockViewerViewport()
+  }, [viewerOpen])
+
   const revokeIfBlobUrl = (url: string) => {
     if (url.startsWith('blob:')) URL.revokeObjectURL(url)
   }
 
   const resolveProjectBlob = async (fileId: string): Promise<Blob | null> => {
-    if (remoteActive) {
-      const remote = await fetchProjectFileBlobRemote(siteId, fileId)
-      if (remote) return remote
+    const remote = await fetchProjectFileBlobRemote(siteId, fileId)
+    if (remote && remote.size > 0) {
+      setRemoteActive(true)
+      return remote
     }
     return getProjectFileBlob(fileId)
+  }
+
+  const queueLocalFilesMissingOnRemote = (
+    localRows: readonly StoredSiteProjectFile[],
+    remoteIds: ReadonlySet<string>,
+  ) => {
+    for (const local of localRows) {
+      if (remoteIds.has(local.id)) {
+        deletedIdsRef.current.delete(local.id)
+        continue
+      }
+      // Не поднимать с диска то, что пользователь уже удалил на сервере.
+      if (deletedIdsRef.current.has(local.id)) continue
+      // Только уже известные pending (после перезагрузки — из sessionStorage).
+      if (pendingSyncIdsRef.current.has(local.id)) continue
+      // Старый кэш без pending: не синкать обратно, а отдать prune.
+    }
+    persistDeleted()
+  }
+
+  const hydrateAssetsFromLocal = async (outBlobUrls: string[]): Promise<ProjectAsset[]> => {
+    const localRows = await listProjectFilesBySite(siteId)
+    const resolved: ProjectAsset[] = []
+    for (const row of localRows) {
+      if (row.kind === 'folder') {
+        resolved.push({ ...row, url: '' })
+        continue
+      }
+      if (pendingSyncIdsRef.current.has(row.id)) {
+        const blob = await getProjectFileBlob(row.id)
+        if (blob) {
+          const url = URL.createObjectURL(blob)
+          outBlobUrls.push(url)
+          resolved.push({ ...row, url })
+          continue
+        }
+      }
+      resolved.push({ ...row, url: projectFileBlobUrl(siteId, row.id) })
+    }
+    resolved.sort((a, b) => b.uploadedAtIso.localeCompare(a.uploadedAtIso))
+    return resolved
   }
 
   const loadAssets = useCallback(async (opts?: { silent?: boolean }): Promise<string[]> => {
     const blobUrls: string[] = []
     if (!opts?.silent) setLoading(true)
     try {
+      if (!opts?.silent) {
+        try {
+          const localFirst = await hydrateAssetsFromLocal(blobUrls)
+          if (localFirst.length > 0) {
+            setAssets(localFirst)
+            setLoading(false)
+          }
+        } catch {
+          /* IndexedDB недоступен */
+        }
+      }
+
       const remoteRows = await fetchProjectFilesRemote(siteId)
       const remoteAvailable = remoteRows !== null
       if (remoteAvailable) setRemoteActive(true)
 
-      // Сервер — источник правды: показываем remote + только pending с этого устройства.
       if (remoteAvailable && remoteRows) {
         const remoteIds = new Set(remoteRows.map((row) => row.id))
+        queueLocalFilesMissingOnRemote(await listProjectFilesBySite(siteId), remoteIds)
 
         await pruneProjectFilesToRemote(siteId, remoteIds, pendingSyncIdsRef.current)
 
-        if (canUpload && !syncBlockedRef.current && pendingSyncIdsRef.current.size > 0) {
-          if (import.meta.env.DEV && !hasWriteSecret()) {
-            syncBlockedRef.current = true
-            setSyncMessage(
-              'Локальная разработка без ключа записи — файл виден только на этом ноутбуке. Добавьте VITE_SITE_FORMS_WRITE_SECRET в .env и перезапустите dev-сервер, либо загрузите на http://94.242.58.24.',
-            )
-          } else {
-            const localRows = await listProjectFilesBySite(siteId)
-            const toUpload = localRows.filter(
-              (local) =>
-                pendingSyncIdsRef.current.has(local.id) && !remoteIds.has(local.id),
-            )
-            if (toUpload.length > 0) {
-              if (!opts?.silent) setSyncMessage('Отправляем файлы на сервер…')
-              let firstError: string | null = null
-              for (const local of toUpload) {
-                try {
-                  if (local.kind === 'folder') {
-                    const result = await createProjectFileRemote(siteId, local)
-                    if (result.ok) {
-                      pendingSyncIdsRef.current.delete(local.id)
-                      remoteIds.add(local.id)
-                      syncBlockedRef.current = false
-                    } else if (result.reason === 'forbidden') {
-                      syncBlockedRef.current = true
-                      if (!firstError) firstError = describeRemoteWriteError(result, 'папку')
-                    } else if (!firstError) {
-                      firstError = describeRemoteWriteError(result, 'папку')
-                    }
-                    continue
-                  }
-                  const blob = await getProjectFileBlob(local.id)
-                  if (!blob) continue
-                  const result = await createProjectFileRemote(siteId, local, blob)
-                  if (result.ok) {
-                    pendingSyncIdsRef.current.delete(local.id)
-                    remoteIds.add(local.id)
-                    syncBlockedRef.current = false
-                  } else if (result.reason === 'forbidden') {
-                    syncBlockedRef.current = true
-                    if (!firstError) firstError = describeRemoteWriteError(result, 'файл')
-                  } else if (!firstError) {
-                    firstError = describeRemoteWriteError(result, 'файл')
-                  }
-                } catch {
-                  if (!firstError) firstError = 'Не удалось перенести файл на сервер.'
-                }
-              }
-              if (firstError) setSyncMessage(firstError)
-              else if (!opts?.silent) setSyncMessage(null)
-            }
-          }
-        }
-
-        const refreshed = await fetchProjectFilesRemote(siteId)
-        const finalRemote = refreshed ?? remoteRows
-        const finalIds = new Set(finalRemote.map((row) => row.id))
-        await pruneProjectFilesToRemote(siteId, finalIds, pendingSyncIdsRef.current)
-
-        const resolved: ProjectAsset[] = finalRemote.map((row) => ({
+        const resolved: ProjectAsset[] = remoteRows.map((row) => ({
           ...row,
           url: row.kind === 'folder' ? '' : projectFileBlobUrl(siteId, row.id),
         }))
 
-        // Pending, которых ещё нет на сервере — показываем только их (ожидание синка).
         const localRows = await listProjectFilesBySite(siteId)
         for (const local of localRows) {
           if (!pendingSyncIdsRef.current.has(local.id)) continue
-          if (finalIds.has(local.id)) {
+          if (remoteIds.has(local.id)) {
             pendingSyncIdsRef.current.delete(local.id)
             continue
           }
@@ -232,29 +289,38 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
 
         resolved.sort((a, b) => b.uploadedAtIso.localeCompare(a.uploadedAtIso))
         setAssets(resolved)
+        void syncPendingToRemote()
         return blobUrls
       }
 
-      // Офлайн: только локальный IndexedDB.
       const localRows = await listProjectFilesBySite(siteId)
+      queueLocalFilesMissingOnRemote(localRows, new Set())
       const resolved: ProjectAsset[] = []
       for (const row of localRows) {
         if (row.kind === 'folder') {
           resolved.push({ ...row, url: '' })
           continue
         }
-        const blob = await getProjectFileBlob(row.id)
-        if (!blob) continue
-        const url = URL.createObjectURL(blob)
-        blobUrls.push(url)
-        resolved.push({ ...row, url })
+        if (pendingSyncIdsRef.current.has(row.id)) {
+          const blob = await getProjectFileBlob(row.id)
+          if (blob) {
+            const url = URL.createObjectURL(blob)
+            blobUrls.push(url)
+            resolved.push({ ...row, url })
+            continue
+          }
+        }
+        resolved.push({ ...row, url: projectFileBlobUrl(siteId, row.id) })
       }
       resolved.sort((a, b) => b.uploadedAtIso.localeCompare(a.uploadedAtIso))
       setAssets(resolved)
+      void syncPendingToRemote()
       return blobUrls
     } finally {
       if (!opts?.silent) setLoading(false)
     }
+    // syncPendingToRemote объявлен ниже — вызываем после hydrate осознанно
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteId, canUpload])
 
   const refreshFromRemote = useCallback(async () => {
@@ -293,9 +359,57 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
     })
   }, [siteId])
 
+  const syncPendingToRemote = useCallback(async () => {
+    if (!canWrite || syncBlockedRef.current || pendingSyncIdsRef.current.size === 0) return
+    if (import.meta.env.DEV && !hasWriteSecret()) {
+      syncBlockedRef.current = true
+      return
+    }
+
+    const remoteRows = await fetchProjectFilesRemote(siteId)
+    if (!remoteRows) return
+    setRemoteActive(true)
+    const remoteIds = new Set(remoteRows.map((row) => row.id))
+    const localRows = await listProjectFilesBySite(siteId)
+    const toUpload = localRows.filter(
+      (local) => pendingSyncIdsRef.current.has(local.id) && !remoteIds.has(local.id),
+    )
+    if (toUpload.length === 0) return
+
+    for (const local of toUpload) {
+      try {
+        if (local.kind === 'folder') {
+          const result = await createProjectFileRemote(siteId, local)
+          if (result.ok) {
+            pendingSyncIdsRef.current.delete(local.id)
+            syncBlockedRef.current = false
+          } else if (result.reason === 'forbidden') {
+            syncBlockedRef.current = true
+          }
+          continue
+        }
+        const blob = await getProjectFileBlob(local.id)
+        if (!blob) continue
+        const result = await createProjectFileRemote(siteId, local, blob)
+        if (result.ok) {
+          pendingSyncIdsRef.current.delete(local.id)
+          syncBlockedRef.current = false
+        } else if (result.reason === 'forbidden') {
+          syncBlockedRef.current = true
+        }
+      } catch {
+        /* повторим на следующем цикле */
+      }
+    }
+
+    await refreshFromRemote()
+  }, [canWrite, siteId, refreshFromRemote])
+
   const clearDwgPngObjectUrl = () => {
     if (dwgPngRevokeRef.current) {
-      URL.revokeObjectURL(dwgPngRevokeRef.current)
+      if (dwgPngRevokeRef.current.startsWith('blob:')) {
+        URL.revokeObjectURL(dwgPngRevokeRef.current)
+      }
       dwgPngRevokeRef.current = null
     }
     setDwgPngObjectUrl(null)
@@ -303,18 +417,78 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
     setDwgPngState('idle')
   }
 
+  /** Мгновенный показ PNG по URL. Не доверяем локальному failed — сервер источник правды. */
+  const applyPngUrl = (url: string, worldBounds: PngPreviewWorldMeta | null) => {
+    dwgPngRevokeRef.current = null
+    setDwgPngObjectUrl(url)
+    setDwgPngWorldMeta(worldBounds)
+    setDwgPngState('ready')
+    setRemoteActive(true)
+    setDwgDxfText('')
+    setDwgLoadState('idle')
+    setDwgLoadPhase(null)
+  }
+
+  /** Сразу ставим URL плана — браузер стримит сам. Не ждём onload. */
+  const openServerPngNow = (row: ProjectAsset) => {
+    const cacheKey = row.pngPreviewAtIso ?? row.uploadedAtIso ?? '1'
+    const url = projectFilePngPreviewUrl(siteId, row.id, cacheKey)
+    applyPngUrl(url, parsePngWorldMeta(row.pngWorldBounds))
+    if (!parsePngWorldMeta(row.pngWorldBounds)?.pixelsPerUnit) {
+      void fetchProjectFilePngWorldMetaRemote(siteId, row.id).then((meta) => {
+        if (meta) setDwgPngWorldMeta(meta)
+      })
+    }
+  }
+
+  const openDxfFallback = async (row: ProjectAsset, openGen: number) => {
+    setDwgLoadState('loading')
+    setDwgLoadPhase('fetching')
+    setDwgPngState('failed')
+    try {
+      const dxfText = await resolveDwgDxfText(siteId, row.id, row.uploadedAtIso, {
+        remoteActive: true,
+        fetchBlob: () => resolveProjectBlob(row.id),
+        onPhase: (phase) => {
+          if (dwgOpenGenRef.current === openGen) setDwgLoadPhase(phase)
+        },
+        dxfPreviewAtIso: row.dxfPreviewAtIso,
+      })
+      if (dwgOpenGenRef.current !== openGen) return
+      setDwgDxfText(dxfText)
+      setDwgLoadState('idle')
+      setDwgLoadPhase(null)
+    } catch {
+      if (dwgOpenGenRef.current !== openGen) return
+      setDwgErrorDetail('Не удалось открыть чертёж. Проверьте интернет и нажмите «Открыть» снова.')
+      setDwgLoadState('error')
+      setDwgLoadPhase(null)
+    }
+  }
+
   const loadDwgPng = useCallback(
-    async (row: ProjectAsset, opts?: { regenerate?: boolean }) => {
+    async (
+      row: ProjectAsset,
+      opts?: { regenerate?: boolean; timeoutMs?: number },
+    ): Promise<boolean> => {
       const openGen = dwgOpenGenRef.current
-      if (!remoteActive) {
-        clearDwgPngObjectUrl()
-        return
-      }
-      // Любой DWG: если превью раньше упало — тихо пробуем снова при открытии.
-      const shouldRegenerate = opts?.regenerate === true || row.pngPreviewStatus === 'failed'
+      const shouldRegenerate = opts?.regenerate === true
       setDwgPngState('loading')
       try {
         const cacheKey = row.pngPreviewAtIso ?? row.uploadedAtIso
+        if (!shouldRegenerate) {
+          const url = projectFilePngPreviewUrl(siteId, row.id, cacheKey)
+          const worldBounds =
+            parsePngWorldMeta(row.pngWorldBounds) ??
+            (await fetchProjectFilePngWorldMetaRemote(siteId, row.id))
+          if (dwgOpenGenRef.current !== openGen) return false
+          dwgPngRevokeRef.current = null
+          setDwgPngObjectUrl(url)
+          setDwgPngWorldMeta(worldBounds)
+          setDwgPngState('ready')
+          setRemoteActive(true)
+          return true
+        }
         const prefetched =
           !shouldRegenerate ? getPrefetchedDwgPng(row.id, cacheKey) : undefined
         const fetched =
@@ -322,77 +496,80 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
             ? await fetchProjectFilePngPreviewRemote(siteId, row.id, {
                 cacheKey,
                 regenerate: shouldRegenerate,
+                timeoutMs: opts?.timeoutMs ?? pngPreviewTimeoutMs(row),
+                requestTimeoutMs: pngRequestTimeoutMs(row),
                 onWait: () => {
                   if (dwgOpenGenRef.current === openGen) setDwgLoadPhase('converting')
                 },
               })
             : prefetched
-        if (dwgOpenGenRef.current !== openGen) return
+        if (dwgOpenGenRef.current !== openGen) return false
         const blob = fetched?.blob ?? null
         let worldBounds =
           fetched?.worldBounds ??
           parsePngWorldMeta(row.pngWorldBounds) ??
           null
-        if (!worldBounds?.pixelsPerUnit) {
+        if (blob && !worldBounds?.pixelsPerUnit) {
           worldBounds = (await fetchProjectFilePngWorldMetaRemote(siteId, row.id)) ?? worldBounds
         }
-        if (dwgOpenGenRef.current !== openGen) return
+        if (dwgOpenGenRef.current !== openGen) return false
         if (!blob) {
           setDwgPngState('failed')
-          return
+          return false
         }
-        if (dwgPngRevokeRef.current) URL.revokeObjectURL(dwgPngRevokeRef.current)
+        if (dwgPngRevokeRef.current?.startsWith('blob:')) {
+          URL.revokeObjectURL(dwgPngRevokeRef.current)
+        }
         const url = URL.createObjectURL(blob)
         if (await probeRasterPreviewBlank(url)) {
           URL.revokeObjectURL(url)
           if (dwgOpenGenRef.current === openGen) setDwgPngState('failed')
-          return
+          return false
         }
         if (dwgOpenGenRef.current !== openGen) {
           URL.revokeObjectURL(url)
-          return
+          return false
         }
         dwgPngRevokeRef.current = url
         setDwgPngObjectUrl(url)
         setDwgPngWorldMeta(worldBounds)
         setDwgPngState('ready')
-        void refreshFromRemote()
+        setRemoteActive(true)
+        return true
       } catch {
         if (dwgOpenGenRef.current === openGen) setDwgPngState('failed')
+        return false
       }
     },
-    [remoteActive, siteId, refreshFromRemote],
+    [siteId],
   )
 
-  const fitDwgToView = () => {
-    if (dwgPngState === 'ready' && dwgPngObjectUrl) {
-      dwgRasterRef.current?.fit()
+  const dwgPngStateRef = useRef(dwgPngState)
+  const dwgPngObjectUrlRef = useRef(dwgPngObjectUrl)
+  useEffect(() => {
+    dwgPngStateRef.current = dwgPngState
+  }, [dwgPngState])
+  useEffect(() => {
+    dwgPngObjectUrlRef.current = dwgPngObjectUrl
+  }, [dwgPngObjectUrl])
+
+  const handleDwgLayersLoaded = useCallback((entityCount: number) => {
+    dwgLayersLoadedRef.current = true
+    setDwgLoadPhase(null)
+    const pngState = dwgPngStateRef.current
+    const hasPng = pngState === 'ready' && Boolean(dwgPngObjectUrlRef.current)
+    if (entityCount === 0 && !hasPng && pngState !== 'loading') {
+      setDwgErrorDetail('Не удалось показать чертёж. Попробуйте открыть снова.')
+      setDwgLoadState('error')
       return
     }
-    fitCadViewerToDrawing(dwgCadRef.current, dwgCanvasWrapRef.current)
-  }
-
-  const handleDwgLayersLoaded = useCallback(
-    (entityCount: number) => {
-      dwgLayersLoadedRef.current = true
-      setDwgLoadPhase(null)
-      const hasPng = dwgPngState === 'ready' && Boolean(dwgPngObjectUrl)
-      if (entityCount === 0 && !hasPng && dwgPngState !== 'loading') {
-        setDwgErrorDetail(
-          'Не удалось показать цветной план. На сервере нужен Dwg2Png (ACadSharp.Image). Попробуйте «Обновить чертёж» или откройте DWG в AutoCAD.',
-        )
-        setDwgLoadState('error')
-        return
-      }
-      if (!hasPng && dwgPngState !== 'loading') {
-        fitCadViewerToDrawing(dwgCadRef.current, dwgCanvasWrapRef.current)
-        window.requestAnimationFrame(() =>
-          fitCadViewerToDrawing(dwgCadRef.current, dwgCanvasWrapRef.current),
-        )
-      }
-    },
-    [dwgPngObjectUrl, dwgPngState],
-  )
+    if (!hasPng && pngState !== 'loading') {
+      fitCadViewerToDrawing(dwgCadRef.current, dwgCanvasWrapRef.current)
+      window.requestAnimationFrame(() =>
+        fitCadViewerToDrawing(dwgCadRef.current, dwgCanvasWrapRef.current),
+      )
+    }
+  }, [])
 
   useEffect(() => {
     assetsRef.current = assets
@@ -421,9 +598,9 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
 
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') {
-        void refreshFromRemote()
-      }
+      if (document.visibilityState !== 'visible') return
+      if (viewerDwg != null || viewerPdf != null || viewerOffice != null) return
+      void refreshFromRemote()
     }
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('focus', onVisible)
@@ -431,18 +608,55 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('focus', onVisible)
     }
-  }, [refreshFromRemote])
+  }, [refreshFromRemote, viewerDwg, viewerPdf, viewerOffice])
+
+  /** Системные папки объекта: «Сдача ЦККБ …» и «Выполненные работы …». */
+  useEffect(() => {
+    if (!folderOpen) return
+    let cancelled = false
+    void (async () => {
+      try {
+        await Promise.all([
+          ensureCkkbHandoverFolder(siteId, siteName),
+          ensureCompletedWorksFolder(siteId, siteName),
+        ])
+        if (!cancelled) await refreshFromRemote()
+      } catch {
+        /* локально / без сети — папки появятся при следующей синхронизации */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [folderOpen, siteId, siteName, refreshFromRemote])
 
   useEffect(() => {
     const tick = () => {
       if (document.visibilityState !== 'visible') return
       if (busyRef.current) return
-      if (canUpload && pendingSyncIdsRef.current.size > 0) void loadAssets({ silent: true })
-      else void refreshFromRemote()
+      // Пока открыт чертёж — не дёргаем список файлов: на слабой сети это
+      // обрывает PNG/DXF и выглядит как «выкинуло / ошибка».
+      if (viewerDwg != null || viewerPdf != null || viewerOffice != null) return
+      for (const row of assetsRef.current) {
+        if (row.url.startsWith('blob:')) pendingSyncIdsRef.current.add(row.id)
+      }
+      void syncPendingToRemote()
+      if (pendingSyncIdsRef.current.size === 0) void refreshFromRemote()
     }
-    const id = window.setInterval(tick, 4000)
+    const id = window.setInterval(tick, 30_000)
     return () => window.clearInterval(id)
-  }, [canUpload, loadAssets, refreshFromRemote])
+  }, [syncPendingToRemote, refreshFromRemote, viewerDwg, viewerPdf, viewerOffice])
+
+  useEffect(() => {
+    if (!remoteActive || assets.length === 0) return
+    // Не греем все DWG, пока пользователь смотрит один — экономим канал.
+    if (viewerDwg != null) return
+    prefetchAllDwgPreviews(siteId, assets, {
+      remoteActive: true,
+      fetchBlob: (fileId) => resolveProjectBlob(fileId),
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- прогрев при смене списка файлов
+  }, [siteId, remoteActive, assets, viewerDwg])
 
   useEffect(() => {
     const anyOpen =
@@ -468,14 +682,47 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
     }
   }, [viewerPdf, viewerDwg, viewerOffice, folderOpen])
 
-  const hasLocalOnly = useMemo(() => assets.some((row) => row.url.startsWith('blob:')), [assets])
-
   const featuredDrawing = useMemo(() => {
-    const dwgs = assets.filter((row) => row.kind === 'dwg')
-    if (dwgs.length === 0) return null
-    // Основной чертёж — последний загруженный DWG.
-    return [...dwgs].sort((a, b) => b.uploadedAtIso.localeCompare(a.uploadedAtIso))[0]
+    return pickFeaturedDrawing(assets.filter((row) => row.kind === 'dwg'))
   }, [assets])
+
+  const setFeaturedDrawing = useCallback(
+    async (row: ProjectAsset) => {
+      if (row.kind !== 'dwg') return
+      if (featuredDrawing?.id === row.id && row.featuredAtIso) return
+      const featuredAtIso = new Date().toISOString()
+      setAssets((prev) =>
+        prev.map((item) => {
+          if (item.kind !== 'dwg') return item
+          if (item.id === row.id) return { ...item, featuredAtIso }
+          if (!item.featuredAtIso) return item
+          const next = { ...item }
+          delete next.featuredAtIso
+          return next
+        }),
+      )
+      try {
+        const local = await listProjectFilesBySite(siteId)
+        for (const item of local) {
+          if (item.kind !== 'dwg') continue
+          if (item.id === row.id) {
+            await putProjectFileMeta({ ...item, featuredAtIso })
+          } else if (item.featuredAtIso) {
+            const next = { ...item }
+            delete next.featuredAtIso
+            await putProjectFileMeta(next)
+          }
+        }
+      } catch {
+        /* IndexedDB может быть недоступен */
+      }
+      if (hasWriteSecret()) {
+        const result = await featureProjectFileRemote(siteId, row.id)
+        if (result.ok) void refreshFromRemote()
+      }
+    },
+    [featuredDrawing?.id, refreshFromRemote, siteId],
+  )
 
   const archiveFiles = useMemo(() => {
     const inFolder = assets.filter(
@@ -503,7 +750,6 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
   const addFiles = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return
     setBusy(true)
-    setSyncMessage(null)
     try {
       for (const file of Array.from(fileList)) {
         const kind = detectProjectFileKind(file)
@@ -525,6 +771,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
         }
         await putProjectFile(record, file)
         pendingSyncIdsRef.current.add(record.id)
+        persistPending()
 
         const remoteProbe = await fetchProjectFilesRemote(siteId)
         const remoteAvailable = remoteProbe !== null
@@ -536,25 +783,29 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
           if (result.ok) {
             syncedToRemote = true
             pendingSyncIdsRef.current.delete(record.id)
+            persistPending()
             syncBlockedRef.current = false
-          } else if (result.reason === 'network') {
-            setSyncMessage(
-              'Не удалось отправить на сервер — проверьте интернет и нажмите «Отправить».',
-            )
           } else if (result.reason === 'forbidden') {
             syncBlockedRef.current = true
-            setSyncMessage(describeRemoteWriteError(result, 'файл'))
+            setActionError(
+              'Файл сохранён только на этом устройстве. Войдите в аккаунт, чтобы чертёж открывался на сервере.',
+            )
           } else {
-            setSyncMessage(describeRemoteWriteError(result, 'файл'))
+            pendingSyncIdsRef.current.add(record.id)
+            persistPending()
+            setActionError(
+              'Не удалось отправить DWG на сервер. Чертёж может долго «Загружаться» — войдите и загрузите снова.',
+            )
           }
         } else {
-          setSyncMessage('Сервер недоступен — файлы сохранены только на этом устройстве.')
+          pendingSyncIdsRef.current.add(record.id)
+          persistPending()
+          setActionError('Сервер недоступен — DWG пока только на этом устройстве.')
         }
 
         if (syncedToRemote) {
           await refreshFromRemote()
           if (kind === 'dwg') {
-            setSyncMessage('Готовим чертёж к мгновенному открытию…')
             try {
               const remoteRows = await fetchProjectFilesRemote(siteId)
               const remoteRow = remoteRows?.find((r) => r.id === record.id)
@@ -563,20 +814,9 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
                 remoteRow ?? record,
                 () => resolveProjectBlob(record.id),
               )
-              setSyncMessage('Чертёж готов — откроется на всех устройствах')
-              window.setTimeout(() => {
-                setSyncMessage((msg) =>
-                  msg === 'Чертёж готов — откроется на всех устройствах' ? null : msg,
-                )
-              }, 2500)
             } catch {
-              setSyncMessage('Чертёж загружен, превью догружается — откроется через несколько секунд.')
+              /* превью догрузится при открытии */
             }
-          } else if (kind === 'pdf') {
-            setSyncMessage('PDF готов — откроется на всех устройствах')
-            window.setTimeout(() => {
-              setSyncMessage((msg) => (msg === 'PDF готов — откроется на всех устройствах' ? null : msg))
-            }, 2500)
           }
         } else {
           const url = URL.createObjectURL(file)
@@ -585,11 +825,85 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
               b.uploadedAtIso.localeCompare(a.uploadedAtIso),
             ),
           )
+          void syncPendingToRemote()
         }
       }
-      if (!syncMessage) setSyncMessage(null)
     } catch {
-      setSyncMessage('Не удалось сохранить файл. Попробуйте ещё раз.')
+      void syncPendingToRemote()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /**
+   * Замена чертежа новой версией. Id файла сохраняется — значит отметки,
+   * заливки и расчёты остаются на объекте, а план сервер перерисовывает сам.
+   */
+  const replaceDrawingFile = async (file: File | null) => {
+    const targetId = replaceTargetRef.current
+    replaceTargetRef.current = null
+    if (!file || !targetId) return
+    const target = assetsRef.current.find((row) => row.id === targetId)
+    if (!target) return
+    if (!canWrite) {
+      setActionError('Чтобы заменить чертёж, войдите в аккаунт заново.')
+      return
+    }
+    if (detectProjectFileKind(file) !== 'dwg') {
+      setActionError('Заменить чертёж можно только файлом .dwg.')
+      return
+    }
+
+    setActionError(null)
+    setBusy(true)
+    try {
+      const record: StoredSiteProjectFile = {
+        id: target.id,
+        siteId,
+        kind: 'dwg',
+        name: file.name,
+        mime: file.type || 'application/acad',
+        sizeBytes: file.size,
+        uploadedAtIso: new Date().toISOString(),
+        parentId: projectParentId(target),
+      }
+
+      const result = await replaceProjectFileBlobRemote(siteId, record, file)
+      if (!result.ok) {
+        setActionError(
+          result.reason === 'forbidden'
+            ? 'Сервер не принял замену: войдите в аккаунт заново и повторите.'
+            : 'Не удалось отправить новый чертёж на сервер. Проверьте связь и повторите.',
+        )
+        return
+      }
+
+      // Заменили — значит это и есть основной чертёж объекта, закрепляем выбор.
+      await featureProjectFileRemote(siteId, record.id)
+
+      // Старый план и старый DXF больше не актуальны — иначе останутся в кэше.
+      await putProjectFile(record, file)
+      evictDwgPreviewMemoryForFile(record.id)
+      await deleteDwgDxfPreviewsForFile(record.id)
+      if (viewerDwg?.id === record.id) {
+        setViewerDwg(null)
+        setDwgDxfText(null)
+        setDwgLoadState('idle')
+        dwgLayersLoadedRef.current = false
+        clearDwgPngObjectUrl()
+      }
+
+      await refreshFromRemote()
+      try {
+        const remoteRows = await fetchProjectFilesRemote(siteId)
+        const remoteRow = remoteRows?.find((r) => r.id === record.id)
+        await warmDwgPreviewAfterUpload(siteId, remoteRow ?? record, () => Promise.resolve(file))
+      } catch {
+        /* план догрузится при открытии */
+      }
+      await refreshFromRemote()
+    } catch {
+      setActionError('Замена не удалась. Повторите попытку.')
     } finally {
       setBusy(false)
     }
@@ -599,7 +913,6 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
     const name = newFolderName.trim()
     if (!name) return
     setBusy(true)
-    setSyncMessage(null)
     try {
       const record: StoredSiteProjectFile = {
         id: newId(),
@@ -625,9 +938,8 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
           synced = true
           pendingSyncIdsRef.current.delete(record.id)
           syncBlockedRef.current = false
-        } else {
-          setSyncMessage(describeRemoteWriteError(result, 'папку'))
-          if (result.reason === 'forbidden') syncBlockedRef.current = true
+        } else if (result.reason === 'forbidden') {
+          syncBlockedRef.current = true
         }
       }
 
@@ -638,18 +950,23 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
             b.uploadedAtIso.localeCompare(a.uploadedAtIso),
           ),
         )
+        void syncPendingToRemote()
       }
       setNewFolderName('')
       setNewFolderOpen(false)
     } catch {
-      setSyncMessage('Не удалось создать папку.')
+      /* ignore */
     } finally {
       setBusy(false)
     }
   }
 
   const removeAsset = async (row: ProjectAsset) => {
-    setSyncMessage(null)
+    if (!canWrite) {
+      setActionError('Чтобы удалить файл, войдите в аккаунт заново.')
+      return
+    }
+    setActionError(null)
     const toRemove =
       row.kind === 'folder' ? collectDescendantIds(assets, row.id) : [row.id]
     const remoteProbe = await fetchProjectFilesRemote(siteId)
@@ -659,19 +976,28 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
       for (const id of toRemove) {
         const ok = await deleteProjectFileRemote(siteId, id)
         if (!ok) {
-          setSyncMessage(
-            'Не удалось удалить на сервере. На других устройствах запись может остаться.',
+          setActionError(
+            'Сервер не принял удаление (нет доступа или сессия истекла). Выйдите и войдите снова, затем повторите.',
           )
           return
         }
+        deletedIdsRef.current.add(id)
+        pendingSyncIdsRef.current.delete(id)
       }
+      persistDeleted()
+      persistPending()
     }
     for (const id of toRemove) {
       pendingSyncIdsRef.current.delete(id)
+      deletedIdsRef.current.add(id)
       evictDwgPreviewMemoryForFile(id)
       await deleteDwgDxfPreviewsForFile(id)
       await deleteProjectFile(id)
+      // Отметки удалённого чертежа держать негде — гасим и локально.
+      await dropDwgPlanMarksForDeletedFile(siteId, id)
     }
+    persistDeleted()
+    persistPending()
     setAssets((prev) => {
       for (const item of prev) {
         if (toRemove.includes(item.id)) revokeIfBlobUrl(item.url)
@@ -696,6 +1022,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
 
   const openDwgViewer = async (row: ProjectAsset, opts?: { regenerate?: boolean }) => {
     const openGen = ++dwgOpenGenRef.current
+    setFolderOpen(false)
     setViewerPdf(null)
     setViewerOffice(null)
     setViewerDwg(row)
@@ -704,73 +1031,51 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
 
     const shouldRegenerate = opts?.regenerate === true
     clearDwgPngObjectUrl()
-    void loadDwgPng(row, { regenerate: shouldRegenerate })
 
-    if (
-      !shouldRegenerate &&
-      hasDwgPreviewInMemory(row.id, row.uploadedAtIso, row.dxfPreviewAtIso)
-    ) {
-      try {
-        const dxfText = await resolveDwgDxfText(siteId, row.id, row.uploadedAtIso, {
-          remoteActive,
-          fetchBlob: () => resolveProjectBlob(row.id),
-          dxfPreviewAtIso: row.dxfPreviewAtIso,
-        })
-        if (dwgOpenGenRef.current !== openGen) return
-        setDwgDxfText(dxfText)
-        setDwgLoadState('idle')
-        setDwgLoadPhase(null)
-        return
-      } catch {
-        /* ниже обычный путь */
-      }
+    // Обычное открытие: сразу URL PNG. Не ждём загрузку и не падаем в DXF/WASM.
+    if (!shouldRegenerate) {
+      openServerPngNow(row)
+      warmDwgPreview({ ...row, pngPreviewStatus: 'ready' })
+      return
     }
 
     setDwgDxfText(null)
     setDwgLoadState('loading')
     setDwgLoadPhase('fetching')
-    try {
-      const dxfText = await resolveDwgDxfText(siteId, row.id, row.uploadedAtIso, {
-        remoteActive,
-        fetchBlob: () => resolveProjectBlob(row.id),
-        onPhase: (phase) => {
-          if (dwgOpenGenRef.current === openGen) setDwgLoadPhase(phase)
-        },
-        dxfPreviewAtIso: row.dxfPreviewAtIso,
-        regenerate: shouldRegenerate,
-      })
-      if (dwgOpenGenRef.current !== openGen) return
-      setDwgDxfText(dxfText)
+    setDwgPngState('loading')
+    warmDwgPreview(row)
+
+    const pngOk = await loadDwgPng(row, {
+      regenerate: true,
+      timeoutMs: pngPreviewTimeoutMs(row),
+    })
+    if (dwgOpenGenRef.current !== openGen) return
+    if (pngOk) {
+      setDwgDxfText('')
       setDwgLoadState('idle')
-      if (shouldRegenerate) void refreshFromRemote()
-    } catch (err) {
-      if (dwgOpenGenRef.current !== openGen) return
-      const msg = err instanceof Error ? err.message : ''
-      setDwgErrorDetail(
-        msg.includes('conversion failed') ||
-          msg.includes('error code') ||
-          msg.includes('dxf_conversion_failed')
-          ? 'Не удалось разобрать этот DWG. Обновите страницу и попробуйте снова — сервер конвертирует файл заново. Если снова ошибка, напишите нам.'
-          : 'Не удалось открыть DWG. Обновите страницу и попробуйте ещё раз.',
-      )
-      setDwgLoadState('error')
       setDwgLoadPhase(null)
+      void refreshFromRemote()
+      return
     }
+    await openDxfFallback(row, openGen)
   }
 
   const openProjectAsset = (row: ProjectAsset) => {
     const mode = projectOpenMode(row)
     if (mode === 'pdf') {
+      setFolderOpen(false)
       setViewerDwg(null)
       setViewerOffice(null)
       setViewerPdf(row)
       return
     }
     if (mode === 'dwg') {
+      void setFeaturedDrawing(row)
       void openDwgViewer(row)
       return
     }
     if (mode === 'image' || mode === 'spreadsheet' || mode === 'word' || mode === 'text') {
+      setFolderOpen(false)
       setViewerPdf(null)
       setViewerDwg(null)
       setViewerOffice(row)
@@ -790,14 +1095,23 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
       'id' | 'uploadedAtIso' | 'dxfPreviewAtIso' | 'pngPreviewAtIso' | 'pngPreviewStatus'
     >) => {
       if (!remoteActive) return
+      // PNG уже готов — только HTTP-прогрев картинки. DXF не трогаем (он тормозит открытие).
+      if (row.pngPreviewStatus === 'ready') {
+        const cacheKey = row.pngPreviewAtIso ?? row.uploadedAtIso
+        const url = projectFilePngPreviewUrl(siteId, row.id, cacheKey)
+        const img = new Image()
+        img.decoding = 'async'
+        img.src = url
+        return
+      }
+      prefetchDwgPngPreview(siteId, row.id, {
+        cacheKey: row.pngPreviewAtIso ?? row.uploadedAtIso,
+        pngPreviewStatus: row.pngPreviewStatus,
+      })
       prefetchDwgPreview(siteId, row.id, row.uploadedAtIso, {
         remoteActive: true,
         fetchBlob: () => resolveProjectBlob(row.id),
         dxfPreviewAtIso: row.dxfPreviewAtIso,
-      })
-      prefetchDwgPngPreview(siteId, row.id, {
-        cacheKey: row.pngPreviewAtIso ?? row.uploadedAtIso,
-        pngPreviewStatus: row.pngPreviewStatus,
       })
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- resolveProjectBlob из замыкания
@@ -807,7 +1121,13 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
   useEffect(() => {
     if (!viewerDwg) return
     if (!dwgDxfText && dwgPngState !== 'ready') return
-    const t = window.setTimeout(() => fitDwgToView(), 180)
+    const t = window.setTimeout(() => {
+      if (dwgPngState === 'ready' && dwgPngObjectUrl) {
+        dwgRasterRef.current?.fit()
+        return
+      }
+      fitCadViewerToDrawing(dwgCadRef.current, dwgCanvasWrapRef.current)
+    }, 180)
     return () => window.clearTimeout(t)
   }, [viewerDwg, dwgDxfText, dwgPngState, dwgPngObjectUrl])
 
@@ -816,18 +1136,20 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
     warmDwgPreview(featuredDrawing)
   }, [featuredDrawing, warmDwgPreview])
 
+  // Пока сервер готовит план — подтягиваем статус (pending → ready) без ручного F5.
   useEffect(() => {
-    if (!remoteActive || assets.length === 0) return
-    prefetchAllDwgPreviews(siteId, assets, {
-      remoteActive: true,
-      fetchBlob: (fileId) => resolveProjectBlob(fileId),
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- прогрев при смене списка файлов
-  }, [siteId, remoteActive, assets])
+    if (!featuredDrawing || featuredDrawing.kind !== 'dwg') return
+    if (featuredDrawing.pngPreviewStatus === 'ready') return
+    if (featuredDrawing.pngPreviewStatus === 'failed') return
+    const id = window.setInterval(() => {
+      void refreshFromRemote()
+    }, 8_000)
+    return () => window.clearInterval(id)
+  }, [featuredDrawing, refreshFromRemote])
 
   return (
     <>
-      {canUpload ? (
+      {canWrite ? (
         <input
           ref={fileInputRef}
           className={styles.hiddenInput}
@@ -841,13 +1163,35 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
         />
       ) : null}
 
+      {canWrite ? (
+        <input
+          ref={replaceInputRef}
+          className={styles.hiddenInput}
+          type="file"
+          accept=".dwg,application/acad"
+          onChange={(e) => {
+            const file = e.target.files?.[0] ?? null
+            e.target.value = ''
+            void replaceDrawingFile(file)
+          }}
+        />
+      ) : null}
+
       <aside
         className={`${styles.shell} ${embedded ? styles.shellEmbedded : ''}`}
         aria-label="Чертёж и файлы проекта"
       >
         <span className={styles.shellRail} aria-hidden />
         <div className={styles.shellInner}>
-          {loading && !featuredDrawing ? (
+          {actionError ? (
+            <p className={styles.actionError} role="alert">
+              {actionError}{' '}
+              <button type="button" className={styles.textLink} onClick={() => setActionError(null)}>
+                Скрыть
+              </button>
+            </p>
+          ) : null}
+          {loading && assets.length === 0 ? (
             <p className={styles.pending}>Загружаем чертёж…</p>
           ) : (
             <>
@@ -867,6 +1211,26 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
                         ·
                       </span>
                       <span>{formatSize(featuredDrawing.sizeBytes)}</span>
+                      <span className={styles.dot} aria-hidden>
+                        ·
+                      </span>
+                      <span
+                        className={
+                          featuredDrawing.pngPreviewStatus === 'ready'
+                            ? styles.statusReady
+                            : featuredDrawing.pngPreviewStatus === 'failed'
+                              ? styles.statusFail
+                              : styles.statusPending
+                        }
+                      >
+                        {featuredDrawing.pngPreviewStatus === 'ready'
+                          ? 'План готов'
+                          : featuredDrawing.pngPreviewStatus === 'failed'
+                            ? 'План не собрался'
+                            : featuredDrawing.pngPreviewStatus === 'pending'
+                              ? 'Готовим план…'
+                              : 'План на сервере'}
+                      </span>
                       <span className={styles.leadSep} aria-hidden />
                       <a
                         className={styles.textLink}
@@ -875,7 +1239,29 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
                       >
                         Скачать
                       </a>
-                      {canUpload ? (
+                      {canWrite ? (
+                        <button
+                          type="button"
+                          className={styles.textLink}
+                          onClick={() => void openDwgViewer(featuredDrawing, { regenerate: true })}
+                        >
+                          Обновить план
+                        </button>
+                      ) : null}
+                      {canWrite ? (
+                        <button
+                          type="button"
+                          className={styles.textLink}
+                          disabled={busy}
+                          onClick={() => {
+                            replaceTargetRef.current = featuredDrawing.id
+                            replaceInputRef.current?.click()
+                          }}
+                        >
+                          Заменить
+                        </button>
+                      ) : null}
+                      {canWrite ? (
                         <button
                           type="button"
                           className={styles.textLinkDanger}
@@ -906,7 +1292,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
                   >
                     Открыть
                   </button>
-                ) : canUpload ? (
+                ) : canWrite ? (
                   <button
                     type="button"
                     className={styles.ctaPrimary}
@@ -927,23 +1313,6 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
             </>
           )}
         </div>
-
-        {canUpload && !loading && hasLocalOnly ? (
-          <div className={styles.hintRow}>
-            <p className={styles.hint}>Есть файлы только на этом устройстве.</p>
-            <button
-              type="button"
-              className={styles.textLink}
-              onClick={() => {
-                syncBlockedRef.current = false
-                void loadAssets({ silent: true })
-              }}
-            >
-              Отправить
-            </button>
-          </div>
-        ) : null}
-        {syncMessage ? <p className={styles.hint}>{syncMessage}</p> : null}
       </aside>
 
       {folderOpen
@@ -956,24 +1325,51 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
             >
               <header className={styles.folderBar}>
                 <div className={styles.folderBarLeft}>
-                  <span className={styles.folderIcon} aria-hidden>
-                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
-                      <path
-                        d="M3.5 8.2V7a1.8 1.8 0 0 1 1.8-1.8h4.1L11 6.8h8.7A1.8 1.8 0 0 1 21.5 8.6v1"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M3.5 10h17v7.2a1.8 1.8 0 0 1-1.8 1.8H5.3a1.8 1.8 0 0 1-1.8-1.8V10Z"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinejoin="round"
-                        fill="rgba(23,42,77,0.06)"
-                      />
-                    </svg>
-                  </span>
+                  {currentFolderId ? (
+                    <button
+                      type="button"
+                      className={styles.folderBackBtn}
+                      title="Назад"
+                      aria-label="Назад"
+                      onClick={() => {
+                        if (folderTrail.length <= 1) {
+                          setCurrentFolderId(null)
+                          return
+                        }
+                        setCurrentFolderId(folderTrail[folderTrail.length - 2]!.id)
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden>
+                        <path
+                          d="M15 5.5 8.5 12 15 18.5"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <span className={styles.folderBackLabel}>Назад</span>
+                    </button>
+                  ) : (
+                    <span className={styles.folderIcon} aria-hidden>
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
+                        <path
+                          d="M3.5 8.2V7a1.8 1.8 0 0 1 1.8-1.8h4.1L11 6.8h8.7A1.8 1.8 0 0 1 21.5 8.6v1"
+                          stroke="currentColor"
+                          strokeWidth="1.6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M3.5 10h17v7.2a1.8 1.8 0 0 1-1.8 1.8H5.3a1.8 1.8 0 0 1-1.8-1.8V10Z"
+                          stroke="currentColor"
+                          strokeWidth="1.6"
+                          strokeLinejoin="round"
+                          fill="rgba(23,42,77,0.06)"
+                        />
+                      </svg>
+                    </span>
+                  )}
                   <div className={styles.folderBarCopy}>
                     <nav className={styles.folderPath} aria-label="Путь">
                       <button
@@ -1148,6 +1544,9 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
                             <button
                               type="button"
                               className={styles.fileMain}
+                              onPointerDown={(e) => {
+                                if (!isFolder && previewable) e.preventDefault()
+                              }}
                               onClick={() => {
                                 if (isFolder) {
                                   setCurrentFolderId(row.id)
@@ -1233,6 +1632,7 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
                                 <button
                                   type="button"
                                   className={styles.rowBtn}
+                                  onPointerDown={(e) => e.preventDefault()}
                                   onClick={() => openProjectAsset(row)}
                                 >
                                   Открыть
@@ -1334,16 +1734,10 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
                   </div>
                 </div>
                 <div className={styles.dwgCanvasWrap} ref={dwgCanvasWrapRef}>
-                  {viewerDwg?.dxfPreviewEngine === 'libredwg' ? (
-                    <p className={styles.dwgPreviewWarn}>
-                      Чертёж открыт в упрощённом режиме — часть линий может не отображаться. Нажмите
-                      «Обновить чертёж» или обратитесь к администратору (нужен ACadSharp на сервере).
-                    </p>
-                  ) : null}
                   {dwgLoadState === 'error' ? (
                     <div className={styles.dwgError}>
                       <p className={styles.dwgLoading}>
-                        {dwgErrorDetail ?? 'Не удалось открыть DWG в браузере.'}
+                        {dwgErrorDetail ?? 'Не удалось открыть чертёж.'}
                       </p>
                       {viewerDwg ? (
                         <a className={styles.viewerBtn} href={viewerDwg.url} download={viewerDwg.name}>
@@ -1351,33 +1745,35 @@ export function SiteProjectHeaderCard({ siteId, canUpload, embedded = false }: P
                         </a>
                       ) : null}
                     </div>
-                  ) : !dwgDxfText &&
-                    !(remoteActive && (dwgPngState === 'loading' || dwgPngState === 'ready')) ? (
-                    <p className={styles.dwgLoading}>
-                      {dwgLoadPhase === 'converting'
-                        ? 'Готовим чертёж к просмотру…'
-                        : 'Загружаем чертёж…'}
-                    </p>
+                  ) : dwgDxfText === null && dwgPngState !== 'ready' ? (
+                    <p className={styles.dwgLoading}>Загрузка…</p>
                   ) : (
                     <DwgViewerChrome
                       key={viewerDwg.id}
+                      siteId={siteId}
+                      siteName={siteName}
+                      fileId={viewerDwg.id}
                       dxfText={dwgDxfText ?? ''}
                       pngUrl={dwgPngObjectUrl}
                       pngState={dwgPngState}
                       pngWorldMeta={dwgPngWorldMeta}
-                      preferPlan={remoteActive}
+                      preferPlan={remoteActive || dwgPngState === 'loading' || dwgPngState === 'ready'}
                       drawingName={viewerDwg.name}
                       cadRef={dwgCadRef}
                       rasterRef={dwgRasterRef}
                       wrapRef={dwgCanvasWrapRef}
                       onLayersLoaded={handleDwgLayersLoaded}
                       onRasterBlank={() => {
-                        if (dwgPngRevokeRef.current) {
+                        if (dwgPngRevokeRef.current?.startsWith('blob:')) {
                           URL.revokeObjectURL(dwgPngRevokeRef.current)
                           dwgPngRevokeRef.current = null
                         }
                         setDwgPngObjectUrl(null)
                         setDwgPngState('failed')
+                        // PNG 404 / битый — запасной DXF, без мгновенной ошибки на экране.
+                        if (viewerDwg) {
+                          void openDxfFallback(viewerDwg, dwgOpenGenRef.current)
+                        }
                       }}
                     />
                   )}

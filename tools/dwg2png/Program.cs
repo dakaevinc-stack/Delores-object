@@ -292,13 +292,13 @@ static SixLabors.ImageSharp.Color ResolveColor(Entity entity)
 
 static BoundingBox? ComputeBounds(IReadOnlyList<Entity> entities)
 {
-    var points = new List<XY>();
-    foreach (var entity in entities)
+    // Габариты считаем по тому, что действительно рисуется.
+    // Иначе тексты, размеры и точки съёмки раздувают рамку, и сам план
+    // сжимается в несколько процентов кадра (проверено на съёмке улицы).
+    var points = CollectBoundsPoints(entities, drawableOnly: true);
+    if (points.Count < 8)
     {
-        foreach (var pt in SampleBoundsPoints(entity))
-        {
-            points.Add(pt);
-        }
+        points = CollectBoundsPoints(entities, drawableOnly: false);
     }
 
     if (points.Count >= 8)
@@ -328,6 +328,25 @@ static BoundingBox? ComputeBounds(IReadOnlyList<Entity> entities)
 
     return bounds;
 }
+
+static List<XY> CollectBoundsPoints(IReadOnlyList<Entity> entities, bool drawableOnly)
+{
+    var points = new List<XY>();
+    foreach (var entity in entities)
+    {
+        if (drawableOnly && !IsDrawable(entity)) continue;
+        foreach (var pt in SampleBoundsPoints(entity))
+        {
+            points.Add(pt);
+        }
+    }
+
+    return points;
+}
+
+/** Типы, которые умеет рисовать DrawEntity/DrawHatch. Список должен совпадать с ними. */
+static bool IsDrawable(Entity entity) =>
+    entity is Hatch or Line or IPolyline or Arc or Circle or Solid;
 
 static IEnumerable<XY> SampleBoundsPoints(Entity entity)
 {
@@ -405,13 +424,13 @@ static bool IsMostlyBlank(string path)
 
 static void RemoveSpatialOutliers(CadDocument doc)
 {
-    var samples = new List<XY>();
-    foreach (var entity in doc.ModelSpace.Entities)
+    var entities = doc.ModelSpace.Entities.ToList();
+    // Область «где чертёж» определяем по рисуемым объектам, иначе рамку
+    // задают подписи и точки съёмки, разбросанные по всему листу.
+    var samples = CollectBoundsPoints(entities, drawableOnly: true);
+    if (samples.Count < 8)
     {
-        foreach (var pt in SampleBoundsPoints(entity))
-        {
-            samples.Add(pt);
-        }
+        samples = CollectBoundsPoints(entities, drawableOnly: false);
     }
 
     if (samples.Count < 8) return;

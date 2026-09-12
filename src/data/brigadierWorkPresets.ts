@@ -92,7 +92,6 @@ export const BRIGADIER_WORK_PRESETS: readonly BrigadierWorkPreset[] = [
   { id: 'workers-count', title: 'Количество рабочих', defaultUnit: 'person', groupId: 'resources' },
   { id: 'itr-count', title: 'Количество ИТР', defaultUnit: 'person', groupId: 'resources' },
   { id: 'machinery', title: 'Количество техники', defaultUnit: 'pcs', groupId: 'resources' },
-  { id: 'survey', title: 'Геодезические работы', defaultUnit: 'shift', groupId: 'resources' },
 ] as const
 
 export function findBrigadierPreset(id: string): BrigadierWorkPreset | undefined {

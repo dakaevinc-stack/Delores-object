@@ -27,6 +27,7 @@ import {
 import { parseBrigadierComment } from './brigadierCommentSections'
 import { JournalMediaDayCard } from './JournalMediaDayCard'
 import { SiteObjectMediaDropSection } from './SiteObjectMediaDropSection'
+import panelKickerStyles from './sitePanelKicker.module.css'
 import styles from './SiteBrigadierSubmittedSection.module.css'
 
 type Props = {
@@ -259,9 +260,9 @@ export function SiteBrigadierSubmittedReportsSection({
 
       <header className={styles.shellHead}>
         <div className={styles.shellHeadCopy}>
-          <p className={styles.kicker}>
+          <p className={panelKickerStyles.kicker}>
             <img
-              className={styles.kickerMark}
+              className={panelKickerStyles.mark}
               src="/brand-chevron.svg"
               alt=""
               aria-hidden

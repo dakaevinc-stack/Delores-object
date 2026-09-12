@@ -1,70 +1,47 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import {
-  LOCAL_SESSION_KEY,
-  clearLocalSession,
-  loadLocalSession,
-  saveLocalSession,
-  sessionInitials,
-} from './localSession'
-import { findStaffByCredentials } from '../domain/staffDirectory'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { findStaffByLogin } from '../domain/staffDirectory'
+import { clearLocalSession, loadLocalSession } from './localSession'
 import { signInWithCredentials, signOutLocalSession } from './useLocalSession'
 
-describe('localSession', () => {
-  afterEach(() => {
+vi.mock('./siteFormsApi', () => ({
+  loginStaffRemote: vi.fn(async (login: string, password: string) => {
+    if (login === 'Dakaev' && password === 'test-pass') {
+      return {
+        ok: true as const,
+        token: 'test-token-abc',
+        login: 'Dakaev',
+        fullName: 'Дакаев Ибрагим Мансурович',
+        duty: 'deputy',
+        dutyLabel: 'Заместитель генерального директора',
+      }
+    }
+    return { ok: false as const, reason: 'auth' as const }
+  }),
+}))
+
+describe('local session auth', () => {
+  beforeEach(() => {
+    localStorage.clear()
     clearLocalSession()
-  })
-
-  it('сохраняет и читает профиль с должностью', () => {
-    saveLocalSession({
-      login: 'Dakaev',
-      fullName: 'Dakaev',
-      duty: 'deputy',
-      dutyLabel: 'Заместитель генерального директора',
-    })
-    const session = loadLocalSession()
-    expect(session?.login).toBe('Dakaev')
-    expect(session?.duty).toBe('deputy')
-    expect(localStorage.getItem(LOCAL_SESSION_KEY)).toContain('Dakaev')
-  })
-
-  it('очищает сессию', () => {
-    saveLocalSession({
-      login: 'Dakaev',
-      fullName: 'Dakaev',
-      duty: 'deputy',
-      dutyLabel: 'Заместитель генерального директора',
-    })
-    clearLocalSession()
-    expect(loadLocalSession()).toBeNull()
-  })
-
-  it('строит инициалы', () => {
-    expect(sessionInitials('Дакаев Ибрагим Мансурович')).toBe('ДИ')
-    expect(sessionInitials('Dakaev')).toBe('DA')
-    expect(sessionInitials('Иван Петров')).toBe('ИП')
-  })
-})
-
-describe('staffDirectory / signIn', () => {
-  afterEach(() => {
     signOutLocalSession()
   })
 
-  it('принимает верные учётные данные', () => {
-    expect(findStaffByCredentials('Dakaev', 'Ameda095')?.duty).toBe('deputy')
-    const result = signInWithCredentials('Dakaev', 'Ameda095')
-    expect(result.ok).toBe(true)
-    if (result.ok) {
-      expect(result.session.login).toBe('Dakaev')
-      expect(result.session.fullName).toBe('Дакаев Ибрагим Мансурович')
-      expect(result.session.duty).toBe('deputy')
-    }
+  it('finds public roster without password', () => {
+    expect(findStaffByLogin('Dakaev')?.duty).toBe('deputy')
+    expect(findStaffByLogin('dakaev')?.login).toBe('Dakaev')
   })
 
-  it('отклоняет неверный пароль и логин в другом регистре', () => {
-    expect(findStaffByCredentials('Dakaev', 'wrong')).toBeNull()
-    expect(findStaffByCredentials('dakaev', 'Ameda095')?.login).toBe('Dakaev')
-    const result = signInWithCredentials('Dakaev', 'wrong')
+  it('signs in via remote token', async () => {
+    const result = await signInWithCredentials('Dakaev', 'test-pass')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.session.token).toBe('test-token-abc')
+    expect(loadLocalSession()?.token).toBe('test-token-abc')
+  })
+
+  it('rejects bad password', async () => {
+    const result = await signInWithCredentials('Dakaev', 'wrong')
     expect(result.ok).toBe(false)
+    expect(loadLocalSession()).toBeNull()
   })
 })

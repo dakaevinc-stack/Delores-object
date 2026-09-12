@@ -4,7 +4,6 @@ import {
   MIN_REFUSE_NOTE_CHARS,
   formatReceiptClockRu,
   makeRefusedReceipt,
-  refuseCargoError,
   type CargoReceipt,
   type CargoReceiptMedia,
 } from '../../domain/cargoReceipt'
@@ -168,13 +167,17 @@ export function CargoReceiptSheet({ request, onClose, onSubmit }: Props) {
       const persisted = await persistMedia(made.receipt.media)
       await onSubmit({ ...made.receipt, media: persisted })
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Не получилось сохранить. Попробуй ещё раз.')
+      setError(e instanceof Error ? e.message : 'Не получилось сохранить. Попробуйте ещё раз.')
       setBusy(false)
     }
   }
 
-  const formError = refuseCargoError(category, note, media.length)
-  const canSubmit = formError === null
+  const noteLen = note.trim().length
+  const noteOk = noteLen >= MIN_REFUSE_NOTE_CHARS
+  const reasonOk = category.trim().length > 0
+  const mediaOk = media.length > 0
+  const canSubmit = reasonOk && noteOk && mediaOk
+  const noteLeft = Math.max(0, MIN_REFUSE_NOTE_CHARS - noteLen)
 
   return (
     <div className={styles.scrim} role="presentation" onClick={() => !busy && onClose()}>
@@ -185,151 +188,229 @@ export function CargoReceiptSheet({ request, onClose, onSubmit }: Props) {
         aria-labelledby={titleId}
         onClick={(e) => e.stopPropagation()}
       >
-        <p className={styles.kicker}>Приёмка материала</p>
-        <h2 className={styles.title} id={titleId}>
-          Отказ в приёмке
-        </h2>
-        <p className={styles.lead}>
-          Поставка на объект не принимается. Нужны причина, письменное пояснение и фото
-          или видео. Без этого отказ сохранить нельзя.
-        </p>
-        <p className={styles.clock}>
-          Сейчас {formatReceiptClockRu(nowIso)}.
-          <br />
-          Дата и время фиксируются автоматически.
-        </p>
+        <span className={styles.sheetRail} aria-hidden />
 
-        <ul className={styles.items}>
-          {request.items.map((it, i) => (
-            <li key={`${request.id}-${i}`}>
-              {it.title} — {formatQty(it.quantity)} {unitLabel(it.unitId)}
-            </li>
-          ))}
-        </ul>
-
-        <p className={styles.step}>1. Причина отказа</p>
-        <div className={styles.reasons}>
-          {CARGO_REFUSE_REASONS.map((r) => (
+        <header className={styles.head}>
+          <div className={styles.headTop}>
+            <p className={styles.kicker}>Приёмка на объекте</p>
             <button
-              key={r}
               type="button"
-              className={`${styles.reason} ${category === r ? styles.reasonOn : ''}`}
-              onClick={() => {
-                setCategory(r)
-                setError(null)
-              }}
+              className={styles.closeBtn}
+              disabled={busy}
+              onClick={onClose}
+              aria-label="Закрыть"
             >
-              {r}
+              ×
             </button>
-          ))}
+          </div>
+          <h2 className={styles.title} id={titleId}>
+            Оформление отказа
+          </h2>
+          <p className={styles.lead}>
+            Материал на объект не принимаем. Зафиксируйте причину, пояснение и доказательство —
+            без этого отказ в систему не уйдёт.
+          </p>
+        </header>
+
+        <div className={styles.metaRow}>
+          <div className={styles.metaCard}>
+            <span className={styles.metaLabel}>Заявка</span>
+            <strong className={styles.metaValue}>№ {request.shortCode}</strong>
+          </div>
+          <div className={styles.metaCard}>
+            <span className={styles.metaLabel}>Время фиксации</span>
+            <strong className={styles.metaValue}>{formatReceiptClockRu(nowIso)}</strong>
+          </div>
         </div>
 
-        <label className={styles.noteField} htmlFor="cargo-refuse-note">
-          <span className={styles.step}>2. Что именно не так</span>
-          <span className={styles.hint}>
-            Напишите своими словами. Короткой кнопки недостаточно.
-          </span>
-          <textarea
-            id="cargo-refuse-note"
-            className={styles.note}
-            rows={4}
-            value={note}
-            disabled={busy}
-            placeholder="Например: щебня меньше, чем в накладной; грунт с глиной и строительным мусором."
-            onChange={(e) => {
-              setNote(e.target.value)
-              setError(null)
-            }}
-          />
-        </label>
-
-        <p className={styles.step}>3. Фото или видео</p>
-        <p className={styles.hint}>Фиксация обязательна. Без снимка отказ не сохранится.</p>
-
-        <div className={styles.mediaBtns}>
-          <button
-            type="button"
-            className={styles.mediaBtn}
-            onClick={() => photoInput.current?.click()}
-          >
-            Сделать фото
-          </button>
-          <button
-            type="button"
-            className={styles.mediaBtn}
-            onClick={() => videoInput.current?.click()}
-          >
-            Снять видео
-          </button>
-          <input
-            ref={photoInput}
-            className={styles.file}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            multiple
-            onChange={(e) => {
-              addFiles(e.target.files, 'photo')
-              e.target.value = ''
-            }}
-          />
-          <input
-            ref={videoInput}
-            className={styles.file}
-            type="file"
-            accept="video/*"
-            capture="environment"
-            onChange={(e) => {
-              addFiles(e.target.files, 'video')
-              e.target.value = ''
-            }}
-          />
-        </div>
-
-        {media.length > 0 ? (
-          <ul className={styles.thumbs}>
-            {media.map((m) => (
-              <li key={m.id} className={styles.thumb}>
-                {m.kind === 'video' ? (
-                  <video src={m.previewUrl} muted playsInline />
-                ) : (
-                  <img src={m.previewUrl} alt="" />
-                )}
-                <button
-                  type="button"
-                  className={styles.thumbRemove}
-                  onClick={() => removeMedia(m.id)}
-                  aria-label="Убрать"
-                >
-                  ×
-                </button>
+        <section className={styles.cargoCard} aria-label="Материал по заявке">
+          <p className={styles.cargoLabel}>Что привезли</p>
+          <ul className={styles.items}>
+            {request.items.map((it, i) => (
+              <li key={`${request.id}-${i}`}>
+                <span className={styles.itemTitle}>{it.title}</span>
+                <span className={styles.itemQty}>
+                  {formatQty(it.quantity)} {unitLabel(it.unitId)}
+                </span>
               </li>
             ))}
           </ul>
-        ) : null}
+        </section>
 
-        {error ? <p className={styles.error}>{error}</p> : null}
-        {!canSubmit && !error ? (
-          <p className={styles.needAll}>
-            Отказ без объяснения сохранить нельзя. Нужны причина, пояснение
-            {note.trim().length > 0 && note.trim().length < MIN_REFUSE_NOTE_CHARS
-              ? ` (ещё ${MIN_REFUSE_NOTE_CHARS - note.trim().length} симв.)`
-              : ''}{' '}
-            и фото или видео.
-          </p>
-        ) : null}
+        <ol className={styles.checklist} aria-label="Что нужно заполнить">
+          <li className={reasonOk ? styles.checkDone : undefined}>
+            <span className={styles.checkMark} aria-hidden>
+              {reasonOk ? '✓' : '1'}
+            </span>
+            Причина
+          </li>
+          <li className={noteOk ? styles.checkDone : undefined}>
+            <span className={styles.checkMark} aria-hidden>
+              {noteOk ? '✓' : '2'}
+            </span>
+            Пояснение
+          </li>
+          <li className={mediaOk ? styles.checkDone : undefined}>
+            <span className={styles.checkMark} aria-hidden>
+              {mediaOk ? '✓' : '3'}
+            </span>
+            Фото / видео
+          </li>
+        </ol>
 
-        <button
-          type="button"
-          className={styles.refuseBtn}
-          disabled={busy || !canSubmit}
-          onClick={() => void handleRefuse()}
-        >
-          {busy ? 'Сохраняем…' : 'Подтвердить отказ в приёмке'}
-        </button>
-        <button type="button" className={styles.backBtn} disabled={busy} onClick={onClose}>
-          Отмена
-        </button>
+        <div className={styles.body}>
+          <section className={styles.block}>
+            <div className={styles.blockHead}>
+              <h3 className={styles.blockTitle}>Причина отказа</h3>
+              <p className={styles.blockHint}>Выберите одну — это основа акта</p>
+            </div>
+            <div className={styles.reasons} role="group" aria-label="Причина отказа">
+              {CARGO_REFUSE_REASONS.map((r) => {
+                const on = category === r
+                return (
+                  <button
+                    key={r}
+                    type="button"
+                    className={`${styles.reason} ${on ? styles.reasonOn : ''}`}
+                    aria-pressed={on}
+                    onClick={() => {
+                      setCategory(r)
+                      setError(null)
+                    }}
+                  >
+                    <span className={styles.reasonDot} aria-hidden />
+                    {r}
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+
+          <section className={styles.block}>
+            <div className={styles.blockHead}>
+              <h3 className={styles.blockTitle}>Пояснение</h3>
+              <p className={styles.blockHint}>Своими словами: что именно не так на площадке</p>
+            </div>
+            <label className={styles.noteField} htmlFor="cargo-refuse-note">
+              <textarea
+                id="cargo-refuse-note"
+                className={styles.note}
+                rows={4}
+                value={note}
+                disabled={busy}
+                placeholder="Например: по накладной 20 т щебня, по факту меньше; в грунте глина и строительный мусор."
+                onChange={(e) => {
+                  setNote(e.target.value)
+                  setError(null)
+                }}
+              />
+              <span className={styles.noteMeta}>
+                {noteOk
+                  ? 'Пояснение достаточно'
+                  : noteLen === 0
+                    ? `Минимум ${MIN_REFUSE_NOTE_CHARS} символов`
+                    : `Ещё ${noteLeft} симв.`}
+              </span>
+            </label>
+          </section>
+
+          <section className={styles.block}>
+            <div className={styles.blockHead}>
+              <h3 className={styles.blockTitle}>Доказательство</h3>
+              <p className={styles.blockHint}>Снимок или короткое видео с площадки — обязательно</p>
+            </div>
+
+            <div className={styles.mediaBtns}>
+              <button
+                type="button"
+                className={styles.mediaBtn}
+                disabled={busy}
+                onClick={() => photoInput.current?.click()}
+              >
+                <span className={styles.mediaBtnTitle}>Фото</span>
+                <span className={styles.mediaBtnSub}>С камеры или галереи</span>
+              </button>
+              <button
+                type="button"
+                className={styles.mediaBtn}
+                disabled={busy}
+                onClick={() => videoInput.current?.click()}
+              >
+                <span className={styles.mediaBtnTitle}>Видео</span>
+                <span className={styles.mediaBtnSub}>До ~5 МБ</span>
+              </button>
+              <input
+                ref={photoInput}
+                className={styles.file}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                multiple
+                onChange={(e) => {
+                  addFiles(e.target.files, 'photo')
+                  e.target.value = ''
+                }}
+              />
+              <input
+                ref={videoInput}
+                className={styles.file}
+                type="file"
+                accept="video/*"
+                capture="environment"
+                onChange={(e) => {
+                  addFiles(e.target.files, 'video')
+                  e.target.value = ''
+                }}
+              />
+            </div>
+
+            {media.length > 0 ? (
+              <ul className={styles.thumbs}>
+                {media.map((m) => (
+                  <li key={m.id} className={styles.thumb}>
+                    {m.kind === 'video' ? (
+                      <video src={m.previewUrl} muted playsInline />
+                    ) : (
+                      <img src={m.previewUrl} alt="" />
+                    )}
+                    <span className={styles.thumbKind}>{m.kind === 'video' ? 'Видео' : 'Фото'}</span>
+                    <button
+                      type="button"
+                      className={styles.thumbRemove}
+                      onClick={() => removeMedia(m.id)}
+                      aria-label="Убрать файл"
+                    >
+                      ×
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.mediaEmpty}>Пока нет вложений — добавьте хотя бы одно</p>
+            )}
+          </section>
+        </div>
+
+        <footer className={styles.footer}>
+          {error ? <p className={styles.error}>{error}</p> : null}
+          {!canSubmit && !error ? (
+            <p className={styles.needAll}>
+              Чтобы сохранить отказ, заполните все три пункта сверху.
+            </p>
+          ) : null}
+
+          <button
+            type="button"
+            className={styles.refuseBtn}
+            disabled={busy || !canSubmit}
+            onClick={() => void handleRefuse()}
+          >
+            {busy ? 'Сохраняем…' : 'Подтвердить отказ'}
+          </button>
+          <button type="button" className={styles.backBtn} disabled={busy} onClick={onClose}>
+            Отмена
+          </button>
+        </footer>
       </div>
     </div>
   )

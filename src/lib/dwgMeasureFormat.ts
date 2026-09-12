@@ -2,7 +2,7 @@ import type { Point2D, ViewTransform } from '@cadview/core'
 import { screenToWorld, worldToScreen } from '@cadview/core'
 import { drawingLengthToMeters } from './dwgDrawingUnits'
 
-export type DwgViewerTool = 'length' | 'area' | 'region'
+export type DwgViewerTool = 'measure' | 'marks' | 'marker'
 
 export type LengthMeasure = {
   distance: number
@@ -347,7 +347,7 @@ export function buildRegionEdgeScreenLabels(params: {
     holes,
     rings,
     toScreen,
-    minScreenEdgePx = 18,
+    minScreenEdgePx = 10,
     pushPx = 0,
   } = params
   const out: RegionEdgeScreenLabel[] = []
@@ -391,8 +391,9 @@ export function formatLinear(value: number): string {
 
 export function formatArea(value: number): string {
   const abs = Math.abs(value)
-  if (abs >= 10_000) return `${(value / 10_000).toFixed(2)} га`
-  if (abs >= 1) return `${value.toFixed(2)} м²`
+  if (abs >= 1) {
+    return `${value.toLocaleString('ru-RU', { maximumFractionDigits: 2 })} м²`
+  }
   return `${(value * 10_000).toFixed(0)} см²`
 }
 

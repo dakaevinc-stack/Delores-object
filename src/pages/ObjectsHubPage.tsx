@@ -65,7 +65,7 @@ export function ObjectsHubPage() {
 
         <div className={styles.heroMain}>
           <div className={styles.heroCopy}>
-            <p className={styles.kicker}>Строительные объекты</p>
+            <p className={styles.kicker}>Портфель площадок</p>
             <h1 className={styles.title}>Объекты</h1>
             <p className={styles.lead}>
               Сроки, материалы и ход работ по каждой площадке.
@@ -74,17 +74,17 @@ export function ObjectsHubPage() {
             <div className={styles.heroStats} aria-label="Сводка по объектам">
               <div className={styles.stat}>
                 <span className={styles.statValue}>{counts.total}</span>
-                <span className={styles.statLabel}>{pluralizeObjects(counts.total)}</span>
+                <span className={styles.statLabel}>всего</span>
               </div>
               <span className={styles.statDivider} aria-hidden />
               <div className={styles.stat}>
                 <span className={styles.statValue}>{counts.normal}</span>
-                <span className={styles.statLabel}>в норме</span>
+                <span className={styles.statLabel}>норма</span>
               </div>
               <span className={styles.statDivider} aria-hidden />
               <div className={styles.stat}>
                 <span className={styles.statValue}>{counts.watch}</span>
-                <span className={styles.statLabel}>на контроле</span>
+                <span className={styles.statLabel}>контроль</span>
               </div>
             </div>
           </div>

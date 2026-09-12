@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Кабинет · макет</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f4f5f7;
+        --surface: #ffffff;
+        --surface-2: #f0f1f4;
+        --text-strong: #0f1114;
+        --text: #3c424b;
+        --muted: #6b7280;
+        --border: #e1e4ea;
+        --accent: #1c4b82;
+        --brand-navy: #172a4d;
+        --brand-navy-2: #0f1c36;
+        --brand-red: #ee2d3a;
+        --shadow-sm: 0 1px 2px rgba(15, 17, 20, 0.06);
+        --shadow-md: 0 10px 28px rgba(15, 17, 20, 0.1);
+        --sans: 'Inter', system-ui, sans-serif;
+        --display: 'Manrope', 'Inter', system-ui, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: var(--sans);
+        color: var(--text);
+        background: var(--bg);
+      }
+      .page {
+        width: min(1280px, 100%);
+        margin: 0 auto;
+        padding: 40px 24px 72px;
+      }
+      .masthead {
+        position: relative;
+        margin-bottom: 24px;
+      }
+      .masthead::before {
+        content: '';
+        position: absolute;
+        inset: -28px -8% -36px;
+        background:
+          radial-gradient(55% 70% at 12% 40%, rgba(23, 42, 77, 0.1) 0%, transparent 70%),
+          radial-gradient(50% 65% at 88% 30%, rgba(238, 45, 58, 0.08) 0%, transparent 68%),
+          radial-gradient(70% 80% at 50% 100%, rgba(120, 160, 210, 0.12) 0%, transparent 72%);
+        filter: blur(2px);
+        pointer-events: none;
+      }
+      .mastheadInner {
+        position: relative;
+        padding: 2.5px;
+        border-radius: 28px;
+        background: linear-gradient(
+          135deg,
+          #fff 0%,
+          rgba(255, 255, 255, 0.75) 12%,
+          rgba(220, 235, 255, 0.55) 28%,
+          rgba(255, 255, 255, 0.9) 42%,
+          rgba(255, 240, 235, 0.45) 58%,
+          rgba(230, 242, 255, 0.6) 74%,
+          #fff 100%
+        );
+        box-shadow:
+          0 0 0 1px rgba(255, 255, 255, 0.95),
+          0 32px 70px rgba(15, 28, 54, 0.14),
+          0 10px 24px rgba(15, 28, 54, 0.07);
+      }
+      .mastheadGlass {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 18px 28px;
+        border-radius: 25.5px;
+        background: linear-gradient(
+          165deg,
+          rgba(255, 255, 255, 0.55) 0%,
+          rgba(255, 255, 255, 0.18) 38%,
+          rgba(255, 255, 255, 0.22) 100%
+        );
+        backdrop-filter: blur(40px) saturate(1.7);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .brand img {
+        height: 36px;
+        width: auto;
+      }
+      .brandName {
+        font-family: var(--display);
+        font-weight: 800;
+        font-size: 18px;
+        letter-spacing: -0.03em;
+        color: var(--brand-navy);
+      }
+      .nav {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .nav a {
+        text-decoration: none;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 600;
+        padding: 8px 12px;
+        border-radius: 999px;
+      }
+      .nav a.active {
+        color: var(--brand-navy);
+        background: rgba(23, 42, 77, 0.08);
+      }
+      .user {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--brand-navy);
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(23, 42, 77, 0.08);
+        border-radius: 999px;
+        padding: 8px 14px;
+      }
+      .titleRow {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+      .titleRow h1 {
+        margin: 0;
+        font-family: var(--display);
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        color: var(--text-strong);
+        line-height: 1.25;
+      }
+      .titleRow p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .btn {
+        appearance: none;
+        border: none;
+        border-radius: 14px;
+        background: linear-gradient(180deg, #243f73 0%, var(--brand-navy) 100%);
+        color: #fff;
+        font-weight: 700;
+        font-size: 14px;
+        padding: 12px 16px;
+        box-shadow: 0 10px 22px rgba(23, 42, 77, 0.22);
+        cursor: pointer;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1.05fr 1fr;
+        gap: 18px;
+      }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 22px;
+        box-shadow: var(--shadow-sm);
+        padding: 18px 18px 16px;
+      }
+      .panelHead {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+      .panelHead h2 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--text-strong);
+        letter-spacing: -0.02em;
+      }
+      .calNav {
+        display: flex;
+        gap: 6px;
+      }
+      .iconBtn {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--surface-2);
+        color: var(--brand-navy);
+        font-weight: 700;
+      }
+      .week {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+        margin-bottom: 6px;
+      }
+      .week span {
+        text-align: center;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .days {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+      }
+      .day {
+        aspect-ratio: 1;
+        border-radius: 14px;
+        border: 1px solid transparent;
+        background: var(--surface-2);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        font-size: 13px;
+        font-weight: 650;
+        color: var(--text-strong);
+      }
+      .day.mute { color: #b0b6c0; background: transparent; }
+      .day.today {
+        border-color: rgba(28, 75, 130, 0.45);
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(28, 75, 130, 0.12);
+        color: var(--accent);
+      }
+      .dots { display: flex; gap: 3px; height: 5px; }
+      .dot { width: 5px; height: 5px; border-radius: 50%; }
+      .dot.a { background: #d4a017; }
+      .dot.b { background: #1c4b82; }
+      .dot.c { background: #1f8f4a; }
+      .legend {
+        display: flex;
+        gap: 14px;
+        margin-top: 14px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .legend i {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        margin-right: 6px;
+      }
+      .tasks { display: flex; flex-direction: column; gap: 10px; }
+      .task {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 12px;
+        align-items: start;
+        padding: 12px 12px;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        background: linear-gradient(180deg, #fff 0%, #fafbfc 100%);
+      }
+      .chip {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        padding: 5px 8px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+      .chip.new { background: rgba(212, 160, 23, 0.16); color: #9a7408; }
+      .chip.work { background: rgba(28, 75, 130, 0.12); color: var(--accent); }
+      .chip.shift { background: rgba(23, 42, 77, 0.08); color: var(--brand-navy); }
+      .task h3 {
+        margin: 0 0 4px;
+        font-size: 14px;
+        font-weight: 750;
+        color: var(--text-strong);
+        letter-spacing: -0.02em;
+      }
+      .meta { font-size: 12px; color: var(--muted); }
+      .when { font-size: 12px; font-weight: 700; color: var(--brand-navy); }
+      .thread {
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border);
+      }
+      .thread h3 {
+        margin: 0 0 10px;
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--text-strong);
+      }
+      .bubble {
+        max-width: 92%;
+        margin-bottom: 8px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        font-size: 13px;
+        line-height: 1.4;
+      }
+      .bubble.me {
+        margin-left: auto;
+        background: rgba(28, 75, 130, 0.08);
+        border-color: rgba(28, 75, 130, 0.14);
+      }
+      .bubble b { color: var(--brand-navy); }
+      .bubble span { color: var(--muted); font-size: 11px; margin-left: 8px; }
+      .hubHint {
+        margin-top: 18px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      .hub {
+        position: relative;
+        min-height: 88px;
+        border-radius: 22px;
+        overflow: hidden;
+        color: #f5f8fd;
+        padding: 16px 18px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, transparent 28%),
+          radial-gradient(110% 80% at 100% -10%, rgba(61, 122, 214, 0.28) 0%, transparent 52%),
+          linear-gradient(152deg, #1c355f 0%, #172a4d 46%, #0c162c 100%);
+        box-shadow:
+          0 0 0 1px rgba(255, 255, 255, 0.12),
+          0 24px 56px rgba(10, 18, 36, 0.28);
+      }
+      .hub.active {
+        outline: 2px solid rgba(238, 45, 58, 0.55);
+        outline-offset: 2px;
+      }
+      .hub .kicker {
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        opacity: 0.55;
+        font-weight: 700;
+      }
+      .hub .name {
+        margin-top: 6px;
+        font-family: var(--display);
+        font-weight: 800;
+        font-size: 18px;
+        letter-spacing: -0.03em;
+      }
+      .hub .sub { margin-top: 4px; font-size: 12px; opacity: 0.7; }
+      .badge {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: var(--brand-red);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 800;
+        display: grid;
+        place-items: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="masthead">
+        <div class="mastheadInner">
+          <div class="mastheadGlass">
+            <div class="brand">
+              <img src="../public/brand-logotype.png" alt="" />
+              <div class="brandName">Деловые Решения</div>
+            </div>
+            <nav class="nav">
+              <a href="#">Главная</a>
+              <a href="#">Объекты</a>
+              <a href="#">Спецтехника</a>
+              <a class="active" href="#">Кабинет</a>
+            </nav>
+            <div class="user">Исаев · ПТО</div>
+          </div>
+        </div>
+      </header>
+
+      <div class="hubHint">
+        <div class="hub">
+          <div class="kicker">раздел</div>
+          <div class="name">Объекты</div>
+          <div class="sub">площадки и отчёты</div>
+        </div>
+        <div class="hub">
+          <div class="kicker">раздел</div>
+          <div class="name">Спецтехника</div>
+          <div class="sub">парк и карточки</div>
+        </div>
+        <div class="hub active">
+          <div class="badge">3</div>
+          <div class="kicker">раздел</div>
+          <div class="name">Кабинет</div>
+          <div class="sub">календарь · поручения</div>
+        </div>
+      </div>
+
+      <div class="titleRow" style="margin-top: 22px">
+        <div>
+          <h1>Кабинет</h1>
+          <p>Календарь поручений и короткие комментарии по задаче</p>
+        </div>
+        <button class="btn" type="button">+ Поручение</button>
+      </div>
+
+      <div class="grid">
+        <section class="panel">
+          <div class="panelHead">
+            <h2>Сентябрь 2026</h2>
+            <div class="calNav">
+              <button class="iconBtn" type="button">‹</button>
+              <button class="iconBtn" type="button">›</button>
+            </div>
+          </div>
+          <div class="week">
+            <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
+          </div>
+          <div class="days">
+            <div class="day mute">31</div>
+            <div class="day">1</div>
+            <div class="day">2<div class="dots"><i class="dot a"></i></div></div>
+            <div class="day">3</div>
+            <div class="day today">4<div class="dots"><i class="dot a"></i><i class="dot b"></i></div></div>
+            <div class="day">5<div class="dots"><i class="dot a"></i></div></div>
+            <div class="day">6</div>
+            <div class="day">7</div>
+            <div class="day">8<div class="dots"><i class="dot c"></i></div></div>
+            <div class="day">9</div>
+            <div class="day">10</div>
+            <div class="day">11<div class="dots"><i class="dot a"></i></div></div>
+            <div class="day">12</div>
+            <div class="day">13</div>
+            <div class="day">14</div>
+            <div class="day">15</div>
+            <div class="day">16<div class="dots"><i class="dot b"></i></div></div>
+            <div class="day">17</div>
+            <div class="day">18</div>
+            <div class="day">19</div>
+            <div class="day">20</div>
+            <div class="day">21</div>
+            <div class="day">22</div>
+            <div class="day">23</div>
+            <div class="day">24</div>
+            <div class="day">25</div>
+            <div class="day">26</div>
+            <div class="day">27</div>
+            <div class="day">28</div>
+            <div class="day">29</div>
+            <div class="day">30</div>
+            <div class="day mute">1</div>
+            <div class="day mute">2</div>
+            <div class="day mute">3</div>
+            <div class="day mute">4</div>
+          </div>
+          <div class="legend">
+            <span><i class="dot a"></i>поручение</span>
+            <span><i class="dot b"></i>смена / отчёт</span>
+            <span><i class="dot c"></i>готово</span>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panelHead">
+            <h2>На сегодня · 4 сентября</h2>
+          </div>
+          <div class="tasks">
+            <article class="task">
+              <span class="chip new">новое</span>
+              <div>
+                <h3>Сверить объёмы · Брусилова</h3>
+                <div class="meta">от Исаев · ПТО → Гевенян</div>
+              </div>
+              <div class="when">до 18:00</div>
+            </article>
+            <article class="task">
+              <span class="chip work">в работе</span>
+              <div>
+                <h3>Фото корыта + отчёт</h3>
+                <div class="meta">от Гуликян → Гевенян</div>
+              </div>
+              <div class="when">сегодня</div>
+            </article>
+            <article class="task">
+              <span class="chip shift">смена</span>
+              <div>
+                <h3>План дня · Брусилова</h3>
+                <div class="meta">системная задача смены</div>
+              </div>
+              <div class="when">весь день</div>
+            </article>
+          </div>
+          <div class="thread">
+            <h3>По поручению · не общий чат</h3>
+            <div class="bubble">
+              <b>Гевенян</b><span>10:42</span><br />
+              Объёмы сверил, расхождений нет.
+            </div>
+            <div class="bubble me">
+              <b>Исаев</b><span>10:55</span><br />
+              Принято. Отметьте в отчёте.
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>

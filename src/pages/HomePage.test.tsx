@@ -6,6 +6,27 @@ import { ObjectsHubPage } from './ObjectsHubPage'
 import { clearLocalSession } from '../lib/localSession'
 import { signOutLocalSession } from '../lib/useLocalSession'
 
+vi.mock('../lib/siteFormsApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/siteFormsApi')>()
+  return {
+    ...actual,
+    loginStaffRemote: vi.fn(async (login: string, password: string) => {
+      if (login === 'Dakaev' && password === 'test-pass') {
+        return {
+          ok: true as const,
+          token: 'test-token-abc',
+          login: 'Dakaev',
+          fullName: 'Дакаев Ибрагим Мансурович',
+          duty: 'deputy',
+          dutyLabel: 'Заместитель генерального директора',
+        }
+      }
+      return { ok: false as const, reason: 'auth' as const }
+    }),
+    fetchStaffTasksRemote: vi.fn(async () => []),
+  }
+})
+
 describe('Маршрут главной', () => {
   afterEach(() => {
     signOutLocalSession()
@@ -51,7 +72,7 @@ describe('Маршрут главной', () => {
       target: { value: 'Dakaev' },
     })
     fireEvent.change(screen.getByPlaceholderText('Пароль'), {
-      target: { value: 'Ameda095' },
+      target: { value: 'test-pass' },
     })
     fireEvent.click(screen.getByRole('button', { name: /Войти/i }))
 

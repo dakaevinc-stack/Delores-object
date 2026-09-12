@@ -102,22 +102,23 @@ export function MastheadSignIn({ className, onSessionChange }: Props) {
     setBusy(true)
     setMessage(null)
 
-    // Без setTimeout: звук и картинка стартуют в том же жесте, что «Войти».
-    const result = signInWithCredentials(user, password)
-    if (!result.ok) {
-      stopLoginIntroPlayback()
-      clearLoginIntroPending()
-      setMessage(result.message)
+    void (async () => {
+      const result = await signInWithCredentials(user, password)
+      if (!result.ok) {
+        stopLoginIntroPlayback()
+        clearLoginIntroPending()
+        setMessage(result.message)
+        setBusy(false)
+        return
+      }
+      beginLoginIntroPlayback()
+      requestLoginIntro()
+      saveRememberedLogin(result.session.login)
+      setPassword('')
+      setLogin(result.session.login)
       setBusy(false)
-      return
-    }
-    beginLoginIntroPlayback()
-    requestLoginIntro()
-    saveRememberedLogin(result.session.login)
-    setPassword('')
-    setLogin(result.session.login)
-    setBusy(false)
-    onSessionChange?.(result.session)
+      onSessionChange?.(result.session)
+    })()
   }
 
   function onSignOut() {

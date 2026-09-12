@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Задачи</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --surface: #fff;
+      --line: #e8eaef;
+      --text: #0f1114;
+      --soft: #6b7280;
+      --navy: #172a4d;
+      --blue: #1c4b82;
+      --red: #ee2d3a;
+      --warn: #c9970a;
+      --ok: #1f8f4a;
+      --sans: Inter, system-ui, sans-serif;
+      --display: Manrope, Inter, system-ui, sans-serif;
+      --safe-b: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      background: #0b1220;
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+    /* phone frame for desktop preview; full bleed on real mobile shots */
+    .phone {
+      width: 390px;
+      min-height: 844px;
+      margin: 0 auto;
+      background: var(--bg);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ===== TOP BAR (app-like, not another glass masthead) ===== */
+    .top {
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(244,245,247,.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--line);
+      padding: 10px 16px 12px;
+      display: grid;
+      grid-template-columns: 40px 1fr 40px;
+      align-items: center;
+      gap: 8px;
+    }
+    .icon-btn {
+      width: 40px; height: 40px; border: 0; border-radius: 12px;
+      background: transparent; color: var(--navy);
+      font: 700 22px/1 var(--sans); display: grid; place-items: center;
+    }
+    .top h1 {
+      margin: 0; text-align: center;
+      font: 800 17px/1.2 var(--display);
+      letter-spacing: -.02em;
+    }
+    .top .count {
+      justify-self: end;
+      min-width: 28px; height: 28px; border-radius: 999px;
+      background: var(--red); color: #fff;
+      font: 800 12px/28px var(--sans); text-align: center;
+    }
+
+    /* segments */
+    .segs {
+      display: flex; gap: 4px; padding: 10px 16px 0;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+    }
+    .seg {
+      flex: none;
+      border: 0; border-radius: 999px;
+      padding: 8px 12px;
+      font: 700 13px/1 var(--sans);
+      background: transparent; color: var(--soft);
+    }
+    .seg.on { background: #fff; color: var(--navy); box-shadow: 0 1px 3px rgba(15,17,20,.08); }
+
+    /* ===== LIST: rows, not nested cards ===== */
+    .list {
+      margin: 12px 12px 24px;
+      background: var(--surface);
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      overflow: hidden;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 4px 1fr auto;
+      gap: 0 12px;
+      align-items: center;
+      min-height: 68px;
+      padding: 12px 12px 12px 0;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+      text-decoration: none; color: inherit;
+    }
+    .row:last-child { border-bottom: 0; }
+    .row .bar { align-self: stretch; border-radius: 0 3px 3px 0; }
+    .row.new .bar { background: var(--warn); }
+    .row.work .bar { background: var(--blue); }
+    .row.done .bar { background: var(--ok); opacity: .7; }
+    .row.done { opacity: .72; }
+    .row .body { min-width: 0; }
+    .row .who {
+      font: 600 12px/1.2 var(--sans); color: var(--soft);
+      display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+    }
+    .row .who b { color: var(--navy); font-weight: 700; }
+    .row .name {
+      margin-top: 4px;
+      font: 750 15px/1.25 var(--sans);
+      letter-spacing: -.01em;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .row .right {
+      text-align: right; display: flex; flex-direction: column;
+      align-items: flex-end; gap: 6px; padding-right: 2px;
+    }
+    .row .time { font: 700 12px/1 var(--sans); color: var(--soft); }
+    .row.new .time { color: var(--warn); }
+    .row .chev { color: #c5cad3; font: 700 18px/1 var(--sans); }
+
+    .hint {
+      padding: 0 16px 8px;
+      font: 600 12px/1.35 var(--sans); color: var(--soft);
+    }
+
+    /* ===== DETAIL ===== */
+    .detail { padding-bottom: calc(84px + var(--safe-b)); }
+    .hero { padding: 8px 16px 14px; }
+    .status-line {
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .pill {
+      font: 700 11px/1 var(--sans); letter-spacing: .02em;
+      padding: 6px 9px; border-radius: 999px;
+      background: #eef0f4; color: var(--navy);
+    }
+    .pill.new { background: rgba(212,160,23,.18); color: #8a6a08; }
+    .pill.work { background: rgba(28,75,130,.12); color: var(--blue); }
+    .hero h2 {
+      margin: 0;
+      font: 800 22px/1.2 var(--display);
+      letter-spacing: -.03em;
+    }
+    .hero .from {
+      margin-top: 6px;
+      font: 600 13px/1.35 var(--sans); color: var(--soft);
+    }
+    .hero .from b { color: var(--navy); }
+
+    .sheet {
+      margin: 0 12px 10px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .sheet .lbl {
+      font: 700 11px/1 var(--sans); letter-spacing: .06em;
+      text-transform: uppercase; color: var(--soft); margin-bottom: 8px;
+    }
+    .sheet p {
+      margin: 0;
+      font: 600 15px/1.45 var(--sans); color: var(--text);
+    }
+    .files { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .file {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 10px; border-radius: 10px;
+      background: var(--bg); border: 1px solid var(--line);
+      font: 700 12px/1 var(--sans); color: var(--navy);
+    }
+    .upload {
+      margin-top: 10px;
+      border: 1px dashed #cfd4dd;
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+      font: 700 13px/1 var(--sans); color: var(--soft);
+      background: #fafbfc;
+    }
+
+    .chat { display: flex; flex-direction: column; gap: 8px; }
+    .msg {
+      max-width: 85%;
+      padding: 10px 12px;
+      border-radius: 14px 14px 14px 4px;
+      background: var(--bg);
+      font: 600 13px/1.4 var(--sans);
+    }
+    .msg.me {
+      align-self: flex-end;
+      border-radius: 14px 14px 4px 14px;
+      background: rgba(28,75,130,.1);
+    }
+    .msg .meta { font: 700 11px/1 var(--sans); color: var(--soft); margin-bottom: 4px; }
+    .compose {
+      display: flex; gap: 8px; margin-top: 10px; align-items: center;
+    }
+    .compose input {
+      flex: 1; height: 42px; border: 1px solid var(--line);
+      border-radius: 12px; padding: 0 12px;
+      font: 600 14px var(--sans); background: var(--bg);
+    }
+    .compose button {
+      width: 42px; height: 42px; border: 0; border-radius: 12px;
+      background: var(--navy); color: #fff; font: 800 14px var(--sans);
+    }
+
+    /* sticky footer actions — compact */
+    .dock {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      padding: 10px 12px calc(10px + var(--safe-b));
+      background: rgba(255,255,255,.94);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid var(--line);
+      display: flex; gap: 8px;
+    }
+    .dock .primary {
+      flex: 1; height: 44px; border: 0; border-radius: 12px;
+      background: var(--navy); color: #fff;
+      font: 800 14px/1 var(--sans);
+    }
+    .dock .secondary {
+      height: 44px; padding: 0 14px; border-radius: 12px;
+      border: 1px solid var(--line); background: #fff;
+      font: 800 14px/1 var(--sans); color: var(--navy);
+    }
+
+    .hide { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="phone" id="app">
+
+    <!-- LIST -->
+    <div id="s-list">
+      <header class="top">
+        <button class="icon-btn" type="button" aria-label="Назад">‹</button>
+        <h1>Задачи</h1>
+        <div class="count">4</div>
+      </header>
+      <div class="segs">
+        <button class="seg on" type="button">Все</button>
+        <button class="seg" type="button">Новые</button>
+        <button class="seg" type="button">В работе</button>
+        <button class="seg" type="button">Готово</button>
+      </div>
+      <p class="hint">Сегодня · 4 сентября</p>
+      <div class="list">
+        <a class="row new" href="?s=1">
+          <span class="bar"></span>
+          <div class="body">
+            <div class="who"><b>Исаев</b> · ПТО</div>
+            <div class="name">Сверить объёмы А–С</div>
+          </div>
+          <div class="right"><div class="time">18:00</div><div class="chev">›</div></div>
+        </a>
+        <a class="row new" href="?s=2">
+          <span class="bar"></span>
+          <div class="body">
+            <div class="who"><b>Дакаев</b></div>
+            <div class="name">Согласовать выезд катка</div>
+          </div>
+          <div class="right"><div class="time">16:00</div><div class="chev">›</div></div>
+        </a>
+        <a class="row work" href="?s=3">
+          <span class="bar"></span>
+          <div class="body">
+            <div class="who"><b>Гуликян</b> · участок</div>
+            <div class="name">Фото корыта</div>
+          </div>
+          <div class="right"><div class="time">сегодня</div><div class="chev">›</div></div>
+        </a>
+        <a class="row done" href="#">
+          <span class="bar"></span>
+          <div class="body">
+            <div class="who"><b>Минасян</b></div>
+            <div class="name">Список на смене</div>
+          </div>
+          <div class="right"><div class="time">11:20</div><div class="chev">›</div></div>
+        </a>
+      </div>
+    </div>
+
+    <!-- TASK 1 -->
+    <div id="s-1" class="hide detail">
+      <header class="top">
+        <button class="icon-btn" type="button" onclick="location.search='?s=list'">‹</button>
+        <h1>Задача</h1>
+        <div></div>
+      </header>
+      <div class="hero">
+        <div class="status-line">
+          <span class="pill new">Новая</span>
+          <span class="pill">до 18:00</span>
+          <span class="pill">Брусилова</span>
+        </div>
+        <h2>Сверить объёмы А–С</h2>
+        <div class="from">От <b>Исаева</b> · ПТО</div>
+      </div>
+      <div class="sheet">
+        <div class="lbl">Сделать</div>
+        <p>Сверить зоны А–С с чертежом. Приложить фото.</p>
+        <div class="files"><span class="file">📄 зоны_А-С.pdf</span></div>
+      </div>
+      <div class="sheet">
+        <div class="lbl">Ваш файл</div>
+        <div class="upload">+ Фото или файл</div>
+      </div>
+      <div class="sheet">
+        <div class="lbl">Чат с Исаевым</div>
+        <div class="chat">
+          <div class="msg" style="align-self:center;background:transparent;color:var(--soft);font-size:12px">Пока пусто</div>
+        </div>
+        <div class="compose">
+          <input placeholder="Сообщение" />
+          <button type="button">➤</button>
+        </div>
+      </div>
+      <div class="dock">
+        <button class="primary" type="button">В работу</button>
+        <button class="secondary" type="button">Готово</button>
+      </div>
+    </div>
+
+    <!-- TASK 2 -->
+    <div id="s-2" class="hide detail">
+      <header class="top">
+        <button class="icon-btn" type="button" onclick="location.search='?s=list'">‹</button>
+        <h1>Задача</h1>
+        <div></div>
+      </header>
+      <div class="hero">
+        <div class="status-line">
+          <span class="pill new">Новая</span>
+          <span class="pill">до 16:00</span>
+          <span class="pill">Брусилова</span>
+        </div>
+        <h2>Согласовать выезд катка</h2>
+        <div class="from">От <b>Дакаева</b></div>
+      </div>
+      <div class="sheet">
+        <div class="lbl">Сделать</div>
+        <p>Написать ФИО машиниста и время выезда.</p>
+      </div>
+      <div class="sheet">
+        <div class="lbl">Ваш файл</div>
+        <div class="upload">+ Фото или файл</div>
+      </div>
+      <div class="sheet">
+        <div class="lbl">Чат с Дакаевым</div>
+        <div class="chat">
+          <div class="msg"><div class="meta">Дакаев · 09:10</div>Нужен каток к 17:00.</div>
+        </div>
+        <div class="compose">
+          <input placeholder="Сообщение" />
+          <button type="button">➤</button>
+        </div>
+      </div>
+      <div class="dock">
+        <button class="primary" type="button">В работу</button>
+        <button class="secondary" type="button">Готово</button>
+      </div>
+    </div>
+
+    <!-- TASK 3 -->
+    <div id="s-3" class="hide detail">
+      <header class="top">
+        <button class="icon-btn" type="button" onclick="location.search='?s=list'">‹</button>
+        <h1>Задача</h1>
+        <div></div>
+      </header>
+      <div class="hero">
+        <div class="status-line">
+          <span class="pill work">В работе</span>
+          <span class="pill">сегодня</span>
+          <span class="pill">Брусилова</span>
+        </div>
+        <h2>Фото корыта</h2>
+        <div class="from">От <b>Гуликяна</b> · нач. участка</div>
+      </div>
+      <div class="sheet">
+        <div class="lbl">Сделать</div>
+        <p>Сфотографировать корыто и коротко описать.</p>
+        <div class="files"><span class="file">🖼 фото_корыто.jpg</span></div>
+      </div>
+      <div class="sheet">
+        <div class="lbl">Ваш файл</div>
+        <div class="upload">+ Ещё файл</div>
+        <div class="files"><span class="file">🖼 моё_фото.jpg</span></div>
+      </div>
+      <div class="sheet">
+        <div class="lbl">Чат с Гуликяном</div>
+        <div class="chat">
+          <div class="msg"><div class="meta">Гуликян · 10:02</div>Нужен ракурс с торца.</div>
+          <div class="msg me"><div class="meta">Вы · 10:18</div>Сделал, фото ниже.</div>
+        </div>
+        <div class="compose">
+          <input placeholder="Сообщение" />
+          <button type="button">➤</button>
+        </div>
+      </div>
+      <div class="dock">
+        <button class="primary" type="button">Готово</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const s = new URLSearchParams(location.search).get('s') || 'list'
+    ;['list','1','2','3'].forEach((id) => {
+      const el = document.getElementById('s-' + (id === 'list' ? 'list' : id))
+      if (!el) return
+      const show = (id === 'list' && s === 'list') || s === id
+      el.classList.toggle('hide', !show)
+    })
+  </script>
+</body>
+</html>

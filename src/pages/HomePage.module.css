@@ -348,6 +348,11 @@
   padding-right: clamp(18px, 2.2vw, 28px);
 }
 
+.brandCell picture {
+  display: block;
+  line-height: 0;
+}
+
 .brandLogo {
   display: block;
   width: clamp(176px, 15.5vw, 208px);
@@ -691,7 +696,7 @@
   }
 
   .pageGuest .brandLogo {
-    width: min(196px, 58vw);
+    width: min(102px, 31vw);
     max-width: 100%;
   }
 
@@ -749,7 +754,7 @@
     }
 
     .pageGuest .brandLogo {
-      width: min(156px, 52vw);
+      width: min(88px, 29vw);
     }
 
     .pageGuest .todayCore {
@@ -771,16 +776,22 @@
     }
 
     .pageGuest .brandLogo {
-      width: min(220px, 56vw);
+      width: min(109px, 29vw);
     }
   }
 
   .brandCell {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
     padding: 0 0 14px;
   }
 
   .brandLogo {
-    width: min(168px, 56vw);
+    width: min(95px, 29vw);
+    height: auto;
+    margin-inline: auto;
   }
 
   .mastheadToday {
@@ -870,7 +881,7 @@
 
 @media (max-width: 359px) {
   .brandLogo {
-    width: min(148px, 62vw);
+    width: min(82px, 32vw);
   }
 }
 
@@ -904,16 +915,22 @@
   pointer-events: none;
 }
 
+.hubRowStatic {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
 .hubRowRevealed {
   animation: hubRowReveal 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .hubRowRevealed > * {
-  animation: hubCardReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: hubCardReveal 0.58s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .hubRowRevealed > *:nth-child(1) {
-  animation-delay: 0.06s;
+  animation-delay: 0.04s;
 }
 
 .hubRowRevealed > *:nth-child(2) {
@@ -921,11 +938,11 @@
 }
 
 .hubRowRevealed > *:nth-child(3) {
-  animation-delay: 0.18s;
+  animation-delay: 0.2s;
 }
 
 .hubRowRevealed > *:nth-child(4) {
-  animation-delay: 0.24s;
+  animation-delay: 0.28s;
 }
 
 @keyframes hubRowReveal {
@@ -942,11 +959,13 @@
 @keyframes hubCardReveal {
   from {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(14px) scale(0.98);
+    filter: blur(6px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+    filter: blur(0);
   }
 }
 
@@ -1059,6 +1078,12 @@
   .hubRowRevealed,
   .hubRowRevealed > * {
     animation: none;
+  }
+
+  .hubRowRevealed > * {
+    filter: none;
+    transform: none;
+    opacity: 1;
   }
 
   .hubRowHidden {

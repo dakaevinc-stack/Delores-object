@@ -14,6 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:smoke": "node scripts/device-matrix-smoke.mjs",
+    "test:live": "node scripts/live-audit-smoke.mjs",
     "test:max": "vitest run && node scripts/device-matrix-smoke.mjs && node scripts/dwg-max-smoke.mjs",
     "check": "npm run lint && npm run test && npm run build",
     "preview": "vite preview --host 0.0.0.0 --port 4173 --strictPort",
