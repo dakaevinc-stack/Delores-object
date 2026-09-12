@@ -185,33 +185,8 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
             Расход материала
           </h2>
           <p className={styles.lead}>
-            {crewLabel
-              ? `Показан только ${crewLabel} на этом объекте. Нажмите ещё раз — вернутся все.`
-              : 'Общие суммы по объекту. Нажмите бригаду — увидите только её расход.'}
+            {crewLabel ? `Только ${crewLabel} на этом объекте.` : 'Расход по бригадам объекта.'}
           </p>
-          {!expanded ? (
-            <dl className={styles.previewStats} aria-hidden>
-              <div>
-                <dt>Статей</dt>
-                <dd>{summary.facts.length}</dd>
-              </div>
-              <div>
-                <dt>Бригад</dt>
-                <dd>{crews.length}</dd>
-              </div>
-              {hasPlan ? (
-                <div className={summary.overCount ? styles.statBad : undefined}>
-                  <dt>Минус</dt>
-                  <dd>{summary.overCount}</dd>
-                </div>
-              ) : (
-                <div>
-                  <dt>План</dt>
-                  <dd>нет</dd>
-                </div>
-              )}
-            </dl>
-          ) : null}
         </div>
 
         <CollapseToggle
@@ -233,48 +208,42 @@ export function SiteMaterialConsumptionSection({ budget, requests }: Props) {
               <span className={styles.metricLabel}>Бригад</span>
               <span className={styles.metricValue}>{crews.length}</span>
             </div>
-            {hasPlan ? (
-              <>
-                <div className={`${styles.metric} ${summary.lowCount ? styles.metricWarn : ''}`}>
-                  <span className={styles.metricLabel}>Мало</span>
-                  <span className={styles.metricValue}>{summary.lowCount}</span>
-                </div>
-                <div className={`${styles.metric} ${summary.overCount ? styles.metricBad : ''}`}>
-                  <span className={styles.metricLabel}>В минус</span>
-                  <span className={styles.metricValue}>{summary.overCount}</span>
-                </div>
-              </>
-            ) : (
-              <div className={styles.metric}>
-                <span className={styles.metricLabel}>Сейчас</span>
-                <span className={styles.metricValue}>{crewLabel ?? 'все'}</span>
-              </div>
-            )}
+            <div className={`${styles.metric} ${hasPlan && summary.overCount ? styles.metricBad : ''}`}>
+              <span className={styles.metricLabel}>{hasPlan ? 'Минус' : 'План'}</span>
+              <span className={styles.metricValue}>{hasPlan ? summary.overCount : '—'}</span>
+            </div>
           </div>
 
           {crews.length > 0 ? (
-            <div className={styles.crewStrip} role="group" aria-label="Бригады на объекте">
-              <button
-                type="button"
-                className={styles.crewChip}
-                data-active={crewId == null ? 'true' : 'false'}
-                aria-pressed={crewId == null}
-                onClick={() => setCrewId(null)}
-              >
-                Все
-              </button>
-              {crews.map((crew) => (
+            <div className={styles.crewBlock}>
+              <p className={styles.crewHint}>
+                {crewLabel
+                  ? 'Ещё раз по бригаде или «Все» — вернётся сумма по объекту.'
+                  : 'Нажмите бригаду — в пунктах ниже останется только её расход.'}
+              </p>
+              <div className={styles.crewStrip} role="group" aria-label="Бригады на объекте">
                 <button
-                  key={crew.contractorId}
                   type="button"
                   className={styles.crewChip}
-                  data-active={crewId === crew.contractorId ? 'true' : 'false'}
-                  aria-pressed={crewId === crew.contractorId}
-                  onClick={() => selectCrew(crew.contractorId)}
+                  data-active={crewId == null ? 'true' : 'false'}
+                  aria-pressed={crewId == null}
+                  onClick={() => setCrewId(null)}
                 >
-                  {crew.contractorName}
+                  Все
                 </button>
-              ))}
+                {crews.map((crew) => (
+                  <button
+                    key={crew.contractorId}
+                    type="button"
+                    className={styles.crewChip}
+                    data-active={crewId === crew.contractorId ? 'true' : 'false'}
+                    aria-pressed={crewId === crew.contractorId}
+                    onClick={() => selectCrew(crew.contractorId)}
+                  >
+                    {crew.contractorName}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : null}
 

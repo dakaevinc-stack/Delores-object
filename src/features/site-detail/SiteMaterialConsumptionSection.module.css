@@ -34,8 +34,8 @@
   align-items: center;
   column-gap: 16px;
   box-sizing: border-box;
-  min-height: 188px;
-  padding: 14px 14px 16px 18px;
+  min-height: 164px;
+  padding: 12px 14px 14px 18px;
 }
 
 .headCopy {
@@ -63,15 +63,15 @@
 
 @media (min-width: 861px) {
   .head {
-    height: 136px;
-    min-height: 136px;
-    padding: 20px 24px 16px 28px;
+    height: 112px;
+    min-height: 112px;
+    padding: 16px 24px 12px 28px;
   }
 
   .headCopy .lead {
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 1;
     overflow: hidden;
   }
 }
@@ -108,53 +108,10 @@
 
 .lead {
   margin: 0;
-  max-width: 48ch;
+  max-width: 42ch;
   font-size: 13px;
   line-height: 1.35;
   color: var(--muted);
-}
-
-.previewStats {
-  display: inline-flex;
-  gap: 0;
-  margin: 10px 0 0;
-  padding: 2px 0;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
-}
-
-.previewStats > div {
-  min-width: 64px;
-  padding: 7px 12px;
-  border-right: 1px solid rgba(15, 23, 42, 0.06);
-}
-
-.previewStats > div:last-child {
-  border-right: 0;
-}
-
-.previewStats dt {
-  margin: 0 0 2px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.previewStats dd {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-strong);
-}
-
-.statBad dd {
-  color: var(--status-bad, #c62828);
 }
 
 .body {
@@ -170,7 +127,7 @@
 
 .metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1px;
   margin-top: 8px;
   border-radius: 14px;
@@ -391,6 +348,19 @@
   color: var(--brand-navy, #172a4d);
 }
 
+.crewBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.crewHint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
 .crewStrip {
   display: flex;
   flex-wrap: wrap;
@@ -567,10 +537,6 @@
 }
 
 @media (max-width: 720px) {
-  .metrics {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .rowTop {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -584,19 +550,11 @@
     justify-content: flex-start;
   }
 
-  .previewStats {
-    width: 100%;
-  }
-
-  .previewStats > div {
-    flex: 1;
-    min-width: 0;
-  }
 }
 
 @media (max-width: 480px) {
   .head {
-    min-height: 188px;
+    min-height: 164px;
     padding:
       14px
       max(14px, env(safe-area-inset-right, 0px))

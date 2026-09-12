@@ -414,7 +414,7 @@ export function ObjectDetailPage() {
             Аналитика / План работ
           </h2>
           <p className={styles.summaryLead}>
-            KPI и график по срокам объекта; цифры плана — ориентир (часть данных пока демо).
+            Сроки и ход работ по объекту.
           </p>
         </div>
         <CollapseToggle
