@@ -130,6 +130,8 @@ export function BrigadierReportModal({
   )
   const assignedParsed = parseResponsibleName(assignedResponsible)
   const assignedName = assignedParsed.ok ? assignedParsed.value : undefined
+  const responsibleNow = parseResponsibleName(responsible)
+  const responsibleName = responsibleNow.ok ? responsibleNow.value : undefined
   const [planSearch, setPlanSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [qtyErrorIds, setQtyErrorIds] = useState<ReadonlySet<string>>(() => new Set())
@@ -1014,9 +1016,7 @@ export function BrigadierReportModal({
               required
               aria-required="true"
             />
-            {assignedName &&
-            parseResponsibleName(responsible).ok &&
-            parseResponsibleName(responsible).value !== assignedName ? (
+            {assignedName && responsibleName && responsibleName !== assignedName ? (
               <p className={styles.hint}>
                 На объекте назначен {assignedName}. Автор сдачи остаётся из входа.
               </p>
