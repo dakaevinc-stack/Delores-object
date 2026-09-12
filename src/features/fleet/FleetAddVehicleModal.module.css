@@ -341,6 +341,14 @@
   padding-left: 2px;
 }
 
+.fieldHint {
+  margin: 0;
+  padding-left: 2px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
 .input {
   font: inherit;
   font-size: 14px;

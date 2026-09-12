@@ -22,6 +22,29 @@ export function unitLabel(id: MeasurementUnitId): string {
   return MEASUREMENT_UNITS.find((u) => u.id === id)?.label ?? id
 }
 
+/**
+ * Объём выполненной работы: только конечное число строго больше нуля.
+ * Запятая и точка оба допустимы. Ноль, минус и «abc» — не факт смены.
+ */
+export function parsePerformedQty(
+  raw: unknown,
+): { ok: true; value: number } | { ok: false; reason: 'empty' | 'not-a-number' | 'not-positive' } {
+  const s = String(raw ?? '')
+    .replace(',', '.')
+    .trim()
+  if (!s) return { ok: false, reason: 'empty' }
+  const value = Number(s)
+  if (!Number.isFinite(value)) return { ok: false, reason: 'not-a-number' }
+  if (value <= 0) return { ok: false, reason: 'not-positive' }
+  return { ok: true, value }
+}
+
+export function isPositivePerformedQty(n: unknown): n is number {
+  return typeof n === 'number' && Number.isFinite(n) && n > 0
+}
+
+export const PERFORMED_QTY_ERROR = 'Объём должен быть больше нуля'
+
 export type BrigadierCriterionDraft = {
   id: string
   title: string

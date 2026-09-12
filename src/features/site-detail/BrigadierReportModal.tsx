@@ -12,6 +12,8 @@ import {
   type BrigadierWorkEntryDraft,
   type MeasurementUnitId,
   brigadierProblemKindLabel,
+  parsePerformedQty,
+  PERFORMED_QTY_ERROR,
   unitLabel,
 } from '../../domain/brigadierReport'
 import {
@@ -80,6 +82,7 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
   const [workEntries, setWorkEntries] = useState<BrigadierWorkEntryDraft[]>([])
   const [planSearch, setPlanSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [qtyErrorIds, setQtyErrorIds] = useState<ReadonlySet<string>>(() => new Set())
   const attachmentsRef = useRef<BrigadierAttachmentDraft[]>([])
 
   /**
@@ -308,28 +311,47 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
     e.preventDefault()
     setError(null)
 
-    const filled = criteria.filter((c) => c.title.trim() && String(c.quantity).trim())
     const commentTrim = reportComment.trim()
     const filledProblems = problems
       .map((p) => ({ kindId: p.kindId, details: p.details.trim() }))
       .filter((p) => p.details.length > 0)
 
+    const invalidQtyIds = new Set<string>()
+    const filled: BrigadierCriterionDraft[] = []
+    for (const c of criteria) {
+      if (!c.title.trim()) continue
+      const parsed = parsePerformedQty(c.quantity)
+      if (!parsed.ok) {
+        invalidQtyIds.add(c.id)
+        continue
+      }
+      filled.push({ ...c, quantity: String(parsed.value) })
+    }
+
     const filledWorkEntries: BrigadierWorkEntry[] = []
     for (const w of workEntries) {
       const num = (w.planNumber ?? '').trim()
       if (!num) continue
-      const qtyStr = String(w.qty ?? '').replace(',', '.').trim()
-      if (!qtyStr) continue
-      const qty = Number(qtyStr)
-      if (!Number.isFinite(qty) || qty <= 0) continue
+      const parsed = parsePerformedQty(w.qty)
+      if (!parsed.ok) {
+        invalidQtyIds.add(w.id)
+        continue
+      }
       filledWorkEntries.push({
         id: w.id,
         planNumber: num,
         planTitle: w.planTitle,
-        qty,
+        qty: parsed.value,
         unit: w.unit,
       })
     }
+
+    if (invalidQtyIds.size > 0) {
+      setQtyErrorIds(invalidQtyIds)
+      setError(PERFORMED_QTY_ERROR)
+      return
+    }
+    setQtyErrorIds(new Set())
 
     const hasWork = filled.length > 0
     const hasComment = commentTrim.length > 0
@@ -622,13 +644,23 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
                               {checked && entry ? (
                                 <div className={styles.planItemQty}>
                                   <input
-                                    className={styles.planItemQtyInput}
+                                    className={`${styles.planItemQtyInput} ${
+                                      qtyErrorIds.has(entry.id) ? styles.qtyInvalid : ''
+                                    }`}
                                     inputMode="decimal"
                                     placeholder="Сколько сделали сегодня"
                                     value={entry.qty}
-                                    onChange={(e) =>
+                                    onChange={(e) => {
                                       updateWorkEntry(entry.id, { qty: e.target.value })
-                                    }
+                                      if (qtyErrorIds.has(entry.id)) {
+                                        setQtyErrorIds((prev) => {
+                                          const next = new Set(prev)
+                                          next.delete(entry.id)
+                                          return next
+                                        })
+                                      }
+                                    }}
+                                    aria-invalid={qtyErrorIds.has(entry.id)}
                                     aria-label={`Сколько сделали по строке ${entry.planNumber}`}
                                     autoFocus
                                   />
@@ -721,13 +753,23 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
                             </div>
                             <div className={styles.pickedControls}>
                               <input
-                                className={styles.pickedQty}
+                                className={`${styles.pickedQty} ${
+                                  qtyErrorIds.has(c.id) ? styles.qtyInvalid : ''
+                                }`}
                                 inputMode="decimal"
                                 placeholder="Объём"
                                 value={c.quantity}
-                                onChange={(e) =>
+                                onChange={(e) => {
                                   updateCriterion(c.id, { quantity: e.target.value })
-                                }
+                                  if (qtyErrorIds.has(c.id)) {
+                                    setQtyErrorIds((prev) => {
+                                      const next = new Set(prev)
+                                      next.delete(c.id)
+                                      return next
+                                    })
+                                  }
+                                }}
+                                aria-invalid={qtyErrorIds.has(c.id)}
                                 aria-label={`Объём: ${c.title}`}
                               />
                               <select
@@ -769,13 +811,23 @@ export function BrigadierReportModal({ onClose, siteId, siteName, plan, onSubmit
                             </div>
                             <div className={styles.pickedControls}>
                               <input
-                                className={styles.pickedQty}
+                                className={`${styles.pickedQty} ${
+                                  qtyErrorIds.has(c.id) ? styles.qtyInvalid : ''
+                                }`}
                                 inputMode="decimal"
                                 placeholder="Объём"
                                 value={c.quantity}
-                                onChange={(e) =>
+                                onChange={(e) => {
                                   updateCriterion(c.id, { quantity: e.target.value })
-                                }
+                                  if (qtyErrorIds.has(c.id)) {
+                                    setQtyErrorIds((prev) => {
+                                      const next = new Set(prev)
+                                      next.delete(c.id)
+                                      return next
+                                    })
+                                  }
+                                }}
+                                aria-invalid={qtyErrorIds.has(c.id)}
                                 aria-label="Объём"
                               />
                               <select

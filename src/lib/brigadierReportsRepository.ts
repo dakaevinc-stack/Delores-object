@@ -87,7 +87,7 @@ function isWorkEntryLike(x: unknown): x is BrigadierWorkEntry {
   if (typeof w.id !== 'string' || w.id.length === 0) return false
   if (typeof w.planNumber !== 'string' || w.planNumber.length === 0) return false
   if (typeof w.planTitle !== 'string') return false
-  if (typeof w.qty !== 'number' || !Number.isFinite(w.qty)) return false
+  if (typeof w.qty !== 'number' || !Number.isFinite(w.qty) || w.qty <= 0) return false
   if (typeof w.unit !== 'string') return false
   return MEASUREMENT_UNITS.some((u) => u.id === (w.unit as MeasurementUnitId))
 }

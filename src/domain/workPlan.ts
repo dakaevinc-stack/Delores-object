@@ -417,7 +417,10 @@ export function computePlanFactFromReports(
     for (const e of entries) {
       const num = e.planNumber.trim()
       if (!num) continue
-      const qty = Number.isFinite(e.qty) ? e.qty : 0
+      /* Отрицательный и нулевой объём — не факт. Старые битые отчёты
+         не должны уменьшать план. */
+      const qty = Number.isFinite(e.qty) && e.qty > 0 ? e.qty : 0
+      if (qty === 0) continue
       const prev = acc.get(num)
       if (!prev) {
         acc.set(num, {

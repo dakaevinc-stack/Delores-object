@@ -44,12 +44,6 @@ function defaultSchematic(cat: FleetCategoryId): FleetVehicle['schematicVariant'
   }
 }
 
-function addYear(iso: string, years = 1): string {
-  const d = new Date(iso + 'T12:00:00')
-  d.setFullYear(d.getFullYear() + years)
-  return d.toISOString().slice(0, 10)
-}
-
 /* ============================================================
    Режимы выбора класса:
      preset — одна из заранее известных категорий (карточки-чипы)
@@ -97,8 +91,7 @@ export function FleetAddVehicleModal({ open, onClose, onCreate, lockedCategory }
     setPlate('')
     setModel('')
     setVin('')
-    const today = new Date().toISOString().slice(0, 10)
-    setInsuranceDate(addYear(today, 1))
+    setInsuranceDate('')
     setTouched(false)
     /* Фокус на первое поле после открытия — отдельный тик, чтобы модалка успела отрисоваться. */
     const id = window.setTimeout(() => firstInputRef.current?.focus(), 40)
@@ -166,7 +159,7 @@ export function FleetAddVehicleModal({ open, onClose, onCreate, lockedCategory }
       repairs: [],
       maintenance: {},
       insurance: {
-        validUntilIso: insuranceDate || addYear(new Date().toISOString().slice(0, 10), 1),
+        validUntilIso: insuranceDate || undefined,
       },
       passes: [],
       schematicVariant: defaultSchematic(finalCategoryId),
@@ -360,6 +353,9 @@ export function FleetAddVehicleModal({ open, onClose, onCreate, lockedCategory }
                   value={insuranceDate}
                   onChange={(e) => setInsuranceDate(e.target.value)}
                 />
+                <span className={styles.fieldHint}>
+                  Необязательно. Без даты в карточке будет «Нет данных», а не «В норме».
+                </span>
               </label>
             </div>
             {touched && !isValid ? (

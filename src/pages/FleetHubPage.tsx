@@ -86,8 +86,8 @@ export function FleetHubPage() {
             <p className={styles.kicker}>Парк техники</p>
             <h1 className={styles.title}>Спецтехника</h1>
             <p className={styles.lead}>
-              Госномера, ТО, страховки и ремонты — по каждому классу техники.
-              Сейчас в каталоге демо-база; правки сохраняются на этом устройстве.
+              Госномера, ТО, страховки и ремонты — по данным учёта.
+              Чего в таблицах нет, того в карточке нет.
             </p>
 
             <div className={styles.heroStats} aria-label="Сводка парка">

@@ -397,6 +397,20 @@ describe('applyWorkEntriesToPlan / computePlanFactFromReports', () => {
     expect(merged.sections[0]!.items[1]!.done).toBe(0)
   })
 
+  it('отрицательный и нулевой объём не уменьшают факт плана', () => {
+    const reports = [
+      makeReport({
+        workEntries: [
+          { id: 'bad', planNumber: '1.1', planTitle: 'Бетон', qty: -5, unit: 'm' },
+          { id: 'zero', planNumber: '1.1', planTitle: 'Бетон', qty: 0, unit: 'm' },
+          { id: 'ok', planNumber: '1.1', planTitle: 'Бетон', qty: 4, unit: 'm' },
+        ],
+      }),
+    ]
+    const merged = applyWorkEntriesToPlan(plan, reports)
+    expect(merged.sections[0]!.items[0]!.done).toBe(10 + 4)
+  })
+
   it('computePlanFactFromReports: учитывает дату последнего отчёта', () => {
     const reports = [
       makeReport({

@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { loadBrigadierReports, saveBrigadierReports } from './brigadierReportsRepository'
+import {
+  coerceReport,
+  loadBrigadierReports,
+  saveBrigadierReports,
+} from './brigadierReportsRepository'
 import type { BrigadierStoredReport } from '../domain/brigadierReport'
 
 describe('brigadierReportsRepository', () => {
@@ -24,5 +28,24 @@ describe('brigadierReportsRepository', () => {
     expect(out).toHaveLength(1)
     expect(out[0]?.id).toBe('rep-1')
     expect(out[0]?.comment).toBe('Всё ок')
+  })
+
+  it('выбрасывает workEntries с нулевым и отрицательным объёмом', () => {
+    const report = coerceReport({
+      id: 'rep-2',
+      siteId: 'site-a',
+      reportedAtIso: '2026-09-12T10:00:00.000Z',
+      lines: [],
+      problems: [],
+      responsible: 'Иванов',
+      comment: '',
+      attachments: [],
+      workEntries: [
+        { id: 'a', planNumber: '1.1', planTitle: 'Бетон', qty: -5, unit: 'm' },
+        { id: 'b', planNumber: '1.2', planTitle: 'Щебень', qty: 10.5, unit: 'm' },
+        { id: 'c', planNumber: '1.3', planTitle: 'Ноль', qty: 0, unit: 'm' },
+      ],
+    })
+    expect(report.workEntries?.map((w) => w.id)).toEqual(['b'])
   })
 })

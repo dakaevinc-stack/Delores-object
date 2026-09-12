@@ -362,6 +362,19 @@ function isBrigadierReportRow(x) {
   )
 }
 
+/** Объём в workEntries — только число > 0. Иначе это не факт смены. */
+function brigadierWorkEntriesValid(x) {
+  if (!x || typeof x !== 'object') return true
+  const we = /** @type {{ workEntries?: unknown }} */ (x).workEntries
+  if (we == null) return true
+  if (!Array.isArray(we)) return false
+  return we.every((row) => {
+    if (!row || typeof row !== 'object') return false
+    const qty = /** @type {{ qty?: unknown }} */ (row).qty
+    return typeof qty === 'number' && Number.isFinite(qty) && qty > 0
+  })
+}
+
 /** @param {unknown} x */
 function isObjectMediaRecord(x) {
   if (!x || typeof x !== 'object') return false
@@ -1474,7 +1487,7 @@ const server = http.createServer(async (req, res) => {
         if (!(await checkWrite(req, res))) return
         const raw = await readBody(req)
         const body = JSON.parse(raw)
-        if (!isBrigadierReportRow(body)) {
+        if (!isBrigadierReportRow(body) || !brigadierWorkEntriesValid(body)) {
           sendJson(res, 400, { error: 'invalid_report' })
           return
         }
