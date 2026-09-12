@@ -1,5 +1,11 @@
 import { MEASUREMENT_UNITS, type MeasurementUnitId, unitLabel } from './brigadierReport'
 import type { CargoReceipt } from './cargoReceipt'
+import {
+  collectReceipts,
+  hasActiveAcceptance,
+  isActiveRefuse,
+  requestHasOpenRemainder,
+} from './cargoReceipt'
 export type { CargoReceipt, CargoReceiptMedia } from './cargoReceipt'
 import type { SiteDeliveryPoint } from './siteDeliveryPoint'
 import { renderDriverDirections, yandexMapsRouteUrl } from './siteDeliveryPoint'
@@ -75,8 +81,11 @@ export function canSupplyApprove(req: Pick<ProcurementRequest, 'status'>): boole
   return req.status === 'pending' || req.status === 'rejected' || req.status === 'cancelled'
 }
 
-export function canSupplyCancel(req: Pick<ProcurementRequest, 'status'>): boolean {
-  return req.status === 'pending' || req.status === 'approved'
+export function canSupplyCancel(
+  req: Pick<ProcurementRequest, 'status'> & Partial<Pick<ProcurementRequest, 'receipt' | 'receipts'>>,
+): boolean {
+  if (req.status !== 'pending' && req.status !== 'approved') return false
+  return !hasActiveAcceptance({ receipt: req.receipt ?? null, receipts: req.receipts })
 }
 
 export function canSupplyEdit(req: Pick<ProcurementRequest, 'status'>): boolean {
@@ -88,8 +97,24 @@ export function canSupplyEdit(req: Pick<ProcurementRequest, 'status'>): boolean 
   )
 }
 
-export function canReceiveOnSite(req: Pick<ProcurementRequest, 'status' | 'receipt'>): boolean {
-  return req.status === 'approved' && !req.receipt
+export function canReceiveOnSite(
+  req: Pick<ProcurementRequest, 'status' | 'items' | 'receipt'> &
+    Partial<Pick<ProcurementRequest, 'receipts'>>,
+): boolean {
+  if (req.status === 'pending' || req.status === 'rejected' || req.status === 'cancelled') {
+    return false
+  }
+  if (collectReceipts(req).some(isActiveRefuse)) return false
+  if (req.status !== 'approved' && req.status !== 'accepted') return false
+  return requestHasOpenRemainder(req)
+}
+
+export function canHardDeleteProcurement(req: ProcurementRequest): boolean {
+  return !hasActiveAcceptance(req)
+}
+
+export function canVoidAcceptance(req: ProcurementRequest): boolean {
+  return hasActiveAcceptance(req)
 }
 
 export type ProcurementRequest = {
@@ -109,6 +134,8 @@ export type ProcurementRequest = {
   neededByIso: string | null
   /** Факт приёмки/отказа на объекте: время ставится само, к отказу — фото. */
   receipt: CargoReceipt | null
+  /** Все события приёмки. `receipt` — последнее или отказ; история не теряется. */
+  receipts?: readonly CargoReceipt[]
   /** Куда разгружать именно эту заявку. Если null — общая точка объекта или не указано. */
   unloadPoint: SiteDeliveryPoint | null
 }

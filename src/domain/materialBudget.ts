@@ -1,3 +1,4 @@
+import { acceptedQtyForItem } from './cargoReceipt'
 import { findProcurementPreset } from './procurementCatalog'
 import type { MeasurementUnitId } from './brigadierReport'
 import type { ProcurementLine, ProcurementRequest } from './procurementRequest'
@@ -88,13 +89,13 @@ export function consumedQtyByArticleId(
   const map = new Map<string, number>()
   for (const req of requests) {
     if (req.siteId !== budget.siteId) continue
-    if (req.status !== 'accepted') continue
-    for (const line of req.items) {
+    req.items.forEach((line, index) => {
+      const qty = acceptedQtyForItem(req, index)
+      if (!(qty > 0)) return
       const article = findArticleForLine(budget.articles, line)
-      if (!article) continue
-      const qty = Number.isFinite(line.quantity) ? line.quantity : 0
+      if (!article) return
       map.set(article.id, (map.get(article.id) ?? 0) + qty)
-    }
+    })
   }
   return map
 }
@@ -106,11 +107,10 @@ export function unplannedSpendFromRequests(
   const acc = new Map<string, UnplannedMaterialSpend>()
   for (const req of requests) {
     if (req.siteId !== budget.siteId) continue
-    if (req.status !== 'accepted') continue
-    for (const line of req.items) {
-      if (findArticleForLine(budget.articles, line)) continue
-      const qty = Number.isFinite(line.quantity) ? line.quantity : 0
-      if (!(qty > 0)) continue
+    req.items.forEach((line, index) => {
+      if (findArticleForLine(budget.articles, line)) return
+      const qty = acceptedQtyForItem(req, index)
+      if (!(qty > 0)) return
       const key = `${resolvedPresetId(line) ?? ''}::${normalizeTitle(line.title)}::${line.unitId}`
       const prev = acc.get(key)
       if (prev) {
@@ -123,7 +123,7 @@ export function unplannedSpendFromRequests(
           presetId: resolvedPresetId(line),
         })
       }
-    }
+    })
   }
   return [...acc.values()]
 }

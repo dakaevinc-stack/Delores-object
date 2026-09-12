@@ -1,4 +1,5 @@
 import type { MeasurementUnitId } from './brigadierReport'
+import { acceptedQtyForItem } from './cargoReceipt'
 import { findProcurementPreset } from './procurementCatalog'
 import type { ProcurementLine, ProcurementRequest, ProcurementRequestStatus } from './procurementRequest'
 
@@ -72,18 +73,18 @@ function pushMaterial(
   line: ProcurementLine,
   ref: ProcurementLineRef,
   active: boolean,
-  accepted: boolean,
+  acceptedQty: number,
 ) {
   const key = materialKey(line)
   const qty = Number.isFinite(line.quantity) ? line.quantity : 0
-  if (!(qty > 0)) return
+  if (!(qty > 0) && !(acceptedQty > 0)) return
 
   const prev = map.get(key)
   if (prev) {
     map.set(key, {
       ...prev,
       requestedQty: prev.requestedQty + (active ? qty : 0),
-      acceptedQty: prev.acceptedQty + (accepted ? qty : 0),
+      acceptedQty: prev.acceptedQty + (acceptedQty > 0 ? acceptedQty : 0),
       refs: [...prev.refs, ref],
     })
     return
@@ -94,7 +95,7 @@ function pushMaterial(
     title: line.title.trim() || 'Материал',
     unitId: line.unitId,
     requestedQty: active ? qty : 0,
-    acceptedQty: accepted ? qty : 0,
+    acceptedQty: acceptedQty > 0 ? acceptedQty : 0,
     refs: [ref],
   })
 }
@@ -124,12 +125,11 @@ export function summarizeProcurementAccounting(
   for (const req of requests) {
     const author = req.createdBy.trim() || 'Не указан'
     const active = isActiveForRequestQty(req.status)
-    const accepted = req.status === 'accepted'
-
     if (!byAuthor.has(author)) byAuthor.set(author, new Map())
     const authorMap = byAuthor.get(author)!
 
-    for (const line of req.items) {
+    req.items.forEach((line, index) => {
+      const acceptedQty = acceptedQtyForItem(req, index)
       const ref: ProcurementLineRef = {
         requestId: req.id,
         shortCode: req.shortCode,
@@ -138,9 +138,9 @@ export function summarizeProcurementAccounting(
         status: req.status,
         quantity: line.quantity,
       }
-      pushMaterial(siteWide, line, ref, active, accepted)
-      pushMaterial(authorMap, line, ref, active, accepted)
-    }
+      pushMaterial(siteWide, line, ref, active, acceptedQty)
+      pushMaterial(authorMap, line, ref, active, acceptedQty)
+    })
   }
 
   const authors: ProcurementAuthorTotal[] = [...byAuthor.entries()].map(([name, map]) => ({

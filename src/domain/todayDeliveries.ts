@@ -2,6 +2,7 @@ import { toDateKey } from './workDayPlan'
 import type { MeasurementUnitId } from './brigadierReport'
 import type { SiteDeliveryPoint } from './siteDeliveryPoint'
 import type { CargoReceipt } from './cargoReceipt'
+import { remainingQtyForItem, requestHasOpenRemainder } from './cargoReceipt'
 import { isVisibleToMaterialReceiver, type ProcurementRequest } from './procurementRequest'
 
 /**
@@ -35,6 +36,7 @@ export function requestDeliveryDateKey(req: ProcurementRequest): string {
 
 function cardStatus(req: ProcurementRequest): TodayDeliveryCardStatus {
   if (req.receipt?.decision === 'refused' || req.status === 'refused') return 'refused'
+  if (requestHasOpenRemainder(req)) return 'pending'
   if (req.receipt?.decision === 'accepted' || req.status === 'accepted') return 'accepted'
   return 'pending'
 }
@@ -49,9 +51,9 @@ function toCard(req: ProcurementRequest): TodayDeliveryCard {
     urgent: req.urgent,
     receipt: req.receipt,
     unloadPoint: req.unloadPoint,
-    items: req.items.map((it) => ({
+    items: req.items.map((it, index) => ({
       title: it.title,
-      quantity: it.quantity,
+      quantity: remainingQtyForItem(req, index) || it.quantity,
       unitId: it.unitId,
     })),
   }

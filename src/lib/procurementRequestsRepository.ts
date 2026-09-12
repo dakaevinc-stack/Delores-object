@@ -1,4 +1,9 @@
-import type { CargoReceipt, CargoReceiptMedia } from '../domain/cargoReceipt'
+import {
+  requestHasOpenRemainder,
+  type CargoReceipt,
+  type CargoReceiptLine,
+  type CargoReceiptMedia,
+} from '../domain/cargoReceipt'
 import { normalizeDeliveryPoint } from '../domain/siteDeliveryPoint'
 import type {
   ProcurementRequest,
@@ -51,6 +56,22 @@ function normalizeReceiptMedia(row: unknown): CargoReceiptMedia | null {
   }
 }
 
+function normalizeReceiptLine(row: unknown): CargoReceiptLine | null {
+  if (!row || typeof row !== 'object') return null
+  const l = row as Record<string, unknown>
+  if (typeof l.itemIndex !== 'number' || !Number.isInteger(l.itemIndex) || l.itemIndex < 0) {
+    return null
+  }
+  if (typeof l.title !== 'string' || typeof l.unitId !== 'string') return null
+  if (typeof l.qty !== 'number' || !Number.isFinite(l.qty) || l.qty <= 0) return null
+  return {
+    itemIndex: l.itemIndex,
+    title: l.title,
+    unitId: l.unitId as CargoReceiptLine['unitId'],
+    qty: l.qty,
+  }
+}
+
 export function normalizeCargoReceipt(row: unknown): CargoReceipt | null {
   if (!row || typeof row !== 'object') return null
   const r = row as Record<string, unknown>
@@ -62,11 +83,28 @@ export function normalizeCargoReceipt(row: unknown): CargoReceipt | null {
   const media = Array.isArray(r.media)
     ? r.media.map(normalizeReceiptMedia).filter((x): x is CargoReceiptMedia => x !== null)
     : []
+  const lines = Array.isArray(r.lines)
+    ? r.lines.map(normalizeReceiptLine).filter((x): x is NonNullable<typeof x> => x !== null)
+    : []
+  const id = typeof r.id === 'string' && r.id.trim() ? r.id.trim() : undefined
+  const receivedBy = typeof r.receivedBy === 'string' && r.receivedBy.trim() ? r.receivedBy.trim() : undefined
+  const voidedAtIso =
+    typeof r.voidedAtIso === 'string' && !Number.isNaN(new Date(r.voidedAtIso).getTime())
+      ? new Date(r.voidedAtIso).toISOString()
+      : undefined
+  const voidedBy = typeof r.voidedBy === 'string' && r.voidedBy.trim() ? r.voidedBy.trim() : undefined
+  const voidReason = typeof r.voidReason === 'string' ? r.voidReason : undefined
   return {
+    id,
     decision,
     atIso,
     reason: typeof r.reason === 'string' ? r.reason : '',
     media,
+    receivedBy,
+    lines: lines.length > 0 ? lines : undefined,
+    voidedAtIso,
+    voidedBy,
+    voidReason,
   }
 }
 
@@ -77,7 +115,7 @@ export function normalizeProcurementRequest(row: unknown): ProcurementRequest {
     neededByIso?: string | null
     receipt?: unknown
   }
-  let status: ProcurementRequestStatus =
+  const status: ProcurementRequestStatus =
     r.status === 'accepted' ||
     r.status === 'rejected' ||
     r.status === 'pending' ||
@@ -92,17 +130,28 @@ export function normalizeProcurementRequest(row: unknown): ProcurementRequest {
       ? new Date(rawNeed).toISOString()
       : null
   const receipt = normalizeCargoReceipt(r.receipt)
-  if (receipt?.decision === 'accepted') status = 'accepted'
-  if (receipt?.decision === 'refused') status = 'refused'
-  const unloadPoint = normalizeDeliveryPoint(r.unloadPoint)
-  return {
+  const receipts = Array.isArray((r as { receipts?: unknown }).receipts)
+    ? ((r as { receipts: unknown[] }).receipts
+        .map(normalizeCargoReceipt)
+        .filter((x): x is CargoReceipt => x !== null))
+    : undefined
+  const next = {
     ...r,
     status,
     urgent: Boolean(r.urgent),
     neededByIso,
     receipt,
-    unloadPoint,
+    receipts,
+    unloadPoint: normalizeDeliveryPoint(r.unloadPoint),
   }
+  if (receipt?.decision === 'refused' && !receipt.voidedAtIso) next.status = 'refused'
+  else if (
+    receipts?.some((row) => row.decision === 'accepted' && !row.voidedAtIso) ||
+    (receipt?.decision === 'accepted' && !receipt.voidedAtIso)
+  ) {
+    next.status = requestHasOpenRemainder(next) ? 'approved' : 'accepted'
+  }
+  return next
 }
 
 /** Разбор массива заявок из JSON (localStorage или ответ API). */

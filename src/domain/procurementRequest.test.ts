@@ -21,7 +21,13 @@ describe('видимость заявки для приёмщика', () => {
     expect(canSupplyApprove({ status: 'approved' })).toBe(false)
     expect(canSupplyCancel({ status: 'approved' })).toBe(true)
     expect(canSupplyCancel({ status: 'accepted' })).toBe(false)
-    expect(canReceiveOnSite({ status: 'approved', receipt: null })).toBe(true)
-    expect(canReceiveOnSite({ status: 'pending', receipt: null })).toBe(false)
+    expect(
+      canReceiveOnSite({
+        status: 'approved',
+        receipt: null,
+        items: [{ presetId: null, title: 'Песок', unitId: 'm3', quantity: 2.25 }],
+      }),
+    ).toBe(true)
+    expect(canReceiveOnSite({ status: 'pending', receipt: null, items: [] })).toBe(false)
   })
 })

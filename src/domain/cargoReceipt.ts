@@ -1,4 +1,5 @@
-import type { ProcurementRequest, ProcurementRequestStatus } from './procurementRequest'
+import type { MeasurementUnitId } from './brigadierReport'
+import type { ProcurementLine, ProcurementRequest, ProcurementRequestStatus } from './procurementRequest'
 
 export type CargoReceiptDecision = 'accepted' | 'refused'
 
@@ -9,11 +10,24 @@ export type CargoReceiptMedia = {
   previewUrl: string
 }
 
+export type CargoReceiptLine = {
+  itemIndex: number
+  title: string
+  unitId: MeasurementUnitId
+  qty: number
+}
+
 export type CargoReceipt = {
+  id?: string
   decision: CargoReceiptDecision
   atIso: string
   reason: string
   media: readonly CargoReceiptMedia[]
+  receivedBy?: string
+  lines?: readonly CargoReceiptLine[]
+  voidedAtIso?: string
+  voidedBy?: string
+  voidReason?: string
 }
 
 /** Типовые причины отказа в приёмке. Пояснение своими словами — отдельно и обязательно. */
@@ -96,8 +110,187 @@ export function cargoStatusForDecision(decision: CargoReceiptDecision): Procurem
   return decision === 'accepted' ? 'accepted' : 'refused'
 }
 
-export function makeAcceptedReceipt(atIso: string): CargoReceipt {
-  return { decision: 'accepted', atIso, reason: '', media: [] }
+function newReceiptId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
+  return `rcpt-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+export function makeAcceptedReceipt(
+  atIso: string,
+  items?: readonly ProcurementLine[],
+  receivedBy?: string,
+): CargoReceipt {
+  return {
+    id: newReceiptId(),
+    decision: 'accepted',
+    atIso,
+    reason: '',
+    media: [],
+    receivedBy,
+    lines: items?.map((item, itemIndex) => ({
+      itemIndex,
+      title: item.title,
+      unitId: item.unitId,
+      qty: item.quantity,
+    })),
+  }
+}
+
+export function isActiveAcceptance(receipt: CargoReceipt): boolean {
+  return receipt.decision === 'accepted' && !receipt.voidedAtIso
+}
+
+export function isActiveRefuse(receipt: CargoReceipt): boolean {
+  return receipt.decision === 'refused' && !receipt.voidedAtIso
+}
+
+function sameReceipt(a: CargoReceipt, b: CargoReceipt): boolean {
+  if (a.id && b.id) return a.id === b.id
+  return a.decision === b.decision && a.atIso === b.atIso
+}
+
+export function collectReceipts(req: Pick<ProcurementRequest, 'receipt' | 'receipts'>): CargoReceipt[] {
+  const out: CargoReceipt[] = []
+  for (const row of req.receipts ?? []) {
+    if (!out.some((x) => sameReceipt(x, row))) out.push(row)
+  }
+  if (req.receipt && !out.some((x) => sameReceipt(x, req.receipt!))) {
+    out.push(req.receipt)
+  }
+  return out.sort((a, b) => a.atIso.localeCompare(b.atIso))
+}
+
+export function receivedQtyForItem(
+  req: Pick<ProcurementRequest, 'items' | 'receipt' | 'receipts'>,
+  itemIndex: number,
+): number {
+  const item = req.items[itemIndex]
+  if (!item) return 0
+  let sum = 0
+  for (const rec of collectReceipts(req).filter(isActiveAcceptance)) {
+    if (rec.lines && rec.lines.length > 0) {
+      const hit =
+        rec.lines.find((line) => line.itemIndex === itemIndex) ??
+        rec.lines.find((line) => line.title === item.title && line.unitId === item.unitId)
+      if (hit && Number.isFinite(hit.qty) && hit.qty > 0) sum += hit.qty
+    } else {
+      sum += Number.isFinite(item.quantity) ? item.quantity : 0
+    }
+  }
+  return sum
+}
+
+export function remainingQtyForItem(
+  req: Pick<ProcurementRequest, 'items' | 'receipt' | 'receipts'>,
+  itemIndex: number,
+): number {
+  const item = req.items[itemIndex]
+  if (!item || !Number.isFinite(item.quantity)) return 0
+  return Math.max(0, item.quantity - receivedQtyForItem(req, itemIndex))
+}
+
+export function requestHasOpenRemainder(
+  req: Pick<ProcurementRequest, 'items' | 'receipt' | 'receipts'>,
+): boolean {
+  return req.items.some((_, index) => remainingQtyForItem(req, index) > 0)
+}
+
+export function hasActiveAcceptance(
+  req: Pick<ProcurementRequest, 'receipt' | 'receipts'>,
+): boolean {
+  return collectReceipts(req).some(isActiveAcceptance)
+}
+
+/** Сколько реально пришло по строке: из приёмок или, для старых «принято целиком», весь объём. */
+export function acceptedQtyForItem(req: ProcurementRequest, itemIndex: number): number {
+  const item = req.items[itemIndex]
+  if (!item) return 0
+  if (hasActiveAcceptance(req)) return receivedQtyForItem(req, itemIndex)
+  if (req.status === 'accepted') return Number.isFinite(item.quantity) ? item.quantity : 0
+  return 0
+}
+
+export function parseAcceptanceLines(
+  req: ProcurementRequest,
+  rawQtyByIndex: readonly string[],
+):
+  | { ok: true; lines: CargoReceiptLine[] }
+  | { ok: false; error: string } {
+  const lines: CargoReceiptLine[] = []
+  for (let i = 0; i < req.items.length; i += 1) {
+    const item = req.items[i]!
+    const raw = String(rawQtyByIndex[i] ?? '').trim()
+    if (!raw) continue
+    const qty = Number(raw.replace(',', '.'))
+    if (!Number.isFinite(qty)) {
+      return { ok: false, error: `В строке «${item.title}» должно быть число` }
+    }
+    if (qty <= 0) {
+      return { ok: false, error: 'Принятый объём должен быть больше нуля' }
+    }
+    const remaining = remainingQtyForItem(req, i)
+    if (qty - remaining > 0.0005) {
+      return {
+        ok: false,
+        error: `По «${item.title}» осталось ${remaining}, нельзя принять ${qty}`,
+      }
+    }
+    lines.push({ itemIndex: i, title: item.title, unitId: item.unitId, qty })
+  }
+  if (lines.length === 0) {
+    return { ok: false, error: 'Укажите, сколько материала фактически пришло' }
+  }
+  return { ok: true, lines }
+}
+
+export function makePartialAcceptedReceipt(
+  atIso: string,
+  lines: readonly CargoReceiptLine[],
+  receivedBy?: string,
+): CargoReceipt {
+  return {
+    id: newReceiptId(),
+    decision: 'accepted',
+    atIso,
+    reason: '',
+    media: [],
+    receivedBy,
+    lines,
+  }
+}
+
+export function applyAcceptance(req: ProcurementRequest, receipt: CargoReceipt): ProcurementRequest {
+  const receipts = [...collectReceipts(req), receipt]
+  const next: ProcurementRequest = {
+    ...req,
+    receipts,
+    receipt,
+  }
+  return {
+    ...next,
+    status: requestHasOpenRemainder(next) ? 'approved' : 'accepted',
+  }
+}
+
+export function voidActiveAcceptances(
+  req: ProcurementRequest,
+  reason: string,
+  actor: string,
+  atIso: string,
+): ProcurementRequest {
+  const note = reason.trim()
+  const receipts = collectReceipts(req).map((row) =>
+    isActiveAcceptance(row)
+      ? { ...row, voidedAtIso: atIso, voidedBy: actor, voidReason: note }
+      : row,
+  )
+  const latest = receipts[receipts.length - 1] ?? null
+  return {
+    ...req,
+    receipts,
+    receipt: latest,
+    status: 'approved',
+  }
 }
 
 export function makeRefusedReceipt(
@@ -123,6 +316,7 @@ export function applyCargoReceipt(
   req: ProcurementRequest,
   receipt: CargoReceipt,
 ): ProcurementRequest {
+  if (receipt.decision === 'accepted') return applyAcceptance(req, receipt)
   return {
     ...req,
     status: cargoStatusForDecision(receipt.decision),

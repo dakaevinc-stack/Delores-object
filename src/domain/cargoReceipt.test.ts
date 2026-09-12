@@ -5,8 +5,13 @@ import {
   formatReceiptClockRu,
   formatReceiptStampRu,
   makeAcceptedReceipt,
+  makePartialAcceptedReceipt,
   makeRefusedReceipt,
+  parseAcceptanceLines,
+  receivedQtyForItem,
   refuseCargoError,
+  remainingQtyForItem,
+  voidActiveAcceptances,
 } from './cargoReceipt'
 
 function req(): ProcurementRequest {
@@ -80,6 +85,82 @@ describe('cargoReceipt', () => {
     expect(next.status).toBe('refused')
     expect(next.receipt?.reason).toBe('Недостаточный объём. Щебня меньше, чем в накладной')
     expect(next.receipt?.media).toHaveLength(1)
+  })
+
+  it('из 2,25 принимает 1, затем 1,25 — без удвоения', () => {
+    const base = {
+      ...req(),
+      items: [{ presetId: 'sand-quarry', title: 'Песок', unitId: 'm3' as const, quantity: 2.25 }],
+    }
+    const first = applyCargoReceipt(
+      base,
+      makePartialAcceptedReceipt('2026-08-17T10:00:00.000Z', [
+        { itemIndex: 0, title: 'Песок', unitId: 'm3', qty: 1 },
+      ]),
+    )
+    expect(remainingQtyForItem(first, 0)).toBe(1.25)
+    const twice = applyCargoReceipt(
+      first,
+      makePartialAcceptedReceipt('2026-08-17T10:00:00.000Z', [
+        { itemIndex: 0, title: 'Песок', unitId: 'm3', qty: 1 },
+      ]),
+    )
+    expect(remainingQtyForItem(twice, 0)).toBe(0.25)
+    const done = applyCargoReceipt(
+      first,
+      makePartialAcceptedReceipt('2026-08-17T11:00:00.000Z', [
+        { itemIndex: 0, title: 'Песок', unitId: 'm3', qty: 1.25 },
+      ]),
+    )
+    expect(done.status).toBe('accepted')
+    expect(remainingQtyForItem(done, 0)).toBe(0)
+  })
+
+  it('частичная приёмка оставляет остаток, вторая закрывает заявку', () => {
+    const first = applyCargoReceipt(
+      req(),
+      makePartialAcceptedReceipt('2026-08-17T10:00:00.000Z', [
+        { itemIndex: 0, title: 'Песок', unitId: 'm3', qty: 1 },
+      ]),
+    )
+    expect(first.status).toBe('approved')
+    expect(receivedQtyForItem(first, 0)).toBe(1)
+    expect(remainingQtyForItem(first, 0)).toBe(39)
+
+    const second = applyCargoReceipt(
+      first,
+      makePartialAcceptedReceipt('2026-08-17T12:00:00.000Z', [
+        { itemIndex: 0, title: 'Песок', unitId: 'm3', qty: 39 },
+      ]),
+    )
+    expect(second.status).toBe('accepted')
+    expect(remainingQtyForItem(second, 0)).toBe(0)
+    expect(second.receipts).toHaveLength(2)
+  })
+
+  it('нельзя принять больше остатка', () => {
+    const parsed = parseAcceptanceLines(req(), ['41'])
+    expect(parsed.ok).toBe(false)
+  })
+
+  it('аннулирование приёмки возвращает остаток ровно один раз', () => {
+    const accepted = applyCargoReceipt(
+      req(),
+      makePartialAcceptedReceipt('2026-08-17T10:00:00.000Z', [
+        { itemIndex: 0, title: 'Песок', unitId: 'm3', qty: 10 },
+      ]),
+    )
+    const voided = voidActiveAcceptances(
+      accepted,
+      'Ошиблись в объёме',
+      'Дакаев',
+      '2026-08-17T16:00:00.000Z',
+    )
+    expect(voided.status).toBe('approved')
+    expect(remainingQtyForItem(voided, 0)).toBe(40)
+    expect(voided.receipts?.[0]?.voidReason).toBe('Ошиблись в объёме')
+    const again = voidActiveAcceptances(voided, 'ещё раз', 'Дакаев', '2026-08-17T16:01:00.000Z')
+    expect(remainingQtyForItem(again, 0)).toBe(40)
   })
 
   it('штамп даты без выбора руками', () => {

@@ -331,6 +331,21 @@ function isDeliveryPointRow(x) {
   )
 }
 
+function procurementHasActiveAcceptance(x) {
+  if (!x || typeof x !== 'object') return false
+  const r = /** @type {{ receipt?: { decision?: string, voidedAtIso?: string }, receipts?: unknown }} */ (x)
+  const rows = []
+  if (r.receipt) rows.push(r.receipt)
+  if (Array.isArray(r.receipts)) rows.push(...r.receipts)
+  return rows.some(
+    (row) =>
+      row &&
+      typeof row === 'object' &&
+      /** @type {{decision?: string, voidedAtIso?: string}} */ (row).decision === 'accepted' &&
+      !/** @type {{voidedAtIso?: string}} */ (row).voidedAtIso,
+  )
+}
+
 /** @param {unknown} x */
 function isProcurementRow(x) {
   if (!x || typeof x !== 'object') return false
@@ -1446,7 +1461,7 @@ const server = http.createServer(async (req, res) => {
           return
         }
         const cur = /** @type {Record<string, unknown>} */ (list[idx])
-        const allowed = ['status', 'urgent', 'neededByIso', 'note', 'items', 'siteName', 'receipt', 'unloadPoint']
+        const allowed = ['status', 'urgent', 'neededByIso', 'note', 'items', 'siteName', 'receipt', 'receipts', 'unloadPoint']
         const merged = { ...cur }
         for (const k of allowed) {
           if (k in patch) merged[k] = patch[k]
@@ -1465,6 +1480,11 @@ const server = http.createServer(async (req, res) => {
           return
         }
         const list = await readJsonArray(file)
+        const doomed = list.find((x) => isProcurementRow(x) && /** @type {{id:string}} */ (x).id === id)
+        if (doomed && procurementHasActiveAcceptance(doomed)) {
+          sendJson(res, 409, { error: 'accepted_not_deletable' })
+          return
+        }
         const next = list.filter((x) => !isProcurementRow(x) || /** @type {{id:string}} */ (x).id !== id)
         await writeJsonArray(file, next)
         sendJson(res, 200, { ok: true })

@@ -7,11 +7,12 @@ import {
   type TodayDeliveryCard,
 } from '../../domain/todayDeliveries'
 import {
+  applyAcceptance,
   cargoReceiptPatch,
   formatReceiptStampRu,
-  makeAcceptedReceipt,
   type CargoReceipt,
 } from '../../domain/cargoReceipt'
+import { CargoAcceptSheet } from './CargoAcceptSheet'
 import { renderDriverDirections, yandexMapsRouteUrl, type SiteDeliveryPoint } from '../../domain/siteDeliveryPoint'
 import {
   formatQty,
@@ -171,7 +172,9 @@ export function TodayDeliveriesBoard({
   const refusedCount = today.filter((c) => c.status === 'refused').length
   const showSite = variant === 'home'
   const [refuseId, setRefuseId] = useState<string | null>(null)
+  const [acceptId, setAcceptId] = useState<string | null>(null)
   const refuseReq = refuseId ? requests.find((r) => r.id === refuseId) ?? null : null
+  const acceptReq = acceptId ? requests.find((r) => r.id === acceptId) ?? null : null
 
   const lead =
     today.length === 0
@@ -182,9 +185,15 @@ export function TodayDeliveriesBoard({
           ? 'Поставки на сегодня закрыты: принято или отказ.'
           : 'Все поставки на сегодня приняты.'
 
-  const handleAccept = (requestId: string) => {
-    if (!onUpdateRequest) return
-    onUpdateRequest(requestId, cargoReceiptPatch(makeAcceptedReceipt(new Date().toISOString())))
+  const handleAcceptSubmit = async (receipt: CargoReceipt) => {
+    if (!acceptReq || !onUpdateRequest) return
+    const next = applyAcceptance(acceptReq, receipt)
+    onUpdateRequest(acceptReq.id, {
+      status: next.status,
+      receipt: next.receipt,
+      receipts: next.receipts,
+    })
+    setAcceptId(null)
   }
 
   const handleRefuseSubmit = async (receipt: CargoReceipt) => {
@@ -223,7 +232,7 @@ export function TodayDeliveriesBoard({
               card={card}
               showSite={showSite}
               point={card.unloadPoint ?? deliveryPoints?.get(card.siteId) ?? null}
-              onAccept={handleAccept}
+              onAccept={setAcceptId}
               onRefuse={setRefuseId}
             />
           ))}
@@ -242,7 +251,7 @@ export function TodayDeliveriesBoard({
                 card={card}
                 showSite={showSite}
                 point={card.unloadPoint ?? deliveryPoints?.get(card.siteId) ?? null}
-                onAccept={handleAccept}
+                onAccept={setAcceptId}
                 onRefuse={setRefuseId}
               />
             ))}
@@ -250,6 +259,13 @@ export function TodayDeliveriesBoard({
         </div>
       ) : null}
 
+      {acceptReq ? (
+        <CargoAcceptSheet
+          request={acceptReq}
+          onClose={() => setAcceptId(null)}
+          onSubmit={handleAcceptSubmit}
+        />
+      ) : null}
       {refuseReq ? (
         <CargoReceiptSheet
           request={refuseReq}

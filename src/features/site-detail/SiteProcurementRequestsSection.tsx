@@ -1,14 +1,22 @@
 import { useMemo, useState } from 'react'
 import {
+  applyAcceptance,
   cargoReceiptPatch,
   formatReceiptStampRu,
-  makeAcceptedReceipt,
+  hasActiveAcceptance,
+  remainingQtyForItem,
+  requestHasOpenRemainder,
+  voidActiveAcceptances,
   type CargoReceipt,
 } from '../../domain/cargoReceipt'
+import { CargoAcceptSheet } from '../deliveries/CargoAcceptSheet'
+import { loadLocalSession } from '../../lib/localSession'
 import { summarizeProcurementAccounting } from '../../domain/procurementAccounting'
 import {
   buildProcurementFileBase,
+  canHardDeleteProcurement,
   canReceiveOnSite,
+  canVoidAcceptance,
   canSupplyApprove,
   canSupplyCancel,
   canSupplyEdit,
@@ -97,6 +105,9 @@ export function SiteProcurementRequestsSection({
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [sharedId, setSharedId] = useState<string | null>(null)
   const [refuseId, setRefuseId] = useState<string | null>(null)
+  const [acceptId, setAcceptId] = useState<string | null>(null)
+  const [voidId, setVoidId] = useState<string | null>(null)
+  const [voidReason, setVoidReason] = useState('')
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set())
 
   const summary = useMemo(() => summarizeProcurementAccounting(requests), [requests])
@@ -108,6 +119,8 @@ export function SiteProcurementRequestsSection({
   const waiting =
     summary.byStatus.pending + summary.byStatus.approved + summary.byStatus.refused
   const refuseReq = refuseId ? requests.find((r) => r.id === refuseId) ?? null : null
+  const acceptReq = acceptId ? requests.find((r) => r.id === acceptId) ?? null : null
+  const voidReq = voidId ? requests.find((r) => r.id === voidId) ?? null : null
 
   const toggleExpanded = (id: string) => {
     setExpandedIds((prev) => {
@@ -367,7 +380,9 @@ export function SiteProcurementRequestsSection({
                           </span>
                           <span className={styles.lineTitle}>{it.title}</span>
                           <span className={styles.lineQty}>
-                            {formatQty(it.quantity)}
+                            {canReceiveOnSite(req) && remainingQtyForItem(req, i) < it.quantity
+                              ? `${formatQty(it.quantity - remainingQtyForItem(req, i))} из ${formatQty(it.quantity)}`
+                              : formatQty(it.quantity)}
                             <span className={styles.lineUnit}>{unitLabel(it.unitId)}</span>
                           </span>
                         </li>
@@ -390,32 +405,19 @@ export function SiteProcurementRequestsSection({
                       </p>
                     ) : null}
 
-                    {req.status === 'accepted' ? (
+                    {hasActiveAcceptance(req) ? (
                       <div className={styles.receiptBlock}>
                         <p className={styles.acceptedMark}>
                           <span className={styles.acceptedIcon} aria-hidden>
                             ✓
                           </span>
-                          Принято
-                          {req.receipt
-                            ? ` ${formatReceiptStampRu(req.receipt.atIso)}`
-                            : ' — объём списан в расход материалов'}
+                          {requestHasOpenRemainder(req) ? 'Принято частично' : 'Принято'}
+                          {req.receipt?.atIso ? ` ${formatReceiptStampRu(req.receipt.atIso)}` : ''}
+                          {req.receipt?.receivedBy ? ` · ${req.receipt.receivedBy}` : ''}
                         </p>
-                        {req.receipt?.media && req.receipt.media.length > 0 ? (
-                          <ul className={styles.receiptMedia}>
-                            {req.receipt.media.map((m) => (
-                              <li key={m.id}>
-                                {m.kind === 'video' && m.previewUrl ? (
-                                  <video src={m.previewUrl} muted playsInline controls />
-                                ) : m.previewUrl ? (
-                                  <img src={m.previewUrl} alt="" />
-                                ) : null}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : null}
                       </div>
-                    ) : req.status === 'refused' ? (
+                    ) : null}
+                    {req.status === 'refused' ? (
                       <div className={styles.receiptBlock}>
                         <p className={styles.refusedMark}>
                           Отказано в приёмке
@@ -436,17 +438,13 @@ export function SiteProcurementRequestsSection({
                           </ul>
                         ) : null}
                       </div>
-                    ) : canReceiveOnSite(req) ? (
+                    ) : null}
+                    {canReceiveOnSite(req) ? (
                       <div className={styles.decide}>
                         <button
                           type="button"
                           className={styles.acceptBtn}
-                          onClick={() =>
-                            onUpdateRequest(
-                              req.id,
-                              cargoReceiptPatch(makeAcceptedReceipt(new Date().toISOString())),
-                            )
-                          }
+                          onClick={() => setAcceptId(req.id)}
                         >
                           Принять материал
                         </button>
@@ -493,14 +491,32 @@ export function SiteProcurementRequestsSection({
                           {sharedId === req.id ? 'Отправлено' : 'Поделиться'}
                         </button>
                       </div>
-                      <button
-                        type="button"
-                        className={styles.dangerBtn}
-                        onClick={() => onRemove(req.id)}
-                        aria-label={`Удалить заявку № ${req.shortCode}`}
-                      >
-                        Удалить
-                      </button>
+                      {canVoidAcceptance(req) ? (
+                        <button
+                          type="button"
+                          className={styles.dangerBtn}
+                          onClick={() => {
+                            setVoidId(req.id)
+                            setVoidReason('')
+                          }}
+                        >
+                          Аннулировать приёмку
+                        </button>
+                      ) : canHardDeleteProcurement(req) ? (
+                        <button
+                          type="button"
+                          className={styles.dangerBtn}
+                          onClick={() => {
+                            const ok = window.confirm(
+                              `Удалить заявку № ${req.shortCode} (${PROCUREMENT_STATUS_LABELS[req.status]})? Это черновик или заявка без приёмки — запись исчезнет.`,
+                            )
+                            if (ok) void onRemove(req.id)
+                          }}
+                          aria-label={`Удалить заявку № ${req.shortCode}`}
+                        >
+                          Удалить
+                        </button>
+                      ) : null}
                     </footer>
                   </div>
                 )}
@@ -510,6 +526,21 @@ export function SiteProcurementRequestsSection({
         </ul>
       )}
 
+      {acceptReq ? (
+        <CargoAcceptSheet
+          request={acceptReq}
+          onClose={() => setAcceptId(null)}
+          onSubmit={(receipt: CargoReceipt) => {
+            const next = applyAcceptance(acceptReq, receipt)
+            void onUpdateRequest(acceptReq.id, {
+              status: next.status,
+              receipt: next.receipt,
+              receipts: next.receipts,
+            })
+            setAcceptId(null)
+          }}
+        />
+      ) : null}
       {refuseReq ? (
         <CargoReceiptSheet
           request={refuseReq}
@@ -519,6 +550,59 @@ export function SiteProcurementRequestsSection({
             setRefuseId(null)
           }}
         />
+      ) : null}
+      {voidReq ? (
+        <div className={styles.voidScrim} role="presentation" onClick={() => setVoidId(null)}>
+          <div
+            className={styles.voidDialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="void-accept-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="void-accept-title">Аннулировать приёмку № {voidReq.shortCode}</h3>
+            <p>
+              Заявка останется в журнале. Принятый объём снимется со склада ровно один раз.
+              Статус: {PROCUREMENT_STATUS_LABELS[voidReq.status]}.
+            </p>
+            <label>
+              Причина
+              <textarea
+                rows={3}
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                placeholder="Например: пришла не та машина"
+              />
+            </label>
+            <div className={styles.voidActions}>
+              <button type="button" onClick={() => setVoidId(null)}>
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const reason = voidReason.trim()
+                  if (reason.length < 3) return
+                  const next = voidActiveAcceptances(
+                    voidReq,
+                    reason,
+                    loadLocalSession()?.fullName ?? loadLocalSession()?.login ?? 'Пользователь',
+                    new Date().toISOString(),
+                  )
+                  void onUpdateRequest(voidReq.id, {
+                    status: next.status,
+                    receipt: next.receipt,
+                    receipts: next.receipts,
+                  })
+                  setVoidId(null)
+                  setVoidReason('')
+                }}
+              >
+                Аннулировать
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </section>
   )
