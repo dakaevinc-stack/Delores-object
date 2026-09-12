@@ -2,7 +2,6 @@ import {
   DRIVER_TRIP_ROLE_LABELS,
   DRIVER_TRIP_STATUS_LABELS,
   formatTripAssignedTime,
-  isTripDone,
   resolveTripStatus,
   tripCargoLines,
   type DriverTrip,
@@ -13,10 +12,12 @@ import styles from './DriverTripSheet.module.css'
 type Props = {
   trip: DriverTrip
   onClose: () => void
+  onAccept?: (tripId: string) => void | Promise<void>
+  onStart?: (tripId: string) => void | Promise<void>
   onComplete?: (tripId: string) => void | Promise<void>
 }
 
-export function DriverTripSheet({ trip, onClose, onComplete }: Props) {
+export function DriverTripSheet({ trip, onClose, onAccept, onStart, onComplete }: Props) {
   const cargo = tripCargoLines(trip)
   const pickupAddress = trip.pickup.address.trim()
   const pickupHint = trip.pickup.hint.trim()
@@ -25,7 +26,7 @@ export function DriverTripSheet({ trip, onClose, onComplete }: Props) {
   const unloadHint = trip.point.hint.trim()
   const time = formatTripAssignedTime(trip.createdAtIso)
   const status = resolveTripStatus(trip)
-  const done = isTripDone(trip)
+  const closed = status === 'done' || status === 'cancelled'
 
   return (
     <div className={styles.scrim} role="presentation" onClick={onClose}>
@@ -49,6 +50,9 @@ export function DriverTripSheet({ trip, onClose, onComplete }: Props) {
           <p className={styles.meta}>Объект: {trip.siteName}</p>
         ) : null}
         {trip.vehiclePlate ? <p className={styles.meta}>{trip.vehiclePlate}</p> : null}
+        {status === 'cancelled' && trip.cancelReason ? (
+          <p className={styles.cancelNote}>Отменён: {trip.cancelReason}</p>
+        ) : null}
 
         <ol className={styles.steps}>
           <li className={`${styles.step} ${styles.stepPickup}`}>
@@ -111,17 +115,27 @@ export function DriverTripSheet({ trip, onClose, onComplete }: Props) {
         </p>
 
         <div className={styles.actions}>
-          {!done && onComplete ? (
+          {status === 'waiting' && onAccept ? (
+            <button type="button" className={styles.accept} onClick={() => void onAccept(trip.id)}>
+              Принять
+            </button>
+          ) : null}
+          {status === 'accepted' && onStart ? (
+            <button type="button" className={styles.start} onClick={() => void onStart(trip.id)}>
+              Начать
+            </button>
+          ) : null}
+          {status === 'started' && onComplete ? (
             <button
               type="button"
               className={styles.done}
               onClick={() => void onComplete(trip.id)}
             >
-              Рейс выполнен
+              Завершить
             </button>
           ) : null}
           <button type="button" className={styles.close} onClick={onClose}>
-            {done ? 'Закрыть' : 'Понятно'}
+            {closed ? 'Закрыть' : 'Понятно'}
           </button>
         </div>
       </div>

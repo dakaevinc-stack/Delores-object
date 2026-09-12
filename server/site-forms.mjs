@@ -1050,15 +1050,214 @@ const server = http.createServer(async (req, res) => {
         return
       }
       const row = /** @type {Record<string, unknown>} */ (list[idx] && typeof list[idx] === 'object' ? list[idx] : {})
+      if (row.cancelledAtIso) {
+        sendJson(res, 409, { error: 'cancelled' })
+        return
+      }
       const alreadyDone =
         typeof row.completedAtIso === 'string' && row.completedAtIso ? String(row.completedAtIso) : ''
       const completedAtIso = alreadyDone || new Date().toISOString()
       const alreadySeen =
         typeof row.seenAtIso === 'string' && row.seenAtIso ? String(row.seenAtIso) : ''
       const seenAtIso = alreadySeen || completedAtIso
-      list[idx] = { ...row, seenAtIso, completedAtIso }
+      const acceptedAtIso =
+        typeof row.acceptedAtIso === 'string' && row.acceptedAtIso ? String(row.acceptedAtIso) : completedAtIso
+      const startedAtIso =
+        typeof row.startedAtIso === 'string' && row.startedAtIso ? String(row.startedAtIso) : completedAtIso
+      list[idx] = { ...row, seenAtIso, acceptedAtIso, startedAtIso, completedAtIso }
       await writeJsonArray(file, list)
-      sendJson(res, 200, { ok: true, seenAtIso, completedAtIso })
+      sendJson(res, 200, { ok: true, seenAtIso, acceptedAtIso, startedAtIso, completedAtIso })
+      return
+    }
+
+    if (
+      parts[0] === 'api' &&
+      parts[1] === 'driver-trips' &&
+      parts.length === 4 &&
+      parts[3] === 'accept' &&
+      req.method === 'POST'
+    ) {
+      const id = parts[2]
+      if (!id || id.includes('..')) {
+        sendJson(res, 400, { error: 'bad_id' })
+        return
+      }
+      const file = path.join(DATA_ROOT, 'driver-trips.json')
+      const list = await readJsonArray(file)
+      const idx = list.findIndex((x) => x && /** @type {{id?:unknown}} */ (x).id === id)
+      if (idx === -1) {
+        sendJson(res, 404, { error: 'not_found' })
+        return
+      }
+      const row = /** @type {Record<string, unknown>} */ (list[idx] && typeof list[idx] === 'object' ? list[idx] : {})
+      if (row.cancelledAtIso || row.completedAtIso) {
+        sendJson(res, 409, { error: 'closed' })
+        return
+      }
+      const already =
+        typeof row.acceptedAtIso === 'string' && row.acceptedAtIso ? String(row.acceptedAtIso) : ''
+      const acceptedAtIso = already || new Date().toISOString()
+      const seenAtIso =
+        typeof row.seenAtIso === 'string' && row.seenAtIso ? String(row.seenAtIso) : acceptedAtIso
+      list[idx] = { ...row, seenAtIso, acceptedAtIso }
+      await writeJsonArray(file, list)
+      sendJson(res, 200, { ok: true, seenAtIso, acceptedAtIso })
+      return
+    }
+
+    if (
+      parts[0] === 'api' &&
+      parts[1] === 'driver-trips' &&
+      parts.length === 4 &&
+      parts[3] === 'start' &&
+      req.method === 'POST'
+    ) {
+      const id = parts[2]
+      if (!id || id.includes('..')) {
+        sendJson(res, 400, { error: 'bad_id' })
+        return
+      }
+      const file = path.join(DATA_ROOT, 'driver-trips.json')
+      const list = await readJsonArray(file)
+      const idx = list.findIndex((x) => x && /** @type {{id?:unknown}} */ (x).id === id)
+      if (idx === -1) {
+        sendJson(res, 404, { error: 'not_found' })
+        return
+      }
+      const row = /** @type {Record<string, unknown>} */ (list[idx] && typeof list[idx] === 'object' ? list[idx] : {})
+      if (row.cancelledAtIso || row.completedAtIso) {
+        sendJson(res, 409, { error: 'closed' })
+        return
+      }
+      const already =
+        typeof row.startedAtIso === 'string' && row.startedAtIso ? String(row.startedAtIso) : ''
+      const startedAtIso = already || new Date().toISOString()
+      const seenAtIso =
+        typeof row.seenAtIso === 'string' && row.seenAtIso ? String(row.seenAtIso) : startedAtIso
+      const acceptedAtIso =
+        typeof row.acceptedAtIso === 'string' && row.acceptedAtIso ? String(row.acceptedAtIso) : startedAtIso
+      list[idx] = { ...row, seenAtIso, acceptedAtIso, startedAtIso }
+      await writeJsonArray(file, list)
+      sendJson(res, 200, { ok: true, seenAtIso, acceptedAtIso, startedAtIso })
+      return
+    }
+
+    if (
+      parts[0] === 'api' &&
+      parts[1] === 'driver-trips' &&
+      parts.length === 4 &&
+      parts[3] === 'cancel' &&
+      req.method === 'POST'
+    ) {
+      if (!(await checkWrite(req, res))) return
+      const id = parts[2]
+      if (!id || id.includes('..')) {
+        sendJson(res, 400, { error: 'bad_id' })
+        return
+      }
+      const raw = await readBody(req)
+      const body = JSON.parse(raw || '{}')
+      const reason = body && typeof body.reason === 'string' ? body.reason.trim() : ''
+      const actor = body && typeof body.actor === 'string' ? body.actor.trim() : ''
+      if (reason.length < 3) {
+        sendJson(res, 400, { error: 'reason_required' })
+        return
+      }
+      const file = path.join(DATA_ROOT, 'driver-trips.json')
+      const list = await readJsonArray(file)
+      const idx = list.findIndex((x) => x && /** @type {{id?:unknown}} */ (x).id === id)
+      if (idx === -1) {
+        sendJson(res, 404, { error: 'not_found' })
+        return
+      }
+      const row = /** @type {Record<string, unknown>} */ (list[idx] && typeof list[idx] === 'object' ? list[idx] : {})
+      if (row.completedAtIso) {
+        sendJson(res, 409, { error: 'done' })
+        return
+      }
+      if (row.cancelledAtIso) {
+        sendJson(res, 200, { ok: true, cancelledAtIso: row.cancelledAtIso })
+        return
+      }
+      const cancelledAtIso = new Date().toISOString()
+      list[idx] = { ...row, cancelledAtIso, cancelReason: reason, cancelledBy: actor }
+      await writeJsonArray(file, list)
+      sendJson(res, 200, { ok: true, cancelledAtIso })
+      return
+    }
+
+    if (
+      parts[0] === 'api' &&
+      parts[1] === 'driver-trips' &&
+      parts.length === 4 &&
+      parts[3] === 'reassign' &&
+      req.method === 'POST'
+    ) {
+      if (!(await checkWrite(req, res))) return
+      const id = parts[2]
+      if (!id || id.includes('..')) {
+        sendJson(res, 400, { error: 'bad_id' })
+        return
+      }
+      const raw = await readBody(req)
+      const body = JSON.parse(raw || '{}')
+      const driverName = body && typeof body.driverName === 'string' ? body.driverName.trim() : ''
+      const vehiclePlate = body && typeof body.vehiclePlate === 'string' ? body.vehiclePlate.trim() : ''
+      const reason = body && typeof body.reason === 'string' ? body.reason.trim() : ''
+      const actor = body && typeof body.actor === 'string' ? body.actor.trim() : ''
+      if (!driverName) {
+        sendJson(res, 400, { error: 'driver_required' })
+        return
+      }
+      if (reason.length < 3) {
+        sendJson(res, 400, { error: 'reason_required' })
+        return
+      }
+      const file = path.join(DATA_ROOT, 'driver-trips.json')
+      const list = await readJsonArray(file)
+      const idx = list.findIndex((x) => x && /** @type {{id?:unknown}} */ (x).id === id)
+      if (idx === -1) {
+        sendJson(res, 404, { error: 'not_found' })
+        return
+      }
+      const row = /** @type {Record<string, unknown>} */ (list[idx] && typeof list[idx] === 'object' ? list[idx] : {})
+      if (row.completedAtIso) {
+        sendJson(res, 409, { error: 'done' })
+        return
+      }
+      if (row.cancelledAtIso) {
+        sendJson(res, 409, { error: 'cancelled' })
+        return
+      }
+      const prevHistory = Array.isArray(row.assignmentHistory) ? row.assignmentHistory : []
+      const replacedAtIso = new Date().toISOString()
+      const history = [
+        ...prevHistory,
+        {
+          driverName: typeof row.driverName === 'string' ? row.driverName : '',
+          vehiclePlate: typeof row.vehiclePlate === 'string' ? row.vehiclePlate : '',
+          assignedAtIso: row.createdAtIso,
+          assignedBy: typeof row.assignedBy === 'string' ? row.assignedBy : '',
+          replacedAtIso,
+          replacedBy: actor,
+          reason,
+        },
+      ]
+      const next = {
+        ...row,
+        driverName,
+        vehiclePlate,
+        assignedBy: actor || row.assignedBy,
+        reassignReason: reason,
+        assignmentHistory: history,
+        seenAtIso: null,
+        acceptedAtIso: null,
+        startedAtIso: null,
+      }
+      list[idx] = next
+      await writeJsonArray(file, list)
+      const telegram = await notifyDriverTripTelegram(next)
+      sendJson(res, 200, { ok: true, notified: { telegram } })
       return
     }
 

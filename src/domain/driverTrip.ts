@@ -39,28 +39,54 @@ export type DriverTrip = {
   assignedBy: string
   assignedByRole: DriverTripAssignerRole
   createdAtIso: string
-  /** Водитель открыл рейс в кабинете. */
+  /** Водитель открыл карточку. Это не приём и не старт работы. */
   seenAtIso: string | null
+  /** Водитель нажал «Принять». */
+  acceptedAtIso: string | null
+  /** Водитель нажал «Начать». Только с этого момента рейс «в работе». */
+  startedAtIso: string | null
   /** Рейс закрыт как исполненный (водитель или диспетчер). */
   completedAtIso: string | null
+  cancelledAtIso: string | null
+  cancelReason: string
+  cancelledBy: string
+  reassignReason: string
+  assignmentHistory: DriverTripAssignment[]
 }
+
+export type DriverTripAssignment = {
+  driverName: string
+  vehiclePlate: string
+  assignedAtIso: string
+  assignedBy: string
+  replacedAtIso: string
+  replacedBy: string
+  reason: string
+}
+
+export type TripMutationResult =
+  | { ok: true; trip: DriverTrip }
+  | { ok: false; reason: string }
 
 /**
  * Жизненный цикл рейса:
- *   Ожидает  — отправлен, водитель ещё не открыл
- *   В работе — открыл / принял
- *   Исполнен — отмечен выполненным (терминальный)
+ *   Ожидает  — назначен; открытие карточки статус не меняет
+ *   Принят   — водитель нажал «Принять»
+ *   В работе — водитель нажал «Начать»
+ *   Исполнен / Отменён — терминальные
  *
- * Переходы: waiting → accepted → done.
- * Из waiting можно сразу в done (диспетчер закрыл без открытия водителем).
+ * Переходы: waiting → accepted → started → done.
+ * Из waiting/accepted/started можно в done (диспетчер закрыл) или в cancelled.
  * Назад нельзя.
  */
-export type DriverTripStatus = 'waiting' | 'accepted' | 'done'
+export type DriverTripStatus = 'waiting' | 'accepted' | 'started' | 'done' | 'cancelled'
 
 export const DRIVER_TRIP_STATUS_LABELS: Record<DriverTripStatus, string> = {
   waiting: 'Ожидает',
-  accepted: 'В работе',
+  accepted: 'Принят',
+  started: 'В работе',
   done: 'Исполнен',
+  cancelled: 'Отменён',
 }
 
 const QTY = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 3 })
@@ -133,15 +159,22 @@ export function tripUnloadLabel(trip: Pick<DriverTrip, 'point' | 'siteName'>): s
   return trip.siteName.trim() || 'Объект'
 }
 
-export function isTripUnread(trip: Pick<DriverTrip, 'seenAtIso' | 'completedAtIso'>): boolean {
-  return resolveTripStatus(trip) === 'waiting'
+export function isTripUnread(
+  trip: Pick<DriverTrip, 'seenAtIso' | 'completedAtIso' | 'cancelledAtIso'>,
+): boolean {
+  return !trip.seenAtIso && !trip.completedAtIso && !trip.cancelledAtIso
 }
 
 export function resolveTripStatus(
-  trip: Pick<DriverTrip, 'seenAtIso' | 'completedAtIso'>,
+  trip: Pick<
+    DriverTrip,
+    'seenAtIso' | 'acceptedAtIso' | 'startedAtIso' | 'completedAtIso' | 'cancelledAtIso'
+  >,
 ): DriverTripStatus {
+  if (trip.cancelledAtIso) return 'cancelled'
   if (trip.completedAtIso) return 'done'
-  if (trip.seenAtIso) return 'accepted'
+  if (trip.startedAtIso) return 'started'
+  if (trip.acceptedAtIso) return 'accepted'
   return 'waiting'
 }
 
@@ -149,32 +182,136 @@ export function isTripDone(trip: Pick<DriverTrip, 'completedAtIso'>): boolean {
   return Boolean(trip.completedAtIso)
 }
 
-export function isTripActive(trip: Pick<DriverTrip, 'completedAtIso'>): boolean {
-  return !trip.completedAtIso
+export function isTripCancelled(trip: Pick<DriverTrip, 'cancelledAtIso'>): boolean {
+  return Boolean(trip.cancelledAtIso)
 }
 
-/** Открыл рейс → «В работе». Если уже исполнен — без изменений. */
+export function isTripActive(
+  trip: Pick<DriverTrip, 'completedAtIso' | 'cancelledAtIso'>,
+): boolean {
+  return !trip.completedAtIso && !trip.cancelledAtIso
+}
+
+/** Открыл карточку. Статус не меняется — это не «в работе». */
 export function withTripSeen(
   trip: DriverTrip,
   atIso: string = new Date().toISOString(),
 ): DriverTrip {
-  if (trip.completedAtIso || trip.seenAtIso) return trip
+  if (trip.completedAtIso || trip.cancelledAtIso || trip.seenAtIso) return trip
   return { ...trip, seenAtIso: atIso }
+}
+
+export function withTripAccepted(
+  trip: DriverTrip,
+  atIso: string = new Date().toISOString(),
+): DriverTrip {
+  if (trip.completedAtIso || trip.cancelledAtIso || trip.acceptedAtIso) return trip
+  return {
+    ...trip,
+    seenAtIso: trip.seenAtIso ?? atIso,
+    acceptedAtIso: atIso,
+  }
+}
+
+export function withTripStarted(
+  trip: DriverTrip,
+  atIso: string = new Date().toISOString(),
+): DriverTrip {
+  if (trip.completedAtIso || trip.cancelledAtIso || trip.startedAtIso) return trip
+  return {
+    ...trip,
+    seenAtIso: trip.seenAtIso ?? atIso,
+    acceptedAtIso: trip.acceptedAtIso ?? atIso,
+    startedAtIso: atIso,
+  }
 }
 
 /**
  * Закрыть рейс как исполненный.
- * Если водитель не открывал — всё равно ставим seen (принят задним числом).
+ * Если водитель не принимал и не начинал — отмечаем задним числом, но не выдумываем факты.
  */
 export function withTripDone(
   trip: DriverTrip,
   atIso: string = new Date().toISOString(),
 ): DriverTrip {
-  if (trip.completedAtIso) return trip
+  if (trip.completedAtIso || trip.cancelledAtIso) return trip
   return {
     ...trip,
     seenAtIso: trip.seenAtIso ?? atIso,
+    acceptedAtIso: trip.acceptedAtIso ?? atIso,
+    startedAtIso: trip.startedAtIso ?? atIso,
     completedAtIso: atIso,
+  }
+}
+
+export function withTripCancelled(
+  trip: DriverTrip,
+  input: { reason: string; actor: string; atIso?: string },
+): TripMutationResult {
+  const reason = input.reason.trim()
+  if (reason.length < 3) return { ok: false, reason: 'Укажите причину отмены' }
+  if (trip.completedAtIso) return { ok: false, reason: 'Исполненный рейс нельзя отменить' }
+  if (trip.cancelledAtIso) return { ok: false, reason: 'Рейс уже отменён' }
+  const atIso = input.atIso ?? new Date().toISOString()
+  return {
+    ok: true,
+    trip: {
+      ...trip,
+      cancelledAtIso: atIso,
+      cancelReason: reason,
+      cancelledBy: input.actor.trim(),
+    },
+  }
+}
+
+export function reassignDriverTrip(
+  trip: DriverTrip,
+  input: {
+    driverName: string
+    vehiclePlate: string
+    reason: string
+    actor: string
+    atIso?: string
+  },
+): TripMutationResult {
+  if (trip.completedAtIso) return { ok: false, reason: 'Исполненный рейс нельзя переназначить' }
+  if (trip.cancelledAtIso) return { ok: false, reason: 'Отменённый рейс нельзя переназначить' }
+  const driverName = input.driverName.trim()
+  if (!driverName) return { ok: false, reason: 'Укажите водителя' }
+  const reason = input.reason.trim()
+  if (reason.length < 3) return { ok: false, reason: 'Укажите причину переназначения' }
+  const vehiclePlate = input.vehiclePlate.trim()
+  const sameDriver = namesMatchDriver(trip.driverName, driverName)
+  const samePlate = trip.vehiclePlate === vehiclePlate
+  if (sameDriver && samePlate) return { ok: false, reason: 'Водитель и техника те же' }
+  const atIso = input.atIso ?? new Date().toISOString()
+  const actor = input.actor.trim()
+  const previousAssignedAt =
+    trip.assignmentHistory.at(-1)?.replacedAtIso ?? trip.createdAtIso
+  return {
+    ok: true,
+    trip: {
+      ...trip,
+      driverName,
+      vehiclePlate,
+      assignedBy: actor || trip.assignedBy,
+      reassignReason: reason,
+      assignmentHistory: [
+        ...trip.assignmentHistory,
+        {
+          driverName: trip.driverName,
+          vehiclePlate: trip.vehiclePlate,
+          assignedAtIso: previousAssignedAt,
+          assignedBy: trip.assignedBy,
+          replacedAtIso: atIso,
+          replacedBy: actor,
+          reason,
+        },
+      ],
+      seenAtIso: null,
+      acceptedAtIso: null,
+      startedAtIso: null,
+    },
   }
 }
 
@@ -188,6 +325,10 @@ export function collectActiveTrips(trips: readonly DriverTrip[]): DriverTrip[] {
 
 export function collectDoneTrips(trips: readonly DriverTrip[]): DriverTrip[] {
   return trips.filter(isTripDone)
+}
+
+export function collectCancelledTrips(trips: readonly DriverTrip[]): DriverTrip[] {
+  return trips.filter(isTripCancelled)
 }
 
 function isRole(v: unknown): v is DriverTripAssignerRole {
@@ -275,14 +416,11 @@ export function normalizeDriverTrip(row: unknown): DriverTrip | null {
     typeof r.createdAtIso === 'string' && !Number.isNaN(new Date(r.createdAtIso).getTime())
       ? new Date(r.createdAtIso).toISOString()
       : new Date().toISOString()
-  const seenRaw = typeof r.seenAtIso === 'string' ? r.seenAtIso.trim() : ''
-  const seenAtIso =
-    seenRaw && !Number.isNaN(new Date(seenRaw).getTime()) ? new Date(seenRaw).toISOString() : null
-  const doneRaw = typeof r.completedAtIso === 'string' ? r.completedAtIso.trim() : ''
-  const completedAtIso =
-    doneRaw && !Number.isNaN(new Date(doneRaw).getTime())
-      ? new Date(doneRaw).toISOString()
-      : null
+  const seenAtIso = parseIso(r.seenAtIso)
+  const acceptedAtIso = parseIso(r.acceptedAtIso)
+  const startedAtIso = parseIso(r.startedAtIso)
+  const completedAtIso = parseIso(r.completedAtIso)
+  const cancelledAtIso = parseIso(r.cancelledAtIso)
   return {
     id: r.id,
     dateKey: r.dateKey,
@@ -298,8 +436,44 @@ export function normalizeDriverTrip(row: unknown): DriverTrip | null {
     assignedByRole: r.assignedByRole,
     createdAtIso: created,
     seenAtIso: completedAtIso ? seenAtIso ?? completedAtIso : seenAtIso,
+    acceptedAtIso: completedAtIso ? acceptedAtIso ?? completedAtIso : acceptedAtIso,
+    startedAtIso: completedAtIso ? startedAtIso ?? completedAtIso : startedAtIso,
     completedAtIso,
+    cancelledAtIso,
+    cancelReason: typeof r.cancelReason === 'string' ? r.cancelReason.trim() : '',
+    cancelledBy: typeof r.cancelledBy === 'string' ? r.cancelledBy.trim() : '',
+    reassignReason: typeof r.reassignReason === 'string' ? r.reassignReason.trim() : '',
+    assignmentHistory: normalizeAssignmentHistory(r.assignmentHistory),
   }
+}
+
+function parseIso(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null
+  const d = new Date(value.trim())
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+
+function normalizeAssignmentHistory(row: unknown): DriverTripAssignment[] {
+  if (!Array.isArray(row)) return []
+  const out: DriverTripAssignment[] = []
+  for (const x of row) {
+    if (!x || typeof x !== 'object') continue
+    const r = x as Record<string, unknown>
+    const driverName = typeof r.driverName === 'string' ? r.driverName.trim() : ''
+    if (!driverName) continue
+    const replacedAtIso = parseIso(r.replacedAtIso)
+    if (!replacedAtIso) continue
+    out.push({
+      driverName,
+      vehiclePlate: typeof r.vehiclePlate === 'string' ? r.vehiclePlate.trim() : '',
+      assignedAtIso: parseIso(r.assignedAtIso) ?? replacedAtIso,
+      assignedBy: typeof r.assignedBy === 'string' ? r.assignedBy.trim() : '',
+      replacedAtIso,
+      replacedBy: typeof r.replacedBy === 'string' ? r.replacedBy.trim() : '',
+      reason: typeof r.reason === 'string' ? r.reason.trim() : '',
+    })
+  }
+  return out
 }
 
 export function collectTodayTripsForDriver(
@@ -324,6 +498,16 @@ export function collectTripsForSite(
     .filter((t) => t.siteId === siteId && t.dateKey === dateKey)
     .slice()
     .sort((a, b) => b.createdAtIso.localeCompare(a.createdAtIso))
+}
+
+/** Все рейсы объекта, без фильтра по дате — для Excel с объекта. */
+export function collectAllTripsForSite(
+  trips: readonly DriverTrip[],
+  siteId: string,
+): DriverTrip[] {
+  const id = siteId.trim()
+  if (!id) return []
+  return trips.filter((t) => t.siteId === id)
 }
 
 export function collectTripsForDate(
@@ -365,7 +549,12 @@ export type DriverTripExportRow = {
   Куда: string
   Назначен: string
   'Открыт в': string
+  'Принят в': string
+  'Начат в': string
   'Исполнен в': string
+  'Отменён в': string
+  'Причина отмены': string
+  'Бывшие водители': string
 }
 
 export function buildDriverTripExportRows(
@@ -373,6 +562,10 @@ export function buildDriverTripExportRows(
 ): DriverTripExportRow[] {
   return trips.map((t) => {
     const status = resolveTripStatus(t)
+    const previous = t.assignmentHistory
+      .map((a) => [a.driverName, a.vehiclePlate, a.reason].filter(Boolean).join(' / '))
+      .filter(Boolean)
+      .join('; ')
     return {
       Дата: t.dateKey,
       Время: formatTripAssignedTime(t.createdAtIso),
@@ -385,7 +578,12 @@ export function buildDriverTripExportRows(
       Куда: tripUnloadLabel(t),
       Назначен: formatTripAssignedDateTime(t.createdAtIso),
       'Открыт в': t.seenAtIso ? formatTripAssignedDateTime(t.seenAtIso) : '',
+      'Принят в': t.acceptedAtIso ? formatTripAssignedDateTime(t.acceptedAtIso) : '',
+      'Начат в': t.startedAtIso ? formatTripAssignedDateTime(t.startedAtIso) : '',
       'Исполнен в': t.completedAtIso ? formatTripAssignedDateTime(t.completedAtIso) : '',
+      'Отменён в': t.cancelledAtIso ? formatTripAssignedDateTime(t.cancelledAtIso) : '',
+      'Причина отмены': t.cancelReason,
+      'Бывшие водители': previous,
     }
   })
 }
@@ -443,11 +641,14 @@ export function buildFleetLineStats(
   const noPlate = active.filter((t) => !normalizePlate(t.vehiclePlate)).length
   const onLine = uniqueBy(withPlate, (t) => normalizePlate(t.vehiclePlate)).length
   const working = uniqueBy(
-    withPlate.filter((t) => resolveTripStatus(t) === 'accepted'),
+    withPlate.filter((t) => resolveTripStatus(t) === 'started'),
     (t) => normalizePlate(t.vehiclePlate),
   ).length
   const waiting = uniqueBy(
-    withPlate.filter((t) => resolveTripStatus(t) === 'waiting'),
+    withPlate.filter((t) => {
+      const status = resolveTripStatus(t)
+      return status === 'waiting' || status === 'accepted'
+    }),
     (t) => normalizePlate(t.vehiclePlate),
   ).length
   const free = Math.max(0, total - onLine)
@@ -490,7 +691,7 @@ export function buildDriverLineStats(
 
   const working = uniqueBy(
     active
-      .filter((t) => resolveTripStatus(t) === 'accepted')
+      .filter((t) => resolveTripStatus(t) === 'started')
       .map((t) => matchStaff(t.driverName))
       .filter((n): n is string => Boolean(n)),
     (n) => normalizeDriverName(n),
@@ -498,7 +699,10 @@ export function buildDriverLineStats(
 
   const waiting = uniqueBy(
     active
-      .filter((t) => resolveTripStatus(t) === 'waiting')
+      .filter((t) => {
+        const status = resolveTripStatus(t)
+        return status === 'waiting' || status === 'accepted'
+      })
       .map((t) => matchStaff(t.driverName))
       .filter((n): n is string => Boolean(n)),
     (n) => normalizeDriverName(n),

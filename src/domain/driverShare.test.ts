@@ -33,7 +33,14 @@ const trip: DriverTrip = {
   assignedByRole: 'dispatcher',
   createdAtIso: '2026-08-18T08:00:00.000Z',
   seenAtIso: null,
+  acceptedAtIso: null,
+  startedAtIso: null,
   completedAtIso: null,
+  cancelledAtIso: null,
+  cancelReason: '',
+  cancelledBy: '',
+  reassignReason: '',
+  assignmentHistory: [],
 }
 
 describe('driverShare', () => {

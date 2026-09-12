@@ -13,6 +13,7 @@ import {
   buildDriverLineStats,
   buildFleetLineStats,
   collectActiveTrips,
+  collectCancelledTrips,
   collectDoneTrips,
   collectTripsForDate,
   collectTripsForSite,
@@ -27,13 +28,21 @@ import {
   type DriverTripAssignerRole,
 } from '../../domain/driverTrip'
 import {
+  cancelDriverTripLocal,
   loadDriverTrips,
   markDriverTripDone,
+  reassignDriverTripLocal,
 } from '../../lib/driverTripsRepository'
 import { downloadDriverTripsExcel } from '../../lib/downloadDriverTripsExcel'
-import { markDriverTripDoneRemote } from '../../lib/siteFormsApi'
+import { loadLocalSession } from '../../lib/localSession'
+import {
+  cancelDriverTripRemote,
+  markDriverTripDoneRemote,
+  reassignDriverTripRemote,
+  reverseGeocodeRemote,
+  searchAddressRemote,
+} from '../../lib/siteFormsApi'
 import { toDateKey, addDays } from '../../domain/workDayPlan'
-import { reverseGeocodeRemote, searchAddressRemote } from '../../lib/siteFormsApi'
 import { DriverMessengerShare } from '../driver/DriverMessengerShare'
 import { useFleetRegistry } from '../fleet/useFleetRegistry'
 import { listStaffDriverNames } from '../../domain/staffDirectory'
@@ -112,15 +121,35 @@ export function SiteDeliveryPointSection({
   )
   const activeTrips = useMemo(() => collectActiveTrips(siteTrips), [siteTrips])
   const doneTrips = useMemo(() => collectDoneTrips(siteTrips), [siteTrips])
+  const cancelledTrips = useMemo(() => collectCancelledTrips(siteTrips), [siteTrips])
+  const closedTrips = useMemo(
+    () =>
+      [...doneTrips, ...cancelledTrips].sort((a, b) =>
+        b.createdAtIso.localeCompare(a.createdAtIso),
+      ),
+    [doneTrips, cancelledTrips],
+  )
   const tripStats = useMemo(() => {
     let waiting = 0
     let accepted = 0
+    let started = 0
     for (const t of activeTrips) {
-      if (resolveTripStatus(t) === 'waiting') waiting += 1
-      else accepted += 1
+      const status = resolveTripStatus(t)
+      if (status === 'started') started += 1
+      else if (status === 'accepted') accepted += 1
+      else waiting += 1
     }
-    return { waiting, accepted, done: doneTrips.length }
+    return { waiting, accepted, started, done: doneTrips.length }
   }, [activeTrips, doneTrips])
+  const [tripAction, setTripAction] = useState<
+    | { type: 'cancel'; trip: DriverTrip }
+    | { type: 'reassign'; trip: DriverTrip }
+    | null
+  >(null)
+  const [actionReason, setActionReason] = useState('')
+  const [reassignName, setReassignName] = useState('')
+  const [reassignPlate, setReassignPlate] = useState('')
+  const [actionNote, setActionNote] = useState<string | null>(null)
   const fleetStats = useMemo(
     () => buildFleetLineStats(vehicles, todayTrips),
     [vehicles, todayTrips],
@@ -185,13 +214,70 @@ export function SiteDeliveryPointSection({
     refreshSiteTrips()
   }
 
+  const actorName = () =>
+    loadLocalSession()?.fullName ?? loadLocalSession()?.login ?? 'Диспетчер'
+
+  const closeTripAction = () => {
+    setTripAction(null)
+    setActionReason('')
+    setReassignName('')
+    setReassignPlate('')
+  }
+
+  const handleCancelTrip = async () => {
+    if (tripAction?.type !== 'cancel') return
+    const result = cancelDriverTripLocal(tripAction.trip.id, {
+      reason: actionReason,
+      actor: actorName(),
+    })
+    if (!result.ok) {
+      setActionNote(result.reason)
+      return
+    }
+    refreshSiteTrips()
+    const ok = await cancelDriverTripRemote(tripAction.trip.id, {
+      reason: actionReason.trim(),
+      actor: actorName(),
+    })
+    if (!ok) setActionNote('Отмена записана здесь, на сервер не ушла.')
+    closeTripAction()
+    refreshSiteTrips()
+  }
+
+  const handleReassignTrip = async () => {
+    if (tripAction?.type !== 'reassign') return
+    const result = reassignDriverTripLocal(tripAction.trip.id, {
+      driverName: reassignName,
+      vehiclePlate: reassignPlate,
+      reason: actionReason,
+      actor: actorName(),
+    })
+    if (!result.ok) {
+      setActionNote(result.reason)
+      return
+    }
+    refreshSiteTrips()
+    const ok = await reassignDriverTripRemote(tripAction.trip.id, {
+      driverName: reassignName.trim(),
+      vehiclePlate: reassignPlate.trim(),
+      reason: actionReason.trim(),
+      actor: actorName(),
+    })
+    if (!ok) setActionNote('Переназначение записано здесь, на сервер не ушло.')
+    closeTripAction()
+    refreshSiteTrips()
+  }
+
   const handleExportExcel = () => {
-    const result = downloadDriverTripsExcel(loadDriverTrips(), exportFrom, exportTo)
+    const result = downloadDriverTripsExcel(loadDriverTrips(), exportFrom, exportTo, {
+      siteId,
+      filePrefix: `reysy_${siteId}`,
+    })
     if (!result.ok) {
       setExportNote(result.reason)
       return
     }
-    setExportNote(`Скачано: ${result.count} рейс.`)
+    setExportNote(`Только этот объект: ${result.count} рейс.`)
     window.setTimeout(() => setExportNote(null), 3200)
   }
 
@@ -392,11 +478,18 @@ export function SiteDeliveryPointSection({
         : { address: pickupAddress.trim(), hint: '' },
       cargo: [],
       cargoNote: note,
-      assignedBy: '',
+      assignedBy: loadLocalSession()?.fullName ?? '',
       assignedByRole: assignerRole,
       createdAtIso: new Date().toISOString(),
       seenAtIso: null,
+      acceptedAtIso: null,
+      startedAtIso: null,
       completedAtIso: null,
+      cancelledAtIso: null,
+      cancelReason: '',
+      cancelledBy: '',
+      reassignReason: '',
+      assignmentHistory: [],
     }
     const result = await onAssignTrip(trip)
     setLastTrip(trip)
@@ -499,7 +592,11 @@ export function SiteDeliveryPointSection({
               </span>
               <span className={styles.tripsStat} data-tone="accepted">
                 <span className={styles.tripsStatDot} aria-hidden />
-                В работе <b>{tripStats.accepted}</b>
+                Приняты <b>{tripStats.accepted}</b>
+              </span>
+              <span className={styles.tripsStat} data-tone="started">
+                <span className={styles.tripsStatDot} aria-hidden />
+                В работе <b>{tripStats.started}</b>
               </span>
               <span className={styles.tripsStat} data-tone="done">
                 <span className={styles.tripsStatDot} aria-hidden />
@@ -509,7 +606,7 @@ export function SiteDeliveryPointSection({
           </div>
 
           <div className={styles.exportBar}>
-            <span className={styles.exportLabel}>Excel за период</span>
+            <span className={styles.exportLabel}>Excel за период — только этот объект</span>
             <label className={styles.exportField}>
               <span className={styles.exportFieldLabel}>с</span>
               <input
@@ -534,7 +631,7 @@ export function SiteDeliveryPointSection({
             {exportNote ? <span className={styles.exportNote}>{exportNote}</span> : null}
           </div>
 
-          {activeTrips.length === 0 && doneTrips.length === 0 ? (
+          {activeTrips.length === 0 && closedTrips.length === 0 ? (
             <p className={styles.tripsEmpty}>Нет рейсов по объекту.</p>
           ) : (
             <ul className={styles.tripsList}>
@@ -565,25 +662,52 @@ export function SiteDeliveryPointSection({
                         <span className={styles.tripPlate}>{t.vehiclePlate}</span>
                       ) : null}
                     </span>
-                    <button
-                      type="button"
-                      className={styles.tripDoneBtn}
-                      title="Отметить исполненным"
-                      onClick={() => void handleCompleteTrip(t.id)}
-                    >
-                      Готово
-                    </button>
+                    <div className={styles.tripActions}>
+                      <button
+                        type="button"
+                        className={styles.tripGhostBtn}
+                        onClick={() => {
+                          setActionNote(null)
+                          setReassignName(t.driverName)
+                          setReassignPlate(t.vehiclePlate)
+                          setActionReason('')
+                          setTripAction({ type: 'reassign', trip: t })
+                        }}
+                      >
+                        Назначить
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.tripGhostBtn}
+                        onClick={() => {
+                          setActionNote(null)
+                          setActionReason('')
+                          setTripAction({ type: 'cancel', trip: t })
+                        }}
+                      >
+                        Отменить
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.tripDoneBtn}
+                        title="Отметить исполненным"
+                        onClick={() => void handleCompleteTrip(t.id)}
+                      >
+                        Готово
+                      </button>
+                    </div>
                   </li>
                 )
               })}
-              {doneTrips.map((t) => {
+              {closedTrips.map((t) => {
+                const status = resolveTripStatus(t)
                 const cargo = tripCargoPreview(t) || 'Рейс'
                 return (
-                  <li key={t.id} className={styles.tripRow} data-tone="done">
+                  <li key={t.id} className={styles.tripRow} data-tone={status}>
                     <span
                       className={styles.tripDot}
-                      title="Исполнен"
-                      aria-label="Исполнен"
+                      title={DRIVER_TRIP_STATUS_LABELS[status]}
+                      aria-label={DRIVER_TRIP_STATUS_LABELS[status]}
                     />
                     <span className={styles.tripWhen}>
                       <span className={styles.tripDay}>{formatTripAssignedDate(t.createdAtIso)}</span>
@@ -591,12 +715,16 @@ export function SiteDeliveryPointSection({
                         {formatTripAssignedTime(t.createdAtIso)}
                       </span>
                     </span>
-                    <span className={styles.tripTask}>{cargo}</span>
+                    <span className={styles.tripTask} title={t.cancelReason || cargo}>
+                      {cargo}
+                    </span>
                     <span className={styles.tripObject}>{t.siteName}</span>
                     <span className={styles.tripWho} title={t.driverName}>
                       {shortPersonName(t.driverName)}
                     </span>
-                    <span className={styles.tripDoneLabel}>Исполнен</span>
+                    <span className={styles.tripDoneLabel}>
+                      {DRIVER_TRIP_STATUS_LABELS[status]}
+                    </span>
                   </li>
                 )
               })}
@@ -604,6 +732,102 @@ export function SiteDeliveryPointSection({
           )}
         </div>
         </>
+      ) : null}
+
+      {tripAction ? (
+        <div className={styles.tripDialogScrim} role="presentation" onClick={closeTripAction}>
+          <div
+            className={styles.tripDialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="trip-action-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {tripAction.type === 'cancel' ? (
+              <>
+                <h3 id="trip-action-title">Отменить рейс</h3>
+                <p>
+                  {tripAction.trip.driverName}: {tripCargoPreview(tripAction.trip) || 'рейс'} останется
+                  в журнале.
+                </p>
+                <label className={styles.tripDialogField}>
+                  Причина
+                  <textarea
+                    rows={3}
+                    value={actionReason}
+                    onChange={(e) => setActionReason(e.target.value)}
+                    placeholder="Например: заказчик отменил выгрузку"
+                  />
+                </label>
+                {actionNote ? <p className={styles.tripDialogNote}>{actionNote}</p> : null}
+                <div className={styles.tripDialogActions}>
+                  <button type="button" onClick={closeTripAction}>
+                    Назад
+                  </button>
+                  <button type="button" onClick={() => void handleCancelTrip()}>
+                    Отменить рейс
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 id="trip-action-title">Изменить назначение</h3>
+                <p>
+                  Сейчас: {tripAction.trip.driverName}
+                  {tripAction.trip.vehiclePlate ? `, ${tripAction.trip.vehiclePlate}` : ''}
+                </p>
+                <label className={styles.tripDialogField}>
+                  Водитель
+                  <input
+                    value={reassignName}
+                    onChange={(e) => setReassignName(e.target.value)}
+                    placeholder="Фамилия как в парке"
+                  />
+                </label>
+                {reassignName.trim() ? (
+                  <ul className={styles.tripDialogHits}>
+                    {operators
+                      .filter((n) => driverNameMatchesQuery(n, reassignName))
+                      .slice(0, 6)
+                      .map((n) => (
+                        <li key={n}>
+                          <button type="button" onClick={() => setReassignName(n)}>
+                            {n}
+                          </button>
+                        </li>
+                      ))}
+                  </ul>
+                ) : null}
+                <label className={styles.tripDialogField}>
+                  Техника
+                  <input
+                    value={reassignPlate}
+                    onChange={(e) => setReassignPlate(e.target.value)}
+                    placeholder="Госномер, если знаете"
+                  />
+                </label>
+                <label className={styles.tripDialogField}>
+                  Причина
+                  <textarea
+                    rows={3}
+                    value={actionReason}
+                    onChange={(e) => setActionReason(e.target.value)}
+                    placeholder="Например: Иванов сломался"
+                  />
+                </label>
+                {actionNote ? <p className={styles.tripDialogNote}>{actionNote}</p> : null}
+                <div className={styles.tripDialogActions}>
+                  <button type="button" onClick={closeTripAction}>
+                    Назад
+                  </button>
+                  <button type="button" onClick={() => void handleReassignTrip()}>
+                    Переназначить
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       ) : null}
 
       <div className={styles.sheet}>

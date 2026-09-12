@@ -342,9 +342,19 @@
   background: rgba(59, 130, 246, 0.14);
 }
 
+.badgeStatus[data-tone='started'] {
+  color: #15803d;
+  background: rgba(34, 197, 94, 0.14);
+}
+
 .badgeStatus[data-tone='done'] {
   color: #15803d;
   background: rgba(34, 197, 94, 0.14);
+}
+
+.badgeStatus[data-tone='cancelled'] {
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.12);
 }
 
 .cardDone {

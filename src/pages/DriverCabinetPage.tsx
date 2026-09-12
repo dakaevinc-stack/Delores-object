@@ -15,8 +15,10 @@ import {
 import { DriverTripSheet } from '../features/driver/DriverTripSheet'
 import {
   loadDriverTrips,
+  markDriverTripAccepted,
   markDriverTripDone,
   markDriverTripSeen,
+  markDriverTripStarted,
   mergeDriverTrips,
   saveDriverTrips,
 } from '../lib/driverTripsRepository'
@@ -24,8 +26,10 @@ import {
   fetchDriverNotifyConfig,
   fetchDriverNotifyStatus,
   fetchDriverTripsRemote,
+  markDriverTripAcceptedRemote,
   markDriverTripDoneRemote,
   markDriverTripSeenRemote,
+  markDriverTripStartedRemote,
 } from '../lib/siteFormsApi'
 import styles from './DriverCabinetPage.module.css'
 
@@ -158,6 +162,16 @@ export function DriverCabinetPage() {
     void markDriverTripSeenRemote(openTrip.id)
   }, [openTrip])
 
+  const acceptOpenTrip = async (id: string) => {
+    setTrips(markDriverTripAccepted(id))
+    await markDriverTripAcceptedRemote(id)
+  }
+
+  const startOpenTrip = async (id: string) => {
+    setTrips(markDriverTripStarted(id))
+    await markDriverTripStartedRemote(id)
+  }
+
   const completeOpenTrip = async (id: string) => {
     setTrips(markDriverTripDone(id))
     await markDriverTripDoneRemote(id)
@@ -276,7 +290,7 @@ export function DriverCabinetPage() {
             {today.map((trip, i) => {
               const preview = tripCargoPreview(trip)
               const status = resolveTripStatus(trip)
-              const unreadTrip = status === 'waiting'
+              const unreadTrip = isTripUnread(trip)
               const time = formatTripAssignedTime(trip.createdAtIso)
               const from = tripPickupLabel(trip)
               const to = tripUnloadLabel(trip)
@@ -319,7 +333,7 @@ export function DriverCabinetPage() {
                     ) : null}
 
                     <span className={styles.cardOpen}>
-                      {status === 'done' ? 'Смотреть' : 'Открыть маршрут'}
+                      {status === 'done' || status === 'cancelled' ? 'Смотреть' : 'Открыть маршрут'}
                     </span>
                   </button>
                 </li>
@@ -333,6 +347,8 @@ export function DriverCabinetPage() {
         <DriverTripSheet
           trip={openTrip}
           onClose={closeTrip}
+          onAccept={acceptOpenTrip}
+          onStart={startOpenTrip}
           onComplete={completeOpenTrip}
         />
       ) : null}

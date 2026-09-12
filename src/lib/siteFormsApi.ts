@@ -755,6 +755,78 @@ export async function markDriverTripDoneRemote(id: string): Promise<string | nul
   }
 }
 
+export async function markDriverTripAcceptedRemote(id: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${apiBase()}/api/driver-trips/${encodeURIComponent(id)}/accept`, {
+      method: 'POST',
+    })
+    if (!res.ok) return null
+    const json: unknown = await res.json().catch(() => null)
+    if (
+      json &&
+      typeof json === 'object' &&
+      typeof (json as { acceptedAtIso?: unknown }).acceptedAtIso === 'string'
+    ) {
+      return (json as { acceptedAtIso: string }).acceptedAtIso
+    }
+    return new Date().toISOString()
+  } catch {
+    return null
+  }
+}
+
+export async function markDriverTripStartedRemote(id: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${apiBase()}/api/driver-trips/${encodeURIComponent(id)}/start`, {
+      method: 'POST',
+    })
+    if (!res.ok) return null
+    const json: unknown = await res.json().catch(() => null)
+    if (
+      json &&
+      typeof json === 'object' &&
+      typeof (json as { startedAtIso?: unknown }).startedAtIso === 'string'
+    ) {
+      return (json as { startedAtIso: string }).startedAtIso
+    }
+    return new Date().toISOString()
+  } catch {
+    return null
+  }
+}
+
+export async function cancelDriverTripRemote(
+  id: string,
+  input: { reason: string; actor: string },
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${apiBase()}/api/driver-trips/${encodeURIComponent(id)}/cancel`, {
+      method: 'POST',
+      headers: writeHeaders(true),
+      body: JSON.stringify(input),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+export async function reassignDriverTripRemote(
+  id: string,
+  input: { driverName: string; vehiclePlate: string; reason: string; actor: string },
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${apiBase()}/api/driver-trips/${encodeURIComponent(id)}/reassign`, {
+      method: 'POST',
+      headers: writeHeaders(true),
+      body: JSON.stringify(input),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
 export async function fetchDriverNotifyConfig(): Promise<{
   telegramEnabled: boolean
   botUsername: string
