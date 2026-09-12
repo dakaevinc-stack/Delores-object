@@ -130,10 +130,9 @@ export function normalizeProcurementRequest(row: unknown): ProcurementRequest {
       ? new Date(rawNeed).toISOString()
       : null
   const receipt = normalizeCargoReceipt(r.receipt)
-  const receipts = Array.isArray((r as { receipts?: unknown }).receipts)
-    ? ((r as { receipts: unknown[] }).receipts
-        .map(normalizeCargoReceipt)
-        .filter((x): x is CargoReceipt => x !== null))
+  const rawReceipts = (r as { receipts?: unknown }).receipts
+  const receipts = Array.isArray(rawReceipts)
+    ? rawReceipts.map(normalizeCargoReceipt).filter((x): x is CargoReceipt => x !== null)
     : undefined
   const next = {
     ...r,
